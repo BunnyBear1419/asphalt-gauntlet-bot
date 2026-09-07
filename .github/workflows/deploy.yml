@@ -1,0 +1,25 @@
+name: Deploy to Discloud
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Reference
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Context
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Discloud CLI Tools Global Binaries
+        run: npm install -g @discloud/cli
+
+      - name: Authenticate Handshake and Deploy to Container App
+        run: |
+          discloud login ${{ secrets.DISCLOUD_TOKEN }}
+          discloud upload
