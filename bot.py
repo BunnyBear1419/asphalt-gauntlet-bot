@@ -6,7 +6,7 @@ import asyncio
 import signal
 import random
 import re
-from datetime import datetime
+from datetime import datetime, UTC
 import requests
 import discord
 from discord.ext import commands, tasks
@@ -39,6 +39,7 @@ DEFAULT_THRESHOLDS = {
     "San Francisco": 45000, "Scotland": 43000, "Shanghai": 41000,
     "Singapore": 47000, "The Caribbean": 46000
 }
+
 def _sanitize_track_name(track_input: str) -> str:
     cleaned = "".join(track_input.split()).lower()
     for valid in VALID_TRACKS:
@@ -71,6 +72,7 @@ def _calculate_elo(rating_w: int, rating_l: int, k_factor: int = 32) -> tuple:
     new_w = round(rating_w + k_factor * (1 - expected_w))
     new_l = round(rating_l + k_factor * (0 - (1 - expected_w)))
     return max(1000, new_w), max(1000, new_l)
+
 class MongoLocalFallbackClient:
     def __init__(self):
         self.db_file = "gauntlet_database.json"
@@ -159,8 +161,10 @@ class CursorMock:
         self.items = self.items[:n]
         return self
     async def to_list(self, length=None): return self.items
+
 try:
     from motor.motor_asyncio import AsyncIOMotorClient
+    from bson import ObjectId
     HAS_MONGO = True
 except ImportError:
     HAS_MONGO = False
@@ -210,14 +214,24 @@ class GauntletBot(commands.Bot):
             drivers_list = await self.db.drivers.find().to_list(length=None)
             laps_list = await self.db.laps.find().to_list(length=None)
             
-            # Convert MongoDB ObjectIds to clean text strings safely
+            clean_drivers = []
             for d in drivers_list:
-                if "_id" in d: d["_id"] = str(d["_id"])
+                d_copy = dict(d)
+                if "_id" in d_copy: 
+                    d_copy["_id"] = str(d_copy["_id"])
+                clean_drivers.append(d_copy)
+
+            clean_laps = []
             for l in laps_list:
-                if "_id" in l: l["_id"] = str(l["_id"])
+                l_copy = dict(l)
+                if "_id" in l_copy: 
+                    l_copy["_id"] = str(l_copy["_id"])
+                clean_laps.append(l_copy)
                 
-            snapshot = {"timestamp": datetime.utcnow().isoformat(), "drivers": drivers_list, "laps": laps_list}
-            await self.db.backups.insert_one(snapshot)
+            snapshot = {"timestamp": datetime.now(UTC).isoformat(), "drivers": clean_drivers, "laps": clean_laps}
+            
+            db_insert_snapshot = dict(snapshot)
+            await self.db.backups.insert_one(db_insert_snapshot)
             
             js_str = json.dumps(snapshot, indent=4, ensure_ascii=False)
             for guild in self.guilds:
@@ -257,6 +271,7 @@ def is_bot_admin():
                 if any(r.id == int(r_id) for r in interaction.user.roles): return True
         raise app_commands.Errors.MissingPermissions(["Custom Bot Admin Role"])
     return app_commands.check(predicate)
+
 class VerificationModal(discord.ui.Modal, title="Verify & Polish Driver Details"):
     def __init__(self, user_id: str, guild_id: str, game_id: str, rank: int, control_type: str):
         super().__init__()
@@ -426,6 +441,7 @@ class ResetSeasonDropdown(discord.ui.Select):
         embed = discord.Embed(title=f"📊 Seasonal Standings: {self.values}", color=0xffcc00)
         embed.description = "\n".join([f"• {r['name']} — `{r['score']:,}` PI" for r in drivers]) if drivers else "*No drivers placed in this division bracket.*"
         await interaction.response.edit_message(embed=embed, view=self.view)
+
 @bot.tree.command(name="sync", description="Synchronizes application slash command tree structures mapping layers.")
 async def sync_cmd(interaction: discord.Interaction):
     if interaction.user.id != interaction.guild.owner_id:
@@ -485,6 +501,7 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
             emb.add_field(name="System Audit Flag", value=f"`{ocr_status}`", inline=False)
             emb.set_image(url=proof_screenshot.url)
             await chan.send(embed=emb, view=VerificationView(str(interaction.user.id), str(interaction.guild_id), game_id, parsed_rank, control_type.value))
+
 @bot.tree.command(name="profile", description="Generates layered graphical driver licence standings metrics sheet profiles.")
 async def profile_cmd(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
@@ -580,6 +597,7 @@ async def log_lap_cmd(interaction: discord.Interaction, track: str, car: str, ca
     })
     await bot.db.drivers.update_one({"_id": db_id}, {"$inc": {"verified_laps": 1}})
     await interaction.response.send_message(f"✅ Lap records synchronized perfectly for circuit: **{s_track}** [Class {car_class.value}].", ephemeral=True)
+
 @bot.tree.command(name="records", description="Renders the top 5 seasonal leaderboards filtered dynamically by track and car class.")
 @app_commands.choices(car_class=[
     app_commands.Choice(name="Class D", value="D"), app_commands.Choice(name="Class C", value="C"),
@@ -595,7 +613,7 @@ async def records_cmd(interaction: discord.Interaction, track: str, car_class: a
         
     laps.sort(key=lambda x: x["time_ms"])
     emb = discord.Embed(title=f"🏁 Seasonal Leaderboard: {s_track} (Class {car_class.value})", color=0xffcc00)
-    base = laps["time_ms"]
+    base = laps[0]["time_ms"]
     
     for idx, l in enumerate(laps[:5], start=1):
         car_name = l["car"]
@@ -627,7 +645,7 @@ async def my_records_cmd(interaction: discord.Interaction):
         
         pb_time_str = _format_ms_to_time(pb_lap["time_ms"])
         meta_tag = " 🔥" if pb_lap["car"] in META_CARS else ""
-        pace_str = "👑 **[Reigning Class Leader]**" if server_laps and pb_lap["time_ms"] == server_laps["time_ms"] else f" gap pacing: `+{(pb_lap['time_ms'] - server_laps['time_ms']) / 1000.0:.3f}s` off leader"
+        pace_str = "👑 **[Reigning Class Leader]**" if server_laps and pb_lap["time_ms"] == server_laps[0]["time_ms"] else f" gap pacing: `+{(pb_lap['time_ms'] - server_laps[0]['time_ms']) / 1000.0:.3f}s` off leader"
 
         emb.add_field(name=f"📍 {track_name} (Class {c_tier})", value=f"└ time: `{pb_time_str}` via **{pb_lap['car']}**{meta_tag}\n└ {pace_str} | [View Proof]({pb_lap['proof_url']})", inline=False)
     await interaction.followup.send(embed=emb)
@@ -669,7 +687,7 @@ async def leaderboard_cmd(interaction: discord.Interaction):
     board_lines = []
     for idx, d in enumerate(guild_drivers[:10], start=1):
         div_label, _ = bot.get_division(d.get("garage_rank", 0))
-        div_short = div_label.split(" (")
+        div_short = div_label.split(" (")[0]
         board_lines.append(f"`#{idx:02d}` <@{d['user_id']}> — **{d.get('elo_rating', 1200)}** ELO\n└ Fleet: `{d.get('garage_rank', 0):,}` PI | `{div_short}` | Record: `{d.get('wins',0)}W-{d.get('losses',0)}L`")
 
     emb.description = "\n\n".join(board_lines)
@@ -682,6 +700,7 @@ async def challenge_cmd(interaction: discord.Interaction, opponent: discord.Memb
         return await interaction.response.send_message("❌ Target alignment fault: You cannot challenge yourself.", ephemeral=True)
     emb = discord.Embed(title="🤝 Match Verification Pending Validation", description=f"<@{interaction.user.id}> proposes a match outcome **{result.name}** against <@{opponent.id}>'s defense lineup.")
     await interaction.response.send_message(embed=emb, view=ChallengeConfirmView(str(interaction.guild_id), str(interaction.user.id), str(opponent.id), result.value))
+
 @bot.tree.command(name="verify_driver", description="Administratively bypasses staging rows to directly insert/verify a driver roster profile.")
 @app_commands.choices(control_type=[app_commands.Choice(name="Manual Controls", value="manual"), app_commands.Choice(name="TouchDrive", value="touchdrive")])
 @is_bot_admin()
@@ -704,7 +723,7 @@ async def manage_strikes_cmd(interaction: discord.Interaction, member: discord.M
     db_id = f"{interaction.guild_id}_{member.id}"
     driver = await bot.db.drivers.find_one({"_id": db_id})
     if not driver:
-        return await interaction.response.send_message("❌ Error: Target user profile does not exist on roster records.", ephemeral=True)
+        return await interaction.call_action_failure("❌ Error: Target user profile does not exist on roster records.", ephemeral=True)
         
     current = driver.get("strikes", 0)
     new_val = current + 1 if action.value == "add" else max(0, current - 1) if action.value == "remove" else 0
@@ -764,6 +783,7 @@ async def set_par_time_cmd(interaction: discord.Interaction, track: str, par_tim
     
     await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"par_times": current_pt}}, upsert=True)
     await interaction.response.send_message(f"⚙️ **Anti-Cheat Infrastructure Updated:** `{s_track}` floor limit adjusted to `{par_time}`.", ephemeral=True)
+
 @bot.tree.command(name="setup_channels", description="Binds global room layouts anchors hooks and automated server management fields.")
 @is_bot_admin()
 async def setup_channels_cmd(interaction: discord.Interaction, registration_channel: discord.TextChannel, logs_channel: discord.TextChannel, announcement_channel: discord.TextChannel, member_role: discord.Role, admin_role: discord.Role):
@@ -783,10 +803,10 @@ async def readme_cmd(interaction: discord.Interaction):
 @bot.tree.command(name="checksetup", description="Runs structural diagnostic handshakes testing cloud connectivity thresholds.")
 @is_bot_admin()
 async def check_setup_cmd(interaction: discord.Interaction):
-    st = datetime.utcnow(); db_txt = "🔴 Offline Network Collisions"
+    st = datetime.now(UTC); db_txt = "🔴 Offline Network Collisions"
     try: 
         await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
-        db_txt = f"🟢 Connected Atlas Core Hub Core Cluster Node Gateway ({int((datetime.utcnow()-st).total_seconds()*1000)}ms)"
+        db_txt = f"🟢 Connected Atlas Core Hub Core Cluster Node Gateway ({int((datetime.now(UTC)-st).total_seconds()*1000)}ms)"
     except: pass
     emb = discord.Embed(title="🛡️ Operation Infrastructure Integrity Matrix Check", color=0x00ffcc)
     emb.add_field(name="Database Connections Layer (MongoDB Atlas)", value=db_txt, inline=False)
