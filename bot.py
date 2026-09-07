@@ -552,14 +552,27 @@ def main():
     t = os.getenv("DISCORD_BOT_TOKEN")
     if not t or t == "your_real_discord_bot_token_here": 
         return print("❌ Error: Missing authentic DISCORD_BOT_TOKEN settings values.")
-    loop = asyncio.get_event_loop()
+    
+    # Modernized startup routine matching Python 3.10+ / Python 3.14 lifecycle constraints
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
     for s in (signal.SIGINT, signal.SIGTERM):
         try: 
             loop.add_signal_handler(s, lambda sig=s: asyncio.create_task(graceful_shutdown(sig, loop)))
         except NotImplementedError: 
             pass
-    bot.run(t)
+            
+    try:
+        loop.run_until_complete(bot.start(t))
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    finally:
+        if not loop.is_closed():
+            loop.close()
 
 if __name__ == "__main__": 
     main()
-
