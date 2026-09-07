@@ -207,12 +207,6 @@ class GauntletBot(commands.Bot):
         elif tracking_points <= 20000: return "🏆 Division IV (Platinum)", (229, 228, 226)
         elif tracking_points <= 22000: return "👑 Division V (Champ)", (155, 93, 229)
         else: return "💎 Division VI (Legend)", (0, 245, 212)
-
-    @tasks.loop(hours=168)
-    async def backup_database_task(self):
-        try:
-            drivers_list = await self.db.drivers.find().to_list(length=None)
-            laps_list = await self.db.laps.find().to_list(length=None)
             
             # Cleanly fix MongoDB dynamic BSON ObjectId serialization
             for d in drivers_list:
