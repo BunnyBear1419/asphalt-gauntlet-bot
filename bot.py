@@ -197,8 +197,8 @@ class GauntletBot(commands.Bot):
         except Exception as err:
             logging.error(f"❌ Command synchronization handshake fault: {err}")
 
-        self.backup_database_task.start()
-        self.pending_queue_reminder_task.start()
+        backup_database_task.start()
+        pending_queue_reminder_task.start()
 
     def get_division(self, tracking_points: int) -> tuple:
         if tracking_points <= 10000: return "🥉 Division I (Bronze)", (205, 127, 50)
