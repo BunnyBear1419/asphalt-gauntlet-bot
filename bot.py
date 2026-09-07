@@ -209,20 +209,7 @@ class GauntletBot(commands.Bot):
         else: return "💎 Division VI (Legend)", (0, 245, 212)
             
             # Cleanly fix MongoDB dynamic BSON ObjectId serialization
-            for d in drivers_list:
-                if "_id" in d: d["_id"] = str(d["_id"])
-            for l in laps_list:
-                if "_id" in l: l["_id"] = str(l["_id"])
-
-            # Force string conversion on all ObjectIds natively to prevent encoder crashes
-            clean_snapshot = {
-                "timestamp": datetime.now(UTC).isoformat(),
-                "drivers": [{k: (str(v) if k == "_id" else v) for k, v in d.items()} for d in drivers_list],
-                "laps": [{k: (str(v) if k == "_id" else v) for k, v in l.items()} for l in laps_list]
-            }
-            await self.db.backups.insert_one(clean_snapshot)
-            
-            js_str = json.dumps(clean_snapshot, indent=4, ensure_ascii=False)
+     async def backup_database_task():
             for guild in self.guilds:
                 cfg = await self.db.settings.find_one({"_id": str(guild.id)})
                 if cfg and cfg.get("logging_channel_id"):
