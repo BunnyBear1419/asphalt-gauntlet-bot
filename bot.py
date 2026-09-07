@@ -41,9 +41,11 @@ def create_snapshot(drivers_list, laps_list):
     }
     return snapshot
 
-if __name__ == "__main__":
-    TOKEN = os.getenv("TOKEN")
-    if TOKEN:
-        bot.run(TOKEN)
-    else:
+if __name__ == "__main__": 
+    # Changed from "DISCORD_TOKEN" to "TOKEN"
+    TOKEN = os.getenv("TOKEN") 
+    
+    if TOKEN: 
+        bot.run(TOKEN) 
+    else: 
         print("ERROR: No token found in environment variables.")
