@@ -1,5 +1,5 @@
 .env
-__pycache__/
-*.pyc
-.DS_Store
 gauntlet_database.json
+*.json
+*.png
+assets/
