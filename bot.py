@@ -73,6 +73,15 @@ def _calculate_elo(rating_w: int, rating_l: int, k_factor: int = 32) -> tuple:
     new_l = round(rating_l + k_factor * (0 - (1 - expected_w)))
     return max(1000, new_w), max(1000, new_l)
 
+class MongoJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, '__str__') and o.__class__.__name__ == 'ObjectId':
+            return str(o)
+        return super().default(o)
+
+def safe_json_dumps(data, **kwargs):
+    return json.dumps(data, cls=MongoJSONEncoder, **kwargs)
+
 class MongoLocalFallbackClient:
     def __init__(self):
         self.db_file = "gauntlet_database.json"
@@ -207,7 +216,9 @@ class GauntletBot(commands.Bot):
         elif tracking_points <= 20000: return "🏆 Division IV (Platinum)", (229, 228, 226)
         elif tracking_points <= 22000: return "👑 Division V (Champ)", (155, 93, 229)
         else: return "💎 Division VI (Legend)", (0, 245, 212)
-            
+
+bot = GauntletBot()
+
 @tasks.loop(hours=168)
 async def backup_database_task():
     try:
@@ -222,7 +233,7 @@ async def backup_database_task():
         }
         await bot.db.backups.insert_one(clean_snapshot)
         
-        js_str = json.dumps(clean_snapshot, indent=4, ensure_ascii=False)
+        js_str = safe_json_dumps(clean_snapshot, indent=4, ensure_ascii=False)
         for guild in bot.guilds:
             cfg = await bot.db.settings.find_one({"_id": str(guild.id)})
             if cfg and cfg.get("logging_channel_id"):
@@ -234,22 +245,20 @@ async def backup_database_task():
     except Exception as e: 
         logging.error(f"Backup task loop failed: {e}")
 
-    @tasks.loop(hours=48)
-    async def pending_queue_reminder_task(self):
-        try:
-            for guild in self.guilds:
-                cfg = await self.db.settings.find_one({"_id": str(guild.id)})
-                if cfg and cfg.get("registration_channel_id"):
-                    chan = guild.get_channel(int(cfg["registration_channel_id"]))
-                    pending_items = await self.db.pending.find().to_list(length=None)
-                    guild_pending = [p for p in pending_items if p.get("guild_id") == str(guild.id)]
-                    if guild_pending and chan:
-                        role_ping = f" <@&{cfg['admin_role_ids'][0]}>" if cfg.get("admin_role_ids") else ""
-                        embed = discord.Embed(title="⏳ Outstanding Queue Alert", color=0xffcc00, description=f"Attention Staff! There are **{len(guild_pending)} applications** waiting in staging records. Run `/checkpending` to review.")
-                        await chan.send(content=role_ping, embed=embed)
-        except Exception as e: logging.error(f"Pending loop failed: {e}")
-
-bot = GauntletBot()
+@tasks.loop(hours=48)
+async def pending_queue_reminder_task():
+    try:
+        for guild in bot.guilds:
+            cfg = await bot.db.settings.find_one({"_id": str(guild.id)})
+            if cfg and cfg.get("registration_channel_id"):
+                chan = guild.get_channel(int(cfg["registration_channel_id"]))
+                pending_items = await bot.db.pending.find().to_list(length=None)
+                guild_pending = [p for p in pending_items if p.get("guild_id") == str(guild.id)]
+                if guild_pending and chan:
+                    role_ping = f" <@&{cfg['admin_role_ids'][0]}>" if cfg.get("admin_role_ids") else ""
+                    embed = discord.Embed(title="⏳ Outstanding Queue Alert", color=0xffcc00, description=f"Attention Staff! There are **{len(guild_pending)} applications** waiting in staging records. Run `/checkpending` to review.")
+                    await chan.send(content=role_ping, embed=embed)
+    except Exception as e: logging.error(f"Pending loop failed: {e}")
 
 def is_bot_admin():
     async def predicate(interaction: discord.Interaction):
@@ -712,7 +721,7 @@ async def manage_strikes_cmd(interaction: discord.Interaction, member: discord.M
     db_id = f"{interaction.guild_id}_{member.id}"
     driver = await bot.db.drivers.find_one({"_id": db_id})
     if not driver:
-        return await interaction.call_action_failure("❌ Error: Target user profile does not exist on roster records.", ephemeral=True)
+        return await interaction.response.send_message("❌ Error: Target user profile does not exist on roster records.", ephemeral=True)
         
     current = driver.get("strikes", 0)
     new_val = current + 1 if action.value == "add" else max(0, current - 1) if action.value == "remove" else 0
@@ -827,16 +836,6 @@ async def graceful_shutdown(sig, loop):
     if HAS_MONGO and hasattr(bot, 'mongo_client'): bot.mongo_client.close()
     for t in [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]: t.cancel()
     bot.loop.stop()
-
-# Custom encoder to completely eliminate the ObjectId serialization error across the entire script
-class MongoJSONEncoder(json.JSONEncoder):
-    def default(self, o):
-        if hasattr(o, '__str__') and o.__class__.__name__ == 'ObjectId':
-            return str(o)
-        return super().default(o)
-
-def safe_json_dumps(data, **kwargs):
-    return json.dumps(data, cls=MongoJSONEncoder, **kwargs)
 
 def main():
     t = os.getenv("DISCORD_BOT_TOKEN")
