@@ -52,6 +52,7 @@ def _format_ms_to_time(ms: int) -> str:
     minutes = int(total_seconds // 60)
     seconds = total_seconds % 60
     return f"{minutes:02d}:{seconds:06.3f}"
+
 class MongoLocalFallbackClient:
     def __init__(self):
         self.db_file = "gauntlet_database.json"
@@ -129,6 +130,7 @@ try:
     HAS_MONGO = True
 except ImportError:
     HAS_MONGO = False
+
 class GauntletBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
@@ -141,8 +143,11 @@ class GauntletBot(commands.Bot):
         mongo_uri = os.getenv("MONGO_URI")
         if HAS_MONGO and mongo_uri:
             try:
-                self.mongo_client = AsyncIOMotorClient(mongo_uri)
+                # FIXED: Added serverSelectionTimeoutMS to prevent long hangs and let fallback catch issues cleanly
+                self.mongo_client = AsyncIOMotorClient(mongo_uri, serverSelectionTimeoutMS=5000)
                 self.db = self.mongo_client["gauntlet_database"]
+                # FIXED: Trigger an actual command layout check to verify the cluster network connection handles handshakes early
+                await self.mongo_client.admin.command('ping')
                 logging.info("🍃 Connected successfully to MongoDB Cloud Clusters.")
             except Exception as e:
                 logging.error(f"❌ MongoDB failed: {e}. Falling back to internal engine simulator.")
@@ -236,8 +241,10 @@ class VerificationModal(discord.ui.Modal, title="Verify & Polish Driver Details"
             role = interaction.guild.get_role(int(cfg["member_role_id"]))
             member = interaction.guild.get_member(int(self.user_id))
             if role and member:
-                try: await member.add_roles(role); role_note = f"\nGranted Role: {role.mention}"
-                except: role_note = f"\n⚠️ *Move bot integration roles higher in settings list.*"
+                try: await member.add_roles(role); role_note = f"
+Granted Role: {role.mention}"
+                except: role_note = f"
+⚠️ *Move bot integration roles higher in settings list.*"
 
         embed = discord.Embed(title="🎉 Roster Entry Approved!", color=0x00ffcc, description=f"Driver <@{self.user_id}> has joined **{div_name}**!{role_note}")
         embed.add_field(name="Confirmed Score", value=f"📊 {final_rank:,} PI")
@@ -310,8 +317,10 @@ class ResetSeasonDropdown(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         drivers = self.divs_map[self.values[0]]
         embed = discord.Embed(title=f"📊 Seasonal Standings: {self.values[0]}", color=0xffcc00)
-        embed.description = "\n".join([f"• {r['name']} — `{r['score']:,}` PI" for r in drivers]) if drivers else "*No drivers placed in this division bracket.*"
+        embed.description = "
+".join([f"• {r['name']} — `{r['score']:,}` PI" for r in drivers]) if drivers else "*No drivers placed in this division bracket.*"
         await interaction.response.edit_message(embed=embed, view=self.view)
+
 # --- SLASH ROUTINES CORE COMMAND MAPS ---
 
 @bot.tree.command(name="sync", description="Synchronizes application slash command tree structures mapping layers.")
@@ -340,7 +349,8 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     ocr_key = os.getenv("OCR_SPACE_API_KEY")
     if ocr_key and ocr_key != "your_free_ocr_space_api_key_here":
         try:
-            r = requests.get(f"https://ocr.space{ocr_key}&url={proof_screenshot.url}", timeout=5)
+            # FIXED: Corrected endpoint query formatting to include correct query separator elements
+            r = requests.get(f"https://api.ocr.space/parse/image?apikey={ocr_key}&url={proof_screenshot.url}", timeout=5)
             if r.status_code == 200 and "PARSEDTEXT" in r.text.upper():
                 parsed_text = r.json().get("ParsedResults", [{}]).get("ParsedText", "").upper()
                 if not any(x in parsed_text for x in ["PLAYER", "GARAGE", "LEVEL", "CLUB", "ID"]):
@@ -425,8 +435,10 @@ async def records_cmd(interaction: discord.Interaction, track: str):
     base = laps[0]["time_ms"]
     for idx, l in enumerate(laps[:5], start=1):
         delta = "👑 [RECORD]" if idx == 1 else f"`+{(l['time_ms'] - base)/1000.0:.3f}s` gap telemetry"
-        emb.add_field(name=f"#{idx} | {l['driver_name']}", value=f"🏎️ **{l['car']}** | Time: `{_format_ms_to_time(l['time_ms'])}`\n{delta} | [View Proof]({l['proof_url']})", inline=False)
+        emb.add_field(name=f"#{idx} | {l['driver_name']}", value=f"🏎️ **{l['car']}** | Time: `{_format_ms_to_time(l['time_ms'])}`
+{delta} | [View Proof]({l['proof_url']})", inline=False)
     await interaction.response.send_message(embed=emb)
+
 @bot.tree.command(name="challenge", description="Logs match parameters evaluating friendly practice runs outcomes.")
 async def challenge_cmd(interaction: discord.Interaction, opponent: discord.Member, result: str):
     if opponent.id == interaction.user.id: return await interaction.response.send_message("❌ Target alignment fault.", ephemeral=True)
@@ -519,20 +531,28 @@ async def suggest_target_cmd(interaction: discord.Interaction):
     targets = [x for x in all_d if x["_id"] != str(interaction.user.id)]
     if not targets: return await interaction.response.send_message("🔍 Matchmaker empty.")
     targets.sort(key=lambda x: abs(x.get("garage_rank", 0) - d["garage_rank"]))
-    await interaction.response.send_message(embed=discord.Embed(title="🎯 Proximity Practice Matchmaking Target Result", description=f"Recommended Opponent Account Tag: `{targets[0]['game_id']}`\nFleet Rating Score: **{targets[0]['garage_rank']:,}** PI"))
+    await interaction.response.send_message(embed=discord.Embed(title="🎯 Proximity Practice Matchmaking Target Result", description=f"Recommended Opponent Account Tag: `{targets[0]['game_id']}`
+Fleet Rating Score: **{targets[0]['garage_rank']:,}** PI"))
 
 @bot.tree.command(name="changelog", description="Displays version patch modifications dashboards reports charts outlines.")
 async def changelog_cmd(interaction: discord.Interaction):
-    await interaction.response.send_message(embed=discord.Embed(title="🚀 System Patch Metrics Changelog Dashboard", description="• Core storage engine linked to **Async MongoDB Atlas Collections Streams**\n• Embedded failsafe review modal adjustments prefill grids inside approvals layers\n• Automatic screenshot verification filter watchdogs parsing ocr rules blocks\n• Graceful termination connection signal catchers protecting transactions scripts"))
+    await interaction.response.send_message(embed=discord.Embed(title="🚀 System Patch Metrics Changelog Dashboard", description="• Core storage engine linked to **Async MongoDB Atlas Collections Streams**
+• Embedded failsafe review modal adjustments prefill grids inside approvals layers
+• Automatic screenshot verification filter watchdogs parsing ocr rules blocks
+• Graceful termination connection signal catchers protecting transactions scripts"))
 
 @bot.tree.command(name="readme", description="Pulls customized user or administrative help center manuals templates.")
 async def readme_cmd(interaction: discord.Interaction):
     admin = interaction.user.id == interaction.guild.owner_id or interaction.user.guild_permissions.administrator
     if admin:
-        e = discord.Embed(title="👑 Master Administration Manual Directive Guide", description="• Run `/setup_channels` to configure automated auto-roles anchors links hooks.\n• Execute `/checkpending` or respond to active review notification button matrices prompts.\n• Use `/resetseason` to compile podium asset cards vectors fields and wipe lap times safely.")
+        e = discord.Embed(title="👑 Master Administration Manual Directive Guide", description="• Run `/setup_channels` to configure automated auto-roles anchors links hooks.
+• Execute `/checkpending` or respond to active review notification button matrices prompts.
+• Use `/resetseason` to compile podium asset cards vectors fields and wipe lap times safely.")
         await interaction.response.send_message(embed=e, ephemeral=True)
     else:
-        e = discord.Embed(title="👑 Driver Operations Tournament Handbook Guide", description="• Run `/register` to submit profile telemetry graphics files checks blueprints.\n• Logging laps via `/loglap` tracking strict `MM:SS.mmm` formatting masks strings.\n• Challenge matches logs outcomes via `/challenge`. Targeted opponents must confirm entries.")
+        e = discord.Embed(title="👑 Driver Operations Tournament Handbook Guide", description="• Run `/register` to submit profile telemetry graphics files checks blueprints.
+• Logging laps via `/loglap` tracking strict `MM:SS.mmm` formatting masks strings.
+• Challenge matches logs outcomes via `/challenge`. Targeted opponents must confirm entries.")
         await interaction.response.send_message(embed=e)
 
 @bot.tree.error
@@ -553,7 +573,6 @@ def main():
     if not t or t == "your_real_discord_bot_token_here": 
         return print("❌ Error: Missing authentic DISCORD_BOT_TOKEN settings values.")
     
-    # Modernized startup routine matching Python 3.10+ / Python 3.14 lifecycle constraints
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
