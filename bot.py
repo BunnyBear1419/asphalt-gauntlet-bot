@@ -12,17 +12,10 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands
 from dotenv import load_dotenv
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
-
-# Meta cars array tagged automatically on leaderboards
-META_CARS = [
-    "DEVEL SIXTEEN", "KOENIGSEGG CC850", "JESKO", "HENNESSEY VENOM F5", 
-    "SSC TUATARA", "BUGATTI CHIRON", "BUGATTI BOLIDE", "RIMAC NEVERA",
-    "LAMBORGHINI COUNTACH", "ULTIMA RS", "MCLAREN SPEEDTAIL", "LAMBORGHINI EGOISTA"
-]
 
 # Valid track names matrix
 VALID_TRACKS = [
@@ -110,7 +103,7 @@ class CollectionMock:
             return self.client.data[self.name].get(str(v))
         return None
         
-    async def find(self, query=None):
+    def find(self, query=None):
         if self.name == "laps":
             if not query: return CursorMock(self.client.data["laps"])
             matched = self.client.data["laps"]
@@ -132,6 +125,14 @@ class CollectionMock:
             elif op == "$inc":
                 for pk, pv in payload.items():
                     self.client.data[self.name][v][pk] = self.client.data[self.name][v].get(pk, 0) + pv
+            elif op == "$push":
+                for pk, pv in payload.items():
+                    if pk not in self.client.data[self.name][v]:
+                        self.client.data[self.name][v][pk] = []
+                    # slice to keep recent history compact
+                    self.client.data[self.name][v][pk].append(pv)
+                    if len(self.client.data[self.name][v][pk]) > 10:
+                        self.client.data[self.name][v][pk] = self.client.data[self.name][v][pk][-10:]
         self.client.save()
         
     async def insert_one(self, doc):
@@ -190,12 +191,11 @@ class GauntletBot(commands.Bot):
         else:
             self.db = MongoLocalFallbackClient()
 
-        # Sync application commands with Discord
         try:
-            synced = await self.tree.sync()
-            logging.info(f"🔄 Application Command Tree Unified Globally: Synced {len(synced)} slash contexts.")
-        except Exception as e:
-            logging.error(f"❌ Command synchronization handshake fault: {e}")
+            await self.tree.sync()
+            logging.info("✨ Application slash command map synchronized globally.")
+        except Exception as err:
+            logging.error(f"❌ Command synchronization handshake fault: {err}")
 
         self.backup_database_task.start()
         self.pending_queue_reminder_task.start()
@@ -207,6 +207,16 @@ class GauntletBot(commands.Bot):
         elif tracking_points <= 20000: return "🏆 Division IV (Platinum)", (229, 228, 226)
         elif tracking_points <= 22000: return "👑 Division V (Champ)", (155, 93, 229)
         else: return "💎 Division VI (Legend)", (0, 245, 212)
+
+    async def get_meta_cars(self, guild_id: str) -> list:
+        cfg = await self.db.settings.find_one({"_id": str(guild_id)})
+        if cfg and "meta_cars" in cfg:
+            return cfg["meta_cars"]
+        return [
+            "DEVEL SIXTEEN", "KOENIGSEGG CC850", "JESKO", "HENNESSEY VENOM F5", 
+            "SSC TUATARA", "BUGATTI CHIRON", "BUGATTI BOLIDE", "RIMAC NEVERA",
+            "LAMBORGHINI COUNTACH", "ULTIMA RS", "MCLAREN SPEEDTAIL", "LAMBORGHINI EGOISTA"
+        ]
 
     @tasks.loop(hours=168)
     async def backup_database_task(self):
@@ -276,7 +286,7 @@ class VerificationModal(discord.ui.Modal, title="Verify & Polish Driver Details"
         db_id = f"{self.guild_id}_{self.user_id}"
         await bot.db.drivers.update_one(
             {"_id": db_id},
-            {"$set": {"guild_id": self.guild_id, "user_id": self.user_id, "game_id": final_gid, "garage_rank": final_rank, "control_type": self.control_type, "verified_laps": 0, "wins": 0, "losses": 0, "elo_rating": 1200, "strikes": 0, "defense_cars": []}},
+            {"$set": {"guild_id": self.guild_id, "user_id": self.user_id, "game_id": final_gid, "garage_rank": final_rank, "control_type": self.control_type, "verified_laps": 0, "wins": 0, "losses": 0, "elo_rating": 1200, "strikes": 0, "defense_cars": [], "match_history": []}},
             upsert=True
         )
         await bot.db.pending.delete_one({"_id": db_id})
@@ -291,9 +301,11 @@ class VerificationModal(discord.ui.Modal, title="Verify & Polish Driver Details"
             if role and member:
                 try: 
                     await member.add_roles(role)
-                    role_note = f"\nGranted Role: {role.mention}"
+                    role_note = f"
+Granted Role: {role.mention}"
                 except: 
-                    role_note = f"\n⚠️ *Move bot integration roles higher in settings list.*"
+                    role_note = f"
+⚠️ *Move bot integration roles higher in settings list.*"
 
         embed = discord.Embed(title="🎉 Roster Entry Approved!", color=0x00ffcc, description=f"Driver <@{self.user_id}> has joined **{div_name}**!{role_note}")
         embed.add_field(name="Confirmed Score", value=f"📊 {final_rank:,} PI")
@@ -336,8 +348,7 @@ class VerificationView(discord.ui.View):
 
     @discord.ui.button(label="Deny Entry", style=discord.ButtonStyle.danger, emoji="❌")
     async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
-        v = discord.ui.View(timeout=60)
-        v.add_item(RejectionReasonSelect(self.user_id, self.guild_id))
+        v = discord.ui.View(timeout=60); v.add_item(RejectionReasonSelect(self.user_id, self.guild_id))
         await interaction.response.send_message("Select denial classification tracking indices:", view=v, ephemeral=True)
 
 class StrikeReviewView(discord.ui.View):
@@ -362,7 +373,8 @@ class StrikeReviewView(discord.ui.View):
             emb.description = f"User <@{self.target_id}> has been issued strike **{new_strikes}/3**."
             
             if new_strikes >= 3:
-                emb.description += "\n🛑 **User reached maximum limit thresholds. Profile flagged for banning review queues.**"
+                emb.description += "
+🛑 **User reached maximum limit thresholds. Profile flagged for banning review queues.**"
             await interaction.response.edit_message(embed=emb, view=None)
         else:
             await bot.db.laps.delete_many({"guild_id": self.guild_id, "user_id": self.target_id, "time_ms": self.lap_data["time_ms"]})
@@ -400,34 +412,16 @@ class ChallengeConfirmView(discord.ui.View):
         if self.result == "win":
             new_c, new_o = _calculate_elo(c_elo, o_elo)
             diff = new_c - c_elo
+            c_hist, o_hist = "W", "L"
         else:
             new_o, new_c = _calculate_elo(o_elo, c_elo)
             diff = new_o - o_elo
+            c_hist, o_hist = "L", "W"
 
-        await bot.db.drivers.update_one({"_id": c_id}, {"$set": {"elo_rating": new_c}, "$inc": {"wins" if self.result == "win" else "losses": 1}})
-        await bot.db.drivers.update_one({"_id": o_id}, {"$set": {"elo_rating": new_o}, "$inc": {"losses" if self.result == "win" else "wins": 1}})
+        await bot.db.drivers.update_one({"_id": c_id}, {"$set": {"elo_rating": new_c}, "$inc": {"wins" if self.result == "win" else "losses": 1}, "$push": {"match_history": c_hist}})
+        await bot.db.drivers.update_one({"_id": o_id}, {"$set": {"elo_rating": new_o}, "$inc": {"losses" if self.result == "win" else "wins": 1}, "$push": {"match_history": o_hist}})
         
         await interaction.response.edit_message(content=f"✅ **Match confirmed!** Winner gained `+{diff}` Gauntlet ELO Points.", embed=None, view=None)
-
-class ResetSeasonDropdown(discord.ui.Select):
-    def __init__(self, divs_map):
-        options = [discord.SelectOption(label=k) for k in divs_map.keys()] if divs_map else [discord.SelectOption(label="No Data Active", value="none")]
-        super().__init__(placeholder="Choose a division roster overview card...", options=options)
-        self.divs_map = divs_map
-
-    async def callback(self, interaction: discord.Interaction):
-        if self.values[0] == "none":
-            await interaction.response.send_message("❌ No operational mapping loaded.", ephemeral=True)
-            return
-        drivers = self.divs_map.get(self.values[0], [])
-        embed = discord.Embed(title=f"📊 Seasonal Standings: {self.values[0]}", color=0xffcc00)
-        embed.description = "\n".join([f"• {r['name']} — `{r['score']:,}` PI" for r in drivers]) if drivers else "*No drivers placed in this division bracket.*"
-        await interaction.response.edit_message(embed=embed, view=self.view)
-
-class ResetSeasonView(discord.ui.View):
-    def __init__(self, divs_map):
-        super().__init__(timeout=None)
-        self.add_item(ResetSeasonDropdown(divs_map))
 
 @bot.tree.command(name="register", description="Enters the automated cloud verification staging queues.")
 @app_commands.describe(game_id="Asphalt player alphanumeric tag ID", proof_screenshot="Attach profile card file", control_type="Driving system configuration layout used")
@@ -449,11 +443,9 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     
     if ocr_key and ocr_key != "your_free_ocr_space_api_key_here":
         try:
-            # Fixed construction parameters targeting official API endpoints correctly
-            url = f"https://api.ocr.space/parse/imageurl?apikey={ocr_key}&url={proof_screenshot.url}"
-            r = requests.get(url, timeout=7)
+            r = requests.get(f"https://ocr.space{ocr_key}&url={proof_screenshot.url}", timeout=7)
             if r.status_code == 200 and "PARSEDTEXT" in r.text.upper():
-                parsed_text = r.json().get("ParsedResults", [{}])[0].get("ParsedText", "").upper()
+                parsed_text = r.json().get("ParsedResults", [{}]).get("ParsedText", "").upper()
                 
                 match_id = re.search(r"ID[:\s]*([A-Z0-9_\-]+)", parsed_text)
                 match_pi = re.search(r"GARAGE[:\s]*([0-9,]+)", parsed_text)
@@ -497,32 +489,35 @@ async def profile_cmd(interaction: discord.Interaction, member: discord.Member =
     div_name, rgb = bot.get_division(rank)
     elo = driver.get("elo_rating", 1200)
     
-    img = Image.new("RGB", (800, 450), color=(30, 33, 36))
-    draw = ImageDraw.Draw(img)
+    img = Image.new("RGB", (800, 480), color=(30, 33, 36)); draw = ImageDraw.Draw(img)
     if os.path.exists("assets/profile_bg.png"):
         try:
-            bg = Image.open("assets/profile_bg.png").convert("RGB").resize((800, 450))
+            bg = Image.open("assets/profile_bg.png").convert("RGB").resize((800, 480))
             img.paste(bg, (0,0))
-            overlay = Image.new("RGBA", (800, 450), (0,0,0,150))
+            overlay = Image.new("RGBA", (800, 480), (0,0,0,150))
             img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
             draw = ImageDraw.Draw(img)
         except: pass
 
-    draw.rectangle([(20, 20), (780, 430)], outline=rgb, width=4)
-    draw.text((50, 50), f"PILOT IDENTITY CARD - {div_name.upper()}", fill=rgb)
-    draw.text((50, 110), f"DRIVER ACCOUNT: {target.display_name.upper()}", fill=(255,255,255))
-    draw.text((50, 150), f"ASPHALT LOG ID: {driver.get('game_id', 'UNKNOWN')}", fill=(200,200,200))
-    draw.text((50, 190), f"FLEET STRENGTH: {rank:,} PI RATING VALUE", fill=(255,255,255))
-    draw.text((50, 230), f"GAUNTLET ELO: {elo} TRACKING INDEX", fill=rgb)
-    draw.text((50, 270), f"DRIVING CONTROL: {str(driver.get('control_type','')).upper()}", fill=rgb)
-    draw.text((50, 310), f"RECORDED STRIKES: {driver.get('strikes', 0)} / 3 WARNINGS", fill=(255, 55, 55))
+    draw.rectangle([(20, 20), (780, 460)], outline=rgb, width=4)
+    draw.text((50, 40), f"PILOT IDENTITY CARD - {div_name.upper()}", fill=rgb)
+    draw.text((50, 90), f"DRIVER ACCOUNT: {target.display_name.upper()}", fill=(255,255,255))
+    draw.text((50, 130), f"ASPHALT LOG ID: {driver.get('game_id', 'UNKNOWN')}", fill=(200,200,200))
+    draw.text((50, 170), f"FLEET STRENGTH: {rank:,} PI RATING VALUE", fill=(255,255,255))
+    draw.text((50, 210), f"GAUNTLET ELO: {elo} TRACKING INDEX", fill=rgb)
+    draw.text((50, 250), f"DRIVING CONTROL: {str(driver.get('control_type','')).upper()}", fill=rgb)
+    draw.text((50, 290), f"RECORDED STRIKES: {driver.get('strikes', 0)} / 3 WARNINGS", fill=(255, 55, 55))
     
     w, l = driver.get("wins", 0), driver.get("losses", 0)
-    draw.text((50, 360), f"PRACTICE MATRICES: {w} VICTORIES / {l} DEFEATS", fill=(255,255,255))
+    draw.text((50, 340), f"PRACTICE MATRICES: {w} VICTORIES / {l} DEFEATS", fill=(255,255,255))
     
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    buf.seek(0)
+    # Render Match History Suggestions Array Visual Elements cleanly
+    history = driver.get("match_history", [])
+    history_str = " | ".join(history[-8:]) if history else "NO CURRENT SEASON MATCHES LOGGED"
+    draw.text((50, 390), "RECENT PERFORMANCE TRENDS:", fill=(150, 150, 150))
+    draw.text((50, 420), f"[ {history_str} ]", fill=(0, 255, 200))
+    
+    buf = io.BytesIO(); img.save(buf, format="PNG"); buf.seek(0)
     await interaction.followup.send(file=discord.File(buf, filename="license.png"))
 
 @bot.tree.command(name="loglap", description="Logs tracking lap time parameters into seasonal class leaderboard arrays.")
@@ -561,7 +556,6 @@ async def log_lap_cmd(interaction: discord.Interaction, track: str, car: str, ca
                 f_emb.add_field(name="Input Given", value=f"`{lap_time}`", inline=True)
                 f_emb.set_image(url=proof_file.url)
                 
-                # Fixed: Sent clean pre-decorated component layout without mixing runtime items
                 await log_chan.send(embed=f_emb, view=StrikeReviewView(str(interaction.user.id), str(interaction.guild_id), lap_mock, "strike"))
         return
 
@@ -583,29 +577,61 @@ async def log_lap_cmd(interaction: discord.Interaction, track: str, car: str, ca
     await bot.db.drivers.update_one({"_id": db_id}, {"$inc": {"verified_laps": 1}})
     await interaction.response.send_message(f"✅ Lap records synchronized perfectly for circuit: **{s_track}** [Class {car_class.value}].", ephemeral=True)
 
-@bot.tree.command(name="records", description="Renders the top 5 seasonal leaderboards filtered dynamically by track and car class.")
+@bot.tree.command(name="records", description="Renders the top 5 seasonal leaderboards with custom visual layouts.")
 @app_commands.choices(car_class=[
     app_commands.Choice(name="Class D", value="D"), app_commands.Choice(name="Class C", value="C"),
     app_commands.Choice(name="Class B", value="B"), app_commands.Choice(name="Class A", value="A"),
     app_commands.Choice(name="Class S", value="S")
 ])
 async def records_cmd(interaction: discord.Interaction, track: str, car_class: app_commands.Choice[str]):
+    await interaction.response.defer()
     s_track = _sanitize_track_name(track)
     laps = await bot.db.laps.find({"guild_id": str(interaction.guild_id), "track": s_track, "car_class": car_class.value}).to_list(length=None)
     if not laps:
-        await interaction.response.send_message(f"🔍 Zero telemetry records active matching track: **{s_track}** [Class {car_class.value}].")
+        await interaction.followup.send(f"🔍 Zero telemetry records active matching track: **{s_track}** [Class {car_class.value}].")
         return
         
     laps.sort(key=lambda x: x["time_ms"])
-    emb = discord.Embed(title=f"🏁 Seasonal Leaderboard: {s_track} (Class {car_class.value})", color=0xffcc00)
-    base = laps[0]["time_ms"]
+    meta_cars = await bot.get_meta_cars(interaction.guild_id)
     
-    for idx, l in enumerate(laps[:5], start=1):
+    # PIL Graphics Leaderboard Engine
+    img = Image.new("RGB", (900, 500), color=(24, 26, 27))
+    draw = ImageDraw.Draw(img)
+    
+    # Title Layout Block
+    draw.rectangle([(0, 0), (900, 80)], fill=(34, 139, 230))
+    draw.text((30, 25), f"LEADERBOARD: {s_track.upper()} (CLASS {car_class.value})", fill=(255, 255, 255))
+    
+    base_ms = laps[0]["time_ms"]
+    for idx, l in enumerate(laps[:5]):
         car_name = l["car"]
-        meta_tag = " 🔥" if car_name in META_CARS else ""
-        delta = "👑 [RECORD]" if idx == 1 else f"`+{(l['time_ms'] - base)/1000.0:.3f}s` split"
-        emb.add_field(name=f"#{idx} | {l['driver_name']}", value=f"🏎️ **{car_name}**{meta_tag} | Time: `{_format_ms_to_time(l['time_ms'])}`\n{delta} | [View Proof]({l['proof_url']})", inline=False)
-    await interaction.response.send_message(embed=emb)
+        has_meta = car_name in meta_cars
+        meta_flag = " [META]" if has_meta else ""
+        time_str = _format_ms_to_time(l["time_ms"])
+        
+        y_pos = 100 + (idx * 75)
+        row_bg = (40, 42, 44) if idx == 0 else (31, 33, 34)
+        border_color = (255, 215, 0) if idx == 0 else (70, 73, 75)
+        
+        draw.rectangle([(20, y_pos), (880, y_pos + 65)], fill=row_bg, outline=border_color, width=2)
+        
+        pos_labels = ["🥇", "🥈", "🥉", "#4", "#5"]
+        draw.text((40, y_pos + 20), pos_labels[idx], fill=(255, 255, 255))
+        draw.text((90, y_pos + 20), l["driver_name"][:20], fill=(255, 255, 255))
+        
+        car_color = (255, 85, 85) if has_meta else (180, 185, 190)
+        draw.text((350, y_pos + 20), f"{car_name}{meta_flag}", fill=car_color)
+        
+        draw.text((650, y_pos + 20), time_str, fill=(0, 245, 212))
+        
+        if idx > 0:
+            split_diff = (l["time_ms"] - base_ms) / 1000.0
+            draw.text((790, y_pos + 20), f"+{split_diff:.3f}s", fill=(200, 100, 100))
+        else:
+            draw.text((790, y_pos + 20), "RECORD", fill=(255, 215, 0))
+            
+    buf = io.BytesIO(); img.save(buf, format="PNG"); buf.seek(0)
+    await interaction.followup.send(file=discord.File(buf, filename="leaderboard.png"))
 
 @bot.tree.command(name="myrecords", description="Pulls a summary dashboard showing your own personal best times across race circuits.")
 async def my_records_cmd(interaction: discord.Interaction):
@@ -622,6 +648,8 @@ async def my_records_cmd(interaction: discord.Interaction):
             pb_map[t_key] = l
 
     emb = discord.Embed(title=f"⏱️ Personal Best Lap Registry: {interaction.user.display_name}", color=0x00f5d4)
+    meta_cars = await bot.get_meta_cars(interaction.guild_id)
+    
     for t_key, pb_lap in pb_map.items():
         track_name = pb_lap["track"]
         c_tier = pb_lap.get("car_class", "S")
@@ -629,11 +657,44 @@ async def my_records_cmd(interaction: discord.Interaction):
         server_laps.sort(key=lambda x: x["time_ms"])
         
         pb_time_str = _format_ms_to_time(pb_lap["time_ms"])
-        meta_tag = " 🔥" if pb_lap["car"] in META_CARS else ""
+        meta_tag = " 🔥" if pb_lap["car"] in meta_cars else ""
         pace_str = "👑 **[Reigning Class Leader]**" if server_laps and pb_lap["time_ms"] == server_laps[0]["time_ms"] else f" gap pacing: `+{(pb_lap['time_ms'] - server_laps[0]['time_ms']) / 1000.0:.3f}s` off leader"
 
-        emb.add_field(name=f"📍 {track_name} (Class {c_tier})", value=f"└ time: `{pb_time_str}` via **{pb_lap['car']}**{meta_tag}\n└ {pace_str} | [View Proof]({pb_lap['proof_url']})", inline=False)
+        emb.add_field(name=f"📍 {track_name} (Class {c_tier})", value=f"└ time: `{pb_time_str}` via **{pb_lap['car']}**{meta_tag}
+└ {pace_str} | [View Proof]({pb_lap['proof_url']})", inline=False)
     await interaction.followup.send(embed=emb)
+
+@bot.tree.command(name="manage_meta", description="Administratively registers or expels vehicles from meta status tiers.")
+@app_commands.describe(action="Modification choice matrix operator", car_name="Vehicle model index line string context")
+@app_commands.choices(action=[
+    app_commands.Choice(name="Add Meta Priority Status", value="add"),
+    app_commands.Choice(name="Remove Meta Priority Status", value="remove")
+])
+@is_bot_admin()
+async def manage_meta_cmd(interaction: discord.Interaction, action: app_commands.Choice[str], car_name: str):
+    await interaction.response.defer(ephemeral=True)
+    cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
+    if not cfg:
+        cfg = {"_id": str(interaction.guild_id)}
+        
+    current_meta = await bot.get_meta_cars(interaction.guild_id)
+    car_upper = car_name.upper().strip()
+    
+    if action.value == "add":
+        if car_upper not in current_meta:
+            current_meta.append(car_upper)
+            msg = f"✅ Added **{car_upper}** to the guild's Meta collection tracking frames."
+        else:
+            msg = f"⚠️ **{car_upper}** is already flagged as a Meta vehicular asset profile."
+    else:
+        if car_upper in current_meta:
+            current_meta.remove(car_upper)
+            msg = f"🗑️ Banished **{car_upper}** cleanly from the local Meta configuration arrays."
+        else:
+            msg = f"❌ Error: **{car_upper}** wasn't configured inside Meta collections nodes."
+            
+    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"meta_cars": current_meta}}, upsert=True)
+    await interaction.followup.send(msg)
 
 @bot.tree.command(name="matchmake", description="Finds a tournament driver close to your ELO ranking tier for a match challenge.")
 async def matchmake_cmd(interaction: discord.Interaction):
@@ -655,7 +716,11 @@ async def matchmake_cmd(interaction: discord.Interaction):
     
     opp_user = bot.get_user(int(best_match["user_id"])) or await bot.fetch_user(int(best_match["user_id"]))
     emb = discord.Embed(title="🎯 Gauntlet ELO Matchmaker Result Found", color=0x00f5d4)
-    emb.description = f"The queue matched you against {opp_user.mention} based on skill profiles!\n\n**Matchup Metrics:**\n└ Your ELO: `{my_elo}`\n└ Opponent ELO: `{best_match.get('elo_rating', 1200)}` (Gap: `{abs(best_match.get('elo_rating', 1200) - my_elo)}` pts)"
+    emb.description = f"The queue matched you against {opp_user.mention} based on skill profiles!
+
+**Matchup Metrics:**
+└ Your ELO: `{my_elo}`
+└ Opponent ELO: `{best_match.get('elo_rating', 1200)}` (Gap: `{abs(best_match.get('elo_rating', 1200) - my_elo)}` pts)"
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="leaderboard", description="Displays top 10 tournament drivers sorted descending by skill rating matrices.")
@@ -673,9 +738,12 @@ async def leaderboard_cmd(interaction: discord.Interaction):
     for idx, d in enumerate(guild_drivers[:10], start=1):
         div_label, _ = bot.get_division(d.get("garage_rank", 0))
         div_short = div_label.split(" (")[0]
-        board_lines.append(f"`#{idx:02d}` <@{d['user_id']}> — **{d.get('elo_rating', 1200)}** ELO\n└ Fleet: `{d.get('garage_rank', 0):,}` PI | `{div_short}` | Record: `{d.get('wins',0)}W-{d.get('losses',0)}L`")
+        board_lines.append(f"`#{idx:02d}` <@{d['user_id']}> — **{d.get('elo_rating', 1200)}** ELO
+└ Fleet: `{d.get('garage_rank', 0):,}` PI | `{div_short}` | Record: `{d.get('wins',0)}W-{d.get('losses',0)}L`")
 
-    emb.description = "\n\n".join(board_lines)
+    emb.description = "
+
+".join(board_lines)
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="challenge", description="Logs match parameters evaluating friendly practice runs outcomes.")
@@ -695,7 +763,7 @@ async def verify_driver_cmd(interaction: discord.Interaction, member: discord.Me
     
     await bot.db.drivers.update_one(
         {"_id": db_id},
-        {"$set": {"guild_id": str(interaction.guild_id), "user_id": str(member.id), "game_id": game_id, "garage_rank": garage_rank, "control_type": control_type.value, "verified_laps": 0, "wins": 0, "losses": 0, "elo_rating": 1200, "strikes": 0, "defense_cars": []}},
+        {"$set": {"guild_id": str(interaction.guild_id), "user_id": str(member.id), "game_id": game_id, "garage_rank": garage_rank, "control_type": control_type.value, "verified_laps": 0, "wins": 0, "losses": 0, "elo_rating": 1200, "strikes": 0, "defense_cars": [], "match_history": []}},
         upsert=True
     )
     await bot.db.pending.delete_one({"_id": db_id})
@@ -727,12 +795,13 @@ async def export_csv_cmd(interaction: discord.Interaction):
     for d in guild_drivers:
         csv_lines.append(f"{d['user_id']},{d.get('game_id','UNKNOWN')},{d.get('garage_rank',0)},{d.get('elo_rating',1200)},{d.get('strikes',0)},{d.get('wins',0)},{d.get('losses',0)}")
         
-    csv_txt = "\n".join(csv_lines)
+    csv_txt = "
+".join(csv_lines)
     buf = io.BytesIO(csv_txt.encode("utf-8"))
     file_asset = discord.File(buf, filename=f"roster_export_{interaction.guild_id}.csv")
     await interaction.followup.send(content="📊 **Roster metrics compiled cleanly into spreadsheet format profiles:**", file=file_asset)
 
-@bot.tree.command(name="build_bracket", description="Administratively aggregates active division drivers to compile a single-elimination tournament bracket tree.")
+@bot.tree.command(name="build_bracket", description="Generates a single-elimination tournament bracket from active drivers.")
 @is_bot_admin()
 async def build_bracket_cmd(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -752,7 +821,8 @@ async def build_bracket_cmd(interaction: discord.Interaction):
         pairs.append(f"**Matchup #{len(pairs)+1}:** <@{guild_drivers[i]['user_id']}> vs <@{guild_drivers[i+1]['user_id']}>")
     if bye_driver: pairs.append(f"✨ **First Round Bye:** <@{bye_driver['user_id']}> *(Advances automatically)*")
         
-    emb.description = "\n".join(pairs)
+    emb.description = "
+".join(pairs)
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="set_par_time", description="Administratively modifies the anti-cheat verification threshold value matching a circuit row.")
@@ -779,50 +849,38 @@ async def setup_channels_cmd(interaction: discord.Interaction, registration_chan
 async def readme_cmd(interaction: discord.Interaction):
     admin = interaction.user.id == interaction.guild.owner_id or interaction.user.guild_permissions.administrator
     if admin:
-        e = discord.Embed(title="👑 Master Administration Manual Directive Guide", description="• Run `/setup_channels` to configure hooks.\n• Execute `/checkpending` to verify applicants.\n• Adjust safety thresholds directly utilizing `/set_par_time` parameters.\n• Manage player penalties via `/manage_strikes` or export metrics using `/export_csv` sheets.")
+        e = discord.Embed(title="👑 Master Administration Manual Directive Guide", description="• Run `/setup_channels` to configure hooks.
+• Execute `/checkpending` to verify applicants.
+• Adjust safety thresholds directly utilizing `/set_par_time` parameters.
+• Manage player penalties via `/manage_strikes` or export metrics using `/export_csv` sheets.")
         await interaction.response.send_message(embed=e, ephemeral=True)
     else:
-        e = discord.Embed(title="🏁 Driver Operations Tournament Handbook Guide", description="• Run `/register` to submit telemetry profile card files.\n• Log laps via `/loglap` tracking strict `MM:SS.mmm` specifications.\n• Matchmake live skill targets using `/matchmake` ladders.")
+        e = discord.Embed(title="🏁 Driver Operations Tournament Handbook Guide", description="• Run `/register` to submit telemetry profile card files.
+• Log laps via `/loglap` tracking strict `MM:SS.mmm` specifications.
+• Matchmake live skill targets using `/matchmake` ladders.")
         await interaction.response.send_message(embed=e)
 
 @bot.tree.command(name="checksetup", description="Runs structural diagnostic handshakes testing cloud connectivity thresholds.")
 @is_bot_admin()
 async def check_setup_cmd(interaction: discord.Interaction):
-    st = datetime.utcnow()
-    db_txt = "🔴 Offline Network Collisions"
+    st = datetime.utcnow(); db_txt = "🔴 Offline Network Collisions"
     try: 
         await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
         db_txt = f"🟢 Connected Cluster Atlas Core Hub ({int((datetime.utcnow()-st).total_seconds()*1000)}ms)"
     except: pass
     emb = discord.Embed(title="🛡️ Operation Infrastructure Integrity Matrix Check", color=0x00ffcc)
     emb.add_field(name="Database Connections Layer (MongoDB Atlas)", value=db_txt, inline=False)
-    await interaction.response.send_message(embed=emb)
-    await asyncio.sleep(15)
-    try:
-        await interaction.delete_original_response()
-    except discord.NotFound:
-        pass
+    await interaction.response.send_message(embed=emb); await asyncio.sleep(15); await interaction.delete_original_response()
 
 @bot.tree.command(name="checkpending", description="Gathers an interactive review master list display sheet summarizing unverified files.")
 @is_bot_admin()
 async def check_pending_cmd(interaction: discord.Interaction):
     items = await bot.db.pending.find().to_list(length=None)
     guild_items = [i for i in items if i.get("guild_id") == str(interaction.guild_id)]
-    
-    if not guild_items: 
-        # Removed ephemeral status flags to prevent deletion handshake errors later
-        return await interaction.response.send_message("✅ Staging record queues are clear.")
-        
+    if not guild_items: return await interaction.response.send_message("✅ Staging record queues are clear.", ephemeral=True)
     emb = discord.Embed(title="📋 Outstanding Staging Registrations Board Feed", description=f"Found **{len(guild_items)} driver accounts** in lines.")
-    for i in guild_items[:5]: 
-        emb.add_field(name=f"Applicant ID: {i['user_id']}", value=f"Game ID: `{i['game_id']}` | [Screenshot Proof Link]({i['proof']})", inline=False)
-        
-    await interaction.response.send_message(embed=emb)
-    await asyncio.sleep(15)
-    try:
-        await interaction.delete_original_response()
-    except discord.NotFound:
-        pass
+    for i in guild_items[:5]: emb.add_field(name=f"Applicant ID: {i['user_id']}", value=f"Game ID: `{i['game_id']}` | [Screenshot Proof Link]({i['proof']})", inline=False)
+    await interaction.response.send_message(embed=emb); await asyncio.sleep(15); await interaction.delete_original_response()
 
 async def graceful_shutdown(sig, loop):
     logging.info("System process terminal intercept signal flagged. Closing connection pools safely...")
