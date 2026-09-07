@@ -1,0 +1,8 @@
+NAME=GauntletBot
+AVATAR=https://imgur.com
+TYPE=bot
+MAIN=bot.py
+RAM=512
+AUTORESTART=true
+VERSION=latest
+APT=
