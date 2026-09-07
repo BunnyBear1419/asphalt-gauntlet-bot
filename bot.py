@@ -201,7 +201,11 @@ async def diagnose_cmd(interaction: discord.Interaction):
         timestamp=interaction.created_at
     )
     embed.add_field(name="📡 Discord Gateway Ping", value=f"`{discord_ping}ms`", inline=True)
-    embed.add_field(name="🗄️ MongoDB Cloud Link", value=f"Status: **{db_status}**
+    embed.add_field(
+    name="🗄️ MongoDB Cloud Link", 
+    value=f"Status: **{db_status}**\nLatency: `{db_ping}`", 
+    inline=False
+)
 Latency: `{db_ping}`", inline=False)
     embed.add_field(name="👁️ OCR.Space Parser Engine", value=f"Status: **{ocr_status}**", inline=False)
     embed.add_field(name="☁️ Discloud Cluster Memory", value=f"Allocation: `{ram_used}MB` / `{ram_total}MB` (**{ram_percent}%**)", inline=False)
