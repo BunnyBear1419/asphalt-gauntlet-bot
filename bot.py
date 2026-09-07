@@ -643,7 +643,7 @@ async def my_records_cmd(interaction: discord.Interaction):
         
         pb_time_str = _format_ms_to_time(pb_lap["time_ms"])
         meta_tag = " 🔥" if pb_lap["car"] in META_CARS else ""
-        pace_str = "👑 **[Reigning Class Leader]**" if server_laps and pb_lap["time_ms"] == server_laps[0]["time_ms"] else f" gap pacing: `+{(pb_lap['time_ms'] - server_laps[0]['time_ms']) / 1000.0:.3f}s` off leader"
+        pace_str = f"👑 **[Reigning Class Leader]**" if server_laps and pb_lap["time_ms"] == server_laps[0]["time_ms"] else f" gap pacing: `+{(pb_lap['time_ms'] - server_laps[0]['time_ms']) / 1000.0:.3f}s` off leader"
 
         emb.add_field(name=f"📍 {track_name} (Class {c_tier})", value=f"└ time: `{pb_time_str}` via **{pb_lap['car']}**{meta_tag}\n└ {pace_str} | [View Proof]({pb_lap['proof_url']})", inline=False)
     await interaction.followup.send(embed=emb)
@@ -740,8 +740,7 @@ async def export_csv_cmd(interaction: discord.Interaction):
     for d in guild_drivers:
         csv_lines.append(f"{d['user_id']},{d.get('game_id','UNKNOWN')},{d.get('garage_rank',0)},{d.get('elo_rating',1200)},{d.get('strikes',0)},{d.get('wins',0)},{d.get('losses',0)}")
         
-    csv_txt = "
-".join(csv_lines)
+    csv_txt = "\n".join(csv_lines)
     buf = io.BytesIO(csv_txt.encode("utf-8"))
     file_asset = discord.File(buf, filename=f"roster_export_{interaction.guild_id}.csv")
     await interaction.followup.send(content="📊 **Roster metrics compiled cleanly into spreadsheet format profiles:**", file=file_asset)
@@ -766,8 +765,7 @@ async def build_bracket_cmd(interaction: discord.Interaction):
         pairs.append(f"**Matchup #{len(pairs)+1}:** <@{guild_drivers[i]['user_id']}> vs <@{guild_drivers[i+1]['user_id']}>")
     if bye_driver: pairs.append(f"✨ **First Round Bye:** <@{bye_driver['user_id']}> *(Advances automatically)*")
         
-    emb.description = "
-".join(pairs)
+    emb.description = "\n".join(pairs)
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="set_par_time", description="Administratively modifies the anti-cheat verification threshold value matching a circuit row.")
