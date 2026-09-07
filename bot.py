@@ -740,7 +740,8 @@ async def export_csv_cmd(interaction: discord.Interaction):
     for d in guild_drivers:
         csv_lines.append(f"{d['user_id']},{d.get('game_id','UNKNOWN')},{d.get('garage_rank',0)},{d.get('elo_rating',1200)},{d.get('strikes',0)},{d.get('wins',0)},{d.get('losses',0)}")
         
-    csv_txt = "\n".join(csv_lines)
+    csv_txt = "
+".join(csv_lines)
     buf = io.BytesIO(csv_txt.encode("utf-8"))
     file_asset = discord.File(buf, filename=f"roster_export_{interaction.guild_id}.csv")
     await interaction.followup.send(content="📊 **Roster metrics compiled cleanly into spreadsheet format profiles:**", file=file_asset)
@@ -765,7 +766,8 @@ async def build_bracket_cmd(interaction: discord.Interaction):
         pairs.append(f"**Matchup #{len(pairs)+1}:** <@{guild_drivers[i]['user_id']}> vs <@{guild_drivers[i+1]['user_id']}>")
     if bye_driver: pairs.append(f"✨ **First Round Bye:** <@{bye_driver['user_id']}> *(Advances automatically)*")
         
-    emb.description = "\n".join(pairs)
+    emb.description = "
+".join(pairs)
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="set_par_time", description="Administratively modifies the anti-cheat verification threshold value matching a circuit row.")
@@ -788,14 +790,71 @@ async def setup_channels_cmd(interaction: discord.Interaction, registration_chan
     await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(registration_channel.id), "logging_channel_id": str(logs_channel.id), "announcement_channel_id": str(announcement_channel.id), "member_role_id": str(member_role.id), "admin_role_ids": [str(admin_role.id)]}}, upsert=True)
     await interaction.response.send_message("⚙️ System configuration schemas saved securely to cloud infrastructure nodes.", ephemeral=True)
 
-@bot.tree.command(name="readme", description="Pulls customized user or administrative help center manuals templates.")
-async def readme_cmd(interaction: discord.Interaction):
+@bot.tree.command(name="help", description="Pulls customized user or administrative help center manuals templates.")
+async def help_cmd(interaction: discord.Interaction):
     admin = interaction.user.id == interaction.guild.owner_id or interaction.user.guild_permissions.administrator
+    if not admin:
+        cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
+        if cfg and cfg.get("admin_role_ids"):
+            for r_id in cfg["admin_role_ids"]:
+                if any(r.id == int(r_id) for r in interaction.user.roles):
+                    admin = True
+                    break
+
+    player_desc = "• Run `/register` to submit telemetry profile card files.\n• Log laps via `/loglap` tracking strict `MM:SS.mmm` specifications.\n• Matchmake live skill targets using `/matchmake` ladders."
+    admin_desc = "• Run `/setup_channels` to configure hooks.\n• Execute `/checkpending` to verify applicants.\n• Adjust safety thresholds directly utilizing `/set_par_time` parameters.\n• Manage player penalties via `/manage_strikes` or export metrics using `/export_csv` sheets."
+
     if admin:
-        e = discord.Embed(title="👑 Master Administration Manual Directive Guide", description="• Run `/setup_channels` to configure hooks.\n• Execute `/checkpending` to verify applicants.\n• Adjust safety thresholds directly utilizing `/set_par_time` parameters.\n• Manage player penalties via `/manage_strikes` or export metrics using `/export_csv` sheets.")
+        e = discord.Embed(title="👑 Master Help Center & Operations Guide", color=0xffcc00)
+        e.add_field(name="🏁 Driver Operations Tournament Handbook Guide", value=player_desc, inline=False)
+        e.add_field(name="👑 Master Administration Manual Directive Guide", value=admin_desc, inline=False)
         await interaction.response.send_message(embed=e, ephemeral=True)
     else:
-        e = discord.Embed(title="🏁 Driver Operations Tournament Handbook Guide", description="• Run `/register` to submit telemetry profile card files.\n• Log laps via `/loglap` tracking strict `MM:SS.mmm` specifications.\n• Matchmake live skill targets using `/matchmake` ladders.")
+        e = discord.Embed(title="🏁 Driver Operations Tournament Handbook Guide", color=0x00ffcc, description=player_desc)
+        await interaction.response.send_message(embed=e)
+
+@bot.tree.command(name="commands", description="Displays an indexed registry of all available tournament bot commands.")
+async def commands_cmd(interaction: discord.Interaction):
+    admin = interaction.user.id == interaction.guild.owner_id or interaction.user.guild_permissions.administrator
+    if not admin:
+        cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
+        if cfg and cfg.get("admin_role_ids"):
+            for r_id in cfg["admin_role_ids"]:
+                if any(r.id == int(r_id) for r in interaction.user.roles):
+                    admin = True
+                    break
+
+    player_cmds = (
+        "`/register` - Join the automated verification queue\n"
+        "`/profile` - View driver licence metrics and seasonal standings\n"
+        "`/loglap` - Log a tracking lap time for leaderboards\n"
+        "`/records` - View top 5 seasonal leaderboards per circuit\n"
+        "`/myrecords` - Pull your personal best times across race circuits\n"
+        "`/matchmake` - Find a driver close to your ELO ranking tier\n"
+        "`/leaderboard` - Display top 10 tournament drivers by skill rating\n"
+        "`/challenge` - Log friendly practice run outcomes\n"
+        "`/help` - Open help center documentation manuals\n"
+        "`/commands` - View all available bot commands registry\n"
+        "`/server_status` - Display server diagnostics and player metrics"
+    )
+    admin_cmds = (
+        "`/sync` - Globally synchronize slash command tree mapping\n"
+        "`/verify_driver` - Direct administrative roster profile insertion\n"
+        "`/manage_strikes` - Adjust warning strike points for a driver\n"
+        "`/export_csv` - Compile and download live roster analytics sheet\n"
+        "`/build_bracket` - Spawn a single-elimination tournament bracket tree\n"
+        "`/set_par_time` - Modify anti-cheat verification time threshold\n"
+        "`/setup_channels` - Bind rooms anchors hooks and management roles\n"
+        "`/checksetup` - Run structural infrastructure diagnostic checks\n"
+        "`/checkpending` - Open staging registry unverified accounts sheet"
+    )
+
+    e = discord.Embed(title="📋 Gauntlet Bot Command Directory Matrix", color=0x9b59e6)
+    e.add_field(name="👥 Player Commands (All Members)", value=player_cmds, inline=False)
+    if admin:
+        e.add_field(name="🛡️ Administrative Commands (Staff Only)", value=admin_cmds, inline=False)
+        await interaction.response.send_message(embed=e, ephemeral=True)
+    else:
         await interaction.response.send_message(embed=e)
 
 @bot.tree.command(name="checksetup", description="Runs structural diagnostic handshakes testing cloud connectivity thresholds.")
