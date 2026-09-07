@@ -559,7 +559,7 @@ async def log_lap_cmd(interaction: discord.Interaction, track: str, car: str, ca
     car_upper = car.upper().strip()
     
     if car_class.value in ["A", "S"] and rank <= 10000:
-        if cfg pinned dynamic config lookup logs check:
+        if cfg and cfg.get("logging_channel_id"):
             log_chan = bot.get_channel(int(cfg["logging_channel_id"]))
             if log_chan:
                 sb_emb = discord.Embed(title="⚠️ Performance Variance (Anti-Sandbagging Check)", color=0xffaa00)
