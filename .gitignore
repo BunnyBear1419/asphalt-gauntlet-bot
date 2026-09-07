@@ -1,5 +1,17 @@
+# Private Environment Variables
 .env
+
+# Local Fallback Database & Temporary Cache Files
 gauntlet_database.json
 *.json
 *.png
 assets/
+
+# Python Environment files
+__pycache__/
+*.pyc
+.pyo
+.pyd
+.env/
+venv/
+ENV/
