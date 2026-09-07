@@ -208,17 +208,31 @@ class GauntletBot(commands.Bot):
         elif tracking_points <= 22000: return "👑 Division V (Champ)", (155, 93, 229)
         else: return "💎 Division VI (Legend)", (0, 245, 212)
             
-            # Cleanly fix MongoDB dynamic BSON ObjectId serialization
-     async def backup_database_task():
-            for guild in self.guilds:
-                cfg = await self.db.settings.find_one({"_id": str(guild.id)})
-                if cfg and cfg.get("logging_channel_id"):
-                    chan = guild.get_channel(int(cfg["logging_channel_id"]))
-                    if chan:
-                        f_buf = io.BytesIO(js_str.encode("utf-8"))
-                        f_asset = discord.File(f_buf, filename=f"gauntlet_backup_{guild.id}.json")
-                        await chan.send(content="💾 **Automated System Physical Backup Snapshot Issued.**", file=f_asset)
-        except Exception as e: logging.error(f"Backup task loop failed: {e}")
+@tasks.loop(hours=168)
+async def backup_database_task():
+    try:
+        drivers_list = await bot.db.drivers.find().to_list(length=None)
+        laps_list = await bot.db.laps.find().to_list(length=None)
+        
+        # Cleanly fix MongoDB dynamic BSON ObjectId serialization natively
+        clean_snapshot = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "drivers": [{k: (str(v) if k == "_id" else v) for k, v in d.items()} for d in drivers_list],
+            "laps": [{k: (str(v) if k == "_id" else v) for k, v in l.items()} for l in laps_list]
+        }
+        await bot.db.backups.insert_one(clean_snapshot)
+        
+        js_str = json.dumps(clean_snapshot, indent=4, ensure_ascii=False)
+        for guild in bot.guilds:
+            cfg = await bot.db.settings.find_one({"_id": str(guild.id)})
+            if cfg and cfg.get("logging_channel_id"):
+                chan = guild.get_channel(int(cfg["logging_channel_id"]))
+                if chan:
+                    f_buf = io.BytesIO(js_str.encode("utf-8"))
+                    f_asset = discord.File(f_buf, filename=f"gauntlet_backup_{guild.id}.json")
+                    await chan.send(content="💾 **Automated System Physical Backup Snapshot Issued.**", file=f_asset)
+    except Exception as e: 
+        logging.error(f"Backup task loop failed: {e}")
 
     @tasks.loop(hours=48)
     async def pending_queue_reminder_task(self):
