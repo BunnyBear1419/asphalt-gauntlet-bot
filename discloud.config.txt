@@ -1,3 +1,4 @@
+ID=1788771179630
 NAME=ALU-GauntletEngine
 AVATAR=https://imgur.com
 TYPE=bot
