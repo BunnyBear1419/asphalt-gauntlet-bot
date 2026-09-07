@@ -208,42 +208,38 @@ class GauntletBot(commands.Bot):
         elif tracking_points <= 22000: return "👑 Division V (Champ)", (155, 93, 229)
         else: return "💎 Division VI (Legend)", (0, 245, 212)
 
-    @tasks.loop(hours=168)
-    async def backup_database_task(self):
-        try:
-            drivers_list = await self.db.drivers.find().to_list(length=None)
-            laps_list = await self.db.laps.find().to_list(length=None)
-            
-            clean_drivers = []
-            for d in drivers_list:
-                d_copy = dict(d)
-                if "_id" in d_copy: 
-                    d_copy["_id"] = str(d_copy["_id"])
-                clean_drivers.append(d_copy)
+@tasks.loop(hours=168)
+async def backup_database_task(self):
+    try:
+        # 1. Fetch raw data arrays from MongoDB clusters
+        drivers_list = await self.db.drivers.find().to_list(length=None)
+        laps_list = await self.db.laps.find().to_list(length=None)
 
-            clean_laps = []
-            for l in laps_list:
-                l_copy = dict(l)
-                if "_id" in l_copy: 
-                    l_copy["_id"] = str(l_copy["_id"])
-                clean_laps.append(l_copy)
-                
-            snapshot = {"timestamp": datetime.now(UTC).isoformat(), "drivers": clean_drivers, "laps": clean_laps}
-            
-            db_insert_snapshot = dict(snapshot)
-            await self.db.backups.insert_one(db_insert_snapshot)
-            
-            js_str = json.dumps(snapshot, indent=4, ensure_ascii=False)
-            for guild in self.guilds:
-                cfg = await self.db.settings.find_one({"_id": str(guild.id)})
-                if cfg and cfg.get("logging_channel_id"):
-                    chan = guild.get_channel(int(cfg["logging_channel_id"]))
-                    if chan:
-                        f_buf = io.BytesIO(js_str.encode("utf-8"))
-                        f_asset = discord.File(f_buf, filename=f"gauntlet_backup_{guild.id}.json")
-                        await chan.send(content="💾 **Automated System Physical Backup Snapshot Issued.**", file=f_asset)
-        except Exception as e: 
-            logging.error(f"Backup task loop failed: {e}")
+        # 2. Convert raw dictionary items cleanly into text-safe structures
+        clean_drivers = []
+        for d in drivers_list:
+            d_copy = dict(d)
+            if "_id" in d_copy:
+                d_copy["_id"] = str(d_copy["_id"])
+            clean_drivers.append(d_copy)
+
+        clean_laps = []
+        for l in laps_list:
+            l_copy = dict(l)
+            if "_id" in l_copy:
+                l_copy["_id"] = str(l_copy["_id"])
+            clean_laps.append(l_copy)
+
+        # 3. Compile snapshot utilizing modern UTC time tracking stamps
+        snapshot = {
+            "timestamp": datetime.now(UTC).isoformat(), 
+            "drivers": clean_drivers, 
+            "laps": clean_laps
+        }
+        
+        # (Make sure your code has its closing except block at the bottom!)
+    except Exception as e:
+        print(f"❌ Backup task loop failed: {e}")
 
     @tasks.loop(hours=48)
     async def pending_queue_reminder_task(self):
