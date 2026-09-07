@@ -828,6 +828,16 @@ async def graceful_shutdown(sig, loop):
     for t in [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]: t.cancel()
     bot.loop.stop()
 
+# Custom encoder to completely eliminate the ObjectId serialization error across the entire script
+class MongoJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if hasattr(o, '__str__') and o.__class__.__name__ == 'ObjectId':
+            return str(o)
+        return super().default(o)
+
+def safe_json_dumps(data, **kwargs):
+    return json.dumps(data, cls=MongoJSONEncoder, **kwargs)
+
 def main():
     t = os.getenv("DISCORD_BOT_TOKEN")
     if not t or t == "your_real_discord_bot_token_here": return print("❌ Error: Missing authentic DISCORD_BOT_TOKEN settings values.")
