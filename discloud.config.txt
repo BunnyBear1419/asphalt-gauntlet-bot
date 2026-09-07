@@ -1,8 +1,8 @@
-NAME=ALU-GauntletEngine
-AVATAR=https://imgur.com
+NAME=MyDiscordBot
 TYPE=bot
 MAIN=bot.py
 RAM=512
-AUTORESTART=true
 VERSION=latest
-APT=libffi-dev libjpeg-dev zlib1g-dev
+AUTORESTART=true
+DISCORD_TOKEN=MTU0NjE0NzIyMDY2NjE5MTk1Mw.Glx4dS.HjAluZCDClo1yKMCHVtZz-Nt_W_B1OXwRYf8TA
+MONGO_URI=mongodb+srv://aubreya100114_db_user:gOehkJtA4FIeqsrT@cluster0.sdxnahk.mongodb.net/myDiscordBot?retryWrites=true&w=majority&appName=Cluster0
