@@ -301,11 +301,9 @@ class VerificationModal(discord.ui.Modal, title="Verify & Polish Driver Details"
             if role and member:
                 try: 
                     await member.add_roles(role)
-                    role_note = f"
-Granted Role: {role.mention}"
+                    role_note = f"\nGranted Role: {role.mention}"
                 except: 
-                    role_note = f"
-⚠️ *Move bot integration roles higher in settings list.*"
+                    role_note = f"\n⚠️ *Move bot integration roles higher in settings list.*"
 
         embed = discord.Embed(title="🎉 Roster Entry Approved!", color=0x00ffcc, description=f"Driver <@{self.user_id}> has joined **{div_name}**!{role_note}")
         embed.add_field(name="Confirmed Score", value=f"📊 {final_rank:,} PI")
@@ -373,8 +371,7 @@ class StrikeReviewView(discord.ui.View):
             emb.description = f"User <@{self.target_id}> has been issued strike **{new_strikes}/3**."
             
             if new_strikes >= 3:
-                emb.description += "
-🛑 **User reached maximum limit thresholds. Profile flagged for banning review queues.**"
+                emb.description += "\n🛑 **User reached maximum limit thresholds. Profile flagged for banning review queues.**"
             await interaction.response.edit_message(embed=emb, view=None)
         else:
             await bot.db.laps.delete_many({"guild_id": self.guild_id, "user_id": self.target_id, "time_ms": self.lap_data["time_ms"]})
@@ -660,8 +657,7 @@ async def my_records_cmd(interaction: discord.Interaction):
         meta_tag = " 🔥" if pb_lap["car"] in meta_cars else ""
         pace_str = "👑 **[Reigning Class Leader]**" if server_laps and pb_lap["time_ms"] == server_laps[0]["time_ms"] else f" gap pacing: `+{(pb_lap['time_ms'] - server_laps[0]['time_ms']) / 1000.0:.3f}s` off leader"
 
-        emb.add_field(name=f"📍 {track_name} (Class {c_tier})", value=f"└ time: `{pb_time_str}` via **{pb_lap['car']}**{meta_tag}
-└ {pace_str} | [View Proof]({pb_lap['proof_url']})", inline=False)
+        emb.add_field(name=f"📍 {track_name} (Class {c_tier})", value=f"└ time: `{pb_time_str}` via **{pb_lap['car']}**{meta_tag}\n└ {pace_str} | [View Proof]({pb_lap['proof_url']})", inline=False)
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="manage_meta", description="Administratively registers or expels vehicles from meta status tiers.")
@@ -716,11 +712,7 @@ async def matchmake_cmd(interaction: discord.Interaction):
     
     opp_user = bot.get_user(int(best_match["user_id"])) or await bot.fetch_user(int(best_match["user_id"]))
     emb = discord.Embed(title="🎯 Gauntlet ELO Matchmaker Result Found", color=0x00f5d4)
-    emb.description = f"The queue matched you against {opp_user.mention} based on skill profiles!
-
-**Matchup Metrics:**
-└ Your ELO: `{my_elo}`
-└ Opponent ELO: `{best_match.get('elo_rating', 1200)}` (Gap: `{abs(best_match.get('elo_rating', 1200) - my_elo)}` pts)"
+    emb.description = f"The queue matched you against {opp_user.mention} based on skill profiles!\n\n**Matchup Metrics:**\n└ Your ELO: `{my_elo}`\n└ Opponent ELO: `{best_match.get('elo_rating', 1200)}` (Gap: `{abs(best_match.get('elo_rating', 1200) - my_elo)}` pts)"
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="leaderboard", description="Displays top 10 tournament drivers sorted descending by skill rating matrices.")
@@ -738,12 +730,9 @@ async def leaderboard_cmd(interaction: discord.Interaction):
     for idx, d in enumerate(guild_drivers[:10], start=1):
         div_label, _ = bot.get_division(d.get("garage_rank", 0))
         div_short = div_label.split(" (")[0]
-        board_lines.append(f"`#{idx:02d}` <@{d['user_id']}> — **{d.get('elo_rating', 1200)}** ELO
-└ Fleet: `{d.get('garage_rank', 0):,}` PI | `{div_short}` | Record: `{d.get('wins',0)}W-{d.get('losses',0)}L`")
+        board_lines.append(f"`#{idx:02d}` <@{d['user_id']}> — **{d.get('elo_rating', 1200)}** ELO\n└ Fleet: `{d.get('garage_rank', 0):,}` PI | `{div_short}` | Record: `{d.get('wins',0)}W-{d.get('losses',0)}L`")
 
-    emb.description = "
-
-".join(board_lines)
+    emb.description = "\n\n".join(board_lines)
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="challenge", description="Logs match parameters evaluating friendly practice runs outcomes.")
@@ -795,8 +784,7 @@ async def export_csv_cmd(interaction: discord.Interaction):
     for d in guild_drivers:
         csv_lines.append(f"{d['user_id']},{d.get('game_id','UNKNOWN')},{d.get('garage_rank',0)},{d.get('elo_rating',1200)},{d.get('strikes',0)},{d.get('wins',0)},{d.get('losses',0)}")
         
-    csv_txt = "
-".join(csv_lines)
+    csv_txt = "\n".join(csv_lines)
     buf = io.BytesIO(csv_txt.encode("utf-8"))
     file_asset = discord.File(buf, filename=f"roster_export_{interaction.guild_id}.csv")
     await interaction.followup.send(content="📊 **Roster metrics compiled cleanly into spreadsheet format profiles:**", file=file_asset)
@@ -821,8 +809,7 @@ async def build_bracket_cmd(interaction: discord.Interaction):
         pairs.append(f"**Matchup #{len(pairs)+1}:** <@{guild_drivers[i]['user_id']}> vs <@{guild_drivers[i+1]['user_id']}>")
     if bye_driver: pairs.append(f"✨ **First Round Bye:** <@{bye_driver['user_id']}> *(Advances automatically)*")
         
-    emb.description = "
-".join(pairs)
+    emb.description = "\n".join(pairs)
     await interaction.followup.send(embed=emb)
 
 @bot.tree.command(name="set_par_time", description="Administratively modifies the anti-cheat verification threshold value matching a circuit row.")
@@ -837,7 +824,7 @@ async def set_par_time_cmd(interaction: discord.Interaction, track: str, par_tim
     current_pt[s_track] = ms
     
     await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"par_times": current_pt}}, upsert=True)
-    await interaction.response.send_message(f"⚙️ **Anti-Cheat Infrastructure Updated:** `{s_track}` floor limit adjusted to `{par_time}`.", ephemeral=True)
+    await interaction.followup.send(f"⚙️ **Anti-Cheat Infrastructure Updated:** `{s_track}` floor limit adjusted to `{par_time}`.", ephemeral=True)
 
 @bot.tree.command(name="setup_channels", description="Binds global room layouts anchors hooks and automated server management fields.")
 @is_bot_admin()
@@ -849,15 +836,10 @@ async def setup_channels_cmd(interaction: discord.Interaction, registration_chan
 async def readme_cmd(interaction: discord.Interaction):
     admin = interaction.user.id == interaction.guild.owner_id or interaction.user.guild_permissions.administrator
     if admin:
-        e = discord.Embed(title="👑 Master Administration Manual Directive Guide", description="• Run `/setup_channels` to configure hooks.
-• Execute `/checkpending` to verify applicants.
-• Adjust safety thresholds directly utilizing `/set_par_time` parameters.
-• Manage player penalties via `/manage_strikes` or export metrics using `/export_csv` sheets.")
+        e = discord.Embed(title="👑 Master Administration Manual Directive Guide", description="• Run `/setup_channels` to configure hooks.\n• Execute `/checkpending` to verify applicants.\n• Adjust safety thresholds directly utilizing `/set_par_time` parameters.\n• Manage player penalties via `/manage_strikes` or export metrics using `/export_csv` sheets.")
         await interaction.response.send_message(embed=e, ephemeral=True)
     else:
-        e = discord.Embed(title="🏁 Driver Operations Tournament Handbook Guide", description="• Run `/register` to submit telemetry profile card files.
-• Log laps via `/loglap` tracking strict `MM:SS.mmm` specifications.
-• Matchmake live skill targets using `/matchmake` ladders.")
+        e = discord.Embed(title="🏁 Driver Operations Tournament Handbook Guide", description="• Run `/register` to submit telemetry profile card files.\n• Log laps via `/loglap` tracking strict `MM:SS.mmm` specifications.\n• Matchmake live skill targets using `/matchmake` ladders.")
         await interaction.response.send_message(embed=e)
 
 @bot.tree.command(name="checksetup", description="Runs structural diagnostic handshakes testing cloud connectivity thresholds.")
