@@ -207,9 +207,17 @@ class GauntletBot(commands.Bot):
     @tasks.loop(hours=168)
     async def backup_database_task(self):
         try:
-            drivers_list = await self.db.drivers.find().to_list(length=None)
-            laps_list = await self.db.laps.find().to_list(length=None)
-            snapshot = {"timestamp": datetime.utcnow().isoformat(), "drivers": drivers_list, "laps": laps_list}
+drivers_list = await self.db.drivers.find().to_list(length=None)
+laps_list = await self.db.laps.find().to_list(length=None)
+
+# Convert MongoDB ObjectIds to clean text strings
+for d in drivers_list:
+    if "_id" in d: d["_id"] = str(d["_id"])
+for l in laps_list:
+    if "_id" in l: l["_id"] = str(l["_id"])
+
+snapshot = {"timestamp": datetime.utcnow().isoformat(), "drivers": drivers_list, "laps": laps_list}
+
             await self.db.backups.insert_one(snapshot)
             
             js_str = json.dumps(snapshot, indent=4, ensure_ascii=False)
