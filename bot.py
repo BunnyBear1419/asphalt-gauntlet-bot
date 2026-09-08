@@ -249,7 +249,7 @@ async def diagnose_cmd(interaction: discord.Interaction):
     else:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"https://ocr.space{ocr_key}&url=https://githubusercontent.com", timeout=5) as resp:
+                async with session.get(f"https://allorigins.win{asyncio.tasks.quote(f'https://ocr.space{ocr_key}&url=https://githubusercontent.com')}", timeout=5) as resp:
                     if resp.status != 200:
                         ocr_status = f"🔴 API Error (HTTP {resp.status})"
         except Exception:
