@@ -108,23 +108,26 @@ class GauntletBot(commands.Bot):
         await super().close()
 
 bot = GauntletBot()
-    @tasks.loop(hours=1)
-    async def seasonal_clock_loop(self):
-        now = time.time()
-        state = await self.db.season_state.find_one({"_id": "current_season"})
-        if not state:
-            await self.db.season_state.update_one(
-                {"_id": "current_season"},
-                {"$set": {"season_number": 1, "ends_at": now + (14 * 24 * 60 * 60)}},
-                upsert=True
-            )
-            return
-        if now >= state["ends_at"]:
-            await trigger_global_season_end()
+@tasks.loop(hours=1)
+async def seasonal_clock_loop_task():
+    now = time.time()
+    state = await bot.db.season_state.find_one({"_id": "current_season"})
+    if not state:
+        await bot.db.season_state.update_one(
+            {"_id": "current_season"},
+            {"$set": {"season_number": 1, "ends_at": now + (14 * 24 * 60 * 60)}},
+            upsert=True
+        )
+        return
+    if now >= state["ends_at"]:
+        await trigger_global_season_end()
 
-    @seasonal_clock_loop.before_loop
-    async def before_seasonal_clock(self):
-        await self.wait_until_ready()
+@seasonal_clock_loop_task.before_loop
+async def before_seasonal_clock():
+    await bot.wait_until_ready()
+
+# Bind the standalone task securely to our initialized client body
+bot.seasonal_clock_loop = seasonal_clock_loop_task
 async def check_admin_privileges(interaction: discord.Interaction) -> bool:
     if interaction.user.guild_permissions.administrator:
         return True
@@ -373,6 +376,9 @@ async def admin_removeracer_cmd(interaction: discord.Interaction, racer: discord
     await interaction.response.defer(ephemeral=True)
     await bot.db.drivers.delete_one({"_id": f"{interaction.guild_id}_{racer.id}"})
     await interaction.followup.send(f"🧹 Purged {racer.name}.")
+async def track_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    return [app_commands.Choice(name=track, value=track) for track in ALU_TRACKS if current.lower() in track.lower()][:25]
+
 async def car_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=car, value=car) for car in ALU_CARS if current.lower() in car.lower()][:25]
 
@@ -434,7 +440,7 @@ async def profile_cmd(interaction: discord.Interaction, driver: discord.Member =
         return
     embed = discord.Embed(title="🏁 ALU Gauntlet Driver Profile Card", color=0x00ffcc)
     embed.add_field(name="👤 Racing Player", value=f"{target_user.mention}\nID: `{profile.get('game_id')}`", inline=True)
-    embed.add_field(name="🏁 Statistics", value=f"• **League Elo:** `{profile.get('elo', 1000)}`\n• **Wins:** `{profile.get('career_wins', 0)}` • **Streak:** `{profile.get('streak', 0)}`", inline=False)
+    embed.add_field(name="📊 Statistics", value=f"• **League Elo:** `{profile.get('elo', 1000)}`\n• **Wins:** `{profile.get('career_wins', 0)}` • **Streak:** `{profile.get('streak', 0)}`", inline=False)
     if profile.get("defense_locked"):
         embed.add_field(name="🛡️ Locked Ghost Defense", value=f"**Track:** {profile['defense_locked']['track']}\nTime: `{profile['defense_locked']['lap_time']}`", inline=False)
     await interaction.followup.send(embed=embed)
