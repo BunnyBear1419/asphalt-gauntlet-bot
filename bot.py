@@ -1,57 +1,144 @@
 import os
 import re
-import logging
 import time
-import io
+import logging
+import asyncio
 import aiohttp
-import psutil
-from PIL import Image
+from difflib import SequenceMatcher
+from dotenv import load_dotenv
 import discord
 from discord import app_commands
 from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
+from PIL import Image
+import io
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Load local environment configuration keys
+load_dotenv()
 
-# Initialize bot intents
-intents = discord.Intents.default()
-intents.message_content = True
-
+# Configure Global Logging Matrices
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 class GauntletBot(commands.Bot):
     def __init__(self):
+        intents = discord.Intents.default()
+        intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
         self.db = None
         self.mongo_client = None
-
     async def setup_hook(self):
-        # Establish non-blocking connection to MongoDB Atlas
-        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-        self.mongo_client = AsyncIOMotorClient(mongo_uri)
-        # Using default database name matching the system context
-        self.db = self.mongo_client["gauntlet_database"]
-        logging.info("MongoDB Async Client initialized via Motor.")
+        # Establish asynchronous MongoDB connection via Motor
+        mongo_uri = os.getenv("MONGO_URI")
+        if mongo_uri:
+            try:
+                self.mongo_client = AsyncIOMotorClient(mongo_uri)
+                # Force a low-latency cluster validation ping
+                await self.mongo_client.admin.command('ping')
+                self.db = self.mongo_client.get_database("asphalt_gauntlet")
+                logging.info("🟢 Successfully connected to MongoDB Atlas Cloud Cluster.")
+            except Exception as e:
+                logging.error(f"🔴 MongoDB Connection Failed: {e}")
+                logging.info("Falling back to simulated local environment database...")
+                self.setup_mock_db()
+        else:
+            logging.warning("⚠️ MONGO_URI missing from environment variables.")
+            self.setup_mock_db()
+
+        # Synchronize application tree slash commands globally
         await self.tree.sync()
+        logging.info("🟢 Application slash commands synchronized globally.")
+    def setup_mock_db(self):
+        """Fallback local database simulation if MongoDB Atlas is offline."""
+        class MockCollection:
+            async def find_one(self, *args, **kwargs): return {}
+            async def update_one(self, *args, **kwargs): return None
+            async def delete_one(self, *args, **kwargs): return None
+        class MockDB:
+            def __getattr__(self, name): return MockCollection()
+            async def command(self, *args, **kwargs): raise ConnectionError("Mock DB Offline")
+        self.db = MockDB()
+
+    async def close(self):
+        if self.mongo_client:
+            self.mongo_client.close()
+        await super().close()
 
 bot = GauntletBot()
+def fuzzy_correct_marker(text: str, target: str, threshold: float = 0.6) -> str:
+    """Corrects common OCR typos (like 6ARAGE or 1D) back into clear target keys."""
+    words = text.split()
+    for word in words:
+        cleaned_word = re.sub(r'[^A-Z0-9]', '', word.upper())
+        if not cleaned_word:
+            continue
+        matcher = SequenceMatcher(None, cleaned_word, target)
+        if matcher.ratio() >= threshold:
+            return text.replace(word, target)
+    return text
 
+def preprocess_text_with_fuzzy(text: str) -> str:
+    """Pre-processes OCR text block with common Asphalt Legends interface corrections."""
+    text = text.upper()
+    text = fuzzy_correct_marker(text, "GARAGE")
+    text = fuzzy_correct_marker(text, "PLAYER")
+    text = fuzzy_correct_marker(text, "LEVEL")
+    text = fuzzy_correct_marker(text, "CLUB")
+    
+    # Target common text errors explicitly
+    text = re.sub(r'\b(1D|LD|lD)\b', 'ID', text)
+    text = re.sub(r'\b(6ARAGE|GARA6E)\b', 'GARAGE', text)
+    return text
 class VerificationView(discord.ui.View):
-    def __init__(self, user_id: str, guild_id: str, game_id: str, proposed_rank: int, control: str):
+    def __init__(self, user_id: str, guild_id: str, game_id: str, rank: int, control: str):
         super().__init__(timeout=None)
         self.user_id = user_id
         self.guild_id = guild_id
         self.game_id = game_id
-        self.proposed_rank = proposed_rank
+        self.rank = rank
         self.control = control
 
     @discord.ui.button(label="Approve Driver", style=discord.ButtonStyle.green, custom_id="approve_driver_btn")
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("✅ Driver verification approved and updated inside cloud database storage clusters.", ephemeral=True)
-
-@bot.event
-async def on_ready():
-    logging.info(f"Bot logged in as {bot.user.name} (ID: {bot.user.id})")
-
+        await interaction.response.defer()
+        
+        await bot.db.drivers.update_one(
+            {"_id": f"{self.guild_id}_{self.user_id}"},
+            {"$set": {
+                "guild_id": self.guild_id, "user_id": self.user_id,
+                "game_id": self.game_id, "garage_pi": self.rank,
+                "control_type": self.control, "verified_at": time.time()
+            }},
+            upsert=True
+        )
+        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.green()
+        embed.title = "✅ Driver Profile Verification Approved"
+        embed.set_footer(text=f"Approved by staff manager: {interaction.user.display_name}")
+        
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(embed=embed, view=self)
+        
+        try:
+            member = await interaction.guild.fetch_member(int(self.user_id))
+            if member:
+                await member.send(f"🎉 **Asphalt Gauntlet Roster Clearance:** Your profile (`{self.game_id}`) has been fully approved for official league tournament races!")
+        except Exception:
+            pass
+    @discord.ui.button(label="Reject & Deny", style=discord.ButtonStyle.red, custom_id="reject_driver_btn")
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        
+        embed = interaction.message.embeds[0]
+        embed.color = discord.Color.red()
+        embed.title = "❌ Driver Profile Verification Denied"
+        embed.set_footer(text=f"Rejected by staff manager: {interaction.user.display_name}")
+        
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(embed=embed, view=self)
 @bot.tree.command(name="register", description="Enters the automated cloud verification staging queues.")
 @app_commands.describe(game_id="Asphalt player alphanumeric tag ID", proof_screenshot="Attach profile card file", control_type="Driving system configuration layout used")
 @app_commands.choices(control_type=[
@@ -75,37 +162,43 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     
     if ocr_key and ocr_key != "your_free_ocr_space_api_key_here":
         try:
-            # Local Image Preprocessing using Pillow to optimize OCR accuracy
-            img_bytes = await proof_screenshot.read()
-            img = Image.open(io.BytesIO(img_bytes)).convert('L')
-            img = img.point(lambda x: 0 if x < 200 else 255, '1')
-            
-            output_buffer = io.BytesIO()
-            img.save(output_buffer, format="PNG")
-            output_buffer.seek(0)
-
-            # Asynchronous non-blocking network request
             async with aiohttp.ClientSession() as session:
-                data = aiohttp.FormData()
-                data.add_field('apikey', ocr_key)
-                data.add_field('file', output_buffer, filename='processed.png', content_type='image/png')
-                
-                async with session.post("https://api.ocr.space/parse/image", data=data, timeout=15) as response:
-                    if response.status == 200:
-                        res_data = await response.json()
-                        parsed_text = res_data.get("ParsedResults", [{}])[0].get("ParsedText", "").upper()
+                async with session.get(proof_screenshot.url) as img_resp:
+                    if img_resp.status == 200:
+                        img_bytes = await img_resp.read()
                         
-                        match_id = re.search(r"ID[:\s]*([A-Z0-9_\-]+)", parsed_text)
-                        match_pi = re.search(r"GARAGE[:\s]*([0-9,]+)", parsed_text)
+                        # Apply local contrast conversions via Pillow in memory
+                        img = Image.open(io.BytesIO(img_bytes)).convert('L')
+                        img = img.point(lambda x: 0 if x < 200 else 255, '1')
                         
-                        if match_id: game_id = match_id.group(1)
-                        if match_pi: parsed_rank = int(match_pi.group(1).replace(",", ""))
+                        output_buffer = io.BytesIO()
+                        img.save(output_buffer, format="PNG")
+                        output_buffer.seek(0)
                         
-                        if not any(x in parsed_text for x in ["PLAYER", "GARAGE", "LEVEL", "CLUB", "ID"]):
-                            await interaction.followup.send("❌ Image Analysis Blocked: Uploaded file does not verify as an authentic Asphalt interface screenshot.")
-                            return
-                    else: 
-                        ocr_status = "MANUAL_REVIEW_REQUIRED_API_ERROR"
+                        data = aiohttp.FormData()
+                        data.add_field('apikey', ocr_key)
+                        data.add_field('language', 'eng')
+                        data.add_field('file', output_buffer, filename='processed.png', content_type='image/png')
+                        
+                        async with session.post("https://ocr.space", data=data, timeout=12) as response:
+                            if response.status == 200:
+                                res_data = await response.json()
+                                raw_text = res_data.get("ParsedResults", [{}]).get("ParsedText", "")
+                                parsed_text = preprocess_text_with_fuzzy(raw_text)
+                                
+                                match_id = re.search(r"ID[:\s]*([A-Z0-9_\-]+)", parsed_text)
+                                match_pi = re.search(r"GARAGE[:\s]*([0-9,]+)", parsed_text)
+                                
+                                if match_id: game_id = match_id.group(1)
+                                if match_pi: parsed_rank = int(match_pi.group(1).replace(",", ""))
+                                
+                                if not any(x in parsed_text for x in ["PLAYER", "GARAGE", "LEVEL", "CLUB", "ID"]):
+                                    await interaction.followup.send("❌ Image Analysis Blocked: Uploaded file does not verify as an authentic Asphalt interface screenshot.")
+                                    return
+                            else: 
+                                ocr_status = "MANUAL_REVIEW_REQUIRED_API_ERROR"
+                    else:
+                        ocr_status = "MANUAL_REVIEW_REQUIRED_DOWNLOAD_FAILED"
         except Exception as ocr_err:
             logging.error(f"Async OCR pipeline exception: {ocr_err}")
             ocr_status = "MANUAL_REVIEW_REQUIRED_TIMEOUT"
@@ -114,13 +207,9 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     await bot.db.pending.update_one(
         {"_id": db_id}, 
         {"$set": {
-            "guild_id": str(interaction.guild_id), 
-            "user_id": str(interaction.user.id), 
-            "game_id": game_id, 
-            "proposed_rank": parsed_rank, 
-            "proof": proof_screenshot.url, 
-            "control": control_type.value, 
-            "ocr_verification": ocr_status
+            "guild_id": str(interaction.guild_id), "user_id": str(interaction.user.id), 
+            "game_id": game_id, "proposed_rank": parsed_rank, "proof": proof_screenshot.url, 
+            "control": control_type.value, "ocr_verification": ocr_status
         }}, 
         upsert=True
     )
@@ -137,7 +226,6 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
             emb.add_field(name="System Audit Flag", value=f"`{ocr_status}`", inline=False)
             emb.set_image(url=proof_screenshot.url)
             await chan.send(embed=emb, view=VerificationView(str(interaction.user.id), str(interaction.guild_id), game_id, parsed_rank, control_type.value))
-
 @bot.tree.command(name="diagnose", description="[Admin Only] Core structural health check for database, OCR, and container limits.")
 @app_commands.default_permissions(administrator=True)
 async def diagnose_cmd(interaction: discord.Interaction):
@@ -157,20 +245,29 @@ async def diagnose_cmd(interaction: discord.Interaction):
     ocr_status = "🟢 Operational"
     ocr_key = os.getenv("OCR_SPACE_API_KEY")
     if not ocr_key or ocr_key == "your_free_ocr_space_api_key_here":
-        ocr_status = "🟡 Missing API Key"
+        ocr_status = "🟡 Missing API Key in Environment Variables"
     else:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"https://ocr.space/parse/imageurl?apikey={ocr_key}&url=https://raw.githubusercontent.com/github/explore/main/topics/python/python.png", timeout=5) as resp:
+                async with session.get(f"https://ocr.space{ocr_key}&url=https://githubusercontent.com", timeout=5) as resp:
                     if resp.status != 200:
                         ocr_status = f"🔴 API Error (HTTP {resp.status})"
         except Exception:
             ocr_status = "🔴 Timeout / Unreachable"
 
-    process = psutil.Process(os.getpid())
-    ram_used = round(process.memory_info().rss / (1024 * 1024), 1)
+    # Calculate native system RAM constraints securely without psutil extensions
+    ram_used = 0.0
+    try:
+        with open('/proc/self/status', 'r') as f:
+            for line in f:
+                if line.startswith('VmRSS:'):
+                    ram_used = round(int(line.split()) / 1024, 1)
+                    break
+    except Exception:
+        ram_used = 0.0
+
     ram_total = 512
-    ram_percent = round((ram_used / ram_total) * 100, 1)
+    ram_percent = round((ram_used / ram_total) * 100, 1) if ram_used > 0 else 0.0
 
     embed = discord.Embed(
         title="🛠️ ALU-GauntletEngine Core Diagnostics", 
@@ -184,10 +281,34 @@ async def diagnose_cmd(interaction: discord.Interaction):
     embed.set_footer(text=f"Node Container Environment ID: {os.getenv('DISCLOUD_APP_ID', 'Localhost')}")
 
     await interaction.followup.send(embed=embed)
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    logging.error(f"Application command exception intercepted: {error}")
+    
+    if isinstance(error, app_commands.MissingPermissions):
+        embed = discord.Embed(title="❌ Access Denied", description="This diagnostic interface command is gated strictly to Server Administrators.", color=0xff3333)
+        if interaction.response.is_done():
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
 
+    embed = discord.Embed(
+        title="⚠️ Application Engine Pipeline Failure", 
+        description="An unexpected error blocked this command layout pipeline from processing. The crash log has been flagged for analysis.", 
+        color=0xff9900
+    )
+    embed.add_field(name="Error Vector Info", value=f"`{type(error).__name__}: {str(error)[:100]}`", inline=False)
+    
+    if interaction.response.is_done():
+         await interaction.followup.send(embed=embed, ephemeral=True)
+    else:
+         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+# Main Application Entry Hook
 if __name__ == "__main__":
     token = os.getenv("DISCORD_BOT_TOKEN")
     if token:
         bot.run(token)
     else:
-        logging.error("CRITICAL: DISCORD_BOT_TOKEN environment variable not found.")
+        logging.critical("🔴 Bot launch blocked: DISCORD_BOT_TOKEN is missing from your Environment Variables.")
