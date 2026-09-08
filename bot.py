@@ -14,8 +14,11 @@ from PIL import Image
 import io
 import pytesseract
 
-# Tells pytesseract exactly where Discloud installs the execution binary
-pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+# Discloud path lookup configuration
+for path in ['/app/.apt/usr/bin/tesseract', '/usr/bin/tesseract', 'tesseract']:
+    if os.path.exists(path) or os.access(path, os.X_OK):
+        pytesseract.pytesseract.tesseract_cmd = path
+        break
 
 # Load local environment configuration keys
 load_dotenv()
@@ -232,13 +235,26 @@ async def diagnose_cmd(interaction: discord.Interaction):
         db_ping = f"{round((time.perf_counter() - start_time) * 1000)}ms"
     except Exception as db_err:
         db_status = f"🔴 Disconnected ({type(db_err).__name__})"
-    
+
     # Diagnose local library binary compliance
     ocr_status = "🟢 Operational (Local Native Tesseract)"
     try:
         pytesseract.get_tesseract_version()
     except Exception:
-        ocr_status = "🔴 Local Binary Missing / Configuration Error"
+        # Fallback automated lookup logic for Discloud containers
+        try:
+            for fallback_path in ['/app/.apt/usr/bin/tesseract', '/usr/bin/tesseract', 'tesseract']:
+                pytesseract.pytesseract.tesseract_cmd = fallback_path
+                try:
+                    pytesseract.get_tesseract_version()
+                    ocr_status = f"🟢 Operational ({fallback_path})"
+                    break
+                except Exception:
+                    continue
+            if "🟢" not in ocr_status:
+                ocr_status = "🔴 Binary Path Missing / Configuration Error"
+        except Exception as e:
+            ocr_status = f"🔴 Configuration Error ({type(e).__name__})"
 
     # Calculate native system RAM constraints securely using built-in system states
     ram_used = 0.0
