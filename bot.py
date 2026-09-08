@@ -12,6 +12,7 @@ from discord.ext import commands
 from motor.motor_asyncio import AsyncIOMotorClient
 from PIL import Image
 import io
+import pytesseract
 
 # Load local environment configuration keys
 load_dotenv()
@@ -111,7 +112,7 @@ class VerificationView(discord.ui.View):
         )
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
         
-        embed = interaction.message.embeds[0]
+        embed = interaction.message.embeds
         embed.color = discord.Color.green()
         embed.title = "✅ Driver Profile Verification Approved"
         embed.set_footer(text=f"Approved by staff manager: {interaction.user.display_name}")
@@ -131,7 +132,7 @@ class VerificationView(discord.ui.View):
         await interaction.response.defer()
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
         
-        embed = interaction.message.embeds[0]
+        embed = interaction.message.embeds
         embed.color = discord.Color.red()
         embed.title = "❌ Driver Profile Verification Denied"
         embed.set_footer(text=f"Rejected by staff manager: {interaction.user.display_name}")
@@ -148,7 +149,7 @@ class VerificationView(discord.ui.View):
 async def register_cmd(interaction: discord.Interaction, game_id: str, proof_screenshot: discord.Attachment, control_type: app_commands.Choice[str]):
     cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
     if cfg and cfg.get("registration_channel_id") and str(interaction.channel_id) != str(cfg["registration_channel_id"]):
-        await interaction.response.send_message(f"❌ Redirection Link: Execute profile registration actions within <#{cfg['registration_channel_id']}>.", ephemeral=True)
+        await interaction.response.send_message(f"❌ Execute profile registration within <#{cfg['registration_channel_id']}>.", ephemeral=True)
         return
 
     if not proof_screenshot.content_type or not proof_screenshot.content_type.startswith("image/"):
@@ -158,50 +159,37 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     await interaction.response.defer()
     parsed_rank = 15500
     ocr_status = "AUTOMATED_OCR_PASS"
-    ocr_key = os.getenv("OCR_SPACE_API_KEY")
     
-    if ocr_key and ocr_key != "your_free_ocr_space_api_key_here":
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(proof_screenshot.url) as img_resp:
-                    if img_resp.status == 200:
-                        img_bytes = await img_resp.read()
-                        
-                        # Apply local contrast conversions via Pillow in memory
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(proof_screenshot.url) as img_resp:
+                if img_resp.status == 200:
+                    img_bytes = await img_resp.read()
+                    
+                    # Offload local processing to executor thread to keep event loop responsive
+                    loop = asyncio.get_event_loop()
+                    def run_local_ocr():
                         img = Image.open(io.BytesIO(img_bytes)).convert('L')
                         img = img.point(lambda x: 0 if x < 200 else 255, '1')
-                        
-                        output_buffer = io.BytesIO()
-                        img.save(output_buffer, format="PNG")
-                        output_buffer.seek(0)
-                        
-                        data = aiohttp.FormData()
-                        data.add_field('apikey', ocr_key)
-                        data.add_field('language', 'eng')
-                        data.add_field('file', output_buffer, filename='processed.png', content_type='image/png')
-                        
-                        async with session.post("https://ocr.space", data=data, timeout=12) as response:
-                            if response.status == 200:
-                                res_data = await response.json()
-                                raw_text = res_data.get("ParsedResults", [{}]).get("ParsedText", "")
-                                parsed_text = preprocess_text_with_fuzzy(raw_text)
-                                
-                                match_id = re.search(r"ID[:\s]*([A-Z0-9_\-]+)", parsed_text)
-                                match_pi = re.search(r"GARAGE[:\s]*([0-9,]+)", parsed_text)
-                                
-                                if match_id: game_id = match_id.group(1)
-                                if match_pi: parsed_rank = int(match_pi.group(1).replace(",", ""))
-                                
-                                if not any(x in parsed_text for x in ["PLAYER", "GARAGE", "LEVEL", "CLUB", "ID"]):
-                                    await interaction.followup.send("❌ Image Analysis Blocked: Uploaded file does not verify as an authentic Asphalt interface screenshot.")
-                                    return
-                            else: 
-                                ocr_status = "MANUAL_REVIEW_REQUIRED_API_ERROR"
-                    else:
-                        ocr_status = "MANUAL_REVIEW_REQUIRED_DOWNLOAD_FAILED"
-        except Exception as ocr_err:
-            logging.error(f"Async OCR pipeline exception: {ocr_err}")
-            ocr_status = "MANUAL_REVIEW_REQUIRED_TIMEOUT"
+                        return pytesseract.image_to_string(img)
+                    
+                    raw_text = await loop.run_in_executor(None, run_local_ocr)
+                    parsed_text = preprocess_text_with_fuzzy(raw_text)
+                    
+                    match_id = re.search(r"ID[:\s]*([A-Z0-9_\-]+)", parsed_text)
+                    match_pi = re.search(r"GARAGE[:\s]*([0-9,]+)", parsed_text)
+                    
+                    if match_id: game_id = match_id.group(1)
+                    if match_pi: parsed_rank = int(match_pi.group(1).replace(",", ""))
+                    
+                    if not any(x in parsed_text for x in ["PLAYER", "GARAGE", "LEVEL", "CLUB", "ID"]):
+                        await interaction.followup.send("❌ Image Analysis Blocked: Uploaded file does not verify as an authentic Asphalt interface screenshot.")
+                        return
+                else:
+                    ocr_status = "MANUAL_REVIEW_REQUIRED_DOWNLOAD_FAILED"
+    except Exception as err:
+        logging.error(f"Local OCR pipeline exception: {err}")
+        ocr_status = "MANUAL_REVIEW_REQUIRED_PROCESSING_ERROR"
 
     db_id = f"{interaction.guild_id}_{interaction.user.id}"
     await bot.db.pending.update_one(
@@ -214,7 +202,7 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
         upsert=True
     )
     
-    msg_prefix = f"📥 **Submission Completed (Auto-Filled Profile UI).** Detected ID: `{game_id}`, PI: `{parsed_rank:,}`" if ocr_status == "AUTOMATED_OCR_PASS" else "⚠️ **OCR System Offline.** Submission queued for manual review."
+    msg_prefix = f"📥 **Submission Completed (Auto-Filled Profile UI).** Detected ID: `{game_id}`, PI: `{parsed_rank:,}`" if ocr_status == "AUTOMATED_OCR_PASS" else "⚠️ **Local Validation Flagged.** Submission queued for manual review."
     await interaction.followup.send(f"{msg_prefix} Roster lines routed to staff review queues.")
     
     if cfg and cfg.get("registration_channel_id"):
@@ -242,20 +230,14 @@ async def diagnose_cmd(interaction: discord.Interaction):
     except Exception as db_err:
         db_status = f"🔴 Disconnected ({type(db_err).__name__})"
     
-    ocr_status = "🟢 Operational"
-    ocr_key = os.getenv("OCR_SPACE_API_KEY")
-    if not ocr_key or ocr_key == "your_free_ocr_space_api_key_here":
-        ocr_status = "🟡 Missing API Key in Environment Variables"
-    else:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"https://allorigins.win{asyncio.tasks.quote(f'https://ocr.space{ocr_key}&url=https://githubusercontent.com')}", timeout=5) as resp:
-                    if resp.status != 200:
-                        ocr_status = f"🔴 API Error (HTTP {resp.status})"
-        except Exception:
-            ocr_status = "🔴 Timeout / Unreachable"
+    # Diagnose local library binary compliance
+    ocr_status = "🟢 Operational (Local Native Tesseract)"
+    try:
+        pytesseract.get_tesseract_version()
+    except Exception:
+        ocr_status = "🔴 Local Binary Missing / Configuration Error"
 
-    # Calculate native system RAM constraints securely without psutil extensions
+    # Calculate native system RAM constraints securely using built-in system states
     ram_used = 0.0
     try:
         with open('/proc/self/status', 'r') as f:
@@ -276,7 +258,7 @@ async def diagnose_cmd(interaction: discord.Interaction):
     )
     embed.add_field(name="📡 Discord Gateway Ping", value=f"`{discord_ping}ms`", inline=True)
     embed.add_field(name="🗄️ MongoDB Cloud Link", value=f"Status: **{db_status}**\nLatency: `{db_ping}`", inline=False)
-    embed.add_field(name="👁️ OCR.Space Parser Engine", value=f"Status: **{ocr_status}**", inline=False)
+    embed.add_field(name="👁️ OCR Parser Engine", value=f"Status: **{ocr_status}**", inline=False)
     embed.add_field(name="☁️ Discloud Cluster Memory", value=f"Allocation: `{ram_used}MB` / `{ram_total}MB` (**{ram_percent}%**)", inline=False)
     embed.set_footer(text=f"Node Container Environment ID: {os.getenv('DISCLOUD_APP_ID', 'Localhost')}")
 
@@ -284,31 +266,18 @@ async def diagnose_cmd(interaction: discord.Interaction):
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     logging.error(f"Application command exception intercepted: {error}")
-    
     if isinstance(error, app_commands.MissingPermissions):
         embed = discord.Embed(title="❌ Access Denied", description="This diagnostic interface command is gated strictly to Server Administrators.", color=0xff3333)
-        if interaction.response.is_done():
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        else:
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True)
         return
 
-    embed = discord.Embed(
-        title="⚠️ Application Engine Pipeline Failure", 
-        description="An unexpected error blocked this command layout pipeline from processing. The crash log has been flagged for analysis.", 
-        color=0xff9900
-    )
-    embed.add_field(name="Error Vector Info", value=f"`{type(error).__name__}: {str(error)[:100]}`", inline=False)
-    
-    if interaction.response.is_done():
-         await interaction.followup.send(embed=embed, ephemeral=True)
-    else:
-         await interaction.response.send_message(embed=embed, ephemeral=True)
+    embed = discord.Embed(title="⚠️ Application Engine Pipeline Failure", description="An unexpected error blocked processing.", color=0xff9900)
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
-# Main Application Entry Hook
+# Main Execution Routine Hook
 if __name__ == "__main__":
     token = os.getenv("DISCORD_BOT_TOKEN")
     if token:
         bot.run(token)
     else:
-        logging.critical("🔴 Bot launch blocked: DISCORD_BOT_TOKEN is missing from your Environment Variables.")
+        logging.critical("DISCORD_BOT_TOKEN is missing from your Environment Variables.")
