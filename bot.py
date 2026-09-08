@@ -14,6 +14,9 @@ from PIL import Image
 import io
 import pytesseract
 
+# Tells pytesseract exactly where Discloud installs the execution binary
+pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
+
 # Load local environment configuration keys
 load_dotenv()
 
