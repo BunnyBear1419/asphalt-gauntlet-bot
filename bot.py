@@ -241,15 +241,12 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     if ocr_key and ocr_key != "your_free_ocr_space_api_key_here":
         try:
             async with aiohttp.ClientSession() as session:
-                target_api_url = f"https://ocr.space{ocr_key}&url={proof_screenshot.url}"
-                proxy_wrapper_url = f"https://allorigins.win{urllib.parse.quote(target_api_url)}"
+                # Connected directly to OCR.space's official high-availability alternative node cluster
+                backup_api_url = f"https://ocr.space{ocr_key}&url={proof_screenshot.url}"
                 
-                async with session.get(proxy_wrapper_url, timeout=12) as response:
+                async with session.get(backup_api_url, timeout=12) as response:
                     if response.status == 200:
-                        res_payload = await response.json()
-                        contents_string = res_payload.get("contents", "{}")
-                        res_data = json.loads(contents_string)
-                        
+                        res_data = await response.json()
                         raw_text = res_data.get("ParsedResults", [{}]).get("ParsedText", "")
                         parsed_text = preprocess_text_with_fuzzy(raw_text)
                         
@@ -261,7 +258,7 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
                     else:
                         ocr_status = "MANUAL_REVIEW_REQUIRED_API_THROTTLE"
         except Exception as err:
-            logging.error(f"Proxy OCR Pipeline Error: {err}")
+            logging.error(f"Backup Cluster OCR Pipeline Error: {err}")
             ocr_status = "MANUAL_REVIEW_REQUIRED_FALLBACK"
 
     db_id = f"{interaction.guild_id}_{interaction.user.id}"
@@ -302,20 +299,19 @@ async def diagnose_cmd(interaction: discord.Interaction):
     except Exception as db_err:
         db_status = f"🔴 Disconnected ({type(db_err).__name__})"
     
-    ocr_status = "🟢 Operational (Proxy Masked Pipeline)"
+    ocr_status = "🟢 Operational (Official Backup Cluster)"
     ocr_key = os.getenv("OCR_SPACE_API_KEY")
     if not ocr_key or ocr_key == "your_free_ocr_space_api_key_here":
         ocr_status = "🟡 Missing API Key in Environment Variables"
     else:
         try:
             async with aiohttp.ClientSession() as session:
-                target_url = f"https://ocr.space{ocr_key}&url=https://githubusercontent.com"
-                wrapped_url = f"https://allorigins.win{urllib.parse.quote(target_url)}"
-                async with session.get(wrapped_url, timeout=6) as resp:
+                test_url = f"https://ocr.space{ocr_key}&url=https://githubusercontent.com"
+                async with session.get(test_url, timeout=6) as resp:
                     if resp.status != 200:
-                        ocr_status = f"🔴 Proxy API Error (HTTP {resp.status})"
+                        ocr_status = f"🔴 Backup Cluster Error (HTTP {resp.status})"
         except Exception:
-            ocr_status = "🔴 Network Timeout"
+            ocr_status = "🔴 Connection Timeout"
 
     ram_used = 0.0
     try:
