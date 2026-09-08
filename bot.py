@@ -52,6 +52,10 @@ class GauntletBot(commands.Bot):
             async def find_one(self, *args, **kwargs): return {}
             async def update_one(self, *args, **kwargs): return None
             async def delete_one(self, *args, **kwargs): return None
+            async def delete_many(self, *args, **kwargs):
+                class MockResult:
+                    def __init__(self): self.deleted_count = 0
+                return MockResult()
         class MockDB:
             def __getattr__(self, name): return MockCollection()
             async def command(self, *args, **kwargs): raise ConnectionError("Mock DB Offline")
@@ -146,7 +150,6 @@ class VerificationView(discord.ui.View):
 async def setup_cmd(interaction: discord.Interaction, registration_channel: discord.TextChannel, review_channel: discord.TextChannel):
     await interaction.response.defer(ephemeral=True)
     
-    # Save the configuration choices directly into your Atlas cluster settings
     await bot.db.settings.update_one(
         {"_id": str(interaction.guild_id)},
         {"$set": {
@@ -168,6 +171,47 @@ async def setup_cmd(interaction: discord.Interaction, registration_channel: disc
     embed.set_footer(text="Settings active globally • Live edits overwrite instantly")
     
     await interaction.followup.send(embed=embed)
+
+
+@bot.tree.command(name="clearhistory", description="[Admin Only] Wipes specific collections or completely resets the server's tournament driver data.")
+@app_commands.describe(target_data="Select what data collection you want to permanently clear")
+@app_commands.choices(target_data=[
+    app_commands.Choice(name="Pending Registrations Queue Only", value="pending"),
+    app_commands.Choice(name="Approved Verified Drivers List Only", value="drivers"),
+    app_commands.Choice(name="Reset Everything (Wipe Roster & Staging Queues)", value="all")
+])
+@app_commands.default_permissions(administrator=True)
+async def clear_history_cmd(interaction: discord.Interaction, target_data: app_commands.Choice[str]):
+    await interaction.response.defer(ephemeral=True)
+    
+    guild_id = str(interaction.guild_id)
+    cleared_pending = 0
+    cleared_drivers = 0
+
+    try:
+        if target_data.value in ["pending", "all"]:
+            result = await bot.db.pending.delete_many({"guild_id": guild_id})
+            cleared_pending = result.deleted_count
+
+        if target_data.value in ["drivers", "all"]:
+            result = await bot.db.drivers.delete_many({"guild_id": guild_id})
+            cleared_drivers = result.deleted_count
+
+        embed = discord.Embed(
+            title="🧹 Database Purge Cycle Complete",
+            description=f"Successfully executed a data clear operations matrix for this guild environment.",
+            color=0xffaa00
+        )
+        embed.add_field(name="📋 Target Scope Specified", value=f"`{target_data.name}`", inline=False)
+        embed.add_field(name="📥 Staging Queue Purged", value=f"`{cleared_pending} profiles deleted`", inline=True)
+        embed.add_field(name="🏎️ Verified Roster Wiped", value=f"`{cleared_drivers} drivers deleted`", inline=True)
+        embed.set_footer(text=f"Purge authorized by admin: {interaction.user.display_name}")
+
+        await interaction.followup.send(embed=embed)
+        
+    except Exception as err:
+        logging.error(f"Database purge block exception: {err}")
+        await interaction.followup.send("❌ **Database Operation Failed:** An unexpected cloud error blocked the document wipe sequence.")
 @bot.tree.command(name="register", description="Enters the automated cloud verification staging queues.")
 @app_commands.describe(game_id="Asphalt player alphanumeric tag ID", proof_screenshot="Attach profile card file", control_type="Driving system configuration layout used")
 @app_commands.choices(control_type=[
@@ -197,7 +241,6 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     if ocr_key and ocr_key != "your_free_ocr_space_api_key_here":
         try:
             async with aiohttp.ClientSession() as session:
-                # Shield the data stream using a secure origins proxy bypass
                 target_api_url = f"https://ocr.space{ocr_key}&url={proof_screenshot.url}"
                 proxy_wrapper_url = f"https://allorigins.win{urllib.parse.quote(target_api_url)}"
                 
