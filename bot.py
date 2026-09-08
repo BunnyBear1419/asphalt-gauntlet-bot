@@ -190,8 +190,8 @@ def preprocess_text_with_fuzzy(text: str) -> str:
     text = fuzzy_correct_marker(text, "PLAYER")
     text = fuzzy_correct_marker(text, "LEVEL")
     text = fuzzy_correct_marker(text, "CLUB")
-    text = re.sub(r'(1D|LD|lD)', 'ID', text)
-    text = re.sub(r'(6ARAGE|GARA6E)', 'GARAGE', text)
+    text = re.sub(r'(1D|LD|lD)', 'ID', text)
+    text = re.sub(r'(6ARAGE|GARA6E)', 'GARAGE', text)
     return text
 
 def calculate_elo_change(winner_elo: int, loser_elo: int, k_factor: int = 32):
@@ -222,19 +222,20 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
         target_channel = bot.get_channel(int(channel_id))
         if not target_channel: continue
         ping_content = f"<@&{config['announcement_role_id']}>" if config.get("announcement_role_id") else ""
-        header_embed = discord.Embed(title=f"🏁 SEASON {current_season_num} GAUNTLET FINALE AWARDS", description="The 2-week tournament window has closed! Standings calculated.", color=0xffaa00, timestamp=datetime.utcnow())
+        header_embed = discord.Embed(title=f"🏁 SEASON {current_season_num} GAUNTLET FINALE AWARDS", description="The 2-week tournament window has closed! Standings calculated.", color=0xffaa00)
         await target_channel.send(content=ping_content, embed=header_embed)
         for div in divisions:
             cursor = bot.db.drivers.find({"guild_id": str(guild_id), "garage_pi": div["query"]}).sort("elo", -1).limit(5)
             top_drivers = await cursor.to_list(length=5)
             div_embed = discord.Embed(title=div["name"], color=div["color"])
-            if not top_drivers: div_embed.description = "*No verified driver positions secured in this tier bracket.*"
+            if not top_drivers: 
+                div_embed.description = "*No verified driver positions secured in this tier bracket.*"
             else:
-standings_text = "".join([
-    (f"{'🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '} "
-     f"<@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n")
-    for r, d in enumerate(top_drivers)
-])
+                standings_text = "".join([
+                    (f"{'🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '} "
+                     f"<@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n")
+                    for r, d in enumerate(top_drivers)
+                ])
                 div_embed.add_field(name="Final Placements", value=standings_text, inline=False)
             await target_channel.send(embed=div_embed)
     await bot.db.pending.delete_many({})
@@ -295,7 +296,7 @@ class DefenseView(discord.ui.View):
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
-        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"defense_locked": {"track": self.track, "fleet_summary": self.fleet_desc, "lap_time": self.lap_time, "ms": self.raw_ms, "proof_url": self.proof_url, "locked_at": time.time()}}}, upsert=False)
+        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"defense_locked": {"track": self.track, "fleet_summary": self.fleet_desc, "lap_time": self.lap_time, "ms": self.raw_ms, "proof_url": self.proof_url}}})
         await interaction.message.edit(embed=discord.Embed(title="✅ Gauntlet Defense Position Approved & Locked", color=discord.Color.green()), view=self)
         await dispatch_audit_log(self.guild_id, "🛡️ Defense Position Locked", f"Racer <@{self.user_id}> locked defense on `{self.track}` (**{self.lap_time}**).", color=0x2ecc71)
     @discord.ui.button(label="Reject Defense Placement", style=discord.ButtonStyle.red, custom_id="reject_def_btn")
@@ -314,7 +315,7 @@ class VerificationView(discord.ui.View):
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
-        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"guild_id": self.guild_id, "user_id": self.user_id, "game_id": self.game_id, "garage_pi": self.rank, "control_type": self.control, "elo": 1000, "career_wins": 0, "career_played": 0, "streak": 0, "verified_at": time.time()}}, upsert=True)
+        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"guild_id": self.guild_id, "user_id": self.user_id, "game_id": self.game_id, "garage_pi": self.rank, "elo": 1000, "career_wins": 0, "career_played": 0, "streak": 0, "verified": True}})
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
         cfg = await bot.db.settings.find_one({"_id": self.guild_id})
         if cfg:
@@ -346,14 +347,12 @@ class ChallengeDropdown(discord.ui.Select):
         await interaction.response.defer()
         target_user_id = self.values[0]
         opp_data = self.defender_def_data[target_user_id]
-        embed = discord.Embed(title="⚔️ Official Gauntlet Ghost Lobby Engaged!", description="Racing against this driver's locked defensive ghost configuration. **Challengers can use any car in the game to beat this score!**", color=0xff3366)
+        embed = discord.Embed(title="⚔️ Official Gauntlet Ghost Lobby Engaged!", description="Racing against this driver's locked defensive ghost configuration. **Challengers can use any car in their garage.**", color=0x00ffcc)
         embed.add_field(name="🏁 Battle Track Location", value=f"📍 **{self.track_name}**", inline=False)
-        embed.add_field(name="🛡️ Opponent Locked Defense Fleet", value=f"```
-{opp_data['fleet']}
-```", inline=False)
+        embed.add_field(name="🛡️ Opponent Locked Defense Fleet", value=f"```\n{opp_data['fleet']}\n```", inline=False)
         embed.add_field(name="⏱️ Target Ghost Time to Beat", value=f"🏁 **{opp_data['lap_time']}**", inline=True)
         self.view.clear_items()
-        await interaction.followup.send(content=f"<@{target_user_id}>'s Ghost Defense engaged by challenger {interaction.user.mention}!", embed=embed, view=LobbyUIButtons(str(interaction.user.id), target_user_id, opp_data["ms"], self.track_name))
+        await interaction.followup.send(content=f"<@{target_user_id}>'s Ghost Defense engaged by challenger {interaction.user.mention}!", embed=embed, view=LobbyUIButtons(str(interaction.user.id), target_user_id, opp_data['ms'], self.track_name))
         await interaction.message.edit(view=self.view)
 
 class ChallengeView(discord.ui.View):
@@ -362,13 +361,13 @@ class ChallengeView(discord.ui.View):
         self.add_item(ChallengeDropdown(track_name, options_list, defender_def_data))
 
 @bot.tree.command(name="setup", description="[Admin Only] Configures all league core channels and permission roles.")
-@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", admin_role="Administrative role override", driver_role="Role auto-assigned to drivers", announcement_role="Role auto-assigned for season pings")
+@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", admin_role="Admin override role", driver_role="Verified driver role", announcement_role="Announcement ping role")
 async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, admin_role: discord.Role, driver_role: discord.Role, announcement_role: discord.Role):
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Admin role overrides missing.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "admin_role_id": str(admin_role.id), "driver_role_id": str(driver_role.id), "announcement_role_id": str(announcement_role.id), "configured_at": time.time()}}, upsert=True)
+    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "admin_role_id": str(admin_role.id), "driver_role_id": str(driver_role.id), "announcement_role_id": str(announcement_role.id)}}, upsert=True)
     await interaction.followup.send(embed=discord.Embed(title="⚙️ Master League Matrix Configuration Restored", description="All channel streams and dynamic role mapping rules saved successfully.", color=0x00ffcc))
     await dispatch_audit_log(interaction.guild_id, "⚙️ Master Setup Initialized", f"The bot was initialized perfectly by authority {interaction.user.mention}.", color=0x00ffcc)
 
@@ -427,17 +426,11 @@ async def set_defense_cmd(interaction: discord.Interaction, track: str, lap_time
         m, s = lap_time.split(":")
         sec, ms = s.split(".")
         raw_ms = (int(m) * 60 * 1000) + (int(sec) * 1000) + int(ms)
-        fleet_summary = f"1. {car_1}
-2. {car_2}
-3. {car_3}
-4. {car_4}
-5. {car_5}"
+        fleet_summary = f"1. {car_1}\n2. {car_2}\n3. {car_3}\n4. {car_4}\n5. {car_5}"
         emb = discord.Embed(title="🛡️ New Gauntlet Defense Placement Verification", color=0x3498db)
         emb.add_field(name="Driver", value=interaction.user.mention, inline=True)
         emb.add_field(name="Locked Track", value=f"📍 `{track}`", inline=False)
-        emb.add_field(name="Roster Fleet", value=f"```
-{fleet_summary}
-```", inline=False)
+        emb.add_field(name="Roster Fleet", value=f"```\n{fleet_summary}\n```", inline=False)
         emb.set_image(url=proof_screenshot.url)
         await chan.send(embed=emb, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), track, fleet_summary, lap_time, raw_ms, proof_screenshot.url))
         await interaction.followup.send("📥 **Defense Staged:** Lineup sent to staff for audit clearance!")
@@ -451,7 +444,7 @@ async def challenge_cmd(interaction: discord.Interaction):
         await interaction.followup.send("❌ Run `/register` first.")
         return
     user_pi = user_profile.get("garage_pi", 15500)
-    pi_query = {"$lt": 5000} if user_pi < 5000 else {"$gte": 5000, "$lt": 10000} if user_pi < 10000 else {"$gte": 10000, "$lt": 14000} if user_pi < 14000 else {"$gte": 14000, "$lt": 16500} if user_pi < 16500 else {"$gte": 16500, "$lt": 18000} if user_pi < 18000 else {"$gte": 18000}
+    pi_query = {"$lt": 5000} if user_pi < 5000 else {"$gte": 5000, "$lt": 10000} if user_pi < 10000 else {"$gte": 10000, "$lt": 14000} if user_pi < 14000 else {"$gte": 14000, "$lt": 16500} if user_pi < 16500 else {"$gte": 16500}
     cursor = bot.db.drivers.find({"guild_id": guild_id, "user_id": {"$ne": user_id}, "garage_pi": pi_query, "defense_locked": {"$exists": True}}).limit(10)
     candidates = await cursor.to_list(length=10)
     if not candidates:
@@ -472,13 +465,10 @@ async def profile_cmd(interaction: discord.Interaction, driver: discord.Member =
         await interaction.followup.send("❌ Profile card missing. Run `/register` first.")
         return
     embed = discord.Embed(title="🏁 ALU Gauntlet Driver Profile Card", color=0x00ffcc)
-    embed.add_field(name="👤 Racing Player", value=f"{target_user.mention}
-ID: `{profile.get('game_id')}`", inline=True)
-    embed.add_field(name="📊 Statistics", value=f"• **League Elo:** `{profile.get('elo', 1000)}`
-• **Wins:** `{profile.get('career_wins', 0)}` • **Streak:** `{profile.get('streak', 0)}`", inline=False)
+    embed.add_field(name="👤 Racing Player", value=f"{target_user.mention}\nID: `{profile.get('game_id')}`", inline=True)
+    embed.add_field(name="📊 Statistics", value=f"• **League Elo:** `{profile.get('elo', 1000)}`\n• **Wins:** `{profile.get('career_wins', 0)}` • **Streak:** `{profile.get('streak', 0)}`", inline=False)
     if profile.get("defense_locked"):
-        embed.add_field(name="🛡️ Locked Ghost Defense", value=f"**Track:** {profile['defense_locked']['track']}
-Time: `{profile['defense_locked']['lap_time']}`", inline=False)
+        embed.add_field(name="🛡️ Locked Ghost Defense", value=f"**Track:** {profile['defense_locked']['track']}\nTime: `{profile['defense_locked']['lap_time']}`", inline=False)
     await interaction.followup.send(embed=embed)
 
 @bot.tree.command(name="leaderboard", description="Displays division standings.")
@@ -505,29 +495,23 @@ async def help_cmd(interaction: discord.Interaction):
     
     embed.add_field(
         name="🏎️ What is the Gauntlet Bot?", 
-        value="This system facilitates organized competitive tournament seasons. Drivers lock an official **5-car defense line** on a verified race track. Challengers are dynamically matched with ghost line configurations, pushing lap times to the limit to extract rank ELO metrics.", 
+        value="This system facilitates organized competitive tournament seasons. Drivers lock an official **5-car defense line** on a verified race track. Challengers are dynamically matched with opponents in their tier.",
         inline=False
     )
     
     player_guide = (
-        "1️⃣ **/register** — Submit game identification card verification with an OCR snapshot file attachment.
-"
-        "2️⃣ **/setdefense** — Select your track course and lock your optimal 5-car ghost framework defense system.
-"
-        "3️⃣ **/challenge** — Match instantly with opponents in your tier bracket on a randomized racing arena.
-"
+        "1️⃣ **/register** — Submit game identification card verification with an OCR snapshot file attachment.\n"
+        "2️⃣ **/setdefense** — Select your track course and lock your optimal 5-car ghost framework defense system.\n"
+        "3️⃣ **/challenge** — Match instantly with opponents in your tier bracket on a randomized racing arena.\n"
         "4️⃣ **Submit Results** — If your time beats the opponent's ghost line, you score higher ELO rating values."
     )
     embed.add_field(name="🎮 Driver Matchmaking Loop Sequence", value=player_guide, inline=False)
     
     if is_admin:
         admin_guide = (
-            "🛠️ **Welcome Authority Staff!** You have elevated clearance matrix access:
-"
-            "• Assign strict boundaries using `/setup` to anchor verification flows into structural channels.
-"
-            "• Monitor incoming profile queues inside your private administration workspace.
-"
+            "🛠️ **Welcome Authority Staff!** You have elevated clearance matrix access:\n"
+            "• Assign strict boundaries using `/setup` to anchor verification flows into structural channels.\n"
+            "• Monitor incoming profile queues inside your private administration workspace.\n"
             "• Force close operational tournament cycles anytime via `/seasonend` execution vectors."
         )
         embed.add_field(name="⚙️ Administration Management Manual", value=admin_guide, inline=False)
@@ -544,34 +528,23 @@ async def commands_cmd(interaction: discord.Interaction):
     embed = discord.Embed(title="🤖 Slash Command Mapping Matrix Catalog", color=0x3498db)
     
     player_commands = (
-        "• `/help` — Generates a comprehensive framework overview layout.
-"
-        "• `/register [game_id] [proof_screenshot] [control_type]` — Join the verification queue.
-"
-        "• `/setdefense [track] [lap_time] [proof_screenshot] [car_1]...[car_5]` — Deploy ghost lines.
-"
-        "• `/challenge` — Request matchmaking pairs against active bracket lines.
-"
-        "• `/profile (driver)` — Inspect a driver's historical credentials and stats ledger.
-"
-        "• `/leaderboard` — Pull metrics for divisional tier standings tracking configurations.
-"
+        "• `/help` — Generates a comprehensive framework overview layout.\n"
+        "• `/register [game_id] [proof_screenshot] [control_type]` — Join the verification queue.\n"
+        "• `/setdefense [track] [lap_time] [proof_screenshot] [car_1]...[car_5]` — Deploy ghost lines.\n"
+        "• `/challenge` — Request matchmaking pairs against active bracket lines.\n"
+        "• `/profile (driver)` — Inspect a driver's historical credentials and stats ledger.\n"
+        "• `/leaderboard` — Pull metrics for divisional tier standings tracking configurations.\n"
         "• `/top` — Returns career milestones for lifetime rank achievements."
     )
     embed.add_field(name="🎮 Standard Driver Commands", value=player_commands, inline=False)
     
     if is_admin:
         admin_commands = (
-            "• `/setup [channels...] [roles...]` — Maps interface anchors for structural routing rules.
-"
-            "• `/seasonend` — Instantly terminates current window frame timers and posts podium honors.
-"
-            "• `/clearhistory [target_data]` — Wipes collection targets cleanly out of active state databases.
-"
-            "• `/admin_setpi [racer] [new_pi]` — Overrides a driver's rank value bypassing OCR scanning.
-"
-            "• `/admin_removeracer [racer]` — Deletes profile tracking files completely from memory clusters.
-"
+            "• `/setup [channels...] [roles...]` — Maps interface anchors for structural routing rules.\n"
+            "• `/seasonend` — Instantly terminates current window frame timers and posts podium honors.\n"
+            "• `/clearhistory [target_data]` — Wipes collection targets cleanly out of active state databases.\n"
+            "• `/admin_setpi [racer] [new_pi]` — Overrides a driver's rank value bypassing OCR scanning.\n"
+            "• `/admin_removeracer [racer]` — Deletes profile tracking files completely from memory clusters.\n"
             "• `/diagnostics` — Launches localized cluster tests across host execution modules."
         )
         embed.add_field(name="🛠️ Administrative Control Commands", value=admin_commands, inline=False)
@@ -602,7 +575,7 @@ async def diagnostics_cmd(interaction: discord.Interaction):
             await bot.mongo_client.admin.command('ping')
             report.append("• **MongoDB Atlas Cloud:** `CONNECTED` (Ping response within matrix threshold bounds)")
         else:
-            report.append("• **MongoDB Atlas Cloud:** `OFFLINE` (Local Mock Database simulation simulation running)")
+            report.append("• **MongoDB Atlas Cloud:** `OFFLINE` (Local Mock Database simulation running)")
     except Exception as mongo_err:
         report.append(f"• **MongoDB Atlas Cloud:** `CRITICAL ERROR` ({str(mongo_err)})")
         
