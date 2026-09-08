@@ -303,8 +303,11 @@ class VerificationView(discord.ui.View):
                 member = guild.get_member(int(self.user_id))
                 if member:
                     roles = [guild.get_role(int(cfg[k])) for k in ["driver_role_id", "announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
-                    if roles: try: await member.add_roles(*roles)
-                    except Exception: pass
+                    if roles:
+                        try:
+                            await member.add_roles(*roles)
+                        except Exception:
+                            pass
         await interaction.message.edit(embed=discord.Embed(title="✅ Driver Profile Approved", color=discord.Color.green()), view=self)
         await dispatch_audit_log(self.guild_id, "👤 Driver Approved", f"User <@{self.user_id}> approved with `{self.rank:,} PI`.", color=0x2ecc71)
     @discord.ui.button(label="Reject Account", style=discord.ButtonStyle.red, custom_id="reject_driver_btn")
