@@ -241,24 +241,35 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
     if ocr_key and ocr_key != "your_free_ocr_space_api_key_here":
         try:
             async with aiohttp.ClientSession() as session:
-                # Connected directly to OCR.space's official high-availability alternative node cluster
-                backup_api_url = f"https://ocr.space{ocr_key}&url={proof_screenshot.url}"
-                
-                async with session.get(backup_api_url, timeout=12) as response:
-                    if response.status == 200:
-                        res_data = await response.json()
-                        raw_text = res_data.get("ParsedResults", [{}]).get("ParsedText", "")
-                        parsed_text = preprocess_text_with_fuzzy(raw_text)
+                # 1. Download attachment image buffer asynchronously into memory
+                async with session.get(proof_screenshot.url) as img_resp:
+                    if img_resp.status == 200:
+                        img_bytes = await img_resp.read()
                         
-                        match_id = re.search(r"ID[:\s]*([A-Z0-9_\-]+)", parsed_text)
-                        match_pi = re.search(r"GARAGE[:\s]*([0-9,]+)", parsed_text)
+                        # 2. Package raw buffer as an upload form stream to bypass data center blocks
+                        data = aiohttp.FormData()
+                        data.add_field('apikey', ocr_key)
+                        data.add_field('language', 'eng')
+                        data.add_field('file', img_bytes, filename='screenshot.png', content_type='image/png')
                         
-                        if match_id: game_id = match_id.group(1)
-                        if match_pi: parsed_rank = int(match_pi.group(1).replace(",", ""))
+                        # 3. Fire a direct multipart HTTP POST request payload payload
+                        async with session.post("https://ocr.space", data=data, timeout=12) as response:
+                            if response.status == 200:
+                                res_data = await response.json()
+                                raw_text = res_data.get("ParsedResults", [{}]).get("ParsedText", "")
+                                parsed_text = preprocess_text_with_fuzzy(raw_text)
+                                
+                                match_id = re.search(r"ID[:\s]*([A-Z0-9_\-]+)", parsed_text)
+                                match_pi = re.search(r"GARAGE[:\s]*([0-9,]+)", parsed_text)
+                                
+                                if match_id: game_id = match_id.group(1)
+                                if match_pi: parsed_rank = int(match_pi.group(1).replace(",", ""))
+                            else:
+                                ocr_status = "MANUAL_REVIEW_REQUIRED_API_THROTTLE"
                     else:
-                        ocr_status = "MANUAL_REVIEW_REQUIRED_API_THROTTLE"
+                        ocr_status = "MANUAL_REVIEW_REQUIRED_DOWNLOAD_FAILED"
         except Exception as err:
-            logging.error(f"Backup Cluster OCR Pipeline Error: {err}")
+            logging.error(f"POST Multi-part OCR Pipeline Error: {err}")
             ocr_status = "MANUAL_REVIEW_REQUIRED_FALLBACK"
 
     db_id = f"{interaction.guild_id}_{interaction.user.id}"
@@ -272,7 +283,7 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
         upsert=True
     )
     
-    msg_prefix = f"📥 **Submission Completed (Auto-Filled Profile UI).** Detected ID: `{game_id}`, PI: `{parsed_rank:,}`" if ocr_status == "AUTOMATED_OCR_PASS" else "⚠️ **OCR Network Delay.** Submission queued for manual review."
+    msg_prefix = f"📥 **Submission Completed (Auto-Filled Profile UI).** Detected ID: `{game_id}`, PI: `{parsed_rank:,}`" if ocr_status == "AUTOMATED_OCR_PASS" else "⚠️ **OCR Payload Rerouted.** Submission queued for manual review."
     await interaction.followup.send(f"{msg_prefix} Roster lines routed to staff review queues.")
     
     chan = bot.get_channel(int(cfg["review_channel_id"]))
@@ -299,19 +310,26 @@ async def diagnose_cmd(interaction: discord.Interaction):
     except Exception as db_err:
         db_status = f"🔴 Disconnected ({type(db_err).__name__})"
     
-    ocr_status = "🟢 Operational (Official Backup Cluster)"
+    ocr_status = "🟢 Operational (Direct Payload Stream)"
     ocr_key = os.getenv("OCR_SPACE_API_KEY")
     if not ocr_key or ocr_key == "your_free_ocr_space_api_key_here":
         ocr_status = "🟡 Missing API Key in Environment Variables"
     else:
         try:
             async with aiohttp.ClientSession() as session:
-                test_url = f"https://ocr.space{ocr_key}&url=https://githubusercontent.com"
-                async with session.get(test_url, timeout=6) as resp:
-                    if resp.status != 200:
-                        ocr_status = f"🔴 Backup Cluster Error (HTTP {resp.status})"
-        except Exception:
-            ocr_status = "🔴 Connection Timeout"
+                # Create a tiny 1x1 blank pixel image chunk to test our payload connection bounds
+                blank_pixel = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc`\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+                data = aiohttp.FormData()
+                data.add_field('apikey', ocr_key)
+                data.add_field('file', blank_pixel, filename='test.png', content_type='image/png')
+                
+                async with session.post("https://ocr.space", data=data, timeout=6) as resp:
+                    if resp.status == 200:
+                        ocr_status = "🟢 Operational (Direct Payload Stream)"
+                    else:
+                        ocr_status = f"🔴 Payload POST Error (HTTP {resp.status})"
+        except Exception as e:
+            ocr_status = f"🔴 Connection Timeout ({type(e).__name__})"
 
     ram_used = 0.0
     try:
