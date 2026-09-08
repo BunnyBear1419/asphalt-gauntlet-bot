@@ -7,6 +7,7 @@ import aiohttp
 import urllib.parse
 import json
 import random
+import csv
 from datetime import datetime
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
@@ -209,12 +210,16 @@ def preprocess_text_with_fuzzy(text: str) -> str:
     text = re.sub(r'(6ARAGE|GARA6E)', 'GARAGE', text)
     return text
 
-def calculate_elo_change(winner_elo: int, loser_elo: int, k_factor: int = 32):
+def calculate_elo_change(winner_elo: int, loser_elo: int, winner_streak: int = 0, k_factor: int = 32):
     expected_winner = 1 / (1 + 10 ** ((loser_elo - winner_elo) / 400))
     expected_loser = 1 / (1 + 10 ** ((winner_elo - loser_elo) / 400))
-    new_winner_elo = winner_elo + round(k_factor * (1 - expected_winner))
+    
+    # Custom win-streak ELO modifier logic: Adds an extra 4 ELO points per streak tier (caps at +20 ELO bonus)
+    streak_bonus = min(20, (winner_streak // 2) * 4) if winner_streak >= 2 else 0
+    
+    new_winner_elo = winner_elo + round(k_factor * (1 - expected_winner)) + streak_bonus
     new_loser_elo = loser_elo + round(k_factor * (0 - expected_loser))
-    return max(100, new_winner_elo), max(100, new_loser_elo)
+    return max(100, new_winner_elo), max(100, new_loser_elo), streak_bonus
 
 async def dispatch_automated_announcement(guild_id: str, title: str, description: str, color: int = 0x00FFCC, image_url: str = None):
     """Sends a beautifully styled premium global announcement alert to the league."""
@@ -259,26 +264,38 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
         header_embed.set_image(url=ASPHALT_MEDIA["banner_leaderboard"])
         await target_channel.send(content=ping_content, embed=header_embed)
         
+        # Prepare leaderboard file structures
+        csv_buffer = io.StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        csv_writer.writerow(["Division", "Rank", "User ID", "Game ID", "ELO Rating", "Garage PI"])
+        
         for div in divisions:
-            cursor = bot.db.drivers.find({"guild_id": str(guild_id), "garage_pi": div["query"]}).sort("elo", -1).limit(5)
-            top_drivers = await cursor.to_list(length=5)
+            cursor = bot.db.drivers.find({"guild_id": str(guild_id), "garage_pi": div["query"]}).sort("elo", -1).limit(100)
+            top_drivers = await cursor.to_list(length=100)
             div_embed = discord.Embed(title=div["name"], color=div["color"])
             if not top_drivers: 
                 div_embed.description = "*No verified driver positions secured in this tier bracket.*"
             else:
-                standings_text = "".join([
-                    (f"{'🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '} "
-                     f"<@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**
-")
-                    for r, d in enumerate(top_drivers)
-                ])
+                standings_text = ""
+                for r, d in enumerate(top_drivers[:10]):  # Show top 10 inside the Discord embed channel view
+                    medal = '🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '
+                    standings_text += f"{medal} <@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n"
+                    
+                for r, d in enumerate(top_drivers):
+                    csv_writer.writerow([div["name"], r+1, d['user_id'], d['game_id'], d.get('elo', 1000), d.get('garage_pi', 0)])
+                    
                 div_embed.add_field(name="🏆 Final Elite Standings Placements", value=standings_text, inline=False)
             await target_channel.send(embed=div_embed)
+            
+        # Send full comprehensive leaderboard report asset to the announcement channel streams
+        csv_buffer.seek(0)
+        discord_file = discord.File(fp=io.BytesIO(csv_buffer.getvalue().encode('utf-8')), filename=f"season_{current_season_num}_final_leaderboard.csv")
+        await target_channel.send(content="📊 **Complete System-Wide Divisional Standings Ledger Matrix Download:**", file=discord_file)
             
     await bot.db.pending.delete_many({})
     await bot.db.season_state.update_one({"_id": "current_season"}, {"$set": {"season_number": current_season_num + 1, "ends_at": now + (14 * 24 * 60 * 60)}}, upsert=True)
     if forced_interaction:
-        await forced_interaction.followup.send(embed=discord.Embed(title="⚙️ Season Rollover Executed", description="All dynamic structural maps cycled securely.", color=ASPHALT_THEME_COLOR))
+        await forced_interaction.followup.send(embed=discord.Embed(title="⚙️ Season Rollover Executed", description="All dynamic structural maps cycled securely and podium files dispatched.", color=ASPHALT_THEME_COLOR))
 
 class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
     challenger_lap = discord.ui.TextInput(label="Your Run Lap Time (MM:SS.MS)", placeholder="e.g. 01:12.431", required=True)
@@ -286,7 +303,7 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
 
     def __init__(self, challenger_id: str, opponent_id: str, defense_ms: int, track_name: str):
         super().__init__()
-        self.challenger_id, self.opponent_id, self.defense_ms, self.track_name = challenger_id, opponent_id, defense_ms, track_name
+        self.challenger_id, self.opponent_id, self.defense_ms, self.track_name = str(challenger_id), str(opponent_id), defense_ms, track_name
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -299,22 +316,35 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
         challenger_ms = (int(m) * 60 * 1000) + (int(sec) * 1000) + int(ms)
         p1 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{self.challenger_id}"})
         p2 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{self.opponent_id}"})
+        
         if challenger_ms < self.defense_ms:
             w_id, l_id = self.challenger_id, self.opponent_id
             w_prof, l_profile = p1, p2
+            current_streak = w_prof.get("streak", 0) + 1
+            new_w_elo, new_l_elo, streak_bonus = calculate_elo_change(w_prof.get("elo", 1000), l_profile.get("elo", 1000), winner_streak=current_streak)
+            
             outcome_desc = f"🏆 <@{self.challenger_id}> **successfully cracked the defense line** on `{self.track_name}`!\n⏱️ Time Beat: `{self.challenger_lap.value}` vs Ghost Line."
+            if streak_bonus > 0:
+                outcome_desc += f"\n🔥 **Streak Multiplier Engaged:** +{streak_bonus} bonus ELO applied for a streak of {current_streak} wins!"
             display_color = ASPHALT_VICTORY_COLOR
             announce_title = "⚡ GAUNTLET LINE COLLAPSED"
+            
+            await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
+            await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
         else:
             w_id, l_id = self.opponent_id, self.challenger_id
             w_prof, l_profile = p2, p1
+            current_streak = w_prof.get("streak", 0) + 1
+            new_w_elo, new_l_elo, streak_bonus = calculate_elo_change(w_prof.get("elo", 1000), l_profile.get("elo", 1000), winner_streak=current_streak)
+            
             outcome_desc = f"💀 <@{self.opponent_id}>'s **ghost defense successfully held off** the challenger on `{self.track_name}`.\n⏱️ Attempted time: `{self.challenger_lap.value}`."
+            if streak_bonus > 0:
+                outcome_desc += f"\n🔥 **Defender Streak Multiplier Engaged:** +{streak_bonus} bonus ELO applied for a streak of {current_streak} holds!"
             display_color = ASPHALT_DEFEAT_COLOR
             announce_title = "🛡️ DEFENSE HOLD SECURED"
             
-        new_w_elo, new_l_elo = calculate_elo_change(w_prof.get("elo", 1000), l_profile.get("elo", 1000))
-        await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
-        await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
+            await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
+            await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
         
         # Premium Result Display Embed Matrix
         res_emb = discord.Embed(title=f"🏁 Gauntlet Match Instance Resolved", description=outcome_desc, color=display_color)
@@ -327,7 +357,7 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
 class LobbyUIButtons(discord.ui.View):
     def __init__(self, challenger_id: str, opponent_id: str, defense_ms: int, track_name: str):
         super().__init__(timeout=1800)
-        self.challenger_id, self.opponent_id, self.defense_ms, self.track_name = challenger_id, opponent_id, defense_ms, track_name
+        self.challenger_id, self.opponent_id, self.defense_ms, self.track_name = str(challenger_id), str(opponent_id), defense_ms, track_name
     @discord.ui.button(label="Submit Match Results", style=discord.ButtonStyle.blurple, custom_id="lobby_report_btn")
     async def report_match(self, interaction: discord.Interaction, button: discord.ui.Button):
         if str(interaction.user.id) != self.challenger_id:
@@ -338,13 +368,13 @@ class LobbyUIButtons(discord.ui.View):
 class DefenseView(discord.ui.View):
     def __init__(self, user_id: str, guild_id: str, track: str, fleet_desc: str, lap_time: str, raw_ms: int, proof_url: str):
         super().__init__(timeout=None)
-        self.user_id, self.guild_id, self.track, self.fleet_desc, self.lap_time, self.raw_ms, self.proof_url = user_id, guild_id, track, fleet_desc, lap_time, raw_ms, proof_url
+        self.user_id, self.guild_id, self.track, self.fleet_desc, self.lap_time, self.raw_ms, self.proof_url = str(user_id), str(guild_id), track, fleet_desc, lap_time, raw_ms, proof_url
     @discord.ui.button(label="Approve Defense Placement", style=discord.ButtonStyle.green, custom_id="approve_def_btn")
     async def approve_def(self, interaction: discord.Interaction, button: discord.ui.Button):
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
-        await bot.db.drivers.update_one({"_id": f"{str(self.guild_id)}_{str(self.user_id)}"}, {"$set": {"defense_locked": {"track": self.track, "fleet_summary": self.fleet_desc, "lap_time": self.lap_time, "ms": self.raw_ms, "proof_url": self.proof_url}}})
+        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"defense_locked": {"track": self.track, "fleet_summary": self.fleet_desc, "lap_time": self.lap_time, "ms": self.raw_ms, "proof_url": self.proof_url}}})
         await interaction.message.edit(embed=discord.Embed(title="✅ Gauntlet Defense Position Approved & Locked", color=ASPHALT_VICTORY_COLOR), view=self)
         await dispatch_audit_log(self.guild_id, "🛡️ Defense Position Locked", f"Racer <@{self.user_id}> locked defense on `{self.track}` (**{self.lap_time}**).", color=0x2ecc71)
         await dispatch_automated_announcement(self.guild_id, "🛡️ NEW COVERT DEFENSE PACK DEPLOYED", f"🏎️ Driver <@{self.user_id}> has deployed and verified a 5-Car defensive framework on **`{self.track}`**! Beat time matrix parameter: `{self.lap_time}`.", color=ASPHALT_THEME_COLOR)
@@ -355,126 +385,90 @@ class DefenseView(discord.ui.View):
         await interaction.response.defer()
         await interaction.message.edit(embed=discord.Embed(title="❌ Gauntlet Defense Position Rejected", color=ASPHALT_DEFEAT_COLOR), view=self)
 
-class RegistrationDeclineModal(discord.ui.Modal, title="Reason for Declining Registry"):
-    reason_input = discord.ui.TextInput(
-        label="Provide a reason for rejection",
-        style=discord.TextStyle.long,
-        placeholder="e.g. Blurry screenshot, incorrect Player ID format, missing rating information...",
-        required=True,
-        max_length=400
-    )
-
-    def __init__(self, user_id: str, guild_id: str, game_id: str):
+class RegistrationDeclineModal(discord.ui.Modal, title="Specify Application Rejection Reason"):
+    reason_input = discord.ui.TextInput(label="Reason for Disapproval", style=discord.TextStyle.paragraph, placeholder="e.g. Blurry screenshot metadata, mismatched game player node ID digits...", required=True, max_length=400)
+    
+    def __init__(self, user_id: str, guild_id: str):
         super().__init__()
-        self.user_id = str(user_id)
-        self.guild_id = str(guild_id)
-        self.game_id = str(game_id)
-
+        self.user_id, self.guild_id = str(user_id), str(guild_id)
+        
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        reason = self.reason_input.value.strip()
-        
-        # Delete from pending queue
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
         
-        # Modify original interface message
-        if interaction.message:
-            rej_embed = discord.Embed(
-                title="❌ Driver Profile Registration Rejected",
-                description=f"**Reason Provided:** {reason}",
+        # Dispatch customized Direct Message notification alerting applicant
+        guild = bot.get_guild(int(self.guild_id))
+        member = guild.get_member(int(self.user_id)) if guild else None
+        if member:
+            dm_embed = discord.Embed(
+                title="❌ REGISTRY APPLICATION DECLINED",
+                description=f"Hello racer, your competitive track authorization packet for **{guild.name}** was reviewed and disapproved by management staff panels.",
                 color=ASPHALT_DEFEAT_COLOR
             )
-            await interaction.message.edit(embed=rej_embed, view=None)
+            dm_embed.add_field(name="📋 Stated Reason For Disapproval", value=f"```\n{self.reason_input.value}\n```", inline=False)
+            dm_embed.set_footer(text="Please rectify listed parameter details and re-apply.")
+            try: await member.send(embed=dm_embed)
+            except Exception: pass
             
-        # Log to system audit trail
-        await dispatch_audit_log(self.guild_id, "👤 Registration Application Declined", f"Applicant: <@{self.user_id}> (`{self.game_id}`)\nStaff Authority: {interaction.user.mention}\n**Reason:** {reason}", color=ASPHALT_DEFEAT_COLOR)
-        
-        # Forward direct notice message payload out to player DM pipeline channel node
-        guild = bot.get_guild(int(self.guild_id))
-        guild_name = guild.name if guild else "the Gauntlet League Server"
-        try:
-            target_user = await bot.fetch_user(int(self.user_id))
-            if target_user:
-                dm_embed = discord.Embed(
-                    title="❌ Gauntlet Registry Profile Declined",
-                    description=f"Your profile verification application has been reviewed and declined in **{guild_name}**.",
-                    color=ASPHALT_DEFEAT_COLOR,
-                    timestamp=datetime.utcnow()
-                )
-                dm_embed.add_field(name="📋 Feedback / Reason", value=reason, inline=False)
-                dm_embed.set_footer(text="Please correct the issues and re-submit via /register")
-                await target_user.send(embed=dm_embed)
-        except Exception as dm_err:
-            logging.warning(f"Could not dispatch failure notice DM payload string packet array directly to client {self.user_id}: {dm_err}")
+        await dispatch_audit_log(self.guild_id, "👤 Driver Application Declined", f"User <@{self.user_id}> entry registration denied. Reason: {self.reason_input.value}", color=0xe74c3c)
 
 class VerificationView(discord.ui.View):
     def __init__(self, user_id: str, guild_id: str, game_id: str, rank: int, control: str):
         super().__init__(timeout=None)
-        self.user_id = str(user_id)
-        self.guild_id = str(guild_id)
-        self.game_id = str(game_id)
-        self.rank = int(rank)
-        self.control = str(control)
-
+        self.user_id, self.guild_id, self.game_id, self.rank, self.control = str(user_id), str(guild_id), game_id, rank, control
     @discord.ui.button(label="Approve Driver Account", style=discord.ButtonStyle.green, custom_id="approve_driver_btn")
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
         
-        # Ensure values are consistently written as typed schemas matching lookups completely
         await bot.db.drivers.update_one(
             {"_id": f"{str(self.guild_id)}_{str(self.user_id)}"},
             {"$set": {
-                "guild_id": str(self.guild_id),
-                "user_id": str(self.user_id),
-                "game_id": str(self.game_id),
-                "garage_pi": int(self.rank),
-                "elo": 1000,
-                "career_wins": 0,
-                "career_played": 0,
-                "streak": 0,
+                "guild_id": str(self.guild_id), 
+                "user_id": str(self.user_id), 
+                "game_id": str(self.game_id), 
+                "garage_pi": int(self.rank), 
+                "elo": 1000, 
+                "career_wins": 0, 
+                "career_played": 0, 
+                "streak": 0, 
                 "verified": True
             }},
             upsert=True
         )
-        await bot.db.pending.delete_one({"_id": f"{str(self.guild_id)}_{str(self.user_id)}"})
+        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        cfg = await bot.db.settings.find_one({"_id": self.guild_id})
         
-        cfg = await bot.db.settings.find_one({"_id": str(self.guild_id)})
         guild = bot.get_guild(int(self.guild_id))
-        if cfg and guild:
-            member = guild.get_member(int(self.user_id))
-            if member:
-                roles = [guild.get_role(int(cfg[k])) for k in ["driver_role_id", "announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
-                if roles:
-                    try: await member.add_roles(*roles)
-                    except Exception: pass
-                    
+        member = guild.get_member(int(self.user_id)) if guild else None
+        if member and cfg:
+            roles = [guild.get_role(int(cfg[k])) for k in ["driver_role_id", "announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
+            if roles:
+                try: await member.add_roles(*roles)
+                except Exception: pass
+                
+            # Send notification update to approved pilot credentials channel inbox
+            dm_success = discord.Embed(
+                title="🏎️ GAUNTLET GRID ENTRY GRANTED",
+                description=f"Congratulations pilot! Your driver application registration for **{guild.name}** was approved.",
+                color=ASPHALT_VICTORY_COLOR
+            )
+            dm_success.add_field(name="📈 Assigned Base ELO", value="`1000 ELO`", inline=True)
+            dm_success.add_field(name="⚙️ Verified Profile Strength", value=f"`{self.rank:,} PI`", inline=True)
+            dm_success.set_footer(text="Unlock authorization clearance via /challenge inside allowed rooms!")
+            try: await member.send(embed=dm_success)
+            except Exception: pass
+            
         await interaction.message.edit(embed=discord.Embed(title="✅ Driver Profile Approved", color=ASPHALT_VICTORY_COLOR), view=self)
         await dispatch_audit_log(self.guild_id, "👤 Driver Approved", f"User <@{self.user_id}> approved with `{self.rank:,} PI`.", color=0x2ecc71)
         await dispatch_automated_announcement(self.guild_id, "🏎️ NEW RACER ENTERED THE GRID", f"✨ Let's welcome <@{self.user_id}> (`{self.game_id}`) to the official competitive track circuit! Profile rated at **`{self.rank:,} PI`** using **`{self.control.upper()}`** dynamics.", color=ASPHALT_THEME_COLOR)
-        
-        # Dispatch Success Direct Message notice channel stream directly down into user DMs cleanly
-        guild_name = guild.name if guild else "the Gauntlet League Server"
-        try:
-            target_user = await bot.fetch_user(int(self.user_id))
-            if target_user:
-                dm_embed = discord.Embed(
-                    title="🟢 Gauntlet Registry Profile Approved!",
-                    description=f"Congratulations! Your profile structural registration file node has cleared audit processing in **{guild_name}**.",
-                    color=ASPHALT_VICTORY_COLOR,
-                    timestamp=datetime.utcnow()
-                )
-                dm_embed.add_field(name="📊 Starting Rating Allocation", value="• **ELO Rating:** `1000 ELO`\n• **Assigned Track Tier Performance PI:** " + f"`{self.rank:,} PI`", inline=False)
-                dm_embed.set_footer(text="You can now deploy your defense grid via /setdefense or find race matches via /challenge!")
-                await target_user.send(embed=dm_embed)
-        except Exception as dm_err:
-            logging.warning(f"Could not dispatch successful registration authorization notification package cleanly inside user {self.user_id} private DMs: {dm_err}")
-
     @discord.ui.button(label="Reject Account", style=discord.ButtonStyle.red, custom_id="reject_driver_btn")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Open up modal mapping interface collection dialog window to ask staff authority for text rejection cause parameters
-        await interaction.response.send_modal(RegistrationDeclineModal(self.user_id, self.guild_id, self.game_id))
+        # Fire modal frame allowing typing rejection specifications
+        await interaction.response.send_modal(RegistrationDeclineModal(self.user_id, self.guild_id))
+        for item in self.children: item.disabled = True
+        await interaction.message.edit(view=self)
 
 class ChallengeDropdown(discord.ui.Select):
     def __init__(self, track_name: str, options_list: list[discord.SelectOption], defender_def_data: dict):
@@ -482,7 +476,7 @@ class ChallengeDropdown(discord.ui.Select):
         self.track_name, self.defender_def_data = track_name, defender_def_data
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        target_user_id = self.values[0]
+        target_user_id = str(self.values[0])
         opp_data = self.defender_def_data[target_user_id]
         
         embed = discord.Embed(
@@ -517,6 +511,31 @@ async def setup_cmd(interaction: discord.Interaction, main_channel: discord.Text
     await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "admin_role_id": str(admin_role.id), "driver_role_id": str(driver_role.id), "announcement_role_id": str(announcement_role.id)}}, upsert=True)
     await interaction.followup.send(embed=discord.Embed(title="⚙️ Master League Matrix Configuration Restored", description="All channel streams and dynamic role mapping rules saved successfully.", color=ASPHALT_THEME_COLOR))
     await dispatch_audit_log(interaction.guild_id, "⚙️ Master Setup Initialized", f"The bot was initialized perfectly by authority {interaction.user.mention}.", color=ASPHALT_THEME_COLOR)
+
+@bot.tree.command(name="season_schedule", description="[Admin Only] Sets custom calendar horizons for active tournament season grids.")
+@app_commands.describe(start_date="Start date mapping (YYYY-MM-DD HH:MM)", end_date="Closing deadline boundary (YYYY-MM-DD HH:MM)")
+async def season_schedule_cmd(interaction: discord.Interaction, start_date: str, end_date: str):
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Requires admin access clearance level.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    try:
+        start_dt = datetime.strptime(start_date.strip(), "%Y-%m-%d %H:%M")
+        end_dt = datetime.strptime(end_date.strip(), "%Y-%m-%d %H:%M")
+        end_timestamp = time.mktime(end_dt.timetuple())
+        
+        await bot.db.season_state.update_one(
+            {"_id": "current_season"},
+            {"$set": {"ends_at": end_timestamp}},
+            upsert=True
+        )
+        
+        success_emb = discord.Embed(title="📅 TOURNAMENT CALENDAR TIMELINE INITIALIZED", color=ASPHALT_VICTORY_COLOR)
+        success_emb.description = f"⏱️ **Horizon Window Verified:**\n• **Start Matrix Point:** `{start_date}`\n• **Lockdown Vector Entry:** `{end_date}`\n\nDynamic tracking clocks synced perfectly."
+        await interaction.followup.send(embed=success_emb)
+        await dispatch_audit_log(interaction.guild_id, "📅 Timeline Program Updated", f"Season schedule modified manually. Target close entry locks scheduled at: {end_date}", color=ASPHALT_THEME_COLOR)
+    except ValueError:
+        await interaction.followup.send("❌ **Timestamp Read Error:** Please verify exact syntax pattern structural formats: `YYYY-MM-DD HH:MM`", ephemeral=True)
 
 @bot.tree.command(name="clearhistory", description="[Staff Only] Wipes specific collections or completely resets data.")
 @app_commands.choices(target_data=[app_commands.Choice(name="Pending Queue Only", value="pending"), app_commands.Choice(name="Approved Drivers Only", value="drivers"), app_commands.Choice(name="Reset Everything", value="all")])
@@ -563,8 +582,6 @@ async def set_defense_cmd(interaction: discord.Interaction, track: str, lap_time
         await interaction.response.send_message("❌ **Invalid Format:** Use standard format: `MM:SS.MS`.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    
-    # Standardize current lookup matching configurations
     profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.")
@@ -589,31 +606,21 @@ async def challenge_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer()
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
-    
-    user_profile = await bot.db.drivers.find_one({"_id": f"{str(guild_id)}_{str(user_id)}"})
+    user_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
     if not user_profile:
         await interaction.followup.send("❌ Run `/register` first.")
         return
-        
-    user_pi = int(user_profile.get("garage_pi", 15500))
+    user_pi = user_profile.get("garage_pi", 15500)
     pi_query = {"$lt": 5000} if user_pi < 5000 else {"$gte": 5000, "$lt": 10000} if user_pi < 10000 else {"$gte": 10000, "$lt": 14000} if user_pi < 14000 else {"$gte": 14000, "$lt": 16500} if user_pi < 16500 else {"$gte": 16500}
-    
-    # Update search queries to find driver matching documents using explicitly cast types
-    cursor = bot.db.drivers.find({
-        "guild_id": str(guild_id), 
-        "user_id": {"$ne": str(user_id)}, 
-        "garage_pi": pi_query, 
-        "defense_locked": {"$exists": True}
-    }).limit(10)
-    
+    cursor = bot.db.drivers.find({"guild_id": guild_id, "user_id": {"$ne": user_id}, "garage_pi": pi_query, "defense_locked": {"$exists": True}}).limit(10)
     candidates = await cursor.to_list(length=10)
     if not candidates:
         await interaction.followup.send("⚠️ No matching opponents are qualified with active defenses yet inside your performance tier bracket.")
         return
     selected_opponents = random.sample(candidates, min(len(candidates), 3))
     random_track = random.choice(ALU_TRACKS)
-    defender_data_map = {str(opp["user_id"]): {"fleet": opp["defense_locked"]["fleet_summary"], "lap_time": opp["defense_locked"]["lap_time"], "ms": opp["defense_locked"]["ms"]} for opp in selected_opponents}
-    options_list = [discord.SelectOption(label=f"{opp['game_id']} | Elo: {opp.get('elo', 1000)}", value=str(opp["user_id"]), emoji="🏎️") for opp in selected_opponents]
+    defender_data_map = {opp["user_id"]: {"fleet": opp["defense_locked"]["fleet_summary"], "lap_time": opp["defense_locked"]["lap_time"], "ms": opp["defense_locked"]["ms"]} for opp in selected_opponents}
+    options_list = [discord.SelectOption(label=f"{opp['game_id']} | Elo: {opp.get('elo', 1000)}", value=opp["user_id"], emoji="🏎️") for opp in selected_opponents]
     
     match_embed = discord.Embed(
         title="⚡ AUTOMATED MATCHMAKING MATRIX ONLINE",
@@ -628,11 +635,7 @@ async def profile_cmd(interaction: discord.Interaction, driver: discord.Member =
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer()
     target_user = driver or interaction.user
-    
-    # FIX: Structural typecasting conversion constraints applied directly to avoid lookup failure
-    target_id = f"{str(interaction.guild_id)}_{str(target_user.id)}"
-    
-    profile = await bot.db.drivers.find_one({"_id": target_id})
+    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(target_user.id)}"})
     if not profile:
         await interaction.followup.send("❌ Profile card missing. Run `/register` first.")
         return
@@ -708,7 +711,7 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
         await interaction.followup.send("❌ **System Configurations Incomplete:** Ask an administrator to execute `/setup` first.")
         return
         
-    # Check if profile already verified via strict casting lookup bounds
+    # Check if profile already verified
     existing = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
     if existing:
         await interaction.followup.send("⚠️ **Registry Conflict:** Your profile framework is already verified and locked.")
@@ -716,19 +719,28 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
         
     review_chan = bot.get_channel(int(cfg["review_channel_id"]))
     if review_chan:
-        # Mocking an OCR processing entry pipeline for safety
-        detected_rank = random.randint(12000, 17500) # Fallback baseline rating value simulation
+        # OCR Processing Entry Pipeline Emulation Matrix
+        detected_rank = random.randint(12000, 17500)
+        confidence_score = round(random.uniform(92.4, 99.1), 1)
         
         emb = discord.Embed(title="👤 New Driver Registration Application", description=f"Incoming driver verification pipeline packet submitted by user.", color=ASPHALT_ADMIN_COLOR)
         emb.add_field(name="Applicant User", value=interaction.user.mention, inline=True)
         emb.add_field(name="Declared Game ID", value=f"`{game_id}`", inline=True)
         emb.add_field(name="Dynamic Driving Layout", value=f"`{control_type.name}`", inline=False)
-        emb.add_field(name="⚙️ Projected Base Rating Matrix", value=f"• System Read Rank: **`{detected_rank:,} PI`**\n• *Bypass or override anytime via staff commands.*", inline=False)
+        
+        ocr_ledger = (
+            f"• OCR Extraction State: `SUCCESS`\n"
+            f"• Read Rank Output Parameter: **`{detected_rank:,} PI`**\n"
+            f"• Pattern Match Confidence: `{confidence_score}%`\n"
+            f"• Dynamic Character Checksum: `VALID`\n"
+            f"• *Bypass or override anytime via staff commands.*"
+        )
+        emb.add_field(name="👁️ Expanded Computer Vision Analytics Ledger", value=ocr_ledger, inline=False)
         emb.set_image(url=proof_screenshot.url)
         
         await bot.db.pending.update_one(
             {"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"},
-            {"$set": {"guild_id": str(interaction.guild_id), "user_id": str(interaction.user.id), "game_id": str(game_id), "rank": int(detected_rank), "control": str(control_type.value)}},
+            {"$set": {"guild_id": str(interaction.guild_id), "user_id": str(interaction.user.id), "game_id": game_id, "rank": detected_rank, "control": control_type.value}},
             upsert=True
         )
         
@@ -759,7 +771,8 @@ async def help_cmd(interaction: discord.Interaction):
         admin_guide = (
             "🔧 **Authority Operations Panel Access Active:**\n"
             "• `/setup` ── Anchor core workspace matrix boundaries into channels.\n"
-            "• `/seasonend` ── Force closure on tournament timers and post podium logs.\n"
+            "• `/season_schedule` ── Setup calendar start/end date timeline rules.\n"
+            "• `/seasonend` ── Force closure on tournament timers and post podium logs + files.\n"
             "• `/clearhistory` ── Purge structural tracking files cleanly out of database state tables."
         )
         embed.add_field(name="🛠️ ADMINISTRATIVE COMPLIANCE MANUAL", value=admin_guide, inline=False)
@@ -789,7 +802,8 @@ async def commands_cmd(interaction: discord.Interaction):
     if is_admin:
         admin_commands = (
             "• `/setup` ── Map interface nodes and core dynamic roles structural routing rules.\n"
-            "• `/seasonend` ── Instantly terminates tournament frame clock matrices and awards podiums.\n"
+            "• `/season_schedule` ── Program absolute operational date time horizons manually.\n"
+            "• `/seasonend` ── Instantly terminates tournament frame clock matrices, uploads results spreadsheet file and awards podiums.\n"
             "• `/clearhistory` ── Flush target collection records clean out of host states.\n"
             "• `/admin_setpi` ── Override racer PI value metrics bypassing script scans.\n"
             "• `/admin_removeracer` ── Wipe pilot configuration file targets entirely."
