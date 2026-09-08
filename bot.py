@@ -268,7 +268,8 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
             else:
                 standings_text = "".join([
                     (f"{'🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '} "
-                     f"<@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n")
+                     f"<@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**
+")
                     for r, d in enumerate(top_drivers)
                 ])
                 div_embed.add_field(name="🏆 Final Elite Standings Placements", value=standings_text, inline=False)
@@ -343,7 +344,7 @@ class DefenseView(discord.ui.View):
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
-        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"defense_locked": {"track": self.track, "fleet_summary": self.fleet_desc, "lap_time": self.lap_time, "ms": self.raw_ms, "proof_url": self.proof_url}}})
+        await bot.db.drivers.update_one({"_id": f"{str(self.guild_id)}_{str(self.user_id)}"}, {"$set": {"defense_locked": {"track": self.track, "fleet_summary": self.fleet_desc, "lap_time": self.lap_time, "ms": self.raw_ms, "proof_url": self.proof_url}}})
         await interaction.message.edit(embed=discord.Embed(title="✅ Gauntlet Defense Position Approved & Locked", color=ASPHALT_VICTORY_COLOR), view=self)
         await dispatch_audit_log(self.guild_id, "🛡️ Defense Position Locked", f"Racer <@{self.user_id}> locked defense on `{self.track}` (**{self.lap_time}**).", color=0x2ecc71)
         await dispatch_automated_announcement(self.guild_id, "🛡️ NEW COVERT DEFENSE PACK DEPLOYED", f"🏎️ Driver <@{self.user_id}> has deployed and verified a 5-Car defensive framework on **`{self.track}`**! Beat time matrix parameter: `{self.lap_time}`.", color=ASPHALT_THEME_COLOR)
@@ -354,37 +355,126 @@ class DefenseView(discord.ui.View):
         await interaction.response.defer()
         await interaction.message.edit(embed=discord.Embed(title="❌ Gauntlet Defense Position Rejected", color=ASPHALT_DEFEAT_COLOR), view=self)
 
+class RegistrationDeclineModal(discord.ui.Modal, title="Reason for Declining Registry"):
+    reason_input = discord.ui.TextInput(
+        label="Provide a reason for rejection",
+        style=discord.TextStyle.long,
+        placeholder="e.g. Blurry screenshot, incorrect Player ID format, missing rating information...",
+        required=True,
+        max_length=400
+    )
+
+    def __init__(self, user_id: str, guild_id: str, game_id: str):
+        super().__init__()
+        self.user_id = str(user_id)
+        self.guild_id = str(guild_id)
+        self.game_id = str(game_id)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        reason = self.reason_input.value.strip()
+        
+        # Delete from pending queue
+        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        
+        # Modify original interface message
+        if interaction.message:
+            rej_embed = discord.Embed(
+                title="❌ Driver Profile Registration Rejected",
+                description=f"**Reason Provided:** {reason}",
+                color=ASPHALT_DEFEAT_COLOR
+            )
+            await interaction.message.edit(embed=rej_embed, view=None)
+            
+        # Log to system audit trail
+        await dispatch_audit_log(self.guild_id, "👤 Registration Application Declined", f"Applicant: <@{self.user_id}> (`{self.game_id}`)\nStaff Authority: {interaction.user.mention}\n**Reason:** {reason}", color=ASPHALT_DEFEAT_COLOR)
+        
+        # Forward direct notice message payload out to player DM pipeline channel node
+        guild = bot.get_guild(int(self.guild_id))
+        guild_name = guild.name if guild else "the Gauntlet League Server"
+        try:
+            target_user = await bot.fetch_user(int(self.user_id))
+            if target_user:
+                dm_embed = discord.Embed(
+                    title="❌ Gauntlet Registry Profile Declined",
+                    description=f"Your profile verification application has been reviewed and declined in **{guild_name}**.",
+                    color=ASPHALT_DEFEAT_COLOR,
+                    timestamp=datetime.utcnow()
+                )
+                dm_embed.add_field(name="📋 Feedback / Reason", value=reason, inline=False)
+                dm_embed.set_footer(text="Please correct the issues and re-submit via /register")
+                await target_user.send(embed=dm_embed)
+        except Exception as dm_err:
+            logging.warning(f"Could not dispatch failure notice DM payload string packet array directly to client {self.user_id}: {dm_err}")
+
 class VerificationView(discord.ui.View):
     def __init__(self, user_id: str, guild_id: str, game_id: str, rank: int, control: str):
         super().__init__(timeout=None)
-        self.user_id, self.guild_id, self.game_id, self.rank, self.control = user_id, guild_id, game_id, rank, control
+        self.user_id = str(user_id)
+        self.guild_id = str(guild_id)
+        self.game_id = str(game_id)
+        self.rank = int(rank)
+        self.control = str(control)
+
     @discord.ui.button(label="Approve Driver Account", style=discord.ButtonStyle.green, custom_id="approve_driver_btn")
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
-        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"guild_id": self.guild_id, "user_id": self.user_id, "game_id": self.game_id, "garage_pi": self.rank, "elo": 1000, "career_wins": 0, "career_played": 0, "streak": 0, "verified": True}})
-        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
-        cfg = await bot.db.settings.find_one({"_id": self.guild_id})
-        if cfg:
-            guild = bot.get_guild(int(self.guild_id))
-            if guild:
-                member = guild.get_member(int(self.user_id))
-                if member:
-                    roles = [guild.get_role(int(cfg[k])) for k in ["driver_role_id", "announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
-                    if roles:
-                        try: await member.add_roles(*roles)
-                        except Exception: pass
+        
+        # Ensure values are consistently written as typed schemas matching lookups completely
+        await bot.db.drivers.update_one(
+            {"_id": f"{str(self.guild_id)}_{str(self.user_id)}"},
+            {"$set": {
+                "guild_id": str(self.guild_id),
+                "user_id": str(self.user_id),
+                "game_id": str(self.game_id),
+                "garage_pi": int(self.rank),
+                "elo": 1000,
+                "career_wins": 0,
+                "career_played": 0,
+                "streak": 0,
+                "verified": True
+            }},
+            upsert=True
+        )
+        await bot.db.pending.delete_one({"_id": f"{str(self.guild_id)}_{str(self.user_id)}"})
+        
+        cfg = await bot.db.settings.find_one({"_id": str(self.guild_id)})
+        guild = bot.get_guild(int(self.guild_id))
+        if cfg and guild:
+            member = guild.get_member(int(self.user_id))
+            if member:
+                roles = [guild.get_role(int(cfg[k])) for k in ["driver_role_id", "announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
+                if roles:
+                    try: await member.add_roles(*roles)
+                    except Exception: pass
+                    
         await interaction.message.edit(embed=discord.Embed(title="✅ Driver Profile Approved", color=ASPHALT_VICTORY_COLOR), view=self)
         await dispatch_audit_log(self.guild_id, "👤 Driver Approved", f"User <@{self.user_id}> approved with `{self.rank:,} PI`.", color=0x2ecc71)
         await dispatch_automated_announcement(self.guild_id, "🏎️ NEW RACER ENTERED THE GRID", f"✨ Let's welcome <@{self.user_id}> (`{self.game_id}`) to the official competitive track circuit! Profile rated at **`{self.rank:,} PI`** using **`{self.control.upper()}`** dynamics.", color=ASPHALT_THEME_COLOR)
+        
+        # Dispatch Success Direct Message notice channel stream directly down into user DMs cleanly
+        guild_name = guild.name if guild else "the Gauntlet League Server"
+        try:
+            target_user = await bot.fetch_user(int(self.user_id))
+            if target_user:
+                dm_embed = discord.Embed(
+                    title="🟢 Gauntlet Registry Profile Approved!",
+                    description=f"Congratulations! Your profile structural registration file node has cleared audit processing in **{guild_name}**.",
+                    color=ASPHALT_VICTORY_COLOR,
+                    timestamp=datetime.utcnow()
+                )
+                dm_embed.add_field(name="📊 Starting Rating Allocation", value="• **ELO Rating:** `1000 ELO`\n• **Assigned Track Tier Performance PI:** " + f"`{self.rank:,} PI`", inline=False)
+                dm_embed.set_footer(text="You can now deploy your defense grid via /setdefense or find race matches via /challenge!")
+                await target_user.send(embed=dm_embed)
+        except Exception as dm_err:
+            logging.warning(f"Could not dispatch successful registration authorization notification package cleanly inside user {self.user_id} private DMs: {dm_err}")
+
     @discord.ui.button(label="Reject Account", style=discord.ButtonStyle.red, custom_id="reject_driver_btn")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        for item in self.children: item.disabled = True
-        await interaction.message.edit(view=self)
-        await interaction.response.defer()
-        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
-        await interaction.message.edit(embed=discord.Embed(title="❌ Driver Profile Rejected", color=ASPHALT_DEFEAT_COLOR), view=self)
+        # Open up modal mapping interface collection dialog window to ask staff authority for text rejection cause parameters
+        await interaction.response.send_modal(RegistrationDeclineModal(self.user_id, self.guild_id, self.game_id))
 
 class ChallengeDropdown(discord.ui.Select):
     def __init__(self, track_name: str, options_list: list[discord.SelectOption], defender_def_data: dict):
@@ -449,14 +539,14 @@ async def season_end_cmd(interaction: discord.Interaction):
 async def admin_setpi_cmd(interaction: discord.Interaction, racer: discord.Member, new_pi: int):
     if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.drivers.update_one({"_id": f"{interaction.guild_id}_{racer.id}"}, {"$set": {"garage_pi": new_pi}})
+    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}"}, {"$set": {"garage_pi": int(new_pi)}})
     await interaction.followup.send(f"✅ Forced {racer.mention}'s profile rating to `{new_pi:,} PI`.")
 
 @bot.tree.command(name="admin_removeracer", description="[Staff Only] Purges a driver.")
 async def admin_removeracer_cmd(interaction: discord.Interaction, racer: discord.User):
     if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.drivers.delete_one({"_id": f"{interaction.guild_id}_{racer.id}"})
+    await bot.db.drivers.delete_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}"})
     await interaction.followup.send(f"🧹 Purged {racer.name}.")
 
 async def track_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
@@ -473,7 +563,9 @@ async def set_defense_cmd(interaction: discord.Interaction, track: str, lap_time
         await interaction.response.send_message("❌ **Invalid Format:** Use standard format: `MM:SS.MS`.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    profile = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{interaction.user.id}"})
+    
+    # Standardize current lookup matching configurations
+    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.")
         return
@@ -497,21 +589,31 @@ async def challenge_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer()
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
-    user_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    
+    user_profile = await bot.db.drivers.find_one({"_id": f"{str(guild_id)}_{str(user_id)}"})
     if not user_profile:
         await interaction.followup.send("❌ Run `/register` first.")
         return
-    user_pi = user_profile.get("garage_pi", 15500)
+        
+    user_pi = int(user_profile.get("garage_pi", 15500))
     pi_query = {"$lt": 5000} if user_pi < 5000 else {"$gte": 5000, "$lt": 10000} if user_pi < 10000 else {"$gte": 10000, "$lt": 14000} if user_pi < 14000 else {"$gte": 14000, "$lt": 16500} if user_pi < 16500 else {"$gte": 16500}
-    cursor = bot.db.drivers.find({"guild_id": guild_id, "user_id": {"$ne": user_id}, "garage_pi": pi_query, "defense_locked": {"$exists": True}}).limit(10)
+    
+    # Update search queries to find driver matching documents using explicitly cast types
+    cursor = bot.db.drivers.find({
+        "guild_id": str(guild_id), 
+        "user_id": {"$ne": str(user_id)}, 
+        "garage_pi": pi_query, 
+        "defense_locked": {"$exists": True}
+    }).limit(10)
+    
     candidates = await cursor.to_list(length=10)
     if not candidates:
         await interaction.followup.send("⚠️ No matching opponents are qualified with active defenses yet inside your performance tier bracket.")
         return
     selected_opponents = random.sample(candidates, min(len(candidates), 3))
     random_track = random.choice(ALU_TRACKS)
-    defender_data_map = {opp["user_id"]: {"fleet": opp["defense_locked"]["fleet_summary"], "lap_time": opp["defense_locked"]["lap_time"], "ms": opp["defense_locked"]["ms"]} for opp in selected_opponents}
-    options_list = [discord.SelectOption(label=f"{opp['game_id']} | Elo: {opp.get('elo', 1000)}", value=opp["user_id"], emoji="🏎️") for opp in selected_opponents]
+    defender_data_map = {str(opp["user_id"]): {"fleet": opp["defense_locked"]["fleet_summary"], "lap_time": opp["defense_locked"]["lap_time"], "ms": opp["defense_locked"]["ms"]} for opp in selected_opponents}
+    options_list = [discord.SelectOption(label=f"{opp['game_id']} | Elo: {opp.get('elo', 1000)}", value=str(opp["user_id"]), emoji="🏎️") for opp in selected_opponents]
     
     match_embed = discord.Embed(
         title="⚡ AUTOMATED MATCHMAKING MATRIX ONLINE",
@@ -526,7 +628,11 @@ async def profile_cmd(interaction: discord.Interaction, driver: discord.Member =
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer()
     target_user = driver or interaction.user
-    profile = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{target_user.id}"})
+    
+    # FIX: Structural typecasting conversion constraints applied directly to avoid lookup failure
+    target_id = f"{str(interaction.guild_id)}_{str(target_user.id)}"
+    
+    profile = await bot.db.drivers.find_one({"_id": target_id})
     if not profile:
         await interaction.followup.send("❌ Profile card missing. Run `/register` first.")
         return
@@ -602,8 +708,8 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
         await interaction.followup.send("❌ **System Configurations Incomplete:** Ask an administrator to execute `/setup` first.")
         return
         
-    # Check if profile already verified
-    existing = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{interaction.user.id}"})
+    # Check if profile already verified via strict casting lookup bounds
+    existing = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
     if existing:
         await interaction.followup.send("⚠️ **Registry Conflict:** Your profile framework is already verified and locked.")
         return
@@ -621,8 +727,8 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
         emb.set_image(url=proof_screenshot.url)
         
         await bot.db.pending.update_one(
-            {"_id": f"{interaction.guild_id}_{interaction.user.id}"},
-            {"$set": {"guild_id": str(interaction.guild_id), "user_id": str(interaction.user.id), "game_id": game_id, "rank": detected_rank, "control": control_type.value}},
+            {"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"},
+            {"$set": {"guild_id": str(interaction.guild_id), "user_id": str(interaction.user.id), "game_id": str(game_id), "rank": int(detected_rank), "control": str(control_type.value)}},
             upsert=True
         )
         
