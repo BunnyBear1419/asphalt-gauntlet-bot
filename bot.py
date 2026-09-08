@@ -230,8 +230,11 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
             div_embed = discord.Embed(title=div["name"], color=div["color"])
             if not top_drivers: div_embed.description = "*No verified driver positions secured in this tier bracket.*"
             else:
-                standings_text = "".join([f"{'🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '} <@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**
-" for r, d in enumerate(top_drivers)])
+standings_text = "".join([
+    (f"{'🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '} "
+     f"<@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n")
+    for r, d in enumerate(top_drivers)
+])
                 div_embed.add_field(name="Final Placements", value=standings_text, inline=False)
             await target_channel.send(embed=div_embed)
     await bot.db.pending.delete_many({})
