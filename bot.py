@@ -4,6 +4,7 @@ import time
 import logging
 import asyncio
 import aiohttp
+import shutil
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import discord
@@ -14,19 +15,24 @@ from PIL import Image
 import io
 import pytesseract
 
-# Comprehensive Discloud Sandbox Path Lookups
-DISCLOUD_BIN_PATHS = [
-    '/app/.apt/usr/bin/tesseract',
-    '/home/user_discloud/.apt/usr/bin/tesseract',
-    '/usr/bin/tesseract',
-    'tesseract'
-]
+# Automated Discloud Environment Binary Lookup Path Loader
+system_tesseract = shutil.which("tesseract")
 
-for binary_path in DISCLOUD_BIN_PATHS:
-    if os.path.exists(binary_path) or os.access(binary_path, os.X_OK):
-        pytesseract.pytesseract.tesseract_cmd = binary_path
-        break
-
+if system_tesseract:
+    pytesseract.pytesseract.tesseract_cmd = system_tesseract
+else:
+    # Comprehensive Fallback Paths for Hidden Discloud Sandbox Containers
+    DISCLOUD_BIN_PATHS = [
+        '/usr/bin/tesseract',
+        '/app/.apt/usr/bin/tesseract',
+        '/home/user_discloud/.apt/usr/bin/tesseract',
+        'tesseract'
+    ]
+    for binary_path in DISCLOUD_BIN_PATHS:
+        if os.path.exists(binary_path) or os.access(binary_path, os.X_OK):
+            pytesseract.pytesseract.tesseract_cmd = binary_path
+            break
+            
 # Load local environment configuration keys
 load_dotenv()
 
