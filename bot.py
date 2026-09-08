@@ -8,7 +8,7 @@ import urllib.parse
 import json
 import random
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import discord
@@ -187,7 +187,7 @@ async def dispatch_audit_log(guild_id: str, title: str, description: str, color:
     if cfg and cfg.get("log_channel_id"):
         chan = bot.get_channel(int(cfg["log_channel_id"]))
         if chan:
-            emb = discord.Embed(title=title, description=description, color=color, timestamp=datetime.utcnow())
+            emb = discord.Embed(title=title, description=description, color=color, timestamp=datetime.now(timezone.utc))
             try: await chan.send(embed=emb)
             except Exception: pass
 
@@ -227,7 +227,7 @@ async def dispatch_automated_announcement(guild_id: str, title: str, description
     if cfg and cfg.get("announcement_channel_id"):
         chan = bot.get_channel(int(cfg["announcement_channel_id"]))
         if chan:
-            emb = discord.Embed(title=title, description=description, color=color, timestamp=datetime.utcnow())
+            emb = discord.Embed(title=title, description=description, color=color, timestamp=datetime.now(timezone.utc))
             if image_url:
                 emb.set_image(url=image_url)
             ping_content = f"<@&{cfg['announcement_role_id']}>" if cfg.get("announcement_role_id") else ""
@@ -279,7 +279,8 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
                 standings_text = ""
                 for r, d in enumerate(top_drivers[:10]):  # Show top 10 inside the Discord embed channel view
                     medal = '🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '
-                    standings_text += f"{medal} <@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n"
+                    standings_text += f"{medal} <@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**
+"
                     
                 for r, d in enumerate(top_drivers):
                     csv_writer.writerow([div["name"], r+1, d['user_id'], d['game_id'], d.get('elo', 1000), d.get('garage_pi', 0)])
@@ -323,9 +324,11 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
             current_streak = w_prof.get("streak", 0) + 1
             new_w_elo, new_l_elo, streak_bonus = calculate_elo_change(w_prof.get("elo", 1000), l_profile.get("elo", 1000), winner_streak=current_streak)
             
-            outcome_desc = f"🏆 <@{self.challenger_id}> **successfully cracked the defense line** on `{self.track_name}`!\n⏱️ Time Beat: `{self.challenger_lap.value}` vs Ghost Line."
+            outcome_desc = f"🏆 <@{self.challenger_id}> **successfully cracked the defense line** on `{self.track_name}`!
+⏱️ Time Beat: `{self.challenger_lap.value}` vs Ghost Line."
             if streak_bonus > 0:
-                outcome_desc += f"\n🔥 **Streak Multiplier Engaged:** +{streak_bonus} bonus ELO applied for a streak of {current_streak} wins!"
+                outcome_desc += f"
+🔥 **Streak Multiplier Engaged:** +{streak_bonus} bonus ELO applied for a streak of {current_streak} wins!"
             display_color = ASPHALT_VICTORY_COLOR
             announce_title = "⚡ GAUNTLET LINE COLLAPSED"
             
@@ -337,9 +340,11 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
             current_streak = w_prof.get("streak", 0) + 1
             new_w_elo, new_l_elo, streak_bonus = calculate_elo_change(w_prof.get("elo", 1000), l_profile.get("elo", 1000), winner_streak=current_streak)
             
-            outcome_desc = f"💀 <@{self.opponent_id}>'s **ghost defense successfully held off** the challenger on `{self.track_name}`.\n⏱️ Attempted time: `{self.challenger_lap.value}`."
+            outcome_desc = f"💀 <@{self.opponent_id}>'s **ghost defense successfully held off** the challenger on `{self.track_name}`.
+⏱️ Attempted time: `{self.challenger_lap.value}`."
             if streak_bonus > 0:
-                outcome_desc += f"\n🔥 **Defender Streak Multiplier Engaged:** +{streak_bonus} bonus ELO applied for a streak of {current_streak} holds!"
+                outcome_desc += f"
+🔥 **Defender Streak Multiplier Engaged:** +{streak_bonus} bonus ELO applied for a streak of {current_streak} holds!"
             display_color = ASPHALT_DEFEAT_COLOR
             announce_title = "🛡️ DEFENSE HOLD SECURED"
             
@@ -352,7 +357,8 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
         res_emb.add_field(name="📉 Defeated Rating Change", value=f"<@{l_id}> ── **`{new_l_elo} ELO`**", inline=True)
         
         await interaction.channel.send(embed=res_emb)
-        await dispatch_automated_announcement(guild_id, announce_title, f"🏎️ **Match Event:** <@{self.challenger_id}> challenged <@{self.opponent_id}> on `{self.track_name}`!\n🏆 **Result:** {outcome_desc}", color=display_color)
+        await dispatch_automated_announcement(guild_id, announce_title, f"🏎️ **Match Event:** <@{self.challenger_id}> challenged <@{self.opponent_id}> on `{self.track_name}`!
+🏆 **Result:** {outcome_desc}", color=display_color)
 
 class LobbyUIButtons(discord.ui.View):
     def __init__(self, challenger_id: str, opponent_id: str, defense_ms: int, track_name: str):
@@ -405,7 +411,9 @@ class RegistrationDeclineModal(discord.ui.Modal, title="Specify Application Reje
                 description=f"Hello racer, your competitive track authorization packet for **{guild.name}** was reviewed and disapproved by management staff panels.",
                 color=ASPHALT_DEFEAT_COLOR
             )
-            dm_embed.add_field(name="📋 Stated Reason For Disapproval", value=f"```\n{self.reason_input.value}\n```", inline=False)
+            dm_embed.add_field(name="📋 Stated Reason For Disapproval", value=f"```
+{self.reason_input.value}
+```", inline=False)
             dm_embed.set_footer(text="Please rectify listed parameter details and re-apply.")
             try: await member.send(embed=dm_embed)
             except Exception: pass
@@ -752,7 +760,7 @@ async def help_cmd(interaction: discord.Interaction):
     is_admin = await check_admin_privileges(interaction)
     
     embed = discord.Embed(
-        title="🏁 ASPHALT LEGENDS UNITE GAUNTLET LEAGUE", 
+        title="🏁 COMMITTED TO THE GRID: ALU GAUNTLET LEAGUE", 
         description="Welcome to the ultimate automated asynchronous matchmaking ladder matrix system! 🔥\n\n*Compete against live defense ghosts, climb the Elo ranks, and dominate the seasonal brackets.*", 
         color=ASPHALT_THEME_COLOR
     )
@@ -849,7 +857,7 @@ async def diagnostics_cmd(interaction: discord.Interaction):
     report.append(f"  - Webhook Shard Latency: `{round(bot.latency * 1000, 2)}ms`")
     report.append(f"  - Application Commands State: Tree globally structural synchronized")
 
-    embed = discord.Embed(title="🖥️ Core Diagnostics Matrix Status Report", description="System verification runtime diagnostics analysis sequence complete.", color=ASPHALT_ADMIN_COLOR, timestamp=datetime.utcnow())
+    embed = discord.Embed(title="🖥️ Core Diagnostics Matrix Status Report", description="System verification runtime diagnostics analysis sequence complete.", color=ASPHALT_ADMIN_COLOR, timestamp=datetime.now(timezone.utc))
     embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_diagnostics"])
     embed.add_field(name="Operational Checks Ledger Ledger", value="\n".join(report), inline=False)
     
