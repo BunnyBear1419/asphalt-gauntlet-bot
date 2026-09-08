@@ -5,6 +5,7 @@ import logging
 import asyncio
 import aiohttp
 import shutil
+import glob
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import discord
@@ -15,24 +16,41 @@ from PIL import Image
 import io
 import pytesseract
 
-# Automated Discloud Environment Binary Lookup Path Loader
-system_tesseract = shutil.which("tesseract")
-
-if system_tesseract:
-    pytesseract.pytesseract.tesseract_cmd = system_tesseract
-else:
-    # Comprehensive Fallback Paths for Hidden Discloud Sandbox Containers
-    DISCLOUD_BIN_PATHS = [
+# Comprehensive Discloud Sandbox Path Lookups
+def locate_tesseract():
+    # 1. Check if the environment path variable catches it natively
+    env_path = shutil.which("tesseract") or shutil.which("tesseract-ocr")
+    if env_path:
+        return env_path
+        
+    # 2. Hardcoded fallback list for Discloud sandboxes
+    explicit_paths = [
         '/usr/bin/tesseract',
+        '/usr/bin/tesseract-ocr',
         '/app/.apt/usr/bin/tesseract',
+        '/app/.apt/usr/bin/tesseract-ocr',
         '/home/user_discloud/.apt/usr/bin/tesseract',
-        'tesseract'
+        '/home/user_discloud/.apt/usr/bin/tesseract-ocr'
     ]
-    for binary_path in DISCLOUD_BIN_PATHS:
-        if os.path.exists(binary_path) or os.access(binary_path, os.X_OK):
-            pytesseract.pytesseract.tesseract_cmd = binary_path
-            break
+    for path in explicit_paths:
+        if os.path.exists(path) and os.access(path, os.X_OK):
+            return path
             
+    # 3. Deep system tree search (fixes dynamic Discloud container naming structures)
+    search_patterns = [
+        '/app/**/bin/tesseract*',
+        '/home/user_discloud/**/bin/tesseract*'
+    ]
+    for pattern in search_patterns:
+        for found_file in glob.glob(pattern, recursive=True):
+            if os.path.isfile(found_file) and os.access(found_file, os.X_OK):
+                return found_file
+                
+    return 'tesseract'
+
+# Assign the verified operational binary path to the engine wrapper
+pytesseract.pytesseract.tesseract_cmd = locate_tesseract()
+
 # Load local environment configuration keys
 load_dotenv()
 
