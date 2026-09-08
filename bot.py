@@ -14,10 +14,17 @@ from PIL import Image
 import io
 import pytesseract
 
-# Discloud path lookup configuration
-for path in ['/app/.apt/usr/bin/tesseract', '/usr/bin/tesseract', 'tesseract']:
-    if os.path.exists(path) or os.access(path, os.X_OK):
-        pytesseract.pytesseract.tesseract_cmd = path
+# Comprehensive Discloud Sandbox Path Lookups
+DISCLOUD_BIN_PATHS = [
+    '/app/.apt/usr/bin/tesseract',
+    '/home/user_discloud/.apt/usr/bin/tesseract',
+    '/usr/bin/tesseract',
+    'tesseract'
+]
+
+for binary_path in DISCLOUD_BIN_PATHS:
+    if os.path.exists(binary_path) or os.access(binary_path, os.X_OK):
+        pytesseract.pytesseract.tesseract_cmd = binary_path
         break
 
 # Load local environment configuration keys
