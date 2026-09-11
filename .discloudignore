@@ -1,0 +1,13 @@
+.git
+.github
+.vscode
+.idea
+__pycache__
+.venv
+venv
+.env
+backups
+*.log
+.DS_Store
+Thumbs.db
+tests

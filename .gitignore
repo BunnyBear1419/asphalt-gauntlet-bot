@@ -1,17 +1,14 @@
-# Private Environment Variables
 .env
-
-# Local Fallback Database & Temporary Cache Files
-gauntlet_database.json
-*.json
-*.png
-assets/
-
-# Python Environment files
+.env.*
+!.env.example
 __pycache__/
-*.pyc
-.pyo
-.pyd
-.env/
+*.py[cod]
+.venv/
 venv/
-ENV/
+.cache/
+.vscode/
+.idea/
+backups/
+*.log
+.DS_Store
+Thumbs.db
