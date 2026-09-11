@@ -378,6 +378,24 @@ class GauntletBot(commands.Bot):
             logging.error("🔴 /help was NOT returned by Discord after global sync.")
         return synced
 
+    async def sync_guild_application_commands(self):
+        """Refresh server-scoped slash commands to eliminate stale guild overrides."""
+        if not self.guilds:
+            logging.info("ℹ️ No guilds available for server-scoped command sync yet.")
+            return 0
+        total = 0
+        for guild in self.guilds:
+            try:
+                # Copy the current command tree into each guild. This replaces any
+                # stale server-specific definitions, such as an older /diagnostics.
+                self.tree.copy_global_to(guild=guild)
+                synced = await self.tree.sync(guild=guild)
+                total += len(synced)
+                logging.info("🟢 Server command sync complete for %s (%s): %d commands.", guild.name, guild.id, len(synced))
+            except Exception:
+                logging.exception("🔴 Server command sync failed for %s (%s)", guild.name, guild.id)
+        return total
+
     def setup_mock_db(self):
         """Fallback local database simulation if MongoDB Atlas is offline."""
         class MockCollection:
@@ -3457,6 +3475,12 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
         pass
     if interaction.guild_id:
         await send_admin_alert(str(interaction.guild_id), "BOT COMMAND ERROR", f"Command: `/{getattr(interaction.command, 'name', 'unknown')}`\nError: `{error}`")
+
+@bot.event
+async def on_ready():
+    """Refresh guild-scoped commands after Discord populates the bot's guild cache."""
+    logging.info("🔄 Discord READY received; refreshing server-scoped slash commands.")
+    await bot.sync_guild_application_commands()
 
 @bot.event
 async def on_error(event_method, *args, **kwargs):
