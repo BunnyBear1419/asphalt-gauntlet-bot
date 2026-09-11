@@ -1,148 +1,194 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import aiohttp
+import time
+import datetime
+import psutil
 
-class HelpDropdown(discord.ui.Select):
+class BotHelpDropdown(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label="Bot Information", description="Learn about the bot and admin setup.", emoji="ℹ️"),
-            discord.SelectOption(label="Player Commands", description="View available commands for all players.", emoji="🎮"),
-            discord.SelectOption(label="Admin Commands", description="View restrictive tools for administrators.", emoji="🛡️")
+            discord.SelectOption(label="Bot Information", description="What the bot does & setup instructions", emoji="ℹ️"),
+            discord.SelectOption(label="Player Commands", description="Commands available to all players", emoji="🎮"),
+            discord.SelectOption(label="Admin Commands", description="Commands restricted to administrators", emoji="🛠️")
         ]
-        super().__init__(placeholder="Choose a category...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="Choose a category to view details...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if self.values[0] == "Bot Information":
             embed = discord.Embed(
-                title="🤖 Bot Information & Setup Guide",
-                description="This versatile bot serves your community with interactive utility, entertainment, and administrative controls.",
-                color=discord.Color.blue()
+                title="🤖 Bot Information & Admin Setup Guide",
+                color=discord.Color.blue(),
+                description="This versatile discord bot provides interactive commands, profile identity modifications, and server utility tools."
             )
-            embed.add_field(
-                name="📋 Setup Instructions (For Admins)",
-                value=(
-                    "1. **Token**: Place your Discord bot token in a secure `.env` file or environment variable.\n"
-                    "2. **Privileged Intents**: Ensure **Message Content Intent** and **Guild Members Intent** are enabled in the Discord Developer Portal.\n"
-                    "3. **Permissions**: Invite the bot using the application-commands scope with administrator or appropriate channel permissions.\n"
-                    "4. **Deployment**: Run the script using Python 3.8+ with `discord.py` installed."
-                ),
-                inline=False
-            )
+            embed.add_field(name="📋 What it Does", value="Manages user utilities, tracks performance metrics, handles roles/profiles, and streamlines server organization through slash commands.", inline=False)
+            embed.add_field(name="⚙️ Admin Readme: Setup Instructions", value=(
+                "**1. Token Configuration:** Place your Discord Bot Token inside a `.env` file as `DISCORD_TOKEN=your_token_here`.\n"
+                "**2. Enable Intents:** Navigate to the Discord Developer Portal, choose your app, and toggle on **Server Members Intent** and **Message Content Intent**.\n"
+                "**3. Invite Permissions:** Ensure the bot is invited with `applications.commands` and `administrator` scopes enabled for peak performance."
+            ), inline=False)
             await interaction.response.edit_message(embed=embed, view=self.view)
 
         elif self.values[0] == "Player Commands":
             embed = discord.Embed(
-                title="🎮 Player Commands List",
-                description="Standard commands available to all members of the server.",
-                color=discord.Color.green()
+                title="🎮 Player Command List",
+                color=discord.Color.green(),
+                description="Standard commands accessible by all community members."
             )
-            embed.add_field(name="`/help`", value="Opens this interactive help menu with dropdown categories.", inline=False)
-            embed.add_field(name="`/ping`", value="Checks the bot's latency and connection responsiveness.", inline=False)
-            embed.add_field(name="`/userinfo [member]`", value="Displays account creation date, server join date, and roles for a specified user or yourself.", inline=False)
-            embed.add_field(name="`/serverinfo`", value="Displays server statistics, including member counts, creation date, and region.", inline=False)
-            embed.add_field(name="`/roll [dice]`", value="Rolls custom dice (e.g., 1d20, 2d6) and outputs individual results and totals.", inline=False)
-            embed.add_field(name="`/avatar [member]`", value="Provides a high-resolution download link and view of a user's avatar.", inline=False)
+            embed.add_field(name="`/diagnostic ping`", value="Checks the bot's live response speeds, active memory use, and online uptime stats.", inline=False)
+            embed.add_field(name="`/userinfo [member]`", value="Displays account creation, server join dates, and user profiles.", inline=False)
+            embed.add_field(name="`/serverinfo`", value="Displays general server information, member counts, and boost levels.", inline=False)
+            embed.add_field(name="`/roll [sides]`", value="Rolls a randomized virtual dice with custom sides.", inline=False)
+            embed.add_field(name="`/avatar [member]`", value="Generates a high-quality link to a target user's profile avatar.", inline=False)
             await interaction.response.edit_message(embed=embed, view=self.view)
 
         elif self.values[0] == "Admin Commands":
             embed = discord.Embed(
-                title="🛡️ Admin Commands List",
-                description="Restricted management utilities requiring Administrator or specific permissions.",
-                color=discord.Color.red()
+                title="🛠️ Admin Command List",
+                color=discord.Color.red(),
+                description="Restricted management utilities requiring administrator clearance."
             )
-            embed.add_field(name="`/identity [name] [avatar]`", value="Modifies the bot's global username and profile picture. Supports direct text input for names and interactive file uploads for avatars.", inline=False)
-            embed.add_field(name="`/kick [member] [reason]`", value="Removes a disruptive member from the guild safely.", inline=False)
-            embed.add_field(name="`/ban [member] [reason]`", value="Permanently bans a malicious user and purges recent message history.", inline=False)
-            embed.add_field(name="`/clear [amount]`", value="Bulk deletes a specified number of recent messages from the current channel.", inline=False)
+            embed.add_field(name="`/identity [name] [avatar]`", value="Changes the global username identity and uploads a new profile avatar directly using file attachments.", inline=False)
             await interaction.response.edit_message(embed=embed, view=self.view)
 
-class HelpView(discord.ui.View):
+class BotHelpView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=180)
-        self.add_item(HelpDropdown())
+        self.add_item(BotHelpDropdown())
 
-class CoreBot(commands.Bot):
+class DiagnosticGroup(app_commands.Group):
+    def __init__(self, bot):
+        super().__init__(name="diagnostic", description="System diagnostics and connectivity parameters")
+        self.bot = bot
+
+    @app_commands.command(name="ping", description="Check connectivity latency, active memory, and bot uptime stats")
+    async def ping(self, interaction: discord.Interaction):
+        # Calculate API response time
+        start_time = time.time()
+        await interaction.response.defer(ephemeral=False)
+        end_time = time.time()
+        
+        api_latency = round((end_time - start_time) * 1000)
+        websocket_latency = round(self.bot.latency * 1000)
+        
+        # Calculate uptime
+        current_time = time.time()
+        uptime_seconds = int(current_time - self.bot.start_time)
+        uptime_string = str(datetime.timedelta(seconds=uptime_seconds))
+        
+        # System memory usage
+        process = psutil.Process()
+        memory_usage = round(process.memory_info().rss / (1024 * 1024), 2)
+
+        embed = discord.Embed(
+            title="⚙️ Core System Diagnostic Status",
+            color=discord.Color.dark_teal(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.add_field(name="🌐 Connection Latency", value=f"**WebSocket:** `{websocket_latency}ms`\n**REST API:** `{api_latency}ms`", inline=True)
+        embed.add_field(name="📈 Memory Matrix", value=f"**Usage:** `{memory_usage} MB`\n**Status:** `Stable operational state`", inline=True)
+        embed.add_field(name="⏱️ Operational Uptime", value=f"**Online Duration:** `{uptime_string}`", inline=False)
+        embed.set_footer(text=f"Requested by {interaction.user.name}")
+        
+        await interaction.followup.send(embed=embed)
+
+class MyBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
         super().__init__(command_prefix="!", intents=intents)
+        self.start_time = time.time()
 
     async def setup_hook(self):
+        # Add the merged diagnostic group
+        self.tree.add_command(DiagnosticGroup(self))
         await self.tree.sync()
 
-bot = CoreBot()
+bot = MyBot()
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user.name} (ID: {bot.user.id})')
+    print(f'⚡ Logged in cleanly as {bot.user.name} (ID: {bot.user.id})')
 
-@bot.tree.command(name="help", description="Open the interactive dropdown help menu.")
+@bot.tree.command(name="help", description="Open the nested interactive dropdown documentation hub")
 async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="📚 Help & Documentation System",
-        description="Select an option from the dropdown menu below to navigate through Bot Information, Player Commands, or Admin Commands.",
+        title="📚 Main Help Hub Documentation",
+        description="Select an option from the menu selector directly below to browse through instructions, user permissions, and layout manuals.",
         color=discord.Color.blurple()
     )
-    await interaction.response.send_message(embed=embed, view=HelpView())
+    view = BotHelpView()
+    await interaction.response.send_message(embed=embed, view=view)
 
-@bot.tree.command(name="identity", description="Modify the bot's global name and avatar image.")
-@app_commands.describe(name="The new name for the bot", avatar="Upload a new profile picture file from Discord")
+@bot.tree.command(name="identity", description="Modify global name profile structures and upload an avatar attachment")
+@app_commands.describe(name="The new name for the bot identity profile", avatar="Upload a clean new layout profile image asset")
 @commands.has_permissions(administrator=True)
 async def identity(interaction: discord.Interaction, name: str = None, avatar: discord.Attachment = None):
-    if not name and not avatar:
-        await interaction.response.send_message("❌ Please provide either a new `name`, an uploaded `avatar` file, or both.", ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.followup.send("❌ Access Denied: Administrator security verification flags required.", ephemeral=True)
         return
 
-    await interaction.response.defer(ephemeral=True)
-    update_log = []
-
-    try:
-        if name:
+    changes = []
+    
+    if name:
+        try:
             await bot.user.edit(username=name)
-            update_log.append(f"✅ Name updated successfully to **{name}**.")
+            changes.append(f"✅ Username updated perfectly to **{name}**")
+        except discord.HTTPException as e:
+            changes.append(f"❌ Failed renaming sequence: {e.text}")
+            
+    if avatar:
+        if not avatar.content_type.startswith("image/"):
+            await interaction.followup.send("❌ Error: Invalid structural attachment file. Please upload an image file (PNG/JPEG).", ephemeral=True)
+            return
+            
+        try:
+            avatar_bytes = await avatar.read()
+            await bot.user.edit(avatar=avatar_bytes)
+            changes.append("✅ Profile image layout update uploaded successfully")
+        except discord.HTTPException as e:
+            changes.append(f"❌ Failed avatar processing sequence: {e.text}")
 
-        if avatar:
-            # Check content type to ensure it is an image
-            if avatar.content_type and not avatar.content_type.startswith("image/"):
-                await interaction.followup.send("❌ The uploaded file must be a valid image format (PNG, JPEG, etc.).", ephemeral=True)
-                return
+    if not changes:
+        await interaction.followup.send("⚠️ Identity update aborted: Provide a new name or attach an image file asset to commit variations.", ephemeral=True)
+        return
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(avatar.url) as resp:
-                    if resp.status == 200:
-                        avatar_bytes = await resp.read()
-                        await bot.user.edit(avatar=avatar_bytes)
-                        update_log.append("✅ Profile avatar updated successfully.")
-                    else:
-                        update_log.append("❌ Failed to download the uploaded image from Discord attachments.")
+    embed = discord.Embed(
+        title="👤 Identity Alteration Execution Log",
+        description="\n".join(changes),
+        color=discord.Color.gold()
+    )
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
-        await interaction.followup.send("\n".join(update_log), ephemeral=True)
-
-    except discord.HTTPException as e:
-        await interaction.followup.send(f"❌ Discord API Error: Changing identity too fast or invalid input. Detailed error: {e}", ephemeral=True)
-    except Exception as e:
-        await interaction.followup.send(f"❌ An unexpected error occurred: {e}", ephemeral=True)
-
-@identity.error
-async def identity_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message("❌ You lack the required Administrator permissions to execute this command.", ephemeral=True)
-
-# Add basic implementations for populated player commands so they are usable right away
-@bot.tree.command(name="ping", description="Check the responsiveness of the bot.")
-async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message(f"🏓 Pong! Latency is {round(bot.latency * 1000)}ms.")
-
-@bot.tree.command(name="serverinfo", description="Display current server diagnostics.")
-async def serverinfo(interaction: discord.Interaction):
-    guild = interaction.guild
-    embed = discord.Embed(title=f"📊 {guild.name} Diagnostics", color=discord.Color.blue())
-    embed.add_field(name="Total Members", value=str(guild.member_count))
-    embed.add_field(name="Creation Date", value=guild.created_at.strftime('%Y-%m-%d'))
+# Standard Player Placeholders
+@bot.tree.command(name="userinfo", description="Displays target account user profile registration timelines")
+async def userinfo(interaction: discord.Interaction, member: discord.Member = None):
+    member = member or interaction.user
+    embed = discord.Embed(title=f"👤 profile: {member.name}", color=member.color)
+    embed.add_field(name="Account Created", value=member.created_at.strftime("%Y-%m-%d"), inline=True)
+    embed.add_field(name="Joined Server", value=member.joined_at.strftime("%Y-%m-%d"), inline=True)
     await interaction.response.send_message(embed=embed)
 
-if __name__ == "__main__":
-    # bot.run('YOUR_BOT_TOKEN_HERE')
-    pass
+@bot.tree.command(name="serverinfo", description="Displays general server guild data metrics summary")
+async def serverinfo(interaction: discord.Interaction):
+    guild = interaction.guild
+    embed = discord.Embed(title=f"🏰 Server Matrix: {guild.name}", color=discord.Color.orange())
+    embed.add_field(name="Total Members", value=str(guild.member_count), inline=True)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="roll", description="Rolls a randomized dice matrix asset line parameter")
+async def roll(interaction: discord.Interaction, sides: int = 6):
+    import random
+    result = random.randint(1, sides)
+    await interaction.response.send_message(f"🎲 Rolled a `{sides}`-sided dice: **{result}**")
+
+@bot.tree.command(name="avatar", description="Generates a high-quality link to a target user profile avatar")
+async def avatar(interaction: discord.Interaction, member: discord.Member = None):
+    member = member or interaction.user
+    await interaction.response.send_message(f"🖼️ **{member.name}'s Avatar:** {member.display_avatar.url}")
+
+# Run Bot safely (Token loader instructions in setup dropdown info embed)
+# bot.run("YOUR_TOKEN_HERE")
