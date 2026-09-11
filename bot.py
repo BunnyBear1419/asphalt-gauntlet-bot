@@ -145,8 +145,20 @@ class GauntletBot(commands.Bot):
         # Execute background state recovery sequence hooks
         await self.recover_season_state()
         self.seasonal_clock_loop.start()
+        # Load custom images from DB into ASPHALT_MEDIA
+        try:
+            media_doc = await self.db.settings.find_one({"_id": "global_media"})
+            if media_doc and media_doc.get("custom_images"):
+                for key, url in media_doc["custom_images"].items():
+                    ASPHALT_MEDIA[key] = url
+                logging.info(f"🟢 Loaded {len(media_doc['custom_images'])} custom images from DB.")
+        except Exception as e:
+            logging.warning(f"⚠️ Could not load custom images: {e}")
         await self.tree.sync()
         logging.info("🟢 Application slash commands synchronized globally.")
+        # Register persistent views so their buttons survive bot restarts
+        self.add_view(TopLeaderboardView())
+        logging.info("🟢 Persistent views registered.")
 
     async def recover_season_state(self):
         try:
@@ -800,6 +812,49 @@ class ChallengeView(discord.ui.View):
         self.guild_id, self.user_id = guild_id, user_id
         self.add_item(ChallengeDropdown(options_list, defender_def_data))
 
+@bot.tree.command(name="setimage", description="[Admin Only] Update a custom bot image (banner or thumbnail).")
+@app_commands.describe(image_type="Which image to replace", image="Upload the new image file")
+@app_commands.choices(image_type=[
+    app_commands.Choice(name="Help Banner", value="banner_help"),
+    app_commands.Choice(name="Match Banner", value="banner_match"),
+    app_commands.Choice(name="Leaderboard Banner", value="banner_leaderboard"),
+    app_commands.Choice(name="Profile Thumbnail", value="thumb_profile"),
+    app_commands.Choice(name="Diagnostics Thumbnail", value="thumb_diagnostics"),
+])
+async def setimage_cmd(interaction: discord.Interaction, image_type: app_commands.Choice[str], image: discord.Attachment):
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Admin only.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    guild_id = str(interaction.guild_id)
+    # Validate it's an image
+    if not image.content_type or not image.content_type.startswith("image/"):
+        await interaction.followup.send("❌ The uploaded file must be an image (PNG, JPG, GIF, etc.).", ephemeral=True)
+        return
+    # Re-upload to the log channel for a permanent CDN URL
+    cfg = await bot.db.settings.find_one({"_id": guild_id})
+    log_chan = bot.get_channel(int(cfg["log_channel_id"])) if cfg and cfg.get("log_channel_id") else None
+    if not log_chan:
+        await interaction.followup.send("❌ Log channel not configured. Run `/setup` first.", ephemeral=True)
+        return
+    # Download the attachment
+    import io as _io
+    img_data = await image.read()
+    filename = f"{image_type.value}.{image.filename.split('.')[-1] if '.' in image.filename else 'png'}"
+    sent_msg = await log_chan.send(content=f"📦 Custom image upload: **{image_type.name}**", file=discord.File(fp=_io.BytesIO(img_data), filename=filename))
+    # Get the permanent CDN URL from the sent message
+    if sent_msg.attachments:
+        cdn_url = sent_msg.attachments[0].url
+    else:
+        await interaction.followup.send("❌ Failed to re-upload image. Please try again.", ephemeral=True)
+        return
+    # Update in-memory dict and DB
+    image_key = image_type.value
+    ASPHALT_MEDIA[image_key] = cdn_url
+    await bot.db.settings.update_one({"_id": "global_media"}, {"$set": {f"custom_images.{image_key}": cdn_url}}, upsert=True)
+    await interaction.followup.send(embed=discord.Embed(title="✅ Image Updated", description=f"**{image_type.name}** has been updated successfully.\nNew URL: `{cdn_url}`", color=ASPHALT_VICTORY_COLOR).set_image(url=cdn_url), ephemeral=True)
+    await dispatch_audit_log(guild_id, "🖼️ Custom Image Updated", f"Admin {interaction.user.mention} updated the **{image_type.name}** image.", color=0x2ecc71)
+
 @bot.tree.command(name="setup", description="[Admin Only] Configures all league core channels and permission roles.")
 @app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", match_results_channel="Public room for match results", admin_role="Admin override role", announcement_role="Announcement ping role")
 async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, announcement_role: discord.Role):
@@ -1156,25 +1211,78 @@ async def leaderboard_cmd(interaction: discord.Interaction, page: int = 1):
     embed.set_footer(text=f"Page {page} of {total_pages} • {total_count} verified drivers")
     await interaction.followup.send(embed=embed)
 
-@bot.tree.command(name="top", description="Displays lifetime leaderboard metrics.")
+class TopLeaderboardView(discord.ui.View):
+    """Persistent dropdown view for selecting which top 5 leaderboard to display.
+    Works for everyone — any user can click the dropdown at any time."""
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.select(
+        placeholder="Choose a leaderboard category...",
+        min_values=1, max_values=1,
+        custom_id="top_leaderboard_select",
+        options=[
+            discord.SelectOption(label="Top 5 Most Wins", value="wins", emoji="🏆", description="Players with the most career wins"),
+            discord.SelectOption(label="Top 5 Most Active", value="active", emoji="⚡", description="Players who played the most matches"),
+            discord.SelectOption(label="Top 5 Overall", value="elo", emoji="👑", description="Highest ELO ratings"),
+        ]
+    )
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        category = self.values[0]
+        guild_id = str(interaction.guild_id)
+
+        if category == "wins":
+            cursor = bot.db.drivers.find({"guild_id": guild_id}).sort("career_wins", -1).limit(5)
+            top = await cursor.to_list(length=5)
+            title = "🏆 TOP 5 MOST WINS"
+            desc = "Players with the most career victories"
+            field_name = "🔥 Top Victor Registries"
+            if not top:
+                board = "*No career metrics compiled yet.*"
+            else:
+                board = ""
+                for r, d in enumerate(top):
+                    board += f"`#{r+1}` <@{d['user_id']}> ── **`{d.get('career_wins', 0)} Wins`** ({d.get('career_played', 0)} played)\n"
+        elif category == "active":
+            cursor = bot.db.drivers.find({"guild_id": guild_id}).sort("career_played", -1).limit(5)
+            top = await cursor.to_list(length=5)
+            title = "⚡ TOP 5 MOST ACTIVE"
+            desc = "Players with the most matches played"
+            field_name = "📊 Most Active Drivers"
+            if not top:
+                board = "*No activity data yet.*"
+            else:
+                board = ""
+                for r, d in enumerate(top):
+                    board += f"`#{r+1}` <@{d['user_id']}> ── **`{d.get('career_played', 0)} Matches`** ({d.get('career_wins', 0)} wins)\n"
+        else:  # elo
+            cursor = bot.db.drivers.find({"guild_id": guild_id}).sort("elo", -1).limit(5)
+            top = await cursor.to_list(length=5)
+            title = "👑 TOP 5 OVERALL"
+            desc = "Highest ELO rated players"
+            field_name = "🏁 Top Rated Drivers"
+            if not top:
+                board = "*No rated drivers yet.*"
+            else:
+                board = ""
+                for r, d in enumerate(top):
+                    board += f"`#{r+1}` <@{d['user_id']}> ── **`{d.get('elo', 1000)} ELO`** ({d.get('career_wins', 0)} wins)\n"
+
+        embed = discord.Embed(title=title, description=desc, color=ASPHALT_THEME_COLOR)
+        embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
+        embed.add_field(name=field_name, value=board, inline=False)
+        embed.set_footer(text="Use the dropdown to switch categories")
+        await interaction.followup.send(embed=embed)
+
+@bot.tree.command(name="top", description="View top 5 leaderboards — choose a category.")
 async def top_cmd(interaction: discord.Interaction):
     await interaction.response.defer()
     guild_id = str(interaction.guild_id)
-    cursor = bot.db.drivers.find({"guild_id": guild_id}).sort("career_wins", -1).limit(5)
-    top_wins = await cursor.to_list(length=5)
-    
-    embed = discord.Embed(title="👑 LIFETIME MILESTONE CAREER METRICS", description="Historical achievements and veteran leaderboard stats:", color=ASPHALT_THEME_COLOR)
+    embed = discord.Embed(title="👑 LEADERBOARD SELECTION", description="Choose a leaderboard category from the dropdown below to view the top 5 players.", color=ASPHALT_THEME_COLOR)
     embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
-    
-    if not top_wins:
-        embed.description += "\n\n*No career metrics compiled yet.*"
-    else:
-        wins_text = ""
-        for r, d in enumerate(top_wins):
-            wins_text += f"`#{r+1}` <@{d['user_id']}> ── **`{d.get('career_wins', 0)} Wins`** (Total: `{d.get('career_played', 0)}`)\n"
-        embed.add_field(name="🔥 Top Lifetime Victor Registries", value=wins_text, inline=False)
-        
-    await interaction.followup.send(embed=embed)
+    embed.set_footer(text="Select a category below")
+    await interaction.followup.send(embed=embed, view=TopLeaderboardView())
 
 @bot.tree.command(name="register", description="Join registry queue.")
 @app_commands.describe(game_id="Your Asphalt Legends unique Player ID string", garage_pi="Your current Garage PI value, as shown in-game", proof_screenshot="Attachment file proving garage level and ratings", control_type="Your input driving mechanics style")
@@ -1360,7 +1468,7 @@ This bot manages the server's competitive racing league workflow inside Discord.
             embed.add_field(
                 name="👑 `/top`",
                 value="""**Usage:** `/top`
-**Purpose:** Display the top five lifetime career performers ranked by career wins.""",
+**Purpose:** Opens a dropdown to view the top 5 players by Most Wins, Most Active (matches played), or Overall (ELO rating). Select a category from the dropdown to see the leaderboard.""",
                 inline=False,
             )
             embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
@@ -1379,6 +1487,14 @@ This bot manages the server's competitive racing league workflow inside Discord.
                 title="🛠️ ADMIN COMMANDS",
                 description="Detailed usage for every administrative/staff command currently implemented in bot.py.",
                 color=ASPHALT_ADMIN_COLOR,
+            )
+            embed.add_field(
+                name="🖼️ `/setimage`",
+                value="""**Usage:** `/setimage image_type:<choice> image:<attachment>`
+**Purpose:** Upload a new custom image (banner or thumbnail) for the bot. The image is stored permanently and replaces the default.
+**Choices:** Help Banner, Match Banner, Leaderboard Banner, Profile Thumbnail, Diagnostics Thumbnail.
+**Access:** Admin only.""",
+                inline=False,
             )
             embed.add_field(
                 name="⚙️ `/setup`",
