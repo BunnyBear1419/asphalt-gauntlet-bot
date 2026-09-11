@@ -59,12 +59,12 @@ ALU_CARS = [
 # Single source of truth for PI-based divisions/tiers, used by both season-end podiums
 # and /challenge matchmaking so the brackets always stay in sync.
 PI_DIVISIONS = [
-    {"name": "👑 Division 6 — Legend Tier", "min": 18000, "max": None, "color": 0x9b59b6},
-    {"name": "🏆 Division 5 — Champ Tier", "min": 16500, "max": 18000, "color": 0xe74c3c},
-    {"name": "💎 Division 4 — Platinum Tier", "min": 14000, "max": 16500, "color": 0x3498db},
-    {"name": "🥇 Division 3 — Gold Tier", "min": 10000, "max": 14000, "color": 0xdeaf2a},
-    {"name": "🥈 Division 2 — Silver Tier", "min": 5000, "max": 10000, "color": 0xa4a7a9},
-    {"name": "🪵 Division 1 — Bronze Tier", "min": 0, "max": 5000, "color": 0xa3704c},
+    {"name": "👑 Division 6 — Legend Tier", "min": 22000, "max": None, "color": 0x9b59b6},
+    {"name": "🏆 Division 5 — Champ Tier", "min": 17600, "max": 22000, "color": 0xe74c3c},
+    {"name": "💎 Division 4 — Platinum Tier", "min": 13200, "max": 17600, "color": 0x3498db},
+    {"name": "🥇 Division 3 — Gold Tier", "min": 8800, "max": 13200, "color": 0xdeaf2a},
+    {"name": "🥈 Division 2 — Silver Tier", "min": 4400, "max": 8800, "color": 0xa4a7a9},
+    {"name": "🪵 Division 1 — Bronze Tier", "min": 0, "max": 4400, "color": 0xa3704c},
 ]
 
 def division_mongo_query(division: dict) -> dict:
@@ -158,6 +158,7 @@ class GauntletBot(commands.Bot):
         logging.info("🟢 Application slash commands synchronized globally.")
         # Register persistent views so their buttons survive bot restarts
         self.add_view(TopLeaderboardView())
+        self.add_view(LeaderboardDivisionView())
         logging.info("🟢 Persistent views registered.")
 
     async def recover_season_state(self):
@@ -1182,34 +1183,57 @@ async def profile_cmd(interaction: discord.Interaction, driver: discord.Member =
     embed.set_footer(text="System Terminal Sync Matrix v2.0", icon_url=target_user.display_avatar.url)
     await interaction.followup.send(embed=embed)
 
-@bot.tree.command(name="leaderboard", description="Displays division standings.")
-@app_commands.describe(page="Page number to view (10 drivers per page, default 1)")
+class LeaderboardDivisionView(discord.ui.View):
+    """Persistent dropdown view for browsing the leaderboard by division.
+    Works for everyone — any user can click the dropdown at any time."""
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.select(
+        placeholder="Select a division to view standings...",
+        min_values=1, max_values=1,
+        custom_id="leaderboard_division_select",
+        options=[
+            discord.SelectOption(label=div["name"], value=str(i), description=f"PI {div['min']}+" + (f"– {div['max']-1}" if div['max'] else "+"))
+            for i, div in enumerate(PI_DIVISIONS)
+        ]
+    )
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        div = PI_DIVISIONS[int(self.values[0])]
+        guild_id = str(interaction.guild_id)
+        cursor = bot.db.drivers.find({
+            "guild_id": guild_id,
+            "garage_pi": division_mongo_query(div)
+        }).sort("elo", -1).limit(25)
+        drivers = await cursor.to_list(length=25)
+        count = await bot.db.drivers.count_documents({
+            "guild_id": guild_id,
+            "garage_pi": division_mongo_query(div)
+        })
+
+        embed = discord.Embed(title=div["name"], description=f"Standings for this division — {count} driver{'s' if count != 1 else ''} total", color=div["color"])
+        embed.set_image(url=ASPHALT_MEDIA["banner_leaderboard"])
+
+        if not drivers:
+            embed.description += "\n\n*No verified drivers in this division yet.*"
+        else:
+            board = ""
+            for r, d in enumerate(drivers):
+                medal = "🥇 " if r == 0 else "🥈 " if r == 1 else "🥉 " if r == 2 else f"`#{r+1}` "
+                board += f"{medal} <@{d['user_id']}> | ID: `{d['game_id']}` — **`{d.get('elo', 1000)} ELO`** ({d.get('garage_pi', 0):,} PI)\n"
+            embed.add_field(name="🏁 Division Standings", value=board, inline=False)
+        embed.set_footer(text="Use the dropdown to switch divisions")
+        await interaction.followup.send(embed=embed)
+
+@bot.tree.command(name="leaderboard", description="View division standings — pick a division from the dropdown.")
+@app_commands.describe(page="(Legacy) Not used with the dropdown — kept for backwards compatibility.")
 async def leaderboard_cmd(interaction: discord.Interaction, page: int = 1):
     await interaction.response.defer()
-    guild_id = str(interaction.guild_id)
-    page = max(1, page)
-    per_page = 10
-    skip_count = (page - 1) * per_page
-    total_count = await bot.db.drivers.count_documents({"guild_id": guild_id})
-    cursor = bot.db.drivers.find({"guild_id": guild_id}).sort("elo", -1).skip(skip_count).limit(per_page)
-    top_racers = await cursor.to_list(length=per_page)
-    
-    embed = discord.Embed(title="🏆 LEAGUE DIVISIONAL STANDINGS MATRIX", description=f"Live rankings across all active brackets within this node network — page `{page}`:", color=ASPHALT_THEME_COLOR)
+    embed = discord.Embed(title="🏆 DIVISION LEADERBOARD", description="Select a division from the dropdown below to view its full ELO standings.", color=ASPHALT_THEME_COLOR)
     embed.set_image(url=ASPHALT_MEDIA["banner_leaderboard"])
-    
-    if not top_racers:
-        embed.description += "\n\n*No verified drivers found on this page.*"
-    else:
-        board_text = ""
-        for index, racer in enumerate(top_racers):
-            rank = skip_count + index + 1
-            medal = "🥇 " if rank == 1 else "🥈 " if rank == 2 else "🥉 " if rank == 3 else f"`#{rank}` "
-            board_text += f"{medal} <@{racer['user_id']}> | ID: `{racer['game_id']}` — **`{racer.get('elo', 1000)} ELO`** ({racer.get('garage_pi', 0):,} PI)\n"
-        embed.add_field(name="🏁 Top Competitive Standings Ladder", value=board_text, inline=False)
-        
-    total_pages = max(1, (total_count + per_page - 1) // per_page)
-    embed.set_footer(text=f"Page {page} of {total_pages} • {total_count} verified drivers")
-    await interaction.followup.send(embed=embed)
+    embed.set_footer(text="Select a division below")
+    await interaction.followup.send(embed=embed, view=LeaderboardDivisionView())
 
 class TopLeaderboardView(discord.ui.View):
     """Persistent dropdown view for selecting which top 5 leaderboard to display.
@@ -1461,8 +1485,8 @@ This bot manages the server's competitive racing league workflow inside Discord.
             )
             embed.add_field(
                 name="🏆 `/leaderboard`",
-                value="""**Usage:** `/leaderboard` or `/leaderboard page:<number>`
-**Purpose:** Display the server's competitive standings with Player IDs, ELO, and Garage PI, 10 drivers per page.""",
+                value="""**Usage:** `/leaderboard`
+**Purpose:** Opens a dropdown to browse standings by division (Bronze through Legend). Select a division to see all its players ranked by ELO with Player IDs and Garage PI.""",
                 inline=False,
             )
             embed.add_field(
