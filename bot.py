@@ -785,11 +785,8 @@ This bot manages the server's competitive racing league workflow inside Discord.
             embed.add_field(
                 name="⚙️ Setup / Installation",
                 value="""1. Invite the bot to your Discord server with the permissions required for your channels/roles.
-2. Set `DISCORD_BOT_TOKEN` in the bot environment.
-3. Set `MONGO_URI` when using MongoDB Atlas; the current code falls back to a mock database if MongoDB is unavailable.
-4. Start the bot.
-5. A server administrator runs `/setup` and selects the main, staff review, log, and announcement channels plus the admin, driver, and announcement roles.
-6. Players can then run `/register` and begin the league workflow after approval.""",
+2. A server administrator runs `/setup` and selects the main, staff review, log, and announcement channels plus the admin, driver, and announcement roles.
+3. Players can then run `/register` and begin the league workflow after approval.""",
                 inline=False,
             )
             embed.add_field(
