@@ -10,8 +10,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout Code Reference
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
 
       - name: Deploy to Discloud Container
         uses: discloud/deploy-action@v1
