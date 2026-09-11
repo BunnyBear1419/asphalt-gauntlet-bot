@@ -908,6 +908,37 @@ This bot manages the server's competitive racing league workflow inside Discord.
                 inline=False,
             )
             embed.add_field(
+                name="🔄 `/sync`",
+                value=(
+                    "**Usage:** `/sync`\n"
+                    "**Purpose:** Manually synchronize the slash-command tree with Discord when commands are not refreshing or appear stuck.\n"
+                    "**Access:** Administrator or configured admin role.\n"
+                    "**Recovery:** Use `!force sync` when slash commands themselves are unavailable."
+                ),
+                inline=False,
+            )
+            embed.add_field(
+                name="⚡ `!force sync`",
+                value=(
+                    "**Usage:** `!force sync`\n"
+                    "**Purpose:** Force a manual application-command synchronization through the traditional prefix command system.\n"
+                    "**Access:** Discord Administrator permission.\n"
+                    "**Use it when:** Slash commands are frozen or not refreshing and `/sync` cannot be invoked."
+                ),
+                inline=False,
+            )
+            embed.add_field(
+                name="🤖 `/identity`",
+                value=(
+                    "**Usage:** `/identity`\n"
+                    "**Purpose:** Open an admin-only form to change the bot's username and/or avatar.\n"
+                    "**Username:** Optional; leave blank to keep the current name.\n"
+                    "**Avatar URL:** Optional direct HTTP/HTTPS image URL; leave blank to keep the current avatar.\n"
+                    "**Access:** Administrator or configured admin role."
+                ),
+                inline=False,
+            )
+            embed.add_field(
                 name="🖥️ `/diagnostics`",
                 value="""**Usage:** `/diagnostics`
 **Purpose:** Run staff-only health checks for Discord synchronization/latency, MongoDB, PIL processing, and runtime status.
@@ -925,6 +956,129 @@ class HelpView(discord.ui.View):
     def __init__(self, is_admin: bool = False):
         super().__init__(timeout=900)
         self.add_item(HelpCategorySelect(is_admin=is_admin))
+
+
+class IdentityModal(discord.ui.Modal, title="Bot Identity"):
+    username = discord.ui.TextInput(
+        label="Bot Username",
+        placeholder="Leave blank to keep the current username",
+        required=False,
+        max_length=32,
+    )
+    avatar_url = discord.ui.TextInput(
+        label="Avatar URL",
+        placeholder="Direct HTTPS image URL; leave blank to keep current avatar",
+        required=False,
+        max_length=2048,
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if not interaction.guild:
+            await interaction.response.send_message("❌ This command can only be used inside a server.", ephemeral=True)
+            return
+        if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        changed = []
+        try:
+            username_value = self.username.value.strip()
+            if username_value:
+                await bot.user.edit(username=username_value)
+                changed.append(f"**Username:** `{username_value}`")
+
+            avatar_value = self.avatar_url.value.strip()
+            if avatar_value:
+                if not avatar_value.lower().startswith(("http://", "https://")):
+                    await interaction.followup.send("❌ Avatar URL must begin with `http://` or `https://`.", ephemeral=True)
+                    return
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(avatar_value, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+                        if resp.status != 200:
+                            await interaction.followup.send(f"❌ Could not download the avatar image. HTTP status: `{resp.status}`.", ephemeral=True)
+                            return
+                        avatar_bytes = await resp.read()
+                await bot.user.edit(avatar=avatar_bytes)
+                changed.append("**Avatar:** Updated from the supplied image URL.")
+
+            if not changed:
+                await interaction.followup.send("ℹ️ No identity changes were requested.", ephemeral=True)
+                return
+
+            embed = discord.Embed(title="✅ Bot Identity Updated", description="\n".join(changed), color=ASPHALT_VICTORY_COLOR)
+            embed.set_footer(text=f"Updated by {interaction.user}")
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except discord.HTTPException as exc:
+            await interaction.followup.send(f"❌ Discord rejected the identity update: `{exc}`", ephemeral=True)
+        except Exception as exc:
+            logging.exception("Bot identity update failed")
+            await interaction.followup.send(f"❌ Identity update failed: `{exc}`", ephemeral=True)
+
+
+@bot.tree.command(name="identity", description="[Admin Only] Change the bot's username or avatar.")
+async def identity_cmd(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
+        return
+    await interaction.response.send_modal(IdentityModal())
+
+
+@bot.tree.command(name="sync", description="[Admin Only] Synchronize slash commands with Discord.")
+async def sync_cmd(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    try:
+        synced = await bot.tree.sync()
+        embed = discord.Embed(
+            title="🔄 Slash Commands Synchronized",
+            description=f"Discord received **{len(synced)}** application commands from this bot.",
+            color=ASPHALT_VICTORY_COLOR,
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        logging.info("Manual /sync completed by %s; %d commands synchronized.", interaction.user, len(synced))
+    except Exception as exc:
+        logging.exception("Manual /sync failed")
+        await interaction.followup.send(f"❌ Slash command synchronization failed:\n`{exc}`", ephemeral=True)
+
+
+@bot.command(name="force")
+@commands.has_permissions(administrator=True)
+async def force_command(ctx: commands.Context, action: str = None):
+    """Prefix recovery command. Use !force sync to re-sync slash commands."""
+    if action is None:
+        await ctx.send("❌ Usage: `!force sync`")
+        return
+    if action.lower() != "sync":
+        await ctx.send("❌ Unknown force action. Use `!force sync`.")
+        return
+    try:
+        synced = await bot.tree.sync()
+        embed = discord.Embed(
+            title="⚡ FORCE SYNC COMPLETE",
+            description=(
+                f"Slash-command tree was manually synchronized with Discord.\n\n"
+                f"**Commands synced:** `{len(synced)}`\n"
+                f"**Requested by:** {ctx.author.mention}"
+            ),
+            color=ASPHALT_VICTORY_COLOR,
+        )
+        await ctx.send(embed=embed)
+        logging.info("Manual !force sync completed by %s; %d commands synchronized.", ctx.author, len(synced))
+    except Exception as exc:
+        logging.exception("Manual !force sync failed")
+        await ctx.send(f"❌ Force sync failed: `{exc}`")
+
+
+@force_command.error
+async def force_command_error(ctx: commands.Context, error: Exception):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ Access Denied: Administrator permission is required.")
+    else:
+        logging.exception("!force command error", exc_info=error)
+        await ctx.send(f"❌ Force command error: `{error}`")
 
 
 @bot.tree.command(name="help", description="Interactive help and command reference.")
