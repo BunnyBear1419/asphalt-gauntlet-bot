@@ -127,6 +127,38 @@ class GauntletBot(commands.Bot):
         self.db = None
         self.mongo_client = None
 
+    async def sync_application_commands(self):
+        """Synchronize the application command tree globally.
+
+        Global commands are used deliberately so the bot can serve multiple
+        servers without requiring a hard-coded guild/server ID. The extra
+        logging makes it easy to confirm that /help is actually present in
+        the local command tree before Discord receives the sync.
+        """
+        local_commands = self.tree.get_commands()
+        command_names = sorted(command.name for command in local_commands)
+        logging.info(
+            "🔎 Preparing global application-command sync: %d commands registered locally.",
+            len(local_commands),
+        )
+        logging.info("🔎 Registered application commands: %s", ", ".join(command_names))
+
+        if not any(command.name == "help" for command in local_commands):
+            logging.error("🔴 /help is NOT present in bot.tree before synchronization.")
+
+        synced = await self.tree.sync()
+        synced_names = sorted(command.name for command in synced)
+
+        if "help" in synced_names:
+            logging.info("🟢 /help was included in the global application-command sync.")
+        else:
+            logging.error(
+                "🔴 /help was NOT returned by Discord after global sync. Synced commands: %s",
+                ", ".join(synced_names),
+            )
+
+        return synced
+
     async def setup_hook(self):
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
@@ -154,8 +186,11 @@ class GauntletBot(commands.Bot):
                 logging.info(f"🟢 Loaded {len(media_doc['custom_images'])} custom images from DB.")
         except Exception as e:
             logging.warning(f"⚠️ Could not load custom images: {e}")
-        await self.tree.sync()
-        logging.info("🟢 Application slash commands synchronized globally.")
+        # Register all application commands globally. This is intentionally global
+        # because this bot is installed in multiple servers. Guild-specific syncs
+        # are not used here.
+        synced = await self.sync_application_commands()
+        logging.info("🟢 Application slash commands synchronized globally (%d commands).", len(synced))
         # Register persistent views so their buttons survive bot restarts
         self.add_view(TopLeaderboardView())
         self.add_view(LeaderboardDivisionView())
@@ -1677,7 +1712,7 @@ async def sync_cmd(interaction: discord.Interaction):
         return
     await interaction.response.defer(ephemeral=True)
     try:
-        synced = await bot.tree.sync()
+        synced = await bot.sync_application_commands()
         embed = discord.Embed(
             title="🔄 Slash Commands Synchronized",
             description=f"Discord received **{len(synced)}** application commands from this bot.",
@@ -1695,7 +1730,7 @@ async def sync_cmd(interaction: discord.Interaction):
 async def force_command(ctx: commands.Context):
     """Prefix recovery command. Use !forcesync to re-sync slash commands."""
     try:
-        synced = await bot.tree.sync()
+        synced = await bot.sync_application_commands()
         embed = discord.Embed(
             title="⚡ FORCE SYNC COMPLETE",
             description=(
