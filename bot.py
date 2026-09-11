@@ -59,12 +59,12 @@ ALU_CARS = [
 # Single source of truth for PI-based divisions/tiers, used by both season-end podiums
 # and /challenge matchmaking so the brackets always stay in sync.
 PI_DIVISIONS = [
-    {"name": "👑 Division 6 — Legend Tier", "min": 22000, "max": None, "color": 0x9b59b6},
-    {"name": "🏆 Division 5 — Champ Tier", "min": 17600, "max": 22000, "color": 0xe74c3c},
-    {"name": "💎 Division 4 — Platinum Tier", "min": 13200, "max": 17600, "color": 0x3498db},
-    {"name": "🥇 Division 3 — Gold Tier", "min": 8800, "max": 13200, "color": 0xdeaf2a},
-    {"name": "🥈 Division 2 — Silver Tier", "min": 4400, "max": 8800, "color": 0xa4a7a9},
-    {"name": "🪵 Division 1 — Bronze Tier", "min": 0, "max": 4400, "color": 0xa3704c},
+    {"name": "👑 Division 6 — Legend Tier", "min": 22001, "max": None, "color": 0x9b59b6},
+    {"name": "🏆 Division 5 — Champ Tier", "min": 18501, "max": 22001, "color": 0xe74c3c},
+    {"name": "💎 Division 4 — Platinum Tier", "min": 15001, "max": 18501, "color": 0x3498db},
+    {"name": "🥇 Division 3 — Gold Tier", "min": 11501, "max": 15001, "color": 0xdeaf2a},
+    {"name": "🥈 Division 2 — Silver Tier", "min": 8001, "max": 11501, "color": 0xa4a7a9},
+    {"name": "🥉 Division 1 — Bronze Tier", "min": 0, "max": 8001, "color": 0xa3704c},
 ]
 
 def division_mongo_query(division: dict) -> dict:
