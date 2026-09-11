@@ -277,6 +277,44 @@ async def before_seasonal_clock():
 # Bind the standalone task securely to our initialized client body
 bot.seasonal_clock_loop = seasonal_clock_loop_task
 
+async def check_admin_privileges(interaction: discord.Interaction) -> bool:
+    """Return True for Discord admins, configured admin-role members, or the bot owner."""
+    if interaction.user.guild_permissions.administrator:
+        return True
+
+    try:
+        if await bot.is_owner(interaction.user):
+            return True
+    except Exception:
+        pass
+
+    cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
+    if cfg and cfg.get("admin_role_id") and interaction.guild:
+        target_role = interaction.guild.get_role(int(cfg["admin_role_id"]))
+        if target_role and target_role in interaction.user.roles:
+            return True
+    return False
+
+async def enforce_channel_constraints(interaction: discord.Interaction, admin_cmd: bool = False) -> bool:
+    """Enforce main-channel use for players; admin/owner commands work in any channel."""
+    cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
+    if not cfg:
+        await interaction.response.send_message("❌ **System Offline:** Run `/setup` first.", ephemeral=True)
+        return False
+
+    # Staff commands are intentionally not tied to any particular channel.
+    if admin_cmd:
+        return True
+
+    main_chan_id = cfg.get("registration_channel_id")
+    if str(interaction.channel_id) != str(main_chan_id):
+        await interaction.response.send_message(
+            f"❌ **Lobby Lock Active:** Use the main channel: <#{main_chan_id}>.",
+            ephemeral=True,
+        )
+        return False
+    return True
+
 async def dispatch_audit_log(guild_id: str, title: str, description: str, color: int = 0x7f8c8d):
     cfg = await bot.db.settings.find_one({"_id": str(guild_id)})
     if cfg and cfg.get("log_channel_id"):
