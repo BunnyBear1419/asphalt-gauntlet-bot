@@ -308,7 +308,7 @@ async def dispatch_automated_announcement(guild_id: str, title: str, description
             emb = discord.Embed(title=title, description=description, color=color, timestamp=datetime.now(timezone.utc))
             if image_url:
                 emb.set_image(url=image_url)
-            ping_content = f"<@&{cfg['player_role_id']}>" if cfg.get("player_role_id") else ""
+            ping_content = f"<@&{cfg['announcement_role_id']}>" if cfg.get("announcement_role_id") else ""
             try: await chan.send(content=ping_content, embed=emb)
             except Exception: pass
 
@@ -334,7 +334,7 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
         if not channel_id: continue
         target_channel = bot.get_channel(int(channel_id))
         if not target_channel: continue
-        ping_content = f"<@&{config['player_role_id']}>" if config.get("player_role_id") else ""
+        ping_content = f"<@&{config['announcement_role_id']}>" if config.get("announcement_role_id") else ""
         
         header_embed = discord.Embed(
             title=f"🏁 SEASON {current_season_num} GAUNTLET FINALE PODIUMS", 
@@ -738,7 +738,7 @@ class VerificationView(discord.ui.View):
         guild = bot.get_guild(int(self.guild_id))
         member = guild.get_member(int(self.user_id)) if guild else None
         if member and cfg:
-            roles = [guild.get_role(int(cfg[k])) for k in ["player_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
+            roles = [guild.get_role(int(cfg[k])) for k in ["announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
             if roles:
                 try: await member.add_roles(*roles)
                 except Exception: pass
@@ -857,13 +857,13 @@ async def setimage_cmd(interaction: discord.Interaction, image_type: app_command
     await dispatch_audit_log(guild_id, "🖼️ Custom Image Updated", f"Admin {interaction.user.mention} updated the **{image_type.name}** image.", color=0x2ecc71)
 
 @bot.tree.command(name="setup", description="[Admin Only] Configures all league core channels and permission roles.")
-@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", match_results_channel="Public room for match results", admin_role="Admin override role", player_role="Verified player role")
-async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role):
+@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", match_results_channel="Public room for match results", admin_role="Admin override role", announcement_role="Announcement ping role")
+async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, announcement_role: discord.Role):
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Admin role overrides missing.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "player_role_id": str(player_role.id)}}, upsert=True)
+    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "announcement_role_id": str(announcement_role.id)}}, upsert=True)
     await interaction.followup.send(embed=discord.Embed(title="⚙️ Master League Matrix Configuration Restored", description="All channel streams and dynamic role mapping rules saved successfully. Match results will be posted to the designated channel.", color=ASPHALT_THEME_COLOR))
     await dispatch_audit_log(interaction.guild_id, "⚙️ Master Setup Initialized", f"The bot was initialized perfectly by authority {interaction.user.mention}.", color=ASPHALT_THEME_COLOR)
 
@@ -1043,14 +1043,10 @@ async def change_defense_cmd(interaction: discord.Interaction):
     embed.set_footer(text="Use /submitdefense with your 5 lap times and 5 cars to complete your defense change.")
     await interaction.followup.send(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="submitdefense", description="🛡️ Submit your 5 lap times, cars, and one proof screenshot per lap for your generated defense courses.")
+@bot.tree.command(name="submitdefense", description="🛡️ Submit your 5 lap times and cars for your generated defense courses.")
 @app_commands.autocomplete(car_1=car_autocomplete, car_2=car_autocomplete, car_3=car_autocomplete, car_4=car_autocomplete, car_5=car_autocomplete)
-@app_commands.describe(
-    lap_time_1="Lap time for course 1 (MM:SS.MS)", lap_time_2="Lap time for course 2 (MM:SS.MS)", lap_time_3="Lap time for course 3 (MM:SS.MS)", lap_time_4="Lap time for course 4 (MM:SS.MS)", lap_time_5="Lap time for course 5 (MM:SS.MS)",
-    car_1="Car for course 1", car_2="Car for course 2", car_3="Car for course 3", car_4="Car for course 4", car_5="Car for course 5",
-    proof_screenshot_1="Screenshot proving lap time 1", proof_screenshot_2="Screenshot proving lap time 2", proof_screenshot_3="Screenshot proving lap time 3", proof_screenshot_4="Screenshot proving lap time 4", proof_screenshot_5="Screenshot proving lap time 5"
-)
-async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, lap_time_2: str, lap_time_3: str, lap_time_4: str, lap_time_5: str, car_1: str, car_2: str, car_3: str, car_4: str, car_5: str, proof_screenshot_1: discord.Attachment, proof_screenshot_2: discord.Attachment, proof_screenshot_3: discord.Attachment, proof_screenshot_4: discord.Attachment, proof_screenshot_5: discord.Attachment):
+@app_commands.describe(lap_time_1="Lap time for course 1 (MM:SS.MS)", lap_time_2="Lap time for course 2 (MM:SS.MS)", lap_time_3="Lap time for course 3 (MM:SS.MS)", lap_time_4="Lap time for course 4 (MM:SS.MS)", lap_time_5="Lap time for course 5 (MM:SS.MS)", car_1="Car for course 1", car_2="Car for course 2", car_3="Car for course 3", car_4="Car for course 4", car_5="Car for course 5", proof_screenshot="Screenshot proving all 5 lap times")
+async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, lap_time_2: str, lap_time_3: str, lap_time_4: str, lap_time_5: str, car_1: str, car_2: str, car_3: str, car_4: str, car_5: str, proof_screenshot: discord.Attachment):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
     profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
@@ -1068,50 +1064,42 @@ async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, 
     
     lap_times = [lap_time_1, lap_time_2, lap_time_3, lap_time_4, lap_time_5]
     cars = [car_1, car_2, car_3, car_4, car_5]
-    proof_screenshots = [proof_screenshot_1, proof_screenshot_2, proof_screenshot_3, proof_screenshot_4, proof_screenshot_5]
     
     # Check for duplicate cars
     if len({c.strip().lower() for c in cars}) != len(cars):
         await interaction.followup.send("❌ **Duplicate Cars:** All 5 cars must be different. Please choose 5 unique cars.", ephemeral=True)
         return
     
-    # Every lap needs its own proof screenshot
-    for i, shot in enumerate(proof_screenshots):
-        if not shot.content_type or not shot.content_type.startswith("image/"):
-            await interaction.followup.send(f"❌ **Invalid Proof:** The screenshot for lap {i+1} must be an image file.", ephemeral=True)
-            return
-    
-    # Validate all 5 lap times and build course objects (each with its own proof)
+    # Validate all 5 lap times and build course objects
     courses = []
     for i in range(5):
         ms = parse_lap_time(lap_times[i])
         if ms < 0:
             await interaction.followup.send(f"❌ **Invalid Format:** Lap time {i+1} (`{lap_times[i]}`) must be in `MM:SS.MS` format.", ephemeral=True)
             return
-        courses.append({"track": pending_tracks[i], "car": cars[i], "lap_time": lap_times[i], "ms": ms, "proof_url": proof_screenshots[i].url})
+        courses.append({"track": pending_tracks[i], "car": cars[i], "lap_time": lap_times[i], "ms": ms})
     
     cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
     chan = bot.get_channel(int(cfg["review_channel_id"])) if cfg else None
     if chan:
         if is_change:
-            header_emb = discord.Embed(title="🛡️ Gauntlet Defense Change Request", description="A driver has requested to change their locked 5-course defense. Their current defense remains active until the new one is approved.", color=0x3498db)
+            emb = discord.Embed(title="🛡️ Gauntlet Defense Change Request", description="A driver has requested to change their locked 5-course defense. Their current defense remains active until the new one is approved.", color=0x3498db)
         else:
-            header_emb = discord.Embed(title="🛡️ New Gauntlet Defense Placement Verification", description="**Staff:** please verify each course's lap time and car against its matching screenshot below.", color=0x3498db)
-        header_emb.add_field(name="Driver", value=interaction.user.mention, inline=False)
-        review_embeds = [header_emb]
+            emb = discord.Embed(title="🛡️ New Gauntlet Defense Placement Verification", description="**Staff:** please verify each course's lap time and car against the screenshot.", color=0x3498db)
+        emb.add_field(name="Driver", value=interaction.user.mention, inline=True)
         for i, course in enumerate(courses):
-            course_emb = discord.Embed(title=f"🏁 Course {i+1}: {course['track']}", description=f"🚗 **Car:** `{course['car']}`\n⏱️ **Lap Time:** `{course['lap_time']}`", color=0x3498db)
-            course_emb.set_image(url=course["proof_url"])
-            review_embeds.append(course_emb)
-        await chan.send(embeds=review_embeds, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), courses, courses[0]["proof_url"], is_change=is_change))
-        # Set review-pending flag (don't clear pending_tracks so they can resubmit if rejected)
-        await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"defense_review_pending": True}})
-        if is_change:
-            await interaction.followup.send("📥 **Defense Change Staged:** 5-course lineup sent to staff for audit clearance! Your current defense remains active until the new one is approved.")
+            emb.add_field(name=f"🏁 Course {i+1}", value=f"📍 `{course['track']}`\n🚗 `{course['car']}`\n⏱️ `{course['lap_time']}`", inline=True)
+        emb.set_image(url=proof_screenshot.url)
+        if chan:
+            await chan.send(embed=emb, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), courses, proof_screenshot.url, is_change=is_change))
+            # Set review-pending flag (don't clear pending_tracks so they can resubmit if rejected)
+            await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"defense_review_pending": True}})
+            if is_change:
+                await interaction.followup.send("📥 **Defense Change Staged:** 5-course lineup sent to staff for audit clearance! Your current defense remains active until the new one is approved.")
+            else:
+                await interaction.followup.send("📥 **Defense Staged:** 5-course lineup sent to staff for audit clearance!")
         else:
-            await interaction.followup.send("📥 **Defense Staged:** 5-course lineup sent to staff for audit clearance!")
-    else:
-        await interaction.followup.send("❌ Staff review channel is not configured. Ask an administrator to run `/setup`.", ephemeral=True)
+            await interaction.followup.send("❌ Staff review channel is not configured. Ask an administrator to run `/setup`.", ephemeral=True)
 
 @bot.tree.command(name="challenge", description="Fetches active 5-course defense ghosts for matchmaking (5 per day).")
 @app_commands.checks.cooldown(1, 45.0, key=lambda i: (i.guild_id, i.user.id))
@@ -1459,9 +1447,9 @@ This bot manages the server's competitive racing league workflow inside Discord.
             )
             embed.add_field(
                 name="📤 `/submitdefense`",
-                value="""**Usage:** `/submitdefense lap_time_1:<MM:SS.MS> ... lap_time_5:<MM:SS.MS> car_1:<car> ... car_5:<car> proof_screenshot_1:<attachment> ... proof_screenshot_5:<attachment>`
-**Purpose:** Submit your 5 lap times, 5 different cars (one per course), and one proof screenshot per lap for staff approval.
-**Requirements:** You must have generated courses via `/setdefense` or `/changedefense` first. All 5 cars must be different, and each of the 5 laps needs its own screenshot.
+                value="""**Usage:** `/submitdefense lap_time_1:<MM:SS.MS> lap_time_2:<MM:SS.MS> lap_time_3:<MM:SS.MS> lap_time_4:<MM:SS.MS> lap_time_5:<MM:SS.MS> car_1:<car> car_2:<car> car_3:<car> car_4:<car> car_5:<car> proof_screenshot:<attachment>`
+**Purpose:** Submit your 5 lap times and 5 different cars (one per course) for staff approval.
+**Requirements:** You must have generated courses via `/setdefense` or `/changedefense` first. All 5 cars must be different.
 **Result:** Your 5-course defense is sent to staff for approval. Once approved, it becomes your locked defense.""",
                 inline=False,
             )
@@ -1534,7 +1522,7 @@ This bot manages the server's competitive racing league workflow inside Discord.
             )
             embed.add_field(
                 name="⚙️ `/setup`",
-                value="""**Usage:** `/setup main_channel:<channel> staff_channel:<channel> log_channel:<channel> announcement_channel:<channel> match_results_channel:<channel> admin_role:<role> player_role:<role>`
+                value="""**Usage:** `/setup main_channel:<channel> staff_channel:<channel> log_channel:<channel> announcement_channel:<channel> match_results_channel:<channel> admin_role:<role> announcement_role:<role>`
 **Purpose:** Configure the league's core channels and role mappings.
 **Access:** Discord Administrator or configured admin role.""",
                 inline=False,
