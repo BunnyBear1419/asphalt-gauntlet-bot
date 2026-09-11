@@ -274,6 +274,7 @@ class GauntletBot(commands.Bot):
         self.seasonal_clock_loop.start()
         self.player_reminder_loop = player_reminder_loop
         self.player_reminder_loop.start()
+        self.backup_loop.start()
         # Load custom images from DB into ASPHALT_MEDIA
         try:
             media_doc = await self.db.settings.find_one({"_id": "global_media"})
@@ -403,11 +404,66 @@ class GauntletBot(commands.Bot):
     async def close(self):
         self.seasonal_clock_loop.cancel()
         self.player_reminder_loop.cancel()
+        self.backup_loop.cancel()
         if self.mongo_client:
             self.mongo_client.close()
         await super().close()
 
 bot = GauntletBot()
+
+async def send_admin_alert(guild_id: str, title: str, description: str):
+    """Best-effort Discord alert to the configured staff/log channel."""
+    try:
+        cfg = await bot.db.settings.find_one({"_id": str(guild_id)})
+        if not cfg:
+            return
+        channel_id = cfg.get("log_channel_id") or cfg.get("announcement_channel_id")
+        if not channel_id:
+            return
+        channel = bot.get_channel(int(channel_id))
+        if channel:
+            embed = discord.Embed(title=f"🚨 {title}", description=description[:4000], color=ASPHALT_ALERT_COLOR, timestamp=datetime.now(timezone.utc))
+            await channel.send(embed=embed)
+    except Exception:
+        logging.exception("Failed to send admin alert for guild %s", guild_id)
+
+async def create_database_backup(reason: str = "scheduled"):
+    """Create a free local JSON backup of all league collections."""
+    if not bot.mongo_client:
+        return None
+    backup_root = os.getenv("BACKUP_DIR", "./backups")
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+    folder = os.path.join(backup_root, stamp)
+    os.makedirs(folder, exist_ok=True)
+    collections = ["drivers", "pending", "matches", "active_challenges", "season_state", "season_history", "settings", "reference_pending"]
+    manifest = {"created_at": datetime.now(timezone.utc).isoformat(), "reason": reason, "database": "asphalt_gauntlet", "collections": collections}
+    for name in collections:
+        docs = await getattr(bot.db, name).find({}).to_list(length=100000)
+        with open(os.path.join(folder, f"{name}.json"), "w", encoding="utf-8") as fh:
+            json.dump(docs, fh, ensure_ascii=False, indent=2, default=str)
+    with open(os.path.join(folder, "manifest.json"), "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2)
+    # Keep the newest 7 backup folders to avoid filling the host disk.
+    folders = [os.path.join(backup_root, x) for x in os.listdir(backup_root) if os.path.isdir(os.path.join(backup_root, x))]
+    for old in sorted(folders, reverse=True)[7:]:
+        import shutil
+        shutil.rmtree(old, ignore_errors=True)
+    logging.info("🗄️ Database backup created: %s", folder)
+    return folder
+
+@tasks.loop(hours=24)
+async def backup_loop():
+    try:
+        await create_database_backup("scheduled")
+    except Exception as exc:
+        logging.exception("Scheduled database backup failed")
+        configs = await bot.db.settings.find({}).to_list(length=1000)
+        for cfg in configs:
+            await send_admin_alert(str(cfg.get("_id")), "DATABASE BACKUP FAILED", str(exc))
+
+@backup_loop.before_loop
+async def before_backup_loop():
+    await bot.wait_until_ready()
 
 @tasks.loop(hours=1)
 async def seasonal_clock_loop_task():
@@ -486,6 +542,7 @@ async def before_seasonal_clock():
 
 # Bind the standalone task securely to our initialized client body
 bot.seasonal_clock_loop = seasonal_clock_loop_task
+bot.backup_loop = backup_loop
 
 async def check_admin_privileges(interaction: discord.Interaction) -> bool:
     """Return True for Discord admins, configured admin-role members, or the bot owner."""
@@ -687,10 +744,19 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
             file=discord.File(fp=io.BytesIO(csv_buffer.getvalue().encode('utf-8')), filename=f"season_{current_season_num}_final_leaderboard.csv"),
         )
 
-    # Preserve the final snapshot for historical reporting.
+    # Preserve a complete final snapshot for historical reporting before the soft reset.
+    archive_rows = []
+    final_drivers = await bot.db.drivers.find({"guild_id": guild_id, "season_registered": True, "season_number": current_season_num}).sort("elo", -1).to_list(length=10000)
+    for rank, d in enumerate(final_drivers, start=1):
+        archive_rows.append({
+            "rank": rank, "user_id": str(d.get("user_id", "")), "game_id": d.get("game_id", ""),
+            "elo": int(d.get("elo", 1000)), "garage_pi": int(d.get("garage_pi", 0)),
+            "division": get_division_for_pi(int(d.get("garage_pi", 0))).get("name", "Unranked"),
+            "career_wins": int(d.get("career_wins", 0)), "career_played": int(d.get("career_played", 0)),
+        })
     await bot.db.season_history.update_one(
         {"_id": f"{guild_id}_{current_season_num}"},
-        {"$set": {"guild_id": guild_id, "season_number": current_season_num, "closed_at": now}},
+        {"$set": {"guild_id": guild_id, "season_number": current_season_num, "closed_at": now, "standings": archive_rows, "player_count": len(archive_rows)}},
         upsert=True,
     )
     await apply_season_soft_reset(guild_id, current_season_num)
@@ -802,16 +868,46 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         "defender_elo_before": old_defender_elo, "defender_elo_after": new_defender_elo,
         "settlement_status": "pending", "timestamp": time.time()
     }
-    try:
-        await bot.db.matches.insert_one(reservation)
-    except Exception:
-        existing = await bot.db.matches.find_one({"_id": match_id})
-        if existing and existing.get("settlement_status") == "completed":
-            return existing
-        raise
+    # Atomic MongoDB transaction: reservation + both driver updates are committed together.
+    # This requires a MongoDB deployment that supports transactions (Atlas Free/shared
+    # replica-set deployments do; the local mock falls back to the legacy-safe path).
+    async def _atomic_settlement(session):
+        await bot.db.matches.insert_one(reservation, session=session)
+        await bot.db.drivers.update_one(
+            {"_id": f"{guild_id}_{w_id}"},
+            {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}},
+            session=session,
+        )
+        await bot.db.drivers.update_one(
+            {"_id": f"{guild_id}_{l_id}"},
+            {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}},
+            session=session,
+        )
 
-    await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
-    await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
+    if bot.mongo_client:
+        try:
+            async with await bot.mongo_client.start_session() as session:
+                async with session.start_transaction():
+                    await _atomic_settlement(session)
+        except Exception:
+            existing = await bot.db.matches.find_one({"_id": match_id})
+            if existing and existing.get("settlement_status") == "completed":
+                return existing
+            # Transaction failure means MongoDB should have rolled back the writes.
+            logging.exception("Atomic match settlement failed: %s", match_id)
+            raise
+    else:
+        # Mock/offline mode cannot provide MongoDB transactions. Keep the existing
+        # reservation-safe sequence for local development.
+        try:
+            await bot.db.matches.insert_one(reservation)
+        except Exception:
+            existing = await bot.db.matches.find_one({"_id": match_id})
+            if existing and existing.get("settlement_status") == "completed":
+                return existing
+            raise
+        await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
+        await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
 
     match_record = {
         "_id": match_id,
@@ -2814,6 +2910,8 @@ class HelpCategorySelect(discord.ui.Select):
                 ("`!forcesync`", "Fallback command sync."),
                 ("`/identity`", "Change bot name/avatar."),
                 ("`/diagnostics`", "Run bot health checks."),
+                ("`/backup`", "Create an immediate database backup."),
+                ("`/seasonhistory`", "View completed season archives."),
             ]
             embed.add_field(name="Commands", value="\n".join(f"{cmd} — {desc}" for cmd, desc in admin_items), inline=False)
 
@@ -3019,6 +3117,53 @@ async def dbcheck_cmd(interaction: discord.Interaction):
         logging.exception("Database consistency check failed", exc_info=exc)
         await interaction.followup.send(f"❌ Database consistency check failed: `{exc}`", ephemeral=True)
 
+@bot.tree.command(name="seasonhistory", description="View archived final standings from completed seasons.")
+@app_commands.describe(season="Season number to view (optional)")
+async def seasonhistory_cmd(interaction: discord.Interaction, season: int = None):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    guild_id = str(interaction.guild_id)
+    if season is not None:
+        archive = await bot.db.season_history.find_one({"_id": f"{guild_id}_{int(season)}"})
+        if not archive:
+            await interaction.response.send_message(f"❌ No archived Season {int(season)} was found.", ephemeral=True)
+            return
+        rows = archive.get("standings", [])
+        lines = []
+        for row in rows[:25]:
+            lines.append(f"**#{row.get('rank')}** <@{row.get('user_id')}> — **{row.get('elo',1000)} ELO** — {row.get('division','Unranked')}")
+        desc = "\n".join(lines) if lines else "*No archived standings.*"
+        if len(rows) > 25:
+            desc += f"\n\n…and {len(rows)-25} more drivers in the archived record."
+        embed = discord.Embed(title=f"🏆 SEASON {int(season)} ARCHIVE", description=desc[:4096], color=ASPHALT_THEME_COLOR)
+        embed.set_footer(text=f"Closed {datetime.fromtimestamp(float(archive.get('closed_at', time.time())), tz=timezone.utc).strftime('%Y-%m-%d')}")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    archives = await bot.db.season_history.find({"guild_id": guild_id}).sort("season_number", -1).limit(15).to_list(length=15)
+    if not archives:
+        await interaction.response.send_message("ℹ️ No completed season archives yet.", ephemeral=True)
+        return
+    lines = [f"🏁 **Season {a.get('season_number')}** — `{a.get('player_count', len(a.get('standings', [])))}` drivers — {datetime.fromtimestamp(float(a.get('closed_at', time.time())), tz=timezone.utc).strftime('%Y-%m-%d')}" for a in archives]
+    await interaction.response.send_message(embed=discord.Embed(title="🏆 SEASON ARCHIVES", description="\n".join(lines), color=ASPHALT_THEME_COLOR), ephemeral=True)
+
+@bot.tree.command(name="backup", description="[Staff Only] Create an immediate database backup.")
+async def backup_cmd(interaction: discord.Interaction):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    try:
+        folder = await create_database_backup(f"manual by {interaction.user.id}")
+        if folder:
+            await interaction.followup.send(f"✅ Database backup created.\n`{folder}`", ephemeral=True)
+            await audit_admin_action(interaction, "Database Backup", f"Created backup `{folder}`.")
+        else:
+            await interaction.followup.send("ℹ️ MongoDB is not connected; no cloud database backup was created.", ephemeral=True)
+    except Exception as exc:
+        logging.exception("Manual database backup failed")
+        await interaction.followup.send(f"❌ Backup failed: `{exc}`", ephemeral=True)
+        await send_admin_alert(str(interaction.guild_id), "DATABASE BACKUP FAILED", str(exc))
+
 @bot.tree.command(name="diagnostics", description="[Staff Only] Launches structural system tests across host execution environments.")
 async def diagnostics_cmd(interaction: discord.Interaction):
     if not await check_admin_privileges(interaction):
@@ -3059,6 +3204,25 @@ async def diagnostics_cmd(interaction: discord.Interaction):
     
     await interaction.followup.send(embed=embed)
     await audit_admin_action(interaction, "Diagnostics", "Ran staff diagnostics.")
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    logging.exception("Application command error", exc_info=error)
+    try:
+        if not interaction.response.is_done():
+            await interaction.response.send_message("❌ An unexpected bot error occurred. Staff have been alerted.", ephemeral=True)
+        else:
+            await interaction.followup.send("❌ An unexpected bot error occurred. Staff have been alerted.", ephemeral=True)
+    except Exception:
+        pass
+    if interaction.guild_id:
+        await send_admin_alert(str(interaction.guild_id), "BOT COMMAND ERROR", f"Command: `/{getattr(interaction.command, 'name', 'unknown')}`\nError: `{error}`")
+
+@bot.event
+async def on_error(event_method, *args, **kwargs):
+    logging.exception("Unhandled Discord event error: %s", event_method)
+    for cfg in await bot.db.settings.find({}).to_list(length=1000):
+        await send_admin_alert(str(cfg.get("_id")), "BOT EVENT ERROR", f"Event: `{event_method}`")
 
 if __name__ == "__main__":
     token = os.getenv("DISCORD_BOT_TOKEN")
