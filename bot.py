@@ -443,7 +443,7 @@ class VerificationView(discord.ui.View):
         guild = bot.get_guild(int(self.guild_id))
         member = guild.get_member(int(self.user_id)) if guild else None
         if member and cfg:
-            roles = [guild.get_role(int(cfg[k])) for k in ["driver_role_id", "announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
+            roles = [guild.get_role(int(cfg[k])) for k in ["announcement_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
             if roles:
                 try: await member.add_roles(*roles)
                 except Exception: pass
@@ -502,13 +502,13 @@ class ChallengeView(discord.ui.View):
         self.add_item(ChallengeDropdown(track_name, options_list, defender_def_data))
 
 @bot.tree.command(name="setup", description="[Admin Only] Configures all league core channels and permission roles.")
-@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", admin_role="Admin override role", driver_role="Verified driver role", announcement_role="Announcement ping role")
-async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, admin_role: discord.Role, driver_role: discord.Role, announcement_role: discord.Role):
+@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", admin_role="Admin override role", announcement_role="Announcement ping role")
+async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, admin_role: discord.Role, announcement_role: discord.Role):
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Admin role overrides missing.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "admin_role_id": str(admin_role.id), "driver_role_id": str(driver_role.id), "announcement_role_id": str(announcement_role.id)}}, upsert=True)
+    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "admin_role_id": str(admin_role.id), "announcement_role_id": str(announcement_role.id)}}, upsert=True)
     await interaction.followup.send(embed=discord.Embed(title="⚙️ Master League Matrix Configuration Restored", description="All channel streams and dynamic role mapping rules saved successfully.", color=ASPHALT_THEME_COLOR))
     await dispatch_audit_log(interaction.guild_id, "⚙️ Master Setup Initialized", f"The bot was initialized perfectly by authority {interaction.user.mention}.", color=ASPHALT_THEME_COLOR)
 
@@ -785,7 +785,7 @@ This bot manages the server's competitive racing league workflow inside Discord.
             embed.add_field(
                 name="⚙️ Setup / Installation",
                 value="""1. Invite the bot to your Discord server with the permissions required for your channels/roles.
-2. A server administrator runs `/setup` and selects the main, staff review, log, and announcement channels plus the admin, driver, and announcement roles.
+2. A server administrator runs `/setup` and selects the main, staff review, log, and announcement channels plus the admin and announcement roles.
 3. Players can then run `/register` and begin the league workflow after approval.""",
                 inline=False,
             )
@@ -863,7 +863,7 @@ This bot manages the server's competitive racing league workflow inside Discord.
             )
             embed.add_field(
                 name="⚙️ `/setup`",
-                value="""**Usage:** `/setup main_channel:<channel> staff_channel:<channel> log_channel:<channel> announcement_channel:<channel> admin_role:<role> driver_role:<role> announcement_role:<role>`
+                value="""**Usage:** `/setup main_channel:<channel> staff_channel:<channel> log_channel:<channel> announcement_channel:<channel> admin_role:<role> announcement_role:<role>`
 **Purpose:** Configure the league's core channels and role mappings.
 **Access:** Discord Administrator or configured admin role.""",
                 inline=False,
