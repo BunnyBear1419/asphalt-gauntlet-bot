@@ -9,7 +9,7 @@ import json
 import base64
 import random
 import csv
-from datetime import datetime, timezone
+from dataetime import datetime, timezone
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import discord
@@ -18,6 +18,8 @@ from discord.ext import commands, tasks
 from motor.motor_asyncio import AsyncIOMotorClient
 from PIL import Image
 import io
+import sys
+import platform
 
 # Load local workspace environment variables
 load_dotenv()
@@ -245,6 +247,7 @@ class GauntletBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
         self.db = None
         self.mongo_client = None
+        self.started_at = time.time()
 
     async def setup_hook(self):
         mongo_uri = os.getenv("MONGO_URI")
@@ -3301,46 +3304,146 @@ async def backup_cmd(interaction: discord.Interaction):
         await interaction.followup.send(f"❌ Backup failed: `{exc}`", ephemeral=True)
         await send_admin_alert(str(interaction.guild_id), "DATABASE BACKUP FAILED", str(exc))
 
-@bot.tree.command(name="diagnostics", description="[Staff Only] Launches structural system tests across host execution environments.")
+@bot.tree.command(name="diagnostics", description="[Staff Only] Run a read-only health and database diagnostic report.")
 async def diagnostics_cmd(interaction: discord.Interaction):
     if not await check_admin_privileges(interaction):
-        await interaction.response.send_message("❌ Access Denied: Admin authorization clearance required.", ephemeral=True)
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True)
         return
-        
+
     await interaction.response.defer(ephemeral=True)
-    report = []
-    report.append("⚙️ **Platform Nodes & Runtime Modules:**")
-    report.append(f"• **Discloud Node:** `ONLINE` (Environment Runtime Vector: Stable Cluster)")
-    report.append(f"• **GitHub Sync Hook:** `CONNECTED` (Head SHA verified against deployment cluster)")
-    
+    guild_id = str(interaction.guild_id)
+    now = time.time()
+    uptime_seconds = max(0, int(now - getattr(bot, "started_at", now)))
+
+    def fmt_uptime(seconds: int) -> str:
+        days, rem = divmod(seconds, 86400)
+        hours, rem = divmod(rem, 3600)
+        minutes, secs = divmod(rem, 60)
+        parts = []
+        if days: parts.append(f"{days}d")
+        if hours or days: parts.append(f"{hours}h")
+        if minutes or hours or days: parts.append(f"{minutes}m")
+        parts.append(f"{secs}s")
+        return " ".join(parts)
+
+    def task_status(task_obj) -> str:
+        if task_obj is None:
+            return "⚪ Not initialized"
+        try:
+            if task_obj.is_running():
+                return "🟢 Running"
+            if task_obj.is_being_cancelled():
+                return "🟡 Stopping"
+            if task_obj.failed():
+                return "🔴 Failed"
+        except Exception:
+            pass
+        return "⚪ Stopped"
+
+    runtime = []
+    counts = {}
+    integrity = []
+    mongo_ok = False
+
+    latency = bot.latency
+    latency_text = f"{round(latency * 1000, 1)}ms" if latency != float("inf") else "N/A"
+    runtime.append(("Gateway", f"🟢 Online • {latency_text}"))
+    runtime.append(("Uptime", f"🟢 {fmt_uptime(uptime_seconds)}"))
+    runtime.append(("Commands", f"🟢 {len(bot.tree.get_commands())} loaded"))
+    runtime.append(("Python", f"`{sys.version.split()[0]}`"))
+    runtime.append(("Host", f"`{platform.system()}`"))
+
     try:
         if bot.mongo_client:
-            await bot.mongo_client.admin.command('ping')
-            report.append("• **MongoDB Atlas Cloud:** `CONNECTED` (Ping response within matrix threshold bounds)")
+            started = time.perf_counter()
+            await bot.mongo_client.admin.command("ping")
+            mongo_ms = round((time.perf_counter() - started) * 1000, 1)
+            mongo_ok = True
+            runtime.append(("MongoDB", f"🟢 Connected • {mongo_ms}ms"))
+            for name in ("drivers", "pending", "matches", "active_challenges", "season_history", "reference_pending"):
+                try:
+                    counts[name] = await getattr(bot.db, name).count_documents({})
+                except Exception:
+                    counts[name] = "?"
         else:
-            report.append("• **MongoDB Atlas Cloud:** `OFFLINE` (Local Mock Database simulation running)")
-    except Exception as mongo_err:
-        report.append(f"• **MongoDB Atlas Cloud:** `CRITICAL ERROR` ({str(mongo_err)})")
-        
-    try:
-        img = Image.new('RGB', (100, 100), color = 'red')
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        report.append("• **PIL Processing Hub:** `OPERATIONAL` (Graphics system matrix allocation verified)")
-        report.append("• **OCR Translation Node:** `STANDBY` (Regex formatting rules and text matrices initialized)")
-    except Exception as pil_err:
-        report.append(f"• **PIL Processing Hub:** `FAILED` ({str(pil_err)})")
-        
-    report.append("• **Discord Gateway Engine:** `SYNCHRONIZED`")
-    report.append(f"  - Webhook Shard Latency: `{round(bot.latency * 1000, 2)}ms`")
-    report.append(f"  - Application Commands State: Tree globally structural synchronized")
+            runtime.append(("MongoDB", "🔴 Not connected • mock DB active"))
+    except Exception as exc:
+        runtime.append(("MongoDB", f"🔴 Error • {str(exc)[:160]}"))
 
-    embed = discord.Embed(title="🖥️ Core Diagnostics Matrix Status Report", description="System verification runtime diagnostics analysis sequence complete.", color=ASPHALT_ADMIN_COLOR, timestamp=datetime.now(timezone.utc))
+    season_text = "Unavailable"
+    queue_text = "Unavailable"
+    if mongo_ok:
+        try:
+            state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+            season = int(state.get("season_number", 1)) if state else 1
+            registered = await bot.db.drivers.count_documents({"guild_id": guild_id, "season_registered": True, "season_number": season})
+            pending = await bot.db.pending.count_documents({"guild_id": guild_id, "season_number": season})
+            active = await bot.db.active_challenges.count_documents({"guild_id": guild_id, "status": {"$in": ["active", "processing"]}})
+            stale = await bot.db.active_challenges.count_documents({"guild_id": guild_id, "status": "processing", "processing_at": {"$lt": now - 900}})
+            pending_settlements = await bot.db.matches.count_documents({"guild_id": guild_id, "settlement_status": "pending"})
+            bad_elo = await bot.db.drivers.count_documents({"guild_id": guild_id, "$or": [{"elo": {"$lt": 0}}, {"elo": {"$gt": 10000}}]})
+            bad_pi = await bot.db.drivers.count_documents({"guild_id": guild_id, "$or": [{"garage_pi": {"$lt": 0}}, {"garage_pi": {"$gt": 100000}}]})
+            season_text = f"Season {season} • {registered} registered"
+            queue_text = f"{active} active/processing • {pending} pending"
+            if stale:
+                integrity.append(f"⚠️ Stale processing challenges: `{stale}`")
+            if pending_settlements:
+                integrity.append(f"⚠️ Pending settlements: `{pending_settlements}`")
+            if bad_elo:
+                integrity.append(f"⚠️ Invalid ELO records: `{bad_elo}`")
+            if bad_pi:
+                integrity.append(f"⚠️ Invalid PI records: `{bad_pi}`")
+            if not integrity:
+                integrity.append("🟢 No obvious integrity issues found")
+        except Exception as exc:
+            integrity.append(f"🔴 Integrity check failed: {str(exc)[:160]}")
+    else:
+        integrity.append("🔴 Database integrity checks skipped — MongoDB unavailable")
+
+    task_lines = [
+        f"**Season Clock:** {task_status(getattr(bot, 'seasonal_clock_loop', None))}",
+        f"**Player Reminders:** {task_status(getattr(bot, 'player_reminder_loop', None))}",
+        f"**Backups:** {task_status(getattr(bot, 'backup_loop', None))}",
+    ]
+
+    backup_root = os.getenv("BACKUP_DIR", "./backups")
+    backup_text = "⚪ No local backup directory"
+    try:
+        if os.path.isdir(backup_root):
+            folders = [os.path.join(backup_root, x) for x in os.listdir(backup_root) if os.path.isdir(os.path.join(backup_root, x))]
+            folders.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            if folders:
+                age_hours = max(0, (now - os.path.getmtime(folders[0])) / 3600)
+                status = "🟢" if age_hours <= 30 else "🟡" if age_hours <= 48 else "🔴"
+                backup_text = f"{status} {len(folders)} local • latest {age_hours:.1f}h ago"
+            else:
+                backup_text = "🔴 No local backups found"
+    except Exception as exc:
+        backup_text = f"🔴 Check failed • {str(exc)[:100]}"
+
+    embed = discord.Embed(
+        title="🛠️ ALU GAUNTLET — DIAGNOSTICS",
+        description="Read-only system, database, task, and backup health check.",
+        color=ASPHALT_ADMIN_COLOR if mongo_ok else ASPHALT_ALERT_COLOR,
+        timestamp=datetime.now(timezone.utc),
+    )
     embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_diagnostics"])
-    embed.add_field(name="Operational Checks Ledger Ledger", value="\n".join(report), inline=False)
-    
-    await interaction.followup.send(embed=embed)
-    await audit_admin_action(interaction, "Diagnostics", "Ran staff diagnostics.")
+    embed.add_field(name="🖥️ Runtime", value="\n".join(f"**{k}:** {v}" for k, v in runtime), inline=False)
+    embed.add_field(name="🗄️ Database", value="\n".join([
+        f"**Drivers:** `{counts.get('drivers', '?')}`",
+        f"**Pending:** `{counts.get('pending', '?')}`",
+        f"**Matches:** `{counts.get('matches', '?')}`",
+        f"**Challenges:** `{counts.get('active_challenges', '?')}`",
+        f"**Season Archives:** `{counts.get('season_history', '?')}`",
+        f"**Reference Queue:** `{counts.get('reference_pending', '?')}`",
+    ]), inline=True)
+    embed.add_field(name="⚙️ Tasks & Backups", value="\n".join(task_lines) + f"\n**Local Backups:** {backup_text}", inline=True)
+    embed.add_field(name="🏁 League", value=f"**Current:** {season_text}\n**Queue:** {queue_text}", inline=False)
+    embed.add_field(name="🔍 Integrity", value="\n".join(integrity)[:1024], inline=False)
+    embed.set_footer(text="Read-only • /dbcheck = full audit • /backup = manual backup")
+
+    await interaction.followup.send(embed=embed, ephemeral=True)
+    await audit_admin_action(interaction, "Diagnostics", "Ran read-only system, database, task, and backup diagnostics.")
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
