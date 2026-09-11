@@ -1042,8 +1042,7 @@ async def change_defense_cmd(interaction: discord.Interaction):
     embed = discord.Embed(title="🛡️ Your 5 New Defense Courses Generated", description=f"Race on each of these 5 tracks and record your best lap times. Then use `/submitdefense` to submit your times and cars.\n\nYour current defense remains active until the new one is approved.\n\n```\n{track_list}\n```", color=ASPHALT_THEME_COLOR)
     embed.set_footer(text="Use /submitdefense with your 5 lap times and 5 cars to complete your defense change.")
     await interaction.followup.send(embed=embed, ephemeral=True)
-
-@bot.tree.command(name="submitdefense", description="🛡️ Submit your 5 lap times, cars, and one proof screenshot per lap for your generated defense courses.")
+@bot.tree.command(name="submitdefense", description="🛡️ Submit your times, cars, and proof screenshots for your generated defense courses.")
 @app_commands.autocomplete(car_1=car_autocomplete, car_2=car_autocomplete, car_3=car_autocomplete, car_4=car_autocomplete, car_5=car_autocomplete)
 @app_commands.describe(
     lap_time_1="Lap time for course 1 (MM:SS.MS)", lap_time_2="Lap time for course 2 (MM:SS.MS)", lap_time_3="Lap time for course 3 (MM:SS.MS)", lap_time_4="Lap time for course 4 (MM:SS.MS)", lap_time_5="Lap time for course 5 (MM:SS.MS)",
