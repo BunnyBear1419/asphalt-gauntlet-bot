@@ -930,10 +930,10 @@ This bot manages the server's competitive racing league workflow inside Discord.
             embed.add_field(
                 name="🤖 `/identity`",
                 value=(
-                    "**Usage:** `/identity`\n"
-                    "**Purpose:** Open an admin-only form to change the bot's username and/or avatar.\n"
+                    "**Usage:** `/identity [username] [avatar]`\n"
+                    "**Purpose:** Change the bot's username and/or avatar.\n"
                     "**Username:** Optional; leave blank to keep the current name.\n"
-                    "**Avatar URL:** Optional direct HTTP/HTTPS image URL; leave blank to keep the current avatar.\n"
+                    "**Avatar:** Optional — upload an image file directly; leave blank to keep the current avatar.\n"
                     "**Access:** Administrator or configured admin role."
                 ),
                 inline=False,
@@ -958,70 +958,47 @@ class HelpView(discord.ui.View):
         self.add_item(HelpCategorySelect(is_admin=is_admin))
 
 
-class IdentityModal(discord.ui.Modal, title="Bot Identity"):
-    username = discord.ui.TextInput(
-        label="Bot Username",
-        placeholder="Leave blank to keep the current username",
-        required=False,
-        max_length=32,
-    )
-    avatar_url = discord.ui.TextInput(
-        label="Avatar URL",
-        placeholder="Direct HTTPS image URL; leave blank to keep current avatar",
-        required=False,
-        max_length=2048,
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        if not interaction.guild:
-            await interaction.response.send_message("❌ This command can only be used inside a server.", ephemeral=True)
-            return
-        if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
-            await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
-            return
-
-        await interaction.response.defer(ephemeral=True)
-        changed = []
-        try:
-            username_value = self.username.value.strip()
-            if username_value:
-                await bot.user.edit(username=username_value)
-                changed.append(f"**Username:** `{username_value}`")
-
-            avatar_value = self.avatar_url.value.strip()
-            if avatar_value:
-                if not avatar_value.lower().startswith(("http://", "https://")):
-                    await interaction.followup.send("❌ Avatar URL must begin with `http://` or `https://`.", ephemeral=True)
-                    return
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(avatar_value, timeout=aiohttp.ClientTimeout(total=20)) as resp:
-                        if resp.status != 200:
-                            await interaction.followup.send(f"❌ Could not download the avatar image. HTTP status: `{resp.status}`.", ephemeral=True)
-                            return
-                        avatar_bytes = await resp.read()
-                await bot.user.edit(avatar=avatar_bytes)
-                changed.append("**Avatar:** Updated from the supplied image URL.")
-
-            if not changed:
-                await interaction.followup.send("ℹ️ No identity changes were requested.", ephemeral=True)
-                return
-
-            embed = discord.Embed(title="✅ Bot Identity Updated", description="\n".join(changed), color=ASPHALT_VICTORY_COLOR)
-            embed.set_footer(text=f"Updated by {interaction.user}")
-            await interaction.followup.send(embed=embed, ephemeral=True)
-        except discord.HTTPException as exc:
-            await interaction.followup.send(f"❌ Discord rejected the identity update: `{exc}`", ephemeral=True)
-        except Exception as exc:
-            logging.exception("Bot identity update failed")
-            await interaction.followup.send(f"❌ Identity update failed: `{exc}`", ephemeral=True)
-
-
 @bot.tree.command(name="identity", description="[Admin Only] Change the bot's username or avatar.")
-async def identity_cmd(interaction: discord.Interaction):
+@app_commands.describe(
+    username="New bot username (leave blank to keep the current one)",
+    avatar="Upload an image to use as the new avatar (leave blank to keep the current one)",
+)
+async def identity_cmd(interaction: discord.Interaction, username: str = None, avatar: discord.Attachment = None):
+    if not interaction.guild:
+        await interaction.response.send_message("❌ This command can only be used inside a server.", ephemeral=True)
+        return
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
         return
-    await interaction.response.send_modal(IdentityModal())
+
+    await interaction.response.defer(ephemeral=True)
+    changed = []
+    try:
+        username_value = username.strip() if username else None
+        if username_value:
+            await bot.user.edit(username=username_value)
+            changed.append(f"**Username:** `{username_value}`")
+
+        if avatar is not None:
+            if not avatar.content_type or not avatar.content_type.startswith("image/"):
+                await interaction.followup.send("❌ The uploaded file must be an image.", ephemeral=True)
+                return
+            avatar_bytes = await avatar.read()
+            await bot.user.edit(avatar=avatar_bytes)
+            changed.append("**Avatar:** Updated from the uploaded image.")
+
+        if not changed:
+            await interaction.followup.send("ℹ️ No identity changes were requested.", ephemeral=True)
+            return
+
+        embed = discord.Embed(title="✅ Bot Identity Updated", description="\n".join(changed), color=ASPHALT_VICTORY_COLOR)
+        embed.set_footer(text=f"Updated by {interaction.user}")
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    except discord.HTTPException as exc:
+        await interaction.followup.send(f"❌ Discord rejected the identity update: `{exc}`", ephemeral=True)
+    except Exception as exc:
+        logging.exception("Bot identity update failed")
+        await interaction.followup.send(f"❌ Identity update failed: `{exc}`", ephemeral=True)
 
 
 @bot.tree.command(name="sync", description="[Admin Only] Synchronize slash commands with Discord.")
