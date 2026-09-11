@@ -9,7 +9,7 @@ import json
 import base64
 import random
 import csv
-from dataetime import datetime, timezone
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import discord
