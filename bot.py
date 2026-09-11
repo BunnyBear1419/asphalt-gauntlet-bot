@@ -2810,6 +2810,26 @@ async def listplayers_cmd(interaction: discord.Interaction, page: int = 1):
     await interaction.followup.send(embed=embed, ephemeral=True)
     await audit_admin_action(interaction, "List Players", f"Viewed registered player list page {page}/{pages}.")
 
+@bot.tree.command(name="delete_me", description="Permanently delete your ALU Gauntlet data from this server.")
+async def delete_me_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    guild_id = str(interaction.guild_id)
+    user_id = str(interaction.user.id)
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    pending = await bot.db.pending.find_one({"_id": f"{guild_id}_{user_id}"})
+    if not profile and not pending:
+        await interaction.response.send_message("ℹ️ You do not have an active ALU Gauntlet record in this server.", ephemeral=True)
+        return
+    await interaction.response.send_message(
+        "⚠️ **Permanently delete your ALU Gauntlet data?**\n\n"
+        "This removes your driver profile, current/past match records, active challenges, pending submissions, "
+        "and your archived season-standing entries from **this server**. This cannot be undone.\n\n"
+        "If you join again, you will start as a new player.",
+        view=ConfirmDeleteMeView(guild_id, user_id),
+        ephemeral=True,
+    )
+
 @bot.tree.command(name="delete_id", description="[Staff Only] Remove a driver's active registration by Discord member.")
 @app_commands.describe(racer="Driver whose active profile should be removed")
 async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member):
@@ -2834,6 +2854,122 @@ async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member)
     await interaction.response.send_message(f"🧹 Removed <@{racer.id}>'s active registration. Career wins/matches and match history were preserved. They can `/register` again.", ephemeral=True)
     await audit_admin_action(interaction, "Delete ID", f"Reset active registration for <@{racer.id}>. Career statistics and match history were retained.", color=ASPHALT_DEFEAT_COLOR)
 
+
+
+async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
+    """Erase the requesting player's league data from the current Discord server.
+
+    This is intentionally scoped to the current guild because the bot supports
+    multiple independent league servers. It removes the player's profile,
+    pending registration/reference submissions, active challenges, match
+    records, and their archived season-standing rows for this guild.
+    """
+    guild_id, user_id = str(guild_id), str(user_id)
+    driver_id = f"{guild_id}_{user_id}"
+    counts = {
+        "driver": 0,
+        "pending": 0,
+        "active_challenges": 0,
+        "matches": 0,
+        "reference_submissions": 0,
+        "season_rows": 0,
+    }
+
+    async def erase(session=None):
+        kwargs = {"session": session} if session is not None else {}
+        result = await bot.db.drivers.delete_one({"_id": driver_id}, **kwargs)
+        counts["driver"] = int(getattr(result, "deleted_count", 0) or 0)
+
+        result = await bot.db.pending.delete_one({"_id": driver_id}, **kwargs)
+        counts["pending"] = int(getattr(result, "deleted_count", 0) or 0)
+
+        result = await bot.db.active_challenges.delete_many(
+            {"guild_id": guild_id, "$or": [
+                {"challenger_id": user_id},
+                {"opponent_id": user_id},
+            ]}, **kwargs
+        )
+        counts["active_challenges"] = int(getattr(result, "deleted_count", 0) or 0)
+
+        result = await bot.db.matches.delete_many(
+            {"guild_id": guild_id, "$or": [
+                {"challenger_id": user_id},
+                {"opponent_id": user_id},
+            ]}, **kwargs
+        )
+        counts["matches"] = int(getattr(result, "deleted_count", 0) or 0)
+
+        result = await bot.db.reference_pending.delete_many(
+            {"guild_id": guild_id, "user_id": user_id}, **kwargs
+        )
+        counts["reference_submissions"] = int(getattr(result, "deleted_count", 0) or 0)
+
+        # Remove this player's identity from archived standings while preserving
+        # the rest of each season archive.
+        archives = await bot.db.season_history.find({"guild_id": guild_id}).to_list(length=1000)
+        for archive in archives:
+            standings = archive.get("standings", [])
+            filtered = [row for row in standings if str(row.get("user_id")) != user_id]
+            if len(filtered) != len(standings):
+                counts["season_rows"] += len(standings) - len(filtered)
+                await bot.db.season_history.update_one(
+                    {"_id": archive["_id"]},
+                    {"$set": {"standings": filtered, "player_count": len(filtered)}},
+                    **kwargs
+                )
+
+    if bot.mongo_client:
+        async with await bot.mongo_client.start_session() as session:
+            async with session.start_transaction():
+                await erase(session=session)
+    else:
+        await erase()
+
+    return counts
+
+
+class ConfirmDeleteMeView(discord.ui.View):
+    def __init__(self, guild_id: str, user_id: str):
+        super().__init__(timeout=60)
+        self.guild_id = str(guild_id)
+        self.user_id = str(user_id)
+
+    @discord.ui.button(label="Delete Everything", style=discord.ButtonStyle.red)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("❌ Only the player who requested this deletion can confirm it.", ephemeral=True)
+            return
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.defer()
+        try:
+            counts = await permanently_delete_player_data(self.guild_id, self.user_id)
+            summary = (
+                "🗑️ **Your ALU Gauntlet data has been permanently deleted from this server.**\n\n"
+                f"Driver profile: `{counts['driver']}`\n"
+                f"Challenges/matches removed: `{counts['active_challenges'] + counts['matches']}`\n"
+                f"Pending submissions removed: `{counts['pending'] + counts['reference_submissions']}`\n"
+                f"Archived season entries removed: `{counts['season_rows']}`\n\n"
+                "You can register again later with `/register`."
+            )
+            await interaction.edit_original_response(content=summary, view=self)
+            self.stop()
+        except Exception as exc:
+            logging.exception("Self-service player deletion failed for guild %s user %s", self.guild_id, self.user_id)
+            await interaction.edit_original_response(
+                content="❌ Your data could not be completely deleted. Please contact league staff before trying again.",
+                view=self,
+            )
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.grey)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("❌ Only the player who requested this deletion can cancel it.", ephemeral=True)
+            return
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(content="❎ Deletion cancelled — no changes were made.", view=self)
+        self.stop()
 
 class HelpCategorySelect(discord.ui.Select):
     def __init__(self, is_admin: bool = False):
@@ -2882,6 +3018,7 @@ class HelpCategorySelect(discord.ui.Select):
             embed.add_field(name="⚔️ `/challenge`", value="Choose an opponent and start a match.", inline=True)
             embed.add_field(name="🔄 `/changedefense`", value="Submit a replacement defense after cooldown.", inline=True)
             embed.add_field(name="👤 `/profile`", value="View ELO, stats and defense.", inline=True)
+            embed.add_field(name="🗑️ `/delete_me`", value="Permanently delete your league data.", inline=True)
             embed.add_field(name="🏆 `/leaderboard`", value="View division standings.", inline=True)
             embed.add_field(name="🥇 `/top`", value="View league leaders.", inline=True)
             embed.add_field(name="🗺️ `/maps`", value="View map and routes.", inline=True)
