@@ -1044,16 +1044,10 @@ async def sync_cmd(interaction: discord.Interaction):
         await interaction.followup.send(f"❌ Slash command synchronization failed:\n`{exc}`", ephemeral=True)
 
 
-@bot.command(name="force")
+@bot.command(name="forcesync")
 @commands.has_permissions(administrator=True)
-async def force_command(ctx: commands.Context, action: str = None):
+async def force_command(ctx: commands.Context):
     """Prefix recovery command. Use !forcesync to re-sync slash commands."""
-    if action is None:
-        await ctx.send("❌ Usage: `!forcesync`")
-        return
-    if action.lower() != "sync":
-        await ctx.send("❌ Unknown force action. Use `!forcesync`.")
-        return
     try:
         synced = await bot.tree.sync()
         embed = discord.Embed(
@@ -1077,8 +1071,8 @@ async def force_command_error(ctx: commands.Context, error: Exception):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("❌ Access Denied: Administrator permission is required.")
     else:
-        logging.exception("!force command error", exc_info=error)
-        await ctx.send(f"❌ Force command error: `{error}`")
+        logging.exception("!forcesync command error", exc_info=error)
+        await ctx.send(f"❌ Force sync command error: `{error}`")
 
 
 @bot.tree.command(name="help", description="Interactive help and command reference.")
