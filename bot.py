@@ -277,9 +277,7 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
         
         header_embed = discord.Embed(
             title=f"🏁 SEASON {current_season_num} GAUNTLET FINALE PODIUMS", 
-            description="🏁 **Tournament locks activated!**
-
-⚙️ *ELO ratings soft-reset. Defensive frameworks cleared completely. Existing drivers must update their garage profiles using `/register` for new division placements.*", 
+            description="🏁 **Tournament locks activated!**\n\n⚙️ *ELO ratings soft-reset. Defensive frameworks cleared completely. Existing drivers must update their garage profiles using `/register` for new division placements.*", 
             color=0xffaa00
         )
         header_embed.set_image(url=ASPHALT_MEDIA["banner_leaderboard"])
@@ -299,8 +297,7 @@ async def trigger_global_season_end(forced_interaction: discord.Interaction = No
                 standings_text = ""
                 for r, d in enumerate(top_drivers[:10]):
                     medal = '🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '
-                    standings_text += f"{medal} <@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**
-"
+                    standings_text += f"{medal} <@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n"
                 for r, d in enumerate(top_drivers):
                     csv_writer.writerow([div["name"], r+1, d['user_id'], d['game_id'], d.get('elo', 1000), d.get('garage_pi', 0)])
                 div_embed.add_field(name="🏆 Final Elite Placements", value=standings_text, inline=False)
@@ -332,19 +329,14 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
     for i in range(5):
         beat = challenger_times[i]["ms"] < defense_courses[i]["ms"]
         icon = "✅" if beat else "❌"
-        breakdown += f"{icon} **Course {i+1}** — `{defense_courses[i]['track']}`
-   🛡️ `{defense_courses[i]['car']}` | `{defense_courses[i]['lap_time']}`
-   ⚔️ `{challenger_times[i]['car']}` | `{challenger_times[i]['lap_time_str']}`
-"
+        breakdown += f"{icon} **Course {i+1}** — `{defense_courses[i]['track']}`\n   🛡️ `{defense_courses[i]['car']}` | `{defense_courses[i]['lap_time']}`\n   ⚔️ `{challenger_times[i]['car']}` | `{challenger_times[i]['lap_time_str']}`\n"
 
     if challenger_won:
         current_streak = p1.get("streak", 0) + 1
         streak_bonus = min(20, (current_streak // 2) * 4) if current_streak >= 2 else 0
         new_challenger_elo = max(100, old_challenger_elo + challenger_delta + streak_bonus)
         new_defender_elo = max(100, old_defender_elo + defender_delta)
-        outcome_desc = f"🏆 <@{challenger_id}> **won the match** — beat {courses_beat}/5 ghost times!
-
-{breakdown}"
+        outcome_desc = f"🏆 <@{challenger_id}> **won the match** — beat {courses_beat}/5 ghost times!\n\n{breakdown}"
         display_color = ASPHALT_VICTORY_COLOR
         announce_title = "⚡ GAUNTLET MATCH WON"
         w_id, l_id = challenger_id, opponent_id
@@ -355,9 +347,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         streak_bonus = min(20, (current_streak // 2) * 4) if current_streak >= 2 else 0
         new_defender_elo = max(100, old_defender_elo + defender_delta + streak_bonus)
         new_challenger_elo = max(100, old_challenger_elo + challenger_delta)
-        outcome_desc = f"💀 <@{opponent_id}>'s **ghost defense held** — challenger only beat {courses_beat}/5 courses.
-
-{breakdown}"
+        outcome_desc = f"💀 <@{opponent_id}>'s **ghost defense held** — challenger only beat {courses_beat}/5 courses.\n\n{breakdown}"
         display_color = ASPHALT_DEFEAT_COLOR
         announce_title = "🛡️ DEFENSE HOLD SECURED"
         w_id, l_id = opponent_id, challenger_id
@@ -438,8 +428,7 @@ class RegistrationDeclineModal(discord.ui.Modal, title="Specify Application Reje
         guild = bot.get_guild(int(self.guild_id))
         member = guild.get_member(int(self.user_id)) if guild else None
         if member:
-            emb = discord.Embed(title="❌ REGISTRY APPLICATION DECLINED", description=f"Your packet for **{guild.name}** was rejected.
-Reason: `{self.reason_input.value}`", color=ASPHALT_DEFEAT_COLOR)
+            emb = discord.Embed(title="❌ REGISTRY APPLICATION DECLINED", description=f"Your packet for **{guild.name}** was rejected.\nReason: `{self.reason_input.value}`", color=ASPHALT_DEFEAT_COLOR)
             try: await member.send(embed=emb)
             except Exception: pass
         await dispatch_audit_log(self.guild_id, "👤 Driver Application Declined", f"User <@{self.user_id}> denied by {interaction.user.mention}. Reason: {self.reason_input.value}")
@@ -616,6 +605,8 @@ class ChallengeView(discord.ui.View):
 async def track_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=track, value=track) for track in ALU_TRACKS if current.lower() in track.lower()][:25]
 
+# --- COMMAND ARRAYS ---
+
 @bot.tree.command(name="register", description="Join or update your seasonal profile registry parameters.")
 @app_commands.describe(game_id="Asphalt Player ID string", garage_pi="Garage Performance Index numerical rating", proof_screenshot="Attachment sheet")
 async def register_cmd(interaction: discord.Interaction, game_id: str, garage_pi: int, proof_screenshot: discord.Attachment):
@@ -756,7 +747,9 @@ async def challenge_cmd(interaction: discord.Interaction):
     d_map = {c["user_id"]: {"courses": c["defense_locked"]["courses"], "proof_url": c["defense_locked"].get("proof_url")} for c in candidates}
     await interaction.followup.send(content="🚦 Matchmaking target frames established.", view=ChallengeView(opts, d_map))
 
-@bot.tree.command(name="admin_removeracer", description="[Staff Only] Delete a targeted driver framework database record entry configuration completely.")
+# --- ADMINISTRATIVE LOGGING OVERRIDES & UTILITIES ---
+
+@bot.tree.command(name="admin_removeracer", description="[Staff Only] Delete a driver complete profile configuration entry.")
 async def admin_removeracer_cmd(interaction: discord.Interaction, racer: discord.User):
     if not await check_admin_privileges(interaction): return
     await interaction.response.defer(ephemeral=True)
@@ -797,6 +790,8 @@ async def list_players_cmd(interaction: discord.Interaction):
     emb.description = text
     await interaction.followup.send(embed=emb, ephemeral=True)
     await dispatch_audit_log(interaction.guild_id, "📊 Ledger Summary Pulled", f"Staff context panel run by {interaction.user.mention} extracted all ledger entries mapping records.", color=ASPHALT_ADMIN_COLOR)
+
+# --- TIME TRIAL & TRACK REFERENCE UTILITIES ---
 
 @bot.tree.command(name="best_times", description="Inspect verified time trial ghost data across database indices.")
 @app_commands.autocomplete(track=track_autocomplete)
@@ -839,6 +834,8 @@ async def add_reference_cmd(interaction: discord.Interaction, track: str, lap_ti
     emb.description = f"Driver <@{interaction.user.id}> submitted a performance reference update:\n• Course: `{track}`\n• Lap Time: `{lap_time}`\n\n🔗 Link: {video_url}"
     await review_chan.send(embed=emb, view=ReferenceApprovalView(track, lap_time, video_url, str(interaction.user.id), str(interaction.guild_id)))
     await interaction.followup.send("✅ Submission pushed to validation pipelines successfully.", ephemeral=True)
+
+# --- BOOTSTRAP STUBS INHERITED ---
 
 @bot.tree.command(name="setup", description="[Admin Only] Configures league core channel streams.")
 async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role):
