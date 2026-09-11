@@ -142,6 +142,10 @@ def add_map_icon(embed: discord.Embed, track: str, filename: str | None = None) 
         embed.set_thumbnail(url=f"attachment://{filename}")
     return embed
 
+def get_car_rank_total(courses: list) -> int:
+    """Return the total numeric performance/rating value of the cars in a defense."""
+    return sum(int(course.get("car_rank", 0) or 0) for course in courses)
+
 def build_course_embeds(courses: list, title: str, description: str = None, color: int = ASPHALT_THEME_COLOR):
     """Build one icon-backed embed per course and the corresponding Discord files."""
     embeds = []
@@ -152,7 +156,11 @@ def build_course_embeds(courses: list, title: str, description: str = None, colo
         track = course.get("track", "Unknown Track")
         emb = discord.Embed(
             title=f"🏁 Course {i + 1}: {track}",
-            description=f"🚗 **Car:** `{course.get('car', 'TBD')}`\n⏱️ **Lap Time:** `{course.get('lap_time', 'TBD')}`",
+            description=(
+                f"🚗 **Car:** `{course.get('car', 'TBD')}`\n"
+                f"📈 **Car Performance:** `{course.get('car_rank', 'TBD')}`\n"
+                f"⏱️ **Lap Time:** `{course.get('lap_time', 'TBD')}`"
+            ),
             color=color,
         )
         icon_file, filename = map_icon_file(track, i)
@@ -165,13 +173,7 @@ def build_course_embeds(courses: list, title: str, description: str = None, colo
     return embeds, files
 
 # Official ALU Gauntlet Car Roster Array for Autocomplete Lookups
-ALU_CARS = [
-    "Devel Sixteen", "Koenigsegg Jesko", "Bugatti Bolide", "Koenigsegg Gemera", 
-    "Aspark Owl", "Tuatara", "Hennessey Venom F5", "Bugatti Chiron", 
-    "Rimac Nevera", "McLaren Speedtail", "Ferrari SF90 Stradale", "Lamborghini Sian", 
-    "Porsche 911 GT3 RS", "Pagani Imola", "Aston Martin Valhalla", "Genty Akylone",
-    "Apex AP-0", "Apollo IE", "Lotus Evija", "Trion Nemesis", "W Motors Lykan"
-]
+ALU_CARS = ['Mitsubishi Lancer Evolution', 'BMW Z4 LCI E89', 'Chevrolet Camaro LT', 'Nissan Leaf NISMO RC', 'Nissan 370Z NISMO', 'KTM X-Bow GTX', 'Volkswagen XL Sport Concept', 'DS E-TENSE', 'Dodge Challenger 392 Hemi Scat Pack', 'Renault DeZir', 'Italdesign DaVinci', 'BMW i8 Roadster', 'Peugeot SR1', 'Porsche 911 Carrera RS 3.8', 'Porsche 718 Cayman', 'Infiniti Project Black S', 'Lotus Elise Sprint 220', 'Lotus Emeya', 'Toyota GR Supra 2023', 'Lamborghini Countach 25th Anniversary', 'Ford Shelby GT350R', 'Hyundai IONIQ 5 N', 'Porsche 911 Targa 4S', 'Lotus Emira', 'Praga R1', 'Ginetta G60', 'Renault TreZor', 'Nissan 370Z Neon Edition', 'Honda Civic Type-R', 'Porsche Taycan Turbo S', 'TVR Griffith', 'Bentley Continental GT3', 'Mazda Furai', 'Alfa Romeo Giulia GTAm', 'Toyota GR Supra Racing Concept', 'Chevrolet Corvette C7.R', 'Aston Martin Vantage V12 2022', 'Lamborghini Huracán Super Trofeo Evo', 'Volkswagen Electric R', 'Glickenhaus 004C', 'DS E-TENSE Performance', 'Ford Mustang Mach-E 1400', 'Lamborghini Huracán Sterrato', 'Kimera EVO37', 'Dodge Challenger SRT8', 'BMW 3.0 CSL Hommage', 'Porsche Boxster 25th', 'Chevrolet Camaro ZL1 50th Edition', 'Lotus Evora Sport 410', 'Mercedes-Benz AMG GT S', 'BMW M4 GTS', 'Rezvani Beast X', 'Jaguar XKR-S GT', 'Aston Martin V12 Speedster', 'Donkervoort D8 GTO Individual Series', 'Citroën DS Survolt', 'Dodge Viper ACR', 'Bolwell MK X Nagari 500', 'Ford Shelby GR-1', 'Pininfarina H2 Speed', 'TVR Sagaris', 'Artega Scalo Superelletra', 'Saleen S1', 'Acura NSX (2017)', 'Maserati Alfieri', 'Porsche 911 50 Years Porsche Design', 'Jaguar XJR-15', 'Porsche Mission R', 'Mercedes-Benz 2022 Showcar Vision AMG', 'Ferrari Monza SP1', 'ATS Automobili Corsa RR Turbo', 'Formula E Gen2 Asphalt Edition', 'Jaguar XE SV Project 8', 'Dodge Charger SRT Hellcat Redeye Widebody', 'Ferrari F40', 'Porsche 911 GT3 R rennsport', 'Praga Bohema', 'Renault R.S. 01', 'Mercedes-Benz CLK-GTR', 'Acura NSX GT3 Evo', 'Lexus LFA Nürburgring Package', 'Audi R8 Coupé V10 performance quattro', 'Vencer Sarthe', 'Maserati MC12', 'Bentley Mulliner Bacalar', 'De Tomaso P900', 'Lamborghini Miura Concept', 'Porsche 718 Cayman GT4 Clubsport', 'Mercedes-Benz C 63 AMG DTM', 'Chevrolet Corvette Stingray', 'Brabham BT62', 'Maserati MC20 GT2', 'Ferrari 599XX Evo', 'Ares S1', 'Lamborghini Diablo GT', 'Arrinera Hussarya 33', 'Aston Martin DBS 770 Ultimate', 'Bugatti EB110', 'Porsche Panamera Turbo S', 'Lamborghini Gallardo LP 560-4', 'Ferrari 296 GTB', 'McLaren GT', 'Mercedes-AMG GT Black Series', 'Ferrari Daytona SP3', 'Nissan Z GT4', 'Porsche 911 GTS Coupé', 'Aston Martin DB11', 'Jaguar F-Type SVR', 'Ferrari F50', 'Exotic Rides W70', 'Porsche 911 GT1 Evolution', 'Ford GT', 'Lamborghini Asterion', 'Ford Mustang RTR Spec 5 10th Anniversary', 'Ferrari Roma', 'Arash AF10', 'BMW M4 GT3', 'Cadillac Cien Concept', 'Aston Martin Valour', 'Ford GT Mk II', 'Lamborghini Huracán STO', 'Italdesign Zerouno', 'McLaren Artura', 'Arash AF8 Falcon Edition', 'Ferrari 488 GTB', 'Kepler Motion', 'Drako GTE', 'Porsche 911 Turbo 50 Years', 'Glickenhaus 003S', 'McLaren Elva', 'Aston Martin DB12', 'Nissan R390 GT1', 'Lego Technic™ Chevrolet Corvette Stingray', 'Ferrari F12tdf', 'Maserati MC20', 'Lamborghini Murciélago LP 640 Roadster', 'McLaren 765LT', 'Formula E Gen3 Evo Championship Edition', 'Lego Technic BMW M4 GT3 EVO', 'Chevrolet Corvette Grand Sport', 'Aston Martin Vantage GT12', 'Apex AP-0', 'Ferrari F12 Berlinetta', 'Apollo IE', 'SIN R1 550', 'Lamborghini Reventón Roadster', 'McLaren 750S Coupé', 'Ferrari Enzo Ferrari', 'Aston Martin One-77', 'Porsche 917 Living Legend', 'Apollo N', 'Mercedes-Benz SLR McLaren', 'BMW M Hybrid V8', 'Aston Martin DBS Superleggera', 'Lamborghini Essenza SCV12', 'Lamborghini SC63', 'McLaren 600LT Spider', 'McLaren Solus GT', 'Toyota GR Super Sport Concept', 'Puritalia Berlinetta', 'Lamborghini Invencible', 'Lamborghini Huracán EVO Spyder', 'Porsche Carrera GT', 'FV Frangivento GT65', 'Nissan GT-R50 by Italdesign', 'Zenvo TSR-S', 'Lamborghini Sesto Elemento', 'Porsche 911 GT3 RS', 'Ferrari 488 Challenge Evo', 'Lego Technic Lamborghini Revuelto', 'Apollo EVO', 'Lotus Evija', 'Ferrari 12 Cilindri', 'McLaren F1 LM', 'Ford GT Mk IV', 'Volkswagen W12 Coupé', 'Pagani Huayra R', 'Lamborghini Revuelto', 'Ares Panther', 'Lamborghini Temerario', 'Lotus E-R9', 'Ginetta Akula', 'Aston Martin Vulcan', 'Nissan GT-R NISMO', 'NIO EP9', 'Ferrari J50', 'Dodge Viper GTS', 'Bentley Continental GT Speed', 'Ferrari LaFerrari', 'Lego Technic Ferrari FXX K', 'McLaren P1™', 'Pagani Zonda HP Barchetta', 'Lamborghini Aventador SV Coupé', 'McMurtry Spéirling', 'Ferrari 812 Superfast', 'Lego Technic McLaren Senna GTR™', 'Chevrolet Corvette ZR1 (C7)', 'Jaguar C-X75', 'Lego Technic Aston Martin Valkyrie', 'VLF Force 1 V10', 'Ford GT Frankie Edition', 'McLaren Senna GTR', 'Lamborghini Aventador SVJ Roadster', 'Porsche 918 Spyder', 'Vanda Electrics Dendrobium', 'Pagani Zonda Cinque', 'Peugeot 9X8', 'Aston Martin DBS GT Zagato', 'McLaren 570S Spider', 'Automobili Pininfarina Battista Edizione Nino Farina', 'Lamborghini Aventador J', 'Peugeot Onyx', 'Pagani Zonda R', 'McLaren Sabre', 'Glickenhaus 007S', 'GT by CITROEN', 'Porsche 935 (2019)', 'Bentley Speed 8', 'Aston Martin Victor', 'Porsche 911 GT2 RS Clubsport', 'Pagani Huayra BC', 'McLaren 650S GT3', 'Lamborghini SC18', 'Ferrari SF90 XX Stradale', 'Mercedes-AMG ONE', 'Porsche 935 DragonForce Edition', 'Ferrari LaFerrari Aperta', 'Ferrari F8 Tributo', 'Lamborghini SC20', 'Pagani Utopia Coupé', 'Genty Akylone', 'Chevrolet Corvette Grand Sport 4th of July Edition', 'Ford Shelby Super Snake', 'FV Frangivento Asfanè', 'Techrules AT96 Track Version', 'Noble M600 Speedster', 'Rimac Concept_One', 'Aston Martin Valhalla Concept Car', 'Zenvo Aurora Agil', 'Pagani Imola', 'Ford Team Fordzilla P1', 'Jaguar XJR-9', 'Lamborghini Countach LPI 800-4', 'Lexus Electrified Sport Concept', 'Ferrari 499P Modificata', 'De Tomaso P72', 'Mercedes-Benz Vision One-Eleven', 'Automobili Pininfarina B95', 'Mercedes-Benz Silver Lightning', 'Porsche 919 Street', 'Lamborghini Centenario', 'Ferrari FXX K', 'Lamborghini Auténtica', 'Icona Vulcano Titanium', 'W Motors Lykan HyperSport', 'RAESR Tachyon Speed', 'Lamborghini Veneno', 'ATS Automobili GT', 'Jaguar XJ220S TWR', 'Lamborghini Egoista', 'Hyundai N Vision 74 Concept', 'Chrysler ME412', 'Porsche 918 Spyder Asphalt Edition', 'TRION NEMESIS', '2015 GTA Spano', 'Nissan GT-R Neon Edition', 'Ferrari SF90 Stradale', 'FV Frangivento Sorpasso GT3', 'Bugatti Veyron 16.4 Grand Sport Vitesse', 'McLaren Senna', 'Lamborghini Terzo Millennio', 'Audi R18 e-tron quattro 2012', 'Vision 1789', 'Pininfarina Teorema', 'W Motors Fenyr SuperSport', 'Aston Martin Valkyrie', 'Mercedes-Benz C11', 'Nilu27 NILU', 'Zenvo TS1 GT Anniversary', 'Rimac Concept S', 'Automobili Pininfarina Battista', 'Naran Hyper Coupe', 'McLaren Speedtail', 'Faraday Future FFZERO1', 'Koenigsegg Regera', 'Saleen S7 Twin Turbo', 'Ultima RS', 'Lamborghini Sián FKP 37', 'Ford Mustang RTR Spec 5-FD', 'Ajlani Drakuma', 'TORINO DESIGN Super Sport', 'Inferno Automobili Inferno', 'Bugatti Chiron', 'Lego Technic Bugatti Chiron Pur Sport', 'BXR Bailey Blade GT1', 'Bugatti Divo', 'Tushek TS 900 Racer Pro', 'SSC Ultimate Aero TT', 'Mazzanti Evantra Millecavalli', 'Toroidion 1MW', 'Inferno Settimo Cerchio', 'Bugatti Chiron Pur Sport', 'Koenigsegg Jesko', 'Rimac Nevera Time Attack', 'Bugatti Centodieci', 'W Motors Lykan Neon Edition', 'Bugatti Mistral', 'Aspark Owl', 'Icona Vulcano Spyder', 'RAESR Aglaia', 'Audi R8 LMP1 2000', 'Rimac Nevera', 'Koenigsegg Agera RS', 'HTT Pléthore LC 750', 'SSC Tuatara', 'Bugatti Chiron Super Sport 300+', 'Koenigsegg CCXR', 'TVR Cerbera Speed 12', 'Bugatti La Voiture Noire', 'Czinger 21C', 'SSC Tuatara Striker', 'Rimac Nevera R', 'Koenigsegg One:1', 'Deus Vayanne', 'Koenigsegg Gemera', 'Zenvo Aurora Tur', 'Tushek Aeon E', 'Hennessey Venom F5', 'Koenigsegg CC850', 'Ferrante Design Elytron', 'Mosler Super GT', 'Bugatti Bolide', 'Koenigsegg Jesko Absolut', 'Koenigsegg Chimera', 'Devel Sixteen', 'RAESR Tartarus', 'Arash Imperium']
 
 # Single source of truth for PI-based divisions/tiers, used by both season-end podiums
 # and /challenge matchmaking so the brackets always stay in sync.
@@ -252,6 +254,14 @@ class GauntletBot(commands.Bot):
                 await self.mongo_client.admin.command('ping')
                 self.db = self.mongo_client.get_database("asphalt_gauntlet")
                 logging.info("🟢 Successfully connected to MongoDB Atlas Cloud Cluster.")
+                try:
+                    await self.db.drivers.create_index([("guild_id", 1), ("season_registered", 1), ("season_number", 1), ("garage_pi", 1), ("elo", -1)])
+                    await self.db.pending.create_index([("guild_id", 1), ("season_number", 1)])
+                    await self.db.matches.create_index([("guild_id", 1), ("timestamp", -1)])
+                    await self.db.active_challenges.create_index([("guild_id", 1), ("status", 1), ("challenger_id", 1)])
+                    logging.info("🟢 Performance indexes verified.")
+                except Exception:
+                    logging.exception("Could not create MongoDB performance indexes")
             except Exception as e:
                 logging.error(f"🔴 MongoDB Connection Failed: {e}")
                 self.setup_mock_db()
@@ -262,6 +272,8 @@ class GauntletBot(commands.Bot):
         # Execute background state recovery sequence hooks
         await self.recover_season_state()
         self.seasonal_clock_loop.start()
+        self.player_reminder_loop = player_reminder_loop
+        self.player_reminder_loop.start()
         # Load custom images from DB into ASPHALT_MEDIA
         try:
             media_doc = await self.db.settings.find_one({"_id": "global_media"})
@@ -271,11 +283,39 @@ class GauntletBot(commands.Bot):
                 logging.info(f"🟢 Loaded {len(media_doc['custom_images'])} custom images from DB.")
         except Exception as e:
             logging.warning(f"⚠️ Could not load custom images: {e}")
+        # Restore registration and defense review buttons after a restart.
+        try:
+            pending_regs = await self.db.pending.find({"season_number": {"$exists": True}}).to_list(length=1000)
+            for pending in pending_regs:
+                self.add_view(VerificationView(str(pending["user_id"]), str(pending["guild_id"]), str(pending.get("game_id", "Unknown")), int(pending.get("rank", 0)), str(pending.get("control", "touch"))))
+            pending_defs = await self.db.drivers.find({"defense_review_pending": True, "defense_review_payload": {"$exists": True}}).to_list(length=1000)
+            for driver in pending_defs:
+                payload = driver.get("defense_review_payload", {})
+                courses = payload.get("courses", [])
+                if len(courses) == 5:
+                    self.add_view(DefenseView(str(driver["user_id"]), str(driver["guild_id"]), courses, payload.get("proof_url"), is_change=bool(payload.get("is_change"))))
+            if pending_regs or pending_defs:
+                logging.info("🟢 Restored %d registration and %d defense review view(s).", len(pending_regs), len(pending_defs))
+        except Exception:
+            logging.exception("Could not restore registration/defense review views")
+
         await self.sync_application_commands()
         logging.info("🟢 Application slash commands synchronized globally.")
         # Register persistent views so their buttons survive bot restarts
         self.add_view(TopLeaderboardView())
         logging.info("🟢 Persistent views registered.")
+        # Restore persistent match-result/report buttons after a bot restart.
+        try:
+            recent_matches = await self.db.matches.find({"reverted": {"$ne": True}}).sort("timestamp", -1).limit(1000).to_list(length=1000)
+            for match in recent_matches:
+                self.add_view(MatchResultPostView(match["_id"]))
+                if match.get("reported"):
+                    self.add_view(MatchRevertView(match["_id"]))
+            if recent_matches:
+                logging.info("🟢 Restored %d match-result view(s).", len(recent_matches))
+        except Exception:
+            logging.exception("Could not restore persistent match-result views")
+
         # Restore pending reference-review buttons after a bot restart.
         try:
             pending_refs = await self.db.reference_pending.find({"status": "pending"}).to_list(length=1000)
@@ -343,6 +383,7 @@ class GauntletBot(commands.Bot):
             async def replace_one(self, *args, **kwargs): return None
             async def delete_one(self, *args, **kwargs): return None
             async def count_documents(self, *args, **kwargs): return 0
+            async def update_many(self, *args, **kwargs): return None
             async def delete_many(self, *args, **kwargs):
                 class MockResult:
                     def __init__(self): self.deleted_count = 0
@@ -361,6 +402,7 @@ class GauntletBot(commands.Bot):
 
     async def close(self):
         self.seasonal_clock_loop.cancel()
+        self.player_reminder_loop.cancel()
         if self.mongo_client:
             self.mongo_client.close()
         await super().close()
@@ -386,6 +428,57 @@ async def seasonal_clock_loop_task():
                 await trigger_global_season_end(guild_id=guild_id)
     except Exception:
         logging.exception("Seasonal clock loop failed")
+
+
+@tasks.loop(hours=6)
+async def player_reminder_loop():
+    """Lightweight player reminders: missing defense and unfinished active challenges."""
+    try:
+        configs = await bot.db.settings.find({}).to_list(length=1000)
+        now = time.time()
+        for cfg in configs:
+            guild_id = str(cfg.get("_id"))
+            state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+            season = int(state.get("season_number", 1)) if state else 1
+            # Missing defense reminders are limited to once per 24h per player.
+            missing = await bot.db.drivers.find({
+                "guild_id": guild_id,
+                "season_registered": True,
+                "season_number": season,
+                "defense_locked.courses.4": {"$exists": False},
+            }).to_list(length=1000)
+            for d in missing:
+                last = float(d.get("last_defense_reminder", 0) or 0)
+                if now - last < 86400:
+                    continue
+                try:
+                    user = bot.get_user(int(d["user_id"])) or await bot.fetch_user(int(d["user_id"]))
+                    await user.send(f"🛡️ **ALU Gauntlet reminder**\nYour Season {season} defense is not locked yet. Run `/setdefense`, then `/submitdefense`.")
+                    await bot.db.drivers.update_one({"_id": d["_id"]}, {"$set": {"last_defense_reminder": now}})
+                except Exception:
+                    pass
+
+            # Remind challengers about active submissions after 24h, at most once/day.
+            active = await bot.db.active_challenges.find({"guild_id": guild_id, "status": "active"}).to_list(length=1000)
+            for challenge in active:
+                created = float(challenge.get("created_at", now))
+                if now - created < 86400:
+                    continue
+                last = float(challenge.get("last_reminder", 0) or 0)
+                if now - last < 86400:
+                    continue
+                try:
+                    user = bot.get_user(int(challenge["challenger_id"])) or await bot.fetch_user(int(challenge["challenger_id"]))
+                    await user.send(f"⚔️ **ALU Gauntlet reminder**\nYou have an unfinished match against <@{challenge['opponent_id']}>. Use `/submitmatch` when your 5 race results are ready.")
+                    await bot.db.active_challenges.update_one({"_id": challenge["_id"]}, {"$set": {"last_reminder": now}})
+                except Exception:
+                    pass
+    except Exception:
+        logging.exception("Player reminder loop failed")
+
+@player_reminder_loop.before_loop
+async def before_player_reminders():
+    await bot.wait_until_ready()
 
 @seasonal_clock_loop_task.before_loop
 async def before_seasonal_clock():
@@ -524,8 +617,10 @@ async def apply_season_soft_reset(guild_id: str, season_number: int):
                     "garage_pi": "",
                     "defense_locked": "",
                     "pending_tracks": "",
+                    "season_defense_tracks": "",
                     "pending_is_change": "",
                     "defense_review_pending": "",
+                    "defense_review_payload": "",
                     "last_defense_change": "",
                 },
             },
@@ -542,7 +637,16 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
     config = await bot.db.settings.find_one({"_id": guild_id})
     if not config:
         return
-    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    state_id = f"guild_{guild_id}"
+    lock_now = time.time()
+    lock_result = await bot.db.season_state.update_one(
+        {"_id": state_id, "$or": [{"rollover_lock_at": {"$exists": False}}, {"rollover_lock_at": {"$lt": lock_now - 900}}]},
+        {"$set": {"rollover_lock_at": lock_now}},
+    )
+    if not lock_result or getattr(lock_result, "modified_count", 0) != 1:
+        logging.info("Season rollover already in progress for guild %s; skipping duplicate trigger.", guild_id)
+        return
+    state = await bot.db.season_state.find_one({"_id": state_id})
     current_season_num = int(state.get("season_number", 1)) if state else 1
     channel_id = config.get("announcement_channel_id") or config.get("registration_channel_id")
     target_channel = bot.get_channel(int(channel_id)) if channel_id else None
@@ -591,9 +695,14 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
     )
     await apply_season_soft_reset(guild_id, current_season_num)
     await bot.db.pending.delete_many({"guild_id": guild_id})
+    # Old-season challenges must not remain silently playable after rollover.
+    await bot.db.active_challenges.update_many(
+        {"guild_id": guild_id, "status": {"$in": ["active", "processing"]}},
+        {"$set": {"status": "expired", "expired_at": now, "expired_season": current_season_num}},
+    )
     await bot.db.season_state.update_one(
         {"_id": f"guild_{guild_id}"},
-        {"$set": {"guild_id": guild_id, "season_number": current_season_num + 1, "ends_at": now + (14 * 24 * 60 * 60)}},
+        {"$set": {"guild_id": guild_id, "season_number": current_season_num + 1, "ends_at": now + (14 * 24 * 60 * 60)}, "$unset": {"rollover_lock_at": ""}},
         upsert=True,
     )
     if forced_interaction:
@@ -606,12 +715,40 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
         )
         await audit_admin_action(forced_interaction, "Season Rollover", f"Closed Season {current_season_num}; career stats preserved and current-season garage/defenses reset.")
 
-async def process_match_result(guild_id: str, challenger_id: str, opponent_id: str, defense_courses: list, challenger_times: list, proof_url: str, defender_proof_url: str = None, origin_channel_id: int = None):
+async def process_match_result(guild_id: str, challenger_id: str, opponent_id: str, defense_courses: list, challenger_times: list, proof_url: str, defender_proof_url: str = None, origin_channel_id: int = None, settlement_id: str = None):
     """Calculate ELO changes, apply to DB, save match record. Returns match data dict or None on error."""
+    # A deterministic settlement id makes retries safe: the same active challenge can only create one match record.
+    match_id = settlement_id or f"{guild_id}_{challenger_id}_{opponent_id}_{int(time.time())}"
+    existing_match = await bot.db.matches.find_one({"_id": match_id})
+    if existing_match:
+        if existing_match.get("settlement_status") in (None, "completed"):
+            return existing_match
+        # Recover a crash that happened after the reservation but before finalization.
+        p1_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}"})
+        p2_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}"})
+        if p1_now and p2_now and p1_now.get("elo") == existing_match.get("challenger_elo_after") and p2_now.get("elo") == existing_match.get("defender_elo_after"):
+            await bot.db.matches.update_one({"_id": match_id, "settlement_status": "pending"}, {"$set": {"settlement_status": "completed"}})
+            existing_match["settlement_status"] = "completed"
+            return existing_match
+        logging.warning("Found incomplete match settlement %s with uncertain DB state; refusing duplicate scoring.", match_id)
+        return None
+
     p1 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}"})
     p2 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}"})
-    if not p1 or not p2:
+    if not p1 or not p2 or len(defense_courses) != 5 or len(challenger_times) != 5:
         return None
+    current_season = await get_current_season_number(guild_id)
+    defense_season = p2.get("defense_locked", {}).get("season_number")
+    if defense_season is not None and int(defense_season) != int(current_season):
+        logging.warning("Rejected stale defense in match processing: guild=%s defender=%s defense_season=%s current=%s", guild_id, opponent_id, defense_season, current_season)
+        return None
+    if p1.get("season_number") is not None and int(p1.get("season_number", 0)) != int(current_season):
+        return None
+    if p2.get("season_number") is not None and int(p2.get("season_number", 0)) != int(current_season):
+        return None
+
+    challenger_before = {"career_wins": int(p1.get("career_wins", 0)), "career_played": int(p1.get("career_played", 0)), "streak": int(p1.get("streak", 0))}
+    defender_before = {"career_wins": int(p2.get("career_wins", 0)), "career_played": int(p2.get("career_played", 0)), "streak": int(p2.get("streak", 0))}
 
     courses_beat = sum(1 for i in range(5) if challenger_times[i]["ms"] < defense_courses[i]["ms"])
     challenger_won = courses_beat >= 3
@@ -624,7 +761,11 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
     for i in range(5):
         beat = challenger_times[i]["ms"] < defense_courses[i]["ms"]
         icon = "✅" if beat else "❌"
-        breakdown += f"{icon} **Course {i+1}** — `{defense_courses[i]['track']}`\n   🛡️ `{defense_courses[i]['car']}` | `{defense_courses[i]['lap_time']}`\n   ⚔️ `{challenger_times[i]['car']}` | `{challenger_times[i]['lap_time_str']}`\n"
+        defender_rank = defense_courses[i].get("car_rank", "N/A")
+        challenger_rank = challenger_times[i].get("car_rank", "N/A")
+        breakdown += (f"{icon} **Course {i+1}** — `{defense_courses[i]['track']}`\n"
+                      f"   🛡️ `{defense_courses[i]['car']}` | Rank `{defender_rank}` | `{defense_courses[i]['lap_time']}`\n"
+                      f"   ⚔️ `{challenger_times[i]['car']}` | Rank `{challenger_rank}` | `{challenger_times[i]['lap_time_str']}`\n")
 
     if challenger_won:
         current_streak = p1.get("streak", 0) + 1
@@ -653,10 +794,25 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         new_w_elo, new_l_elo = new_defender_elo, new_challenger_elo
         old_w_elo, old_l_elo = old_defender_elo, old_challenger_elo
 
+    # Reserve the deterministic settlement before changing ratings. This makes a retry
+    # recoverable instead of creating a second ELO award after a process crash.
+    reservation = {
+        "_id": match_id, "guild_id": guild_id, "challenger_id": challenger_id, "opponent_id": opponent_id,
+        "challenger_elo_before": old_challenger_elo, "challenger_elo_after": new_challenger_elo,
+        "defender_elo_before": old_defender_elo, "defender_elo_after": new_defender_elo,
+        "settlement_status": "pending", "timestamp": time.time()
+    }
+    try:
+        await bot.db.matches.insert_one(reservation)
+    except Exception:
+        existing = await bot.db.matches.find_one({"_id": match_id})
+        if existing and existing.get("settlement_status") == "completed":
+            return existing
+        raise
+
     await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
     await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
 
-    match_id = f"{guild_id}_{challenger_id}_{opponent_id}_{int(time.time())}"
     match_record = {
         "_id": match_id,
         "guild_id": guild_id,
@@ -676,15 +832,20 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         "new_l_elo": new_l_elo,
         "old_w_elo": old_w_elo,
         "old_l_elo": old_l_elo,
+        "challenger_before": challenger_before,
+        "defender_before": defender_before,
         "outcome_desc": outcome_desc,
         "display_color": display_color,
         "announce_title": announce_title,
         "proof_url": proof_url,
         "defender_proof_url": defender_proof_url,
+        "defense_courses": defense_courses,
+        "challenger_courses": challenger_times,
         "reverted": False,
+        "settlement_status": "completed",
         "timestamp": time.time()
     }
-    await bot.db.matches.insert_one(match_record)
+    await bot.db.matches.update_one({"_id": match_id, "settlement_status": "pending"}, {"$set": {k: v for k, v in match_record.items() if k != "_id"}})
     return match_record
 
 
@@ -693,8 +854,9 @@ class MatchResultPostView(discord.ui.View):
     def __init__(self, match_id: str):
         super().__init__(timeout=None)
         self.match_id = match_id
+        self.children[0].custom_id = f"report_match:{match_id}"
 
-    @discord.ui.button(label="Report Issue", style=discord.ButtonStyle.danger, custom_id="report_match_btn")
+    @discord.ui.button(label="Report Issue", style=discord.ButtonStyle.danger, custom_id="report_match")
     async def report_issue(self, interaction: discord.Interaction, button: discord.ui.Button):
         match = await bot.db.matches.find_one({"_id": self.match_id})
         if not match:
@@ -720,6 +882,9 @@ class MatchResultPostView(discord.ui.View):
         report_emb.set_image(url=match["proof_url"])
         report_emb.set_footer(text=f"Match ID: {self.match_id}")
 
+        await bot.db.matches.update_one({"_id": self.match_id}, {"$set": {
+            "reported": True, "reported_by": str(interaction.user.id), "reported_at": time.time()
+        }})
         await admin_chan.send(embed=report_emb, view=MatchRevertView(self.match_id))
         await interaction.response.send_message("✅ Match reported to staff. They will review it shortly.", ephemeral=True)
 
@@ -728,12 +893,14 @@ class MatchResultPostView(discord.ui.View):
 
 
 class MatchRevertView(discord.ui.View):
-    """View for admins to revert a reported match (ELO only)."""
+    """View for admins to fully reverse a reported match."""
     def __init__(self, match_id: str):
         super().__init__(timeout=None)
         self.match_id = match_id
+        self.children[0].custom_id = f"revert_match:{match_id}"
+        self.children[1].custom_id = f"dismiss_report:{match_id}"
 
-    @discord.ui.button(label="Revert ELO", style=discord.ButtonStyle.danger, custom_id="revert_elo_btn")
+    @discord.ui.button(label="Revert Match", style=discord.ButtonStyle.danger, custom_id="revert_match")
     async def revert_elo(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
@@ -747,8 +914,24 @@ class MatchRevertView(discord.ui.View):
             await interaction.response.send_message("❌ This match has already been reverted.", ephemeral=True)
             return
 
-        challenger_delta = match["challenger_delta"]
-        defender_delta = match["defender_delta"]
+        # Never undo a match after either player has participated in a later
+        # non-reverted match; doing so would corrupt legitimate later ratings/streaks.
+        match_time = float(match.get("timestamp", 0))
+        later = await bot.db.matches.find({
+            "guild_id": match["guild_id"],
+            "timestamp": {"$gt": match_time},
+            "reverted": {"$ne": True},
+            "$or": [
+                {"challenger_id": {"$in": [str(match["challenger_id"]), str(match["opponent_id"])]}},
+                {"opponent_id": {"$in": [str(match["challenger_id"]), str(match["opponent_id"])]}},
+            ],
+        }).to_list(length=1)
+        if later:
+            await interaction.response.send_message(
+                "❌ This match cannot be automatically reverted because one of these players has a later match. Use a manual staff adjustment instead.",
+                ephemeral=True,
+            )
+            return
 
         p1 = await bot.db.drivers.find_one({"_id": f"{match['guild_id']}_{match['challenger_id']}"})
         p2 = await bot.db.drivers.find_one({"_id": f"{match['guild_id']}_{match['opponent_id']}"})
@@ -756,18 +939,36 @@ class MatchRevertView(discord.ui.View):
             await interaction.response.send_message("❌ Player profiles not found.", ephemeral=True)
             return
 
-        new_challenger_elo = max(100, p1.get("elo", 1000) - challenger_delta)
-        new_defender_elo = max(100, p2.get("elo", 1000) - defender_delta)
+        challenger_before = match.get("challenger_before", {})
+        defender_before = match.get("defender_before", {})
+        new_challenger_elo = max(100, int(match.get("challenger_elo_before", p1.get("elo", 1000))))
+        new_defender_elo = max(100, int(match.get("defender_elo_before", p2.get("elo", 1000))))
 
-        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['challenger_id']}"}, {"$set": {"elo": new_challenger_elo}})
-        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['opponent_id']}"}, {"$set": {"elo": new_defender_elo}})
-        await bot.db.matches.update_one({"_id": self.match_id}, {"$set": {"reverted": True}})
+        # Older records may not contain snapshots; only use the exact ELO-before
+        # values when present rather than subtracting a possibly stale delta.
+        if "challenger_elo_before" not in match or "defender_elo_before" not in match:
+            await interaction.response.send_message("❌ This legacy match lacks safe rollback snapshots. Use a manual staff adjustment.", ephemeral=True)
+            return
+        defender_before = match.get("defender_before", {})
+        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['challenger_id']}"}, {"$set": {
+            "elo": new_challenger_elo,
+            "career_wins": int(challenger_before.get("career_wins", p1.get("career_wins", 0))),
+            "career_played": int(challenger_before.get("career_played", p1.get("career_played", 0))),
+            "streak": int(challenger_before.get("streak", p1.get("streak", 0))),
+        }})
+        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['opponent_id']}"}, {"$set": {
+            "elo": new_defender_elo,
+            "career_wins": int(defender_before.get("career_wins", p2.get("career_wins", 0))),
+            "career_played": int(defender_before.get("career_played", p2.get("career_played", 0))),
+            "streak": int(defender_before.get("streak", p2.get("streak", 0))),
+        }})
+        await bot.db.matches.update_one({"_id": self.match_id}, {"$set": {"reverted": True, "reverted_at": time.time(), "reverted_by": str(interaction.user.id)}})
 
         for item in self.children:
             item.disabled = True
         await interaction.message.edit(view=self)
-        await interaction.response.send_message(f"✅ ELO reverted. <@{match['challenger_id']}>: {p1.get('elo', 1000)} → {new_challenger_elo} | <@{match['opponent_id']}>: {p2.get('elo', 1000)} → {new_defender_elo}", ephemeral=True)
-        await dispatch_audit_log(match["guild_id"], "⚠️ Match ELO Reverted", f"Staff {interaction.user.mention} reverted ELO for match {self.match_id} between <@{match['challenger_id']}> and <@{match['opponent_id']}>.", color=0xe74c3c)
+        await interaction.response.send_message(f"✅ Match fully reverted. <@{match['challenger_id']}>: {p1.get('elo', 1000)} → {new_challenger_elo} | <@{match['opponent_id']}>: {p2.get('elo', 1000)} → {new_defender_elo}", ephemeral=True)
+        await dispatch_audit_log(match["guild_id"], "⚠️ Match Reverted", f"Staff {interaction.user.mention} reverted ELO for match {self.match_id} between <@{match['challenger_id']}> and <@{match['opponent_id']}>.", color=0xe74c3c)
 
     @discord.ui.button(label="Dismiss", style=discord.ButtonStyle.secondary, custom_id="dismiss_report_btn")
     async def dismiss(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -782,7 +983,8 @@ class MatchRevertView(discord.ui.View):
 
 class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
     challenger_laps = discord.ui.TextInput(label="Your 5 Lap Times (one per line, MM:SS.MS)", style=discord.TextStyle.paragraph, placeholder="01:12.431\n01:15.123\n01:10.567\n01:18.890\n01:14.234", required=True)
-    challenger_cars = discord.ui.TextInput(label="Your 5 Attack Cars (one per line)", style=discord.TextStyle.paragraph, placeholder="Devel Sixteen\nKoenigsegg Jesko\nBugatti Bolide\nRimac Nevera\nMcLaren Speedtail", required=True)
+    challenger_cars = discord.ui.TextInput(label="Your 5 Attack Cars (one per line)", style=discord.TextStyle.paragraph, placeholder="Koenigsegg Jesko\nBugatti Bolide\nRimac Nevera\nMcLaren Speedtail\nDevel Sixteen", required=True)
+    challenger_ranks = discord.ui.TextInput(label="Your 5 Car Rankings (one per line)", style=discord.TextStyle.paragraph, placeholder="3000\n2985\n2870\n2750\n3100", required=True)
     screenshot_proof = discord.ui.TextInput(label="Paste Race Score card Screenshot URL", placeholder="Direct image link...", required=True)
 
     def __init__(self, challenger_id: str, opponent_id: str, defense_courses: list, defender_proof_url: str = None):
@@ -808,13 +1010,38 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
             await interaction.followup.send("❌ **Duplicate Cars:** All 5 attack cars must be different.", ephemeral=True)
             return
 
+        car_lookup = {c.casefold(): c for c in ALU_CARS}
+        normalized_cars = []
+        for i, car in enumerate(car_lines):
+            canonical = car_lookup.get(car.casefold())
+            if not canonical:
+                await interaction.followup.send(f"❌ **Car Not Found:** Attack car {i+1} (`{car}`) is not in the approved ALU car list.", ephemeral=True)
+                return
+            normalized_cars.append(canonical)
+
+        rank_lines = [line.strip().replace(",", "") for line in self.challenger_ranks.value.strip().split("\n") if line.strip()]
+        if len(rank_lines) != 5:
+            await interaction.followup.send("❌ **Format Denied:** You must provide exactly 5 car rankings, one per line.", ephemeral=True)
+            return
+        challenger_ranks = []
+        for i, line in enumerate(rank_lines):
+            try:
+                rank = int(line)
+            except ValueError:
+                await interaction.followup.send(f"❌ **Ranking Denied:** Car ranking {i+1} (`{line}`) must be a whole number.", ephemeral=True)
+                return
+            if rank <= 0:
+                await interaction.followup.send(f"❌ **Ranking Denied:** Car ranking {i+1} must be greater than 0.", ephemeral=True)
+                return
+            challenger_ranks.append(rank)
+
         challenger_times = []
         for i, line in enumerate(raw_lines):
             ms = parse_lap_time(line)
             if ms < 0:
                 await interaction.followup.send(f"❌ **Format Denied:** Lap time {i+1} (`{line}`) is not in `MM:SS.MS` format.", ephemeral=True)
                 return
-            challenger_times.append({"lap_time_str": line, "ms": ms, "car": car_lines[i]})
+            challenger_times.append({"lap_time_str": line, "ms": ms, "car": normalized_cars[i], "car_rank": challenger_ranks[i]})
 
         proof_url = self.screenshot_proof.value.strip()
         if not proof_url.lower().startswith(("http://", "https://")):
@@ -828,11 +1055,26 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
             await interaction.followup.send("❌ Match results channel is not configured. Ask an administrator to run `/setup`.", ephemeral=True)
             return
 
-        # Process match: calculate ELO, apply to DB, save match record
-        match_data = await process_match_result(guild_id, self.challenger_id, self.opponent_id, self.defense_courses, challenger_times, proof_url, self.defender_proof_url, interaction.channel_id)
+        # Claim the saved challenge only after all user-input validation passes.
+        active = await claim_active_challenge(guild_id, self.challenger_id)
+        if not active:
+            await interaction.followup.send("❌ This challenge is already submitted or no longer active. Start a new `/challenge` if needed.", ephemeral=True)
+            return
+        if str(active.get("opponent_id")) != str(self.opponent_id) or len(active.get("defense_courses", [])) != 5:
+            await release_active_challenge(active["_id"])
+            await interaction.followup.send("❌ The saved challenge no longer matches this lobby. Start a new `/challenge`.", ephemeral=True)
+            return
+
+        # Use the server-side saved defense, not stale button data.
+        defense_courses = active["defense_courses"]
+        defender_proof_url = active.get("defender_proof_url")
+        match_data = await process_match_result(guild_id, self.challenger_id, self.opponent_id, defense_courses, challenger_times, proof_url, defender_proof_url, interaction.channel_id)
         if not match_data:
+            await release_active_challenge(active["_id"])
             await interaction.followup.send("❌ Could not process match result. One or both player profiles not found.", ephemeral=True)
             return
+
+        await bot.db.active_challenges.update_one({"_id": active["_id"], "status": "processing"}, {"$set": {"status": "completed", "completed_at": time.time(), "match_id": match_data["_id"]}})
 
         season_number = await get_current_season_number(guild_id)
         for i, course in enumerate(self.defense_courses):
@@ -855,6 +1097,11 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
 
         # Send confirmation to challenger
         await interaction.followup.send("✅ **Match submitted!** ELO has been updated automatically. Results posted to the match results channel.", ephemeral=True)
+        try:
+            defender_user = bot.get_user(int(self.opponent_id)) or await bot.fetch_user(int(self.opponent_id))
+            await defender_user.send(f"🏁 **Gauntlet match complete**\nYour defense vs <@{self.challenger_id}> is complete: {match_data['courses_beat']}/5 courses beaten by the challenger. Check the match results channel for the full result.")
+        except Exception:
+            pass
 
         # Dispatch announcement and audit log
         await dispatch_audit_log(guild_id, "🏁 Match Result Processed", f"Match between <@{self.challenger_id}> and <@{self.opponent_id}>. Challenger won {match_data['courses_beat']}/5 races.", color=0x2ecc71)
@@ -883,8 +1130,13 @@ class DefenseView(discord.ui.View):
         super().__init__(timeout=None)
         self.user_id, self.guild_id, self.courses, self.proof_url = str(user_id), str(guild_id), courses, proof_url
         self.is_change = is_change
+        self.children[0].custom_id = f"approve_def:{self.guild_id}:{self.user_id}"
+        self.children[1].custom_id = f"reject_def:{self.guild_id}:{self.user_id}"
     @discord.ui.button(label="Approve Defense Placement", style=discord.ButtonStyle.green, custom_id="approve_def_btn")
     async def approve_def(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
@@ -892,7 +1144,7 @@ class DefenseView(discord.ui.View):
         season_number = int(state.get("season_number", 1)) if state else 1
         await bot.db.drivers.update_one(
             {"_id": f"{self.guild_id}_{self.user_id}"},
-            {"$set": {"defense_locked": {"courses": self.courses, "proof_url": self.proof_url, "season_number": season_number}, "last_defense_change": time.time()}, "$unset": {"pending_tracks": "", "pending_is_change": "", "defense_review_pending": ""}}
+            {"$set": {"defense_locked": {"courses": self.courses, "proof_url": self.proof_url, "season_number": season_number, "car_rank_total": get_car_rank_total(self.courses)}, "last_defense_change": time.time()}, "$unset": {"pending_tracks": "", "pending_is_change": "", "defense_review_pending": ""}}
         )
         # Keep a per-driver/per-map best-time database for practice comparisons.
         for course in self.courses:
@@ -908,11 +1160,14 @@ class DefenseView(discord.ui.View):
         await dispatch_automated_announcement(self.guild_id, announce_title, f"🏎️ Driver <@{self.user_id}> has {announce_verb} a 5-Course defensive framework! Courses: {track_list}.", color=ASPHALT_THEME_COLOR)
     @discord.ui.button(label="Reject Defense Placement", style=discord.ButtonStyle.red, custom_id="reject_def_btn")
     async def reject_def(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
         # Clear review-pending flag so the player can resubmit with the same pending tracks
-        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$unset": {"defense_review_pending": ""}})
+        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$unset": {"defense_review_pending": "", "defense_review_payload": ""}})
         if self.is_change:
             title = "❌ Defense Change Rejected"
             desc = "The defense change was rejected. Your current defense remains active. You can resubmit using `/submitdefense` with the same courses."
@@ -952,8 +1207,13 @@ class VerificationView(discord.ui.View):
     def __init__(self, user_id: str, guild_id: str, game_id: str, rank: int, control: str):
         super().__init__(timeout=None)
         self.user_id, self.guild_id, self.game_id, self.rank, self.control = str(user_id), str(guild_id), game_id, rank, control
+        self.children[0].custom_id = f"approve_driver:{self.guild_id}:{self.user_id}"
+        self.children[1].custom_id = f"reject_driver:{self.guild_id}:{self.user_id}"
     @discord.ui.button(label="Approve Driver Account", style=discord.ButtonStyle.green, custom_id="approve_driver_btn")
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
@@ -962,7 +1222,7 @@ class VerificationView(discord.ui.View):
         season_number = int(state.get("season_number", 1)) if state else 1
         pending = await bot.db.pending.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
         if pending and int(pending.get("season_number", season_number)) != season_number:
-            await interaction.response.send_message("❌ This registration belongs to an older season and can no longer be approved.", ephemeral=True)
+            await interaction.followup.send("❌ This registration belongs to an older season and can no longer be approved.", ephemeral=True)
             return
         existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
         set_on_insert = {
@@ -991,6 +1251,16 @@ class VerificationView(discord.ui.View):
             },
             upsert=True,
         )
+        # Assign the driver's five random defense routes once for this season.
+        # Re-registration within a season does not reroll them. A new season
+        # clears this field during the soft reset, so the next /setdefense gets
+        # a fresh five-route set.
+        refreshed = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        if not refreshed.get("season_defense_tracks") or int(refreshed.get("season_number", 0)) != season_number:
+            await bot.db.drivers.update_one(
+                {"_id": f"{self.guild_id}_{self.user_id}"},
+                {"$set": {"season_defense_tracks": random.sample(ALU_TRACKS, 5)}}
+            )
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
         cfg = await bot.db.settings.find_one({"_id": self.guild_id})
         
@@ -1025,8 +1295,16 @@ class VerificationView(discord.ui.View):
         )
         await dispatch_audit_log(self.guild_id, "👤 Driver Garage Approved", f"User <@{self.user_id}> approved for Season {season_number} with `{self.rank:,} PI` → {projected_division}. Lifetime career statistics preserved.", color=0x2ecc71)
         await dispatch_automated_announcement(self.guild_id, "🏎️ NEW RACER ENTERED THE GRID", f"✨ Let's welcome <@{self.user_id}> (`{self.game_id}`) to the official competitive track circuit! Profile rated at **`{self.rank:,} PI`** using **`{self.control.upper()}`** dynamics.", color=ASPHALT_THEME_COLOR)
+        try:
+            user = interaction.guild.get_member(int(self.user_id)) or await bot.fetch_user(int(self.user_id))
+            await user.send(f"✅ **ALU Gauntlet approval**\nYou are approved for Season {season_number}!\n\nNext: run `/setdefense`, then `/submitdefense` to lock your 5-course defense.")
+        except Exception:
+            pass
     @discord.ui.button(label="Reject Account", style=discord.ButtonStyle.red, custom_id="reject_driver_btn")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
         # Fire modal frame allowing typing rejection specifications
         await interaction.response.send_modal(RegistrationDeclineModal(self.user_id, self.guild_id))
         for item in self.children: item.disabled = True
@@ -1044,8 +1322,13 @@ class ChallengeDropdown(discord.ui.Select):
         target_user_id = str(self.values[0])
         opp_data = self.defender_def_data[target_user_id]
         
-        # Re-check daily challenge limit before creating the match
+        # Do not overwrite an unfinished challenge or consume another daily attempt.
         guild_id, user_id = self.view.guild_id, self.view.user_id
+        active_id = f"{guild_id}_{user_id}"
+        existing_active = await bot.db.active_challenges.find_one({"_id": active_id, "status": {"$in": ["active", "processing"]}})
+        if existing_active:
+            await interaction.followup.send("🟡 You already have an unfinished challenge. Finish it with `/submitmatch` first.", ephemeral=True)
+            return
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
         challenge_date = profile.get("challenge_date") if profile else None
@@ -1058,10 +1341,26 @@ class ChallengeDropdown(discord.ui.Select):
         await bot.db.drivers.update_one({"_id": f"{guild_id}_{user_id}"}, {"$set": {"challenge_count": new_count, "challenge_date": today}})
         remaining = 5 - new_count
         
+        opponent_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{target_user_id}"})
+        await bot.db.active_challenges.replace_one({"_id": active_id}, {
+            "_id": active_id, "guild_id": guild_id, "challenger_id": user_id,
+            "opponent_id": target_user_id, "defense_courses": opp_data["courses"],
+            "defender_proof_url": opp_data.get("proof_url"), "status": "active",
+            "created_at": time.time(), "last_reminder": 0,
+        }, upsert=True)
+        opponent_division = get_division_for_pi(int(opponent_profile.get("garage_pi", 0))) if opponent_profile else {"name": "Unknown Division"}
+        opponent_elo = opponent_profile.get("elo", 1000) if opponent_profile else 1000
         embeds, files = build_course_embeds(
             opp_data["courses"],
             "⚔️ OFFICIAL GAUNTLET GHOST LOBBY ENGAGED",
-            f"Challenger {interaction.user.mention} is at the starting line! Race against this driver's locked 5-course defense. **Win 3 out of 5 races to win the match!**\n\n📊 **Daily challenges remaining:** `{remaining}/5`",
+            (
+                f"Challenger {interaction.user.mention} is at the starting line!\n"
+                f"**Defender:** <@{target_user_id}> • **{opponent_elo} ELO** • **{opponent_division['name']}**\n"
+                f"📈 **Defense Car Performance Total:** `{opp_data.get('car_rank_total', get_car_rank_total(opp_data['courses'])):,}`\n\n"
+                f"Race the **same 5 locked routes** shown below and beat the defender's recorded times. "
+                f"You may use **different attack cars** from the defender. **Win 3 out of 5 races to win the match!**\n\n"
+                f"📊 **Daily challenges remaining:** `{remaining}/5`"
+            ),
             0xFF3366,
         )
         embeds[0].set_image(url=ASPHALT_MEDIA["banner_match"])
@@ -1079,6 +1378,174 @@ class ChallengeView(discord.ui.View):
         super().__init__(timeout=60)
         self.guild_id, self.user_id = guild_id, user_id
         self.add_item(ChallengeDropdown(options_list, defender_def_data))
+
+
+class DashboardView(discord.ui.View):
+    def __init__(self, guild_id: str, user_id: str, is_admin: bool):
+        super().__init__(timeout=600)
+        self.guild_id, self.user_id, self.is_admin = str(guild_id), str(user_id), is_admin
+
+    @discord.ui.button(label="⚔️ Challenge", style=discord.ButtonStyle.blurple)
+    async def challenge(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("⚔️ Use `/challenge` to get a fresh opponent list.", ephemeral=True)
+
+    @discord.ui.button(label="🛡️ Defense", style=discord.ButtonStyle.green)
+    async def defense(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🛡️ Use `/mydefense` to view your defense, `/setdefense` to generate one, or `/changedefense` when eligible.", ephemeral=True)
+
+    @discord.ui.button(label="👤 Profile", style=discord.ButtonStyle.secondary)
+    async def profile(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("👤 Use `/profile` for your full driver card.", ephemeral=True)
+
+    @discord.ui.button(label="🏆 Leaderboard", style=discord.ButtonStyle.secondary)
+    async def leaderboard(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🏆 Use `/leaderboard` for your current division standings.", ephemeral=True)
+
+    @discord.ui.button(label="📊 My Challenges", style=discord.ButtonStyle.secondary)
+    async def challenges(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await send_my_challenges(interaction, self.guild_id, self.user_id)
+
+    @discord.ui.button(label="❓ Help", style=discord.ButtonStyle.secondary)
+    async def help(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("❓ Use `/help` for the quick command guide.", ephemeral=True)
+
+    @discord.ui.button(label="🛠️ Admin", style=discord.ButtonStyle.danger, row=1)
+    async def admin(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self.is_admin:
+            await interaction.response.send_message("❌ Staff only.", ephemeral=True)
+            return
+        await send_admin_dashboard(interaction)
+
+async def send_dashboard(interaction: discord.Interaction):
+    guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    season = int(state.get("season_number", 1)) if state else 1
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    if not profile:
+        desc = "You are not registered yet.\n\n👉 Run `/register` to join the league."
+        embed = discord.Embed(title="🏁 ALU GAUNTLET", description=desc, color=ASPHALT_THEME_COLOR)
+        await interaction.response.send_message(embed=embed, view=DashboardView(guild_id, user_id, False), ephemeral=True)
+        return
+    registered = bool(profile.get("season_registered") and int(profile.get("season_number", 0)) == season)
+    defense_ok = has_5_course_defense(profile)
+    div = get_division_for_pi(int(profile.get("garage_pi", 0))).get("name", "Unranked") if registered else "Not registered"
+    active = await bot.db.active_challenges.find_one({"_id": f"{guild_id}_{user_id}", "status": "active"})
+    embed = discord.Embed(title="🏁 ALU GAUNTLET — YOUR DASHBOARD", color=ASPHALT_THEME_COLOR)
+    embed.add_field(name="🏆 Season", value=f"**{season}**", inline=True)
+    embed.add_field(name="📈 ELO", value=f"**{profile.get('elo', 1000)}**", inline=True)
+    embed.add_field(name="🏎️ Division", value=f"**{div}**", inline=True)
+    embed.add_field(name="🛡️ Defense", value="✅ Ready" if defense_ok else "❌ Not ready", inline=True)
+    embed.add_field(name="🏆 Career", value=f"**{profile.get('career_wins',0)}** wins / **{profile.get('career_played',0)}** played", inline=True)
+    embed.add_field(name="⚔️ Match", value=f"🟡 vs <@{active['opponent_id']}>" if active else "🟢 No active match", inline=True)
+    if not registered:
+        embed.description = "🔄 Re-registration is required for this season."
+    elif not defense_ok:
+        embed.description = "👉 Next step: `/setdefense` → `/submitdefense`"
+    else:
+        embed.description = "✅ You're league-ready. Use the buttons below or `/challenge`."
+    embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
+    embed.set_image(url=ASPHALT_MEDIA["banner_help"])
+    embed.set_footer(text="ALU Gauntlet • Player dashboard")
+    is_admin = bool(interaction.guild and (interaction.user.guild_permissions.administrator or await check_admin_privileges(interaction)))
+    await interaction.response.send_message(embed=embed, view=DashboardView(guild_id, user_id, is_admin), ephemeral=True)
+
+async def send_my_challenges(interaction: discord.Interaction, guild_id: str, user_id: str):
+    active = await bot.db.active_challenges.find({"guild_id": str(guild_id), "challenger_id": str(user_id), "status": "active"}).to_list(length=20)
+    recent = await bot.db.matches.find({"guild_id": str(guild_id), "$or": [{"challenger_id": str(user_id)}, {"opponent_id": str(user_id)}]}).sort("timestamp", -1).limit(5).to_list(length=5)
+    embed = discord.Embed(title="⚔️ MY CHALLENGES", color=ASPHALT_THEME_COLOR)
+    if active:
+        embed.add_field(name="🟡 Active", value="\n".join(f"• vs <@{x['opponent_id']}> — use `/submitmatch`" for x in active), inline=False)
+    else:
+        embed.add_field(name="🟢 Active", value="No unfinished challenges.", inline=False)
+    if recent:
+        lines=[]
+        for m in recent:
+            other = m.get("opponent_id") if m.get("challenger_id") == str(user_id) else m.get("challenger_id")
+            won = (m.get("challenger_won") and m.get("challenger_id") == str(user_id)) or ((not m.get("challenger_won")) and m.get("opponent_id") == str(user_id))
+            lines.append(f"• {'🏆' if won else '❌'} vs <@{other}> — {m.get('courses_beat',0)}/5")
+        embed.add_field(name="📜 Recent", value="\n".join(lines), inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+async def send_admin_dashboard(interaction: discord.Interaction):
+    guild_id = str(interaction.guild_id)
+    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    season = int(state.get("season_number",1)) if state else 1
+    registered = await bot.db.drivers.count_documents({"guild_id":guild_id,"season_registered":True,"season_number":season})
+    pending = await bot.db.pending.count_documents({"guild_id":guild_id,"season_number":season})
+    missing = await bot.db.drivers.count_documents({"guild_id":guild_id,"season_registered":True,"season_number":season,"defense_locked.courses.4":{"$exists":False}})
+    active = await bot.db.active_challenges.count_documents({"guild_id":guild_id,"status":"active"})
+    embed=discord.Embed(title="🛠️ ALU GAUNTLET — ADMIN", description="Quick staff overview and actions.", color=ASPHALT_ADMIN_COLOR)
+    embed.add_field(name="🏁 Season", value=f"**{season}**", inline=True)
+    embed.add_field(name="👥 Players", value=f"**{registered}**", inline=True)
+    embed.add_field(name="⏳ Pending", value=f"**{pending}**", inline=True)
+    embed.add_field(name="🛡️ Missing Defense", value=f"**{missing}**", inline=True)
+    embed.add_field(name="⚔️ Active Matches", value=f"**{active}**", inline=True)
+    embed.add_field(name="📊 Tools", value="`/pending` • `/missingdefense` • `/listplayers` • `/adminlog` • `/diagnostics`", inline=False)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="gauntlet", description="Open your ALU Gauntlet player dashboard.")
+async def gauntlet_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False): return
+    await send_dashboard(interaction)
+
+@bot.tree.command(name="whatnext", description="Show your next required Gauntlet step.")
+async def whatnext_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False): return
+    guild_id,user_id=str(interaction.guild_id),str(interaction.user.id)
+    season=await get_current_season_number(guild_id)
+    p=await bot.db.drivers.find_one({"_id":f"{guild_id}_{user_id}"})
+    if not p:
+        msg="1️⃣ Run `/register`"
+    elif not p.get("season_registered") or int(p.get("season_number",0))!=season:
+        msg=f"1️⃣ Re-register for Season {season}: `/register`"
+    elif not p.get("defense_locked"):
+        msg="1️⃣ Generate your defense: `/setdefense`\n2️⃣ Submit it: `/submitdefense`"
+    else:
+        active=await bot.db.active_challenges.find_one({"_id":f"{guild_id}_{user_id}","status":"active"})
+        msg="1️⃣ Finish your active match: `/submitmatch`" if active else "✅ You're ready — use `/challenge`"
+    await interaction.response.send_message(embed=discord.Embed(title="🏁 WHAT NEXT?",description=msg,color=ASPHALT_THEME_COLOR),ephemeral=True)
+
+@bot.tree.command(name="mychallenges", description="View your active and recent Gauntlet challenges.")
+async def mychallenges_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False): return
+    await send_my_challenges(interaction,str(interaction.guild_id),str(interaction.user.id))
+
+@bot.tree.command(name="missingdefense", description="[Staff Only] List current-season drivers without a locked defense.")
+async def missing_defense_cmd(interaction: discord.Interaction):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True); return
+    guild_id=str(interaction.guild_id); season=await get_current_season_number(guild_id)
+    docs=await bot.db.drivers.find({"guild_id":guild_id,"season_registered":True,"season_number":season,"defense_locked.courses.4":{"$exists":False}}).to_list(length=1000)
+    lines=[f"• <@{d['user_id']}> — `{d.get('game_id','?')}`" for d in docs]
+    embed=discord.Embed(title=f"🛡️ MISSING DEFENSE — SEASON {season}",description="\n".join(lines) if lines else "✅ Everyone has a locked defense.",color=ASPHALT_ADMIN_COLOR)
+    await interaction.response.send_message(embed=embed,ephemeral=True)
+
+@bot.tree.command(name="adminlog", description="[Staff Only] View recent administrative audit entries.")
+@app_commands.describe(limit="Number of recent log entries to show (1-15)")
+async def adminlog_cmd(interaction: discord.Interaction, limit: int = 10):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True); return
+    limit=max(1,min(15,limit)); cfg=await bot.db.settings.find_one({"_id":str(interaction.guild_id)})
+    if not cfg or not cfg.get("log_channel_id"):
+        await interaction.response.send_message("ℹ️ Log channel is not configured.",ephemeral=True); return
+    ch=bot.get_channel(int(cfg["log_channel_id"]))
+    if not ch:
+        await interaction.response.send_message("❌ Log channel could not be found.",ephemeral=True); return
+    messages=[]
+    try:
+        async for m in ch.history(limit=limit):
+            if m.embeds:
+                e=m.embeds[0]; messages.append(f"• **{e.title or 'Log'}** — {(e.description or '')[:180]}")
+    except Exception as exc:
+        await interaction.response.send_message(f"❌ Could not read audit log: `{exc}`",ephemeral=True); return
+    embed=discord.Embed(title="🛡️ RECENT ADMIN LOG",description="\n\n".join(messages) if messages else "No recent audit entries found.",color=ASPHALT_ADMIN_COLOR)
+    await interaction.response.send_message(embed=embed,ephemeral=True)
+
+@bot.tree.command(name="admin", description="[Staff Only] Open the admin dashboard.")
+async def admin_dashboard_cmd(interaction: discord.Interaction):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True); return
+    await send_admin_dashboard(interaction)
 
 @bot.tree.command(name="setimage", description="[Admin Only] Update a custom bot image (banner or thumbnail).")
 @app_commands.describe(image_type="Which image to replace", image="Upload the new image file")
@@ -1174,24 +1641,51 @@ async def season_schedule_cmd(interaction: discord.Interaction, start_date: str,
     except ValueError:
         await interaction.followup.send("❌ **Timestamp Read Error:** Please verify exact syntax pattern structural formats: `YYYY-MM-DD HH:MM`", ephemeral=True)
 
+
+class ConfirmClearHistoryView(discord.ui.View):
+    def __init__(self, guild_id: str, target: str):
+        super().__init__(timeout=45); self.guild_id=str(guild_id); self.target=target
+    @discord.ui.button(label="Confirm Delete", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Staff only.",ephemeral=True); return
+        if self.target in ["pending","all"]: await bot.db.pending.delete_many({"guild_id":self.guild_id})
+        if self.target in ["drivers","all"]: await bot.db.drivers.delete_many({"guild_id":self.guild_id})
+        if self.target == "all": await bot.db.active_challenges.delete_many({"guild_id":self.guild_id}); await bot.db.matches.delete_many({"guild_id":self.guild_id})
+        for x in self.children: x.disabled=True
+        await interaction.response.edit_message(content="🧹 **Database purge complete.**",view=self); await audit_admin_action(interaction,"Clear History",f"Confirmed purge `{self.target}`.",color=ASPHALT_DEFEAT_COLOR); self.stop()
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for x in self.children: x.disabled=True
+        await interaction.response.edit_message(content="❌ Purge cancelled — no changes were made.",view=self); self.stop()
+
 @bot.tree.command(name="clearhistory", description="[Staff Only] Wipes specific collections or completely resets data.")
 @app_commands.choices(target_data=[app_commands.Choice(name="Pending Queue Only", value="pending"), app_commands.Choice(name="Approved Drivers Only", value="drivers"), app_commands.Choice(name="Reset Everything", value="all")])
 async def clear_history_cmd(interaction: discord.Interaction, target_data: app_commands.Choice[str]):
     if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
-    await interaction.response.defer(ephemeral=True)
-    try:
-        if target_data.value in ["pending", "all"]: await bot.db.pending.delete_many({"guild_id": str(interaction.guild_id)})
-        if target_data.value in ["drivers", "all"]: await bot.db.drivers.delete_many({"guild_id": str(interaction.guild_id)})
-        await interaction.followup.send("🧹 Database Purge Complete")
-        await audit_admin_action(interaction, "Clear History", f"Purged target `{target_data.value}` from this server.", color=ASPHALT_DEFEAT_COLOR)
-    except Exception:
-        logging.exception("clearhistory failed")
+    await interaction.response.send_message(f"⚠️ **Confirm purge:** `{target_data.name}`. This action can delete league data and cannot be undone.", view=ConfirmClearHistoryView(interaction.guild_id, target_data.value), ephemeral=True)
+
+
+class ConfirmSeasonEndView(discord.ui.View):
+    def __init__(self, guild_id: str):
+        super().__init__(timeout=45); self.guild_id=str(guild_id)
+    @discord.ui.button(label="End Season", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Staff only.",ephemeral=True); return
+        for x in self.children: x.disabled=True
+        await interaction.response.edit_message(content="🏁 Closing season…",view=self)
+        await trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction)
+        await audit_admin_action(interaction,"Season End","Confirmed manual season rollover.",color=ASPHALT_ALERT_COLOR); self.stop()
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for x in self.children: x.disabled=True
+        await interaction.response.edit_message(content="❌ Season end cancelled.",view=self); self.stop()
 
 @bot.tree.command(name="seasonend", description="[Staff Only] Force-closes the season.")
 async def season_end_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
-    await interaction.response.defer(ephemeral=True)
-    await trigger_global_season_end(forced_interaction=interaction)
+    await interaction.response.send_message("⚠️ **End the current season?** This will archive the standings, roll the season forward, reset current-season registration/defenses, and cannot be undone.", view=ConfirmSeasonEndView(interaction.guild_id), ephemeral=True)
 
 @bot.tree.command(name="admin_setpi", description="[Staff Only] Overrides a driver's PI value.")
 async def admin_setpi_cmd(interaction: discord.Interaction, racer: discord.Member, new_pi: int):
@@ -1208,6 +1702,9 @@ class ConfirmRemoveRacerView(discord.ui.View):
 
     @discord.ui.button(label="Confirm Purge", style=discord.ButtonStyle.red)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Staff only.", ephemeral=True)
+            return
         for item in self.children: item.disabled = True
         await bot.db.drivers.delete_one({"_id": f"{self.guild_id}_{self.racer.id}"})
         await interaction.response.edit_message(content=f"🧹 **Purged:** {self.racer.name}'s driver profile was permanently removed.", view=self)
@@ -1253,7 +1750,7 @@ async def map_autocomplete(interaction: discord.Interaction, current: str) -> li
 async def car_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=car, value=car) for car in ALU_CARS if current.lower() in car.lower()][:25]
 
-@bot.tree.command(name="setdefense", description="🛡️ Generates 5 random courses for your defense setup.")
+@bot.tree.command(name="setdefense", description="🛡️ Assigns your 5 seasonal defense routes.")
 async def set_defense_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
@@ -1277,11 +1774,18 @@ async def set_defense_cmd(interaction: discord.Interaction):
             "You already have courses generated. Race each track, then use `/submitdefense` to submit your times and cars.",
             ASPHALT_THEME_COLOR,
         )
-        embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times and 5 cars to complete your defense setup.")
+        embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense setup.")
         await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
         return
-    # Generate 5 random tracks (no repeats)
-    tracks = random.sample(ALU_TRACKS, 5)
+    # Use the player's season-locked route set.  These routes are generated once
+    # for the season and are reused by /changedefense; only cars/times may change.
+    tracks = profile.get("season_defense_tracks")
+    if not tracks or len(tracks) != 5:
+        tracks = random.sample(ALU_TRACKS, 5)
+        await bot.db.drivers.update_one(
+            {"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"},
+            {"$set": {"season_defense_tracks": tracks}}
+        )
     await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"pending_tracks": tracks, "pending_is_change": False}})
     courses = [{"track": t, "car": "TBD", "lap_time": "TBD"} for t in tracks]
     embeds, files = build_course_embeds(
@@ -1290,7 +1794,7 @@ async def set_defense_cmd(interaction: discord.Interaction):
         "Race on each of these 5 tracks and record your best lap times. Then use `/submitdefense` to submit your times and cars.",
         ASPHALT_THEME_COLOR,
     )
-    embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times and 5 cars to complete your defense setup.")
+    embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense setup.")
     await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
 
 @bot.tree.command(name="mydefense", description="View your currently locked ghost defense.")
@@ -1315,7 +1819,7 @@ async def my_defense_cmd(interaction: discord.Interaction):
     embeds[-1].set_footer(text="Use /changedefense to submit a replacement for staff review (once per day).")
     await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
 
-@bot.tree.command(name="changedefense", description="🛡️ Generate 5 new random courses to change your defense (once per 24 hours).")
+@bot.tree.command(name="changedefense", description="🛡️ Re-submit your defense on the same 5 seasonal routes (once per 24 hours).")
 async def change_defense_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
@@ -1349,12 +1853,18 @@ async def change_defense_cmd(interaction: discord.Interaction):
             "You already have new courses generated. Race each track and use `/submitdefense` to submit your times and cars.\n\nYour current defense remains active until the new one is approved.",
             ASPHALT_THEME_COLOR,
         )
-        embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times and 5 cars to complete your defense change.")
+        embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense change.")
         await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
         return
-    # Generate 5 random tracks (no repeats)
-    tracks = random.sample(ALU_TRACKS, 5)
-    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"pending_tracks": tracks, "pending_is_change": True}})
+    # IMPORTANT: /changedefense never rerolls the courses. The player's five
+    # season routes remain locked; only the cars and lap times can be changed.
+    tracks = [course.get("track") for course in profile.get("defense_locked", {}).get("courses", [])]
+    if len(tracks) != 5:
+        tracks = profile.get("season_defense_tracks") or [course.get("track") for course in profile.get("defense_locked", {}).get("courses", [])]
+    if len(tracks) != 5:
+        await interaction.followup.send("❌ Your season route set is missing. Ask staff to repair your defense profile before changing it.", ephemeral=True)
+        return
+    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"season_defense_tracks": tracks, "pending_tracks": tracks, "pending_is_change": True}})
     courses = [{"track": t, "car": "TBD", "lap_time": "TBD"} for t in tracks]
     embeds, files = build_course_embeds(
         courses,
@@ -1362,16 +1872,17 @@ async def change_defense_cmd(interaction: discord.Interaction):
         "Race on each of these 5 tracks and record your best lap times. Then use `/submitdefense` to submit your times and cars.\n\nYour current defense remains active until the new one is approved.",
         ASPHALT_THEME_COLOR,
     )
-    embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times and 5 cars to complete your defense change.")
+    embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense change.")
     await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
 @bot.tree.command(name="submitdefense", description="🛡️ Submit your times, cars, and proof screenshots for your generated defense courses.")
 @app_commands.autocomplete(car_1=car_autocomplete, car_2=car_autocomplete, car_3=car_autocomplete, car_4=car_autocomplete, car_5=car_autocomplete)
 @app_commands.describe(
     lap_time_1="Lap time for course 1 (MM:SS.MS)", lap_time_2="Lap time for course 2 (MM:SS.MS)", lap_time_3="Lap time for course 3 (MM:SS.MS)", lap_time_4="Lap time for course 4 (MM:SS.MS)", lap_time_5="Lap time for course 5 (MM:SS.MS)",
     car_1="Car for course 1", car_2="Car for course 2", car_3="Car for course 3", car_4="Car for course 4", car_5="Car for course 5",
+    car_rank_1="Numeric car performance/rating for course 1", car_rank_2="Numeric car performance/rating for course 2", car_rank_3="Numeric car performance/rating for course 3", car_rank_4="Numeric car performance/rating for course 4", car_rank_5="Numeric car performance/rating for course 5",
     proof_screenshot_1="Screenshot proving lap time 1", proof_screenshot_2="Screenshot proving lap time 2", proof_screenshot_3="Screenshot proving lap time 3", proof_screenshot_4="Screenshot proving lap time 4", proof_screenshot_5="Screenshot proving lap time 5"
 )
-async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, lap_time_2: str, lap_time_3: str, lap_time_4: str, lap_time_5: str, car_1: str, car_2: str, car_3: str, car_4: str, car_5: str, proof_screenshot_1: discord.Attachment, proof_screenshot_2: discord.Attachment, proof_screenshot_3: discord.Attachment, proof_screenshot_4: discord.Attachment, proof_screenshot_5: discord.Attachment):
+async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, lap_time_2: str, lap_time_3: str, lap_time_4: str, lap_time_5: str, car_1: str, car_2: str, car_3: str, car_4: str, car_5: str, car_rank_1: int, car_rank_2: int, car_rank_3: int, car_rank_4: int, car_rank_5: int, proof_screenshot_1: discord.Attachment, proof_screenshot_2: discord.Attachment, proof_screenshot_3: discord.Attachment, proof_screenshot_4: discord.Attachment, proof_screenshot_5: discord.Attachment):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
     profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
@@ -1389,7 +1900,12 @@ async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, 
     
     lap_times = [lap_time_1, lap_time_2, lap_time_3, lap_time_4, lap_time_5]
     cars = [car_1, car_2, car_3, car_4, car_5]
+    car_ranks = [car_rank_1, car_rank_2, car_rank_3, car_rank_4, car_rank_5]
     proof_screenshots = [proof_screenshot_1, proof_screenshot_2, proof_screenshot_3, proof_screenshot_4, proof_screenshot_5]
+
+    if any(int(rank) <= 0 for rank in car_ranks):
+        await interaction.followup.send("❌ **Invalid Car Performance:** All 5 car performance/rating values must be positive numbers.", ephemeral=True)
+        return
     
     # Check for duplicate cars
     if len({c.strip().lower() for c in cars}) != len(cars):
@@ -1409,7 +1925,7 @@ async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, 
         if ms < 0:
             await interaction.followup.send(f"❌ **Invalid Format:** Lap time {i+1} (`{lap_times[i]}`) must be in `MM:SS.MS` format.", ephemeral=True)
             return
-        courses.append({"track": pending_tracks[i], "car": cars[i], "lap_time": lap_times[i], "ms": ms, "proof_url": proof_screenshots[i].url})
+        courses.append({"track": pending_tracks[i], "car": cars[i], "car_rank": int(car_ranks[i]), "lap_time": lap_times[i], "ms": ms, "proof_url": proof_screenshots[i].url})
     
     cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
     chan = bot.get_channel(int(cfg["review_channel_id"])) if cfg else None
@@ -1422,7 +1938,7 @@ async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, 
         review_embeds = [header_emb]
         icon_files = []
         for i, course in enumerate(courses):
-            course_emb = discord.Embed(title=f"🏁 Course {i+1}: {course['track']}", description=f"🚗 **Car:** `{course['car']}`\n⏱️ **Lap Time:** `{course['lap_time']}`", color=0x3498db)
+            course_emb = discord.Embed(title=f"🏁 Course {i+1}: {course['track']}", description=f"🚗 **Car:** `{course['car']}`\n📈 **Car Performance:** `{course['car_rank']}`\n⏱️ **Lap Time:** `{course['lap_time']}`", color=0x3498db)
             icon_file, filename = map_icon_file(course["track"], i)
             if icon_file:
                 icon_files.append(icon_file)
@@ -1431,7 +1947,10 @@ async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, 
             review_embeds.append(course_emb)
         await chan.send(embeds=review_embeds, files=icon_files, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), courses, courses[0]["proof_url"], is_change=is_change))
         # Set review-pending flag (don't clear pending_tracks so they can resubmit if rejected)
-        await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"defense_review_pending": True}})
+        await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {
+            "defense_review_pending": True,
+            "defense_review_payload": {"courses": courses, "proof_url": courses[0]["proof_url"], "is_change": bool(is_change), "submitted_at": time.time()}
+        }})
         if is_change:
             await interaction.followup.send("📥 **Defense Change Staged:** 5-course lineup sent to staff for audit clearance! Your current defense remains active until the new one is approved.")
         else:
@@ -1474,12 +1993,20 @@ async def challenge_cmd(interaction: discord.Interaction):
         return
     remaining = 5 - (challenge_count + 1 if challenge_date == today else 1)
     selected_opponents = random.sample(candidates, min(len(candidates), 3))
-    defender_data_map = {opp["user_id"]: {"courses": opp["defense_locked"]["courses"], "proof_url": opp["defense_locked"].get("proof_url")} for opp in selected_opponents}
-    options_list = [discord.SelectOption(label=f"{opp['game_id']} | Elo: {opp.get('elo', 1000)}", value=opp["user_id"], emoji="🏎️") for opp in selected_opponents]
+    defender_data_map = {opp["user_id"]: {"courses": opp["defense_locked"]["courses"], "proof_url": opp["defense_locked"].get("proof_url"), "car_rank_total": opp["defense_locked"].get("car_rank_total", get_car_rank_total(opp["defense_locked"]["courses"]))} for opp in selected_opponents}
+    options_list = [
+        discord.SelectOption(
+            label=f"{opp.get('game_id', 'Driver')} | {opp.get('elo', 1000)} ELO",
+            description=f"{get_division_for_pi(int(opp.get('garage_pi', 0)))['name'][:55]} • Car Rating {opp.get('defense_locked', {}).get('car_rank_total', get_car_rank_total(opp.get('defense_locked', {}).get('courses', []))):,} • 5 courses",
+            value=opp["user_id"],
+            emoji="🏎️",
+        )
+        for opp in selected_opponents
+    ]
     
     match_embed = discord.Embed(
         title="⚡ AUTOMATED MATCHMAKING MATRIX ONLINE",
-        description=f"A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a 5-course defense — win 3 out of 5 races to win the match! Pick your own cars for each course.*\n\n📊 **Daily challenges remaining:** `{remaining}/5`",
+        description=f"A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a locked 5-course defense. You will see their exact routes, cars, and times, then race those same 5 routes with your own attack cars. Win 3 out of 5 races to win the match.*\n\n📊 **Daily challenges remaining:** `{remaining}/5`",
         color=ASPHALT_THEME_COLOR
     )
     match_embed.set_image(url=ASPHALT_MEDIA["banner_match"])
@@ -1491,6 +2018,109 @@ async def challenge_cmd_error(interaction: discord.Interaction, error: app_comma
         await interaction.response.send_message(f"⏳ **Slow down!** You can search for a new opponent again in `{error.retry_after:.0f}s`.", ephemeral=True)
     else:
         logging.exception("/challenge command error", exc_info=error)
+
+
+async def claim_active_challenge(guild_id: str, user_id: str):
+    """Atomically claim an active challenge; recover stale processing locks."""
+    active_id = f"{guild_id}_{user_id}"
+    active = await bot.db.active_challenges.find_one({"_id": active_id})
+    if not active:
+        return None
+    now = time.time()
+    if active.get("status") == "processing":
+        processing_at = float(active.get("processing_at", 0))
+        if now - processing_at > 15 * 60:
+            await bot.db.active_challenges.update_one(
+                {"_id": active_id, "status": "processing", "processing_at": active.get("processing_at")},
+                {"$set": {"status": "active", "last_reminder": 0}, "$unset": {"processing_at": ""}},
+            )
+            active = await bot.db.active_challenges.find_one({"_id": active_id})
+        else:
+            return None
+    if active.get("status") != "active":
+        return None
+    result = await bot.db.active_challenges.update_one(
+        {"_id": active_id, "status": "active"},
+        {"$set": {"status": "processing", "processing_at": now}},
+    )
+    if not result or getattr(result, "modified_count", 0) != 1:
+        return None
+    active["status"] = "processing"
+    active["processing_at"] = now
+    return active
+
+
+async def release_active_challenge(active_id: str):
+    await bot.db.active_challenges.update_one(
+        {"_id": active_id, "status": "processing"},
+        {"$set": {"status": "active"}, "$unset": {"processing_at": ""}},
+    )
+
+
+@bot.tree.command(name="submitmatch", description="Submit your active 5-course challenge with cars, ratings, times and proof.")
+@app_commands.describe(
+    lap1="Course 1 lap time", lap2="Course 2 lap time", lap3="Course 3 lap time", lap4="Course 4 lap time", lap5="Course 5 lap time",
+    car1="Course 1 attack car", car2="Course 2 attack car", car3="Course 3 attack car", car4="Course 4 attack car", car5="Course 5 attack car",
+    rank1="Course 1 car performance rating", rank2="Course 2 car performance rating", rank3="Course 3 car performance rating", rank4="Course 4 car performance rating", rank5="Course 5 car performance rating",
+    proof="Race proof image URL",
+)
+@app_commands.autocomplete(car1=car_autocomplete, car2=car_autocomplete, car3=car_autocomplete, car4=car_autocomplete, car5=car_autocomplete)
+async def submitmatch_cmd(interaction: discord.Interaction, lap1: str, lap2: str, lap3: str, lap4: str, lap5: str,
+                          car1: str, car2: str, car3: str, car4: str, car5: str,
+                          rank1: int, rank2: int, rank3: int, rank4: int, rank5: int, proof: str):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False): return
+    await interaction.response.defer(ephemeral=True)
+    guild_id,user_id=str(interaction.guild_id),str(interaction.user.id)
+    active=await claim_active_challenge(guild_id,user_id)
+    if not active:
+        await interaction.followup.send("❌ You have no active challenge, or it is already being submitted. Use `/challenge` first.",ephemeral=True); return
+    laps=[lap1,lap2,lap3,lap4,lap5]; cars=[car1,car2,car3,car4,car5]; ranks=[rank1,rank2,rank3,rank4,rank5]
+    lookup={c.casefold():c for c in ALU_CARS}; canonical=[]
+    for i,c in enumerate(cars):
+        if c.casefold() not in lookup:
+            await release_active_challenge(active["_id"]); await interaction.followup.send(f"❌ Car {i+1} is not in the approved ALU roster.",ephemeral=True); return
+        canonical.append(lookup[c.casefold()])
+    if len({c.casefold() for c in canonical}) != 5:
+        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ All 5 attack cars must be different.",ephemeral=True); return
+    if any(int(r)<=0 for r in ranks):
+        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ All 5 car performance ratings must be greater than 0.",ephemeral=True); return
+    challenger_times=[]
+    for i,l in enumerate(laps):
+        ms=parse_lap_time(l.strip())
+        if ms<0:
+            await release_active_challenge(active["_id"]); await interaction.followup.send(f"❌ Lap {i+1} is invalid. Use `MM:SS.MS`.",ephemeral=True); return
+        challenger_times.append({"lap_time_str":l.strip(),"ms":ms,"car":canonical[i],"car_rank":int(ranks[i])})
+    proof=proof.strip()
+    if not proof.lower().startswith(("http://","https://")):
+        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ Proof must be an image URL starting with `http://` or `https://`.",ephemeral=True); return
+    current_season=await get_current_season_number(guild_id)
+    if int(active.get("season_number", 0)) != current_season:
+        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ This challenge belongs to an older season. Start a new `/challenge`.",ephemeral=True); return
+    defense=active.get("defense_courses",[])
+    if len(defense)!=5:
+        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ The saved challenge data is incomplete. Please start a new `/challenge`.",ephemeral=True); return
+    match_data=await process_match_result(guild_id,user_id,str(active["opponent_id"]),defense,challenger_times,proof,active.get("defender_proof_url"),interaction.channel_id,settlement_id=f"{active['_id']}:match")
+    if not match_data:
+        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ Could not process this match.",ephemeral=True); return
+    await bot.db.active_challenges.update_one({"_id":active["_id"]},{"$set":{"status":"completed","completed_at":time.time(),"match_id":match_data["_id"]}})
+    season=current_season
+    for i,c in enumerate(defense):
+        x=dict(challenger_times[i]); x["track"]=c["track"]
+        await save_driver_best_time(guild_id,user_id,x,season,source="match_attack")
+    cfg=await bot.db.settings.find_one({"_id":guild_id}); results=bot.get_channel(int(cfg["match_results_channel_id"])) if cfg and cfg.get("match_results_channel_id") else None
+    result_emb=discord.Embed(title="🏁 Gauntlet Match Result",description=match_data["outcome_desc"],color=match_data["display_color"])
+    result_emb.add_field(name="Challenger",value=f"<@{user_id}>",inline=True); result_emb.add_field(name="Defender",value=f"<@{active['opponent_id']}>",inline=True)
+    result_emb.set_image(url=proof); result_emb.set_footer(text=f"Best-of-5: {match_data['courses_beat']}/5 races won")
+    if results:
+        await results.send(embed=result_emb,view=MatchResultPostView(match_data["_id"]))
+    await interaction.followup.send("✅ **Match submitted!** Results and ELO are updated.",ephemeral=True)
+    try:
+        defender_user=bot.get_user(int(active["opponent_id"])) or await bot.fetch_user(int(active["opponent_id"]))
+        await defender_user.send(f"🏁 **Gauntlet match complete**\nYour defense vs <@{user_id}> is complete: {match_data['courses_beat']}/5 courses beaten by the challenger.")
+    except Exception:
+        pass
+    await dispatch_audit_log(guild_id,"🏁 Match Result Processed",f"Match between <@{user_id}> and <@{active['opponent_id']}>. Challenger won {match_data['courses_beat']}/5 races.",color=0x2ecc71)
+    await dispatch_automated_announcement(guild_id,match_data["announce_title"],f"🏎️ <@{user_id}> vs <@{active['opponent_id']}> — {'Challenger won' if match_data['challenger_won'] else 'Defense held'} {match_data['courses_beat']}/5.",color=match_data["display_color"])
 
 @bot.tree.command(name="profile", description="Inspects driver file card.")
 async def profile_cmd(interaction: discord.Interaction, driver: discord.Member = None):
@@ -1520,7 +2150,9 @@ async def profile_cmd(interaction: discord.Interaction, driver: discord.Member =
         if courses:
             def_lines = ""
             for i, course in enumerate(courses):
-                def_lines += f"🏁 **Course {i+1}:** `{course['track']}` | 🚗 `{course['car']}` | ⏱️ `{course['lap_time']}`\n"
+                def_lines += f"🏁 **Course {i+1}:** `{course['track']}` | 🚗 `{course['car']}` | 📈 `{course.get('car_rank', 'N/A')}` | ⏱️ `{course['lap_time']}`\n"
+            total_rank = get_car_rank_total(courses)
+            def_lines += f"\n📊 **Total Car Performance Rating:** `{total_rank:,}`"
             embed.add_field(name="🛡️ Deployed Ghost Defense Framework", value=def_lines, inline=False)
         
     embed.set_footer(text="System Terminal Sync Matrix v2.0", icon_url=target_user.display_avatar.url)
@@ -1803,7 +2435,7 @@ async def save_driver_best_time(guild_id: str, user_id: str, course: dict, seaso
     record = {
         "_id": doc_id, "guild_id": str(guild_id), "user_id": str(user_id), "track": track,
         "best_ms": ms, "best_lap_time": course.get("lap_time") or course.get("lap_time_str"),
-        "car": course.get("car"), "proof_url": course.get("proof_url"),
+        "car": course.get("car"), "car_rank": course.get("car_rank"), "proof_url": course.get("proof_url"),
         "season_number": int(season_number), "source": source, "updated_at": time.time(),
     }
     await bot.db.lap_times.replace_one({"_id": doc_id}, record, upsert=True)
@@ -1812,7 +2444,7 @@ async def save_driver_best_time(guild_id: str, user_id: str, course: dict, seaso
     if not global_record or ms < int(global_record.get("best_ms", 10**18)):
         await bot.db.map_records.replace_one({"_id": global_id}, {
             "_id": global_id, "track": track, "best_ms": ms,
-            "best_lap_time": record["best_lap_time"], "car": record.get("car"),
+            "best_lap_time": record["best_lap_time"], "car": record.get("car"), "car_rank": record.get("car_rank"),
             "guild_id": str(guild_id), "user_id": str(user_id),
             "proof_url": record.get("proof_url"), "source": source, "updated_at": time.time(),
         }, upsert=True)
@@ -2111,412 +2743,82 @@ class HelpCategorySelect(discord.ui.Select):
     def __init__(self, is_admin: bool = False):
         self.is_admin = is_admin
         options = [
-            discord.SelectOption(label="Bot Information / README", description="Introduction, purpose, and setup instructions.", emoji="📘", value="readme"),
-            discord.SelectOption(label="Quick Start", description="Exact player commands in the order you use them.", emoji="🚀", value="quickstart"),
-            discord.SelectOption(label="Rules & How to Play", description="Gauntlet rules, divisions, ranks, and race flow.", emoji="📜", value="rules"),
-            discord.SelectOption(label="Player Commands", description="Detailed usage for all player commands.", emoji="🎮", value="player"),
-            discord.SelectOption(label="Admin Commands", description="Detailed usage for all admin commands.", emoji="🛠️", value="admin"),
+            discord.SelectOption(label="Overview", description="What the bot does and the basic flow.", emoji="📘", value="overview"),
+            discord.SelectOption(label="Rules", description="Match, defense, ELO and division rules.", emoji="📜", value="rules"),
+            discord.SelectOption(label="Player Commands", description="Quick command reference.", emoji="🎮", value="player"),
+            discord.SelectOption(label="Admin Commands", description="Staff command reference.", emoji="🛠️", value="admin"),
         ]
-        super().__init__(placeholder="Select a help category...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="Choose a help section…", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         category = self.values[0]
+        embed = discord.Embed(color=ASPHALT_THEME_COLOR)
+        embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
 
-        if category == "quickstart":
-            embed = discord.Embed(
-                title="🚀 ALU GAUNTLET — QUICK START",
-                description="Follow these commands in order to go from registration to your first Gauntlet match.",
-                color=ASPHALT_THEME_COLOR,
-            )
-            embed.add_field(name="1️⃣ Register", value="`/register` — Submit your Player ID, Garage PI, proof screenshot, and control type. Wait for staff approval.", inline=False)
-            embed.add_field(name="2️⃣ Check status", value="`/mystatus` — Confirm your registration is approved before continuing.", inline=False)
-            embed.add_field(name="3️⃣ Build your defense", value="`/setdefense` — Receive 5 random Gauntlet courses. Race them using 5 different cars.", inline=False)
-            embed.add_field(name="4️⃣ Submit defense", value="`/submitdefense` — Submit all 5 lap times, cars, and proof screenshots. Wait for staff approval.", inline=False)
-            embed.add_field(name="5️⃣ View defense", value="`/mydefense` — Check your approved 5-course defense.", inline=False)
-            embed.add_field(name="6️⃣ Challenge", value="`/challenge` — Choose a qualified opponent, race all 5 defense courses, and submit your 5 attack times. Win 3+ races to win the match.", inline=False)
-            embed.add_field(
-                name="7️⃣ Track your progress",
-                value="`/profile` — Your ELO and stats\n`/leaderboard` — Current division standings\n`/top` — League top performers",
-                inline=False,
-            )
-            embed.add_field(name="🧪 Example Match Flow", value="`/challenge` → choose opponent → race 5 courses → submit 5 times → bot compares races → **3+ wins = match win** → ELO/stats update.", inline=False)
-            embed.add_field(name="🔄 Change defense", value="`/changedefense` — Generate a new defense once every 24 hours. Your old approved defense stays active until the new one is approved.", inline=False)
-            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
-            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
-            embed.set_footer(text="Quick Start • Complete each step before moving to the next.")
-
-        elif category == "readme":
-            embed = discord.Embed(
-                title="📘 ALU GAUNTLET — BOT INFORMATION / README",
-                description="""Welcome to the **Asphalt Legends Unite Gauntlet League** bot. 🏁
-
-This bot manages the server's competitive racing league workflow inside Discord. It handles driver registration, verification, profiles, defensive ghost setups, matchmaking, race-result ELO updates, leaderboards, seasonal events, administration, logs, and announcements.""",
-                color=ASPHALT_THEME_COLOR,
-            )
-            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
-            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
-            embed.add_field(
-                name="🎯 What the bot does",
-                value="""• Registers Asphalt Legends players and their Player IDs
-• Queues applications for staff verification
-• Tracks Garage PI, ELO, wins, matches, and streaks
-• Generates 5 random courses for each player's defensive ghost setup
-• Matches players with qualified opponents in their PI tier
-• Resolves submitted 5-course race times and updates ELO
-• Displays current and lifetime leaderboards
-• Runs season rollover, podium, CSV, logging, and announcement workflows""",
-                inline=False,
-            )
-            embed.add_field(
-                name="⚙️ Setup / Installation",
-                value="""1. Invite the bot to your Discord server with the permissions required for your channels/roles.
-2. A server administrator runs `/setup` and selects the main, staff review, log, announcement, and match results channels plus the admin and announcement roles.
-3. Players can then run `/register` and begin the league workflow after approval.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🏎️ Typical player flow",
-                value="`/register` → staff approval → `/setdefense` → race 5 courses → `/submitdefense` → `/challenge` → submit results (ELO auto-updates) → climb the standings. Use `/changedefense` to swap your defense (once per day).",
-                inline=False,
-            )
-            embed.set_footer(text="ALU Gauntlet Help • Use the dropdown below to switch sections.")
+        if category == "overview":
+            embed.title = "📘 ALU GAUNTLET — OVERVIEW"
+            embed.description = "A seasonal 5-course racing league managed entirely in Discord."
+            embed.add_field(name="🏁 Player flow", value="`/register` → approval → `/setdefense` → `/submitdefense` → `/challenge`", inline=False)
+            embed.add_field(name="🏎️ Defense", value="5 locked courses • 5 different cars • lap times • car ratings • proof", inline=False)
+            embed.add_field(name="⚔️ Challenge", value="Race the same 5 courses with your own cars and ratings. Fastest time wins each race; 3/5 wins the match.", inline=False)
+            embed.add_field(name="📈 Progress", value="Garage PI = division • ELO = standings • career stats carry between seasons", inline=False)
+            embed.add_field(name="🔄 Defense changes", value="`/changedefense` can replace your defense once per 24 hours after approval.", inline=False)
 
         elif category == "rules":
-            embed = discord.Embed(
-                title="📜 ALU GAUNTLET — RULES & HOW TO PLAY",
-                description=(
-                    "The **ALU Gauntlet** is a seasonal 5-course competitive racing league. "
-                    "Your Garage PI determines your division, your race results affect your ELO, "
-                    "and your locked 5-course defense gives other drivers something to challenge."
-                ),
-                color=ASPHALT_THEME_COLOR,
-            )
-            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
-            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
-            embed.add_field(
-                name="🏁 1. How to Join",
-                value=(
-                    "**1. Register:** Use `/register` with your Asphalt Legends Player ID, current Garage PI, "
-                    "control type, and proof screenshot.\n"
-                    "**2. Get approved:** Staff verify your registration and place you in the division that matches your Garage PI.\n"
-                    "**3. Build your defense:** Use `/setdefense` to receive 5 random courses, race each course, then submit your 5 times, 5 different cars, and proof with `/submitdefense`.\n"
-                    "**4. Challenge:** Once your defense is locked, use `/challenge` to find qualified opponents."
-                ),
-                inline=False,
-            )
-            embed.add_field(
-                name="⚔️ 2. How a Gauntlet Match Works",
-                value=(
-                    "• A match consists of **5 races/courses**.\n"
-                    "• The challenger races against the opponent's locked ghost times.\n"
-                    "• Use **one attack car per course**; the defense also records the car used for each course.\n"
-                    "• **Win 3 of 5 races to win the match.**\n"
-                    "• Submit all 5 attack lap times through the match interface.\n"
-                    "• The bot calculates the race results and updates ELO automatically.\n"
-                    "• Match results are posted to the configured match-results channel for transparency/reporting."
-                ),
-                inline=False,
-            )
-            embed.add_field(
-                name="🎮 Example Match Flow",
-                value=(
-                    "**Example:** You challenge a driver → the bot gives you 5 courses → you race each course with the required attack car → "
-                    "submit all 5 times/proof → the bot compares your times to the opponent's defense → win at least 3 races → **match win** → ELO updates.\n"
-                    "If you lose 3 or more races, the opponent wins the match. Ties are handled by the match system."
-                ),
-                inline=False,
-            )
-            embed.add_field(
-                name="🛡️ 3. Defense Rules",
-                value=(
-                    "• Every driver needs an approved **5-course locked defense** to challenge.\n"
-                    "• Each defense uses **5 different cars**, one for each course.\n"
-                    "• Every submitted defense lap requires its own proof screenshot.\n"
-                    "• `/changedefense` can generate a replacement defense subject to its cooldown; the current defense remains active until the replacement is approved.\n"
-                    "• At the start of a new season, the old defense is cleared and every driver must create and submit a fresh defense."
-                ),
-                inline=False,
-            )
-            division_lines = []
-            for div in PI_DIVISIONS:
-                upper = "No upper limit" if div["max"] is None else f"{div['max'] - 1:,} PI"
-                division_lines.append(f"{div['name']} — `{div['min']:,}–{upper}`")
-            embed.add_field(
-                name="🏆 4. Divisions & Garage PI",
-                value=(
-                    "Your **Garage PI** determines your division for the season. The current brackets are:\n"
-                    + "\n".join(division_lines)
-                    + "\n\nDivision placement is based on your registered Garage PI, while **ELO determines your position within the division leaderboard**."
-                ),
-                inline=False,
-            )
-            embed.add_field(
-                name="📈 5. Ranks, ELO & Standings",
-                value=(
-                    "• **Division:** Your Garage PI bracket (Bronze → Silver → Gold → Platinum → Champ → Legend).\n"
-                    "• **ELO:** Your competitive rating. Match outcomes change your ELO automatically.\n"
-                    "• **Leaderboard rank:** Your position among drivers in your current division, sorted by ELO.\n"
-                    "• **Wins / Matches / Streak:** Your career performance statistics are tracked separately from your current-season Garage registration.\n"
-                    "• Use `/leaderboard` to browse divisions and `/profile` to inspect a driver's statistics."
-                ),
-                inline=False,
-            )
-            embed.add_field(
-                name="🔄 6. Seasons",
-                value=(
-                    "Each new season is a fresh competitive registration cycle. **Career wins, matches, and match history are preserved**, "
-                    "but your current-season Garage registration and locked defense are reset. Drivers must `/register` their Garage again and create a new 5-course defense. "
-                    "ELO is softly regressed toward the baseline at season rollover so the next season can be competitive."
-                ),
-                inline=False,
-            )
-            embed.add_field(
-                name="⏱️ 7. Best Times & References",
-                value=(
-                    "Use `/besttime` to view a driver's saved best time for a map and compare it with the universal best record. "
-                    "Use `/reference` to see the approved reference lap and video. Players can submit a faster video with `/add_reference`; staff must approve it before it replaces the current reference."
-                ),
-                inline=False,
-            )
-            embed.add_field(
-                name="🤝 8. Sportsmanship & Fair Play",
-                value=(
-                    "Race honestly and submit accurate times and proof. Do not submit times that cannot be supported by the required evidence. "
-                    "Use the match-results reporting process if you believe a result or submission needs staff review."
-                ),
-                inline=False,
-            )
-            embed.set_footer(text="ALU Gauntlet Rules • Divisions are determined by Garage PI; standings within divisions are determined by ELO.")
+            embed.title = "📜 ALU GAUNTLET — RULES"
+            embed.description = "Keep it simple: race, submit proof, and let the bot handle the results."
+            embed.add_field(name="⚔️ Matches", value="5 races per match. Win **3 of 5** to win. ELO updates automatically.", inline=False)
+            embed.add_field(name="🛡️ Defense", value="Each driver locks 5 routes with 5 different cars, lap times, individual car ratings and proof.", inline=False)
+            embed.add_field(name="🏎️ Car ratings", value="Ratings are **player-entered**. The same car can have a different rating for different players.", inline=False)
+            embed.add_field(name="🏆 Divisions", value="Bronze `0–7,999` • Silver `8,000–11,499` • Gold `11,500–14,999` • Platinum `15,000–18,499` • Champ `18,500–21,999` • Legend `22,000+` PI", inline=False)
+            embed.add_field(name="📈 ELO", value="Match results change ELO. `/leaderboard` ranks drivers within their current PI division.", inline=False)
+            embed.add_field(name="📅 Seasons", value="Career wins, matches and history stay. Garage registration and defense reset each season.", inline=False)
+            embed.add_field(name="🤝 Fair play", value="Submit accurate times and required proof. No edited or unsupported results.", inline=False)
 
         elif category == "player":
-            embed = discord.Embed(
-                title="🎮 PLAYER COMMANDS",
-                description="Detailed usage for every player-facing slash command currently implemented in bot.py.",
-                color=ASPHALT_THEME_COLOR,
-            )
-            embed.add_field(
-                name="📝 `/register`",
-                value="""**Usage:** `/register game_id:<Player ID> garage_pi:<number> proof_screenshot:<attachment> control_type:<choice>`
-**Purpose:** Submit your driver application for staff verification.
-**Parameters:** `game_id` = Asphalt Legends Player ID; `garage_pi` = your declared Garage PI value; `proof_screenshot` = garage/rating proof; `control_type` = TouchDrive Auto Pilot or Manual Tilt / Tap Controls.
-**Result:** A pending application is created and sent to the configured review channel, where staff verify your declared PI against the screenshot.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="📋 `/mystatus`",
-                value="""**Usage:** `/mystatus`
-**Purpose:** Check whether your registration is verified, still pending staff review, or not yet submitted.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🛡️ `/setdefense`",
-                value="""**Usage:** `/setdefense`
-**Purpose:** Generates 5 random courses for your defense. The system picks 5 tracks for you to race on.
-**Result:** You'll see your 5 assigned tracks. Race on each one, then use `/submitdefense` to submit your lap times and cars. Courses can't be rerolled once generated.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="📤 `/submitdefense`",
-                value="""**Usage:** `/submitdefense lap_time_1:<MM:SS.MS> ... lap_time_5:<MM:SS.MS> car_1:<car> ... car_5:<car> proof_screenshot_1:<attachment> ... proof_screenshot_5:<attachment>`
-**Purpose:** Submit your 5 lap times, 5 different cars (one per course), and one proof screenshot per lap for staff approval.
-**Requirements:** You must have generated courses via `/setdefense` or `/changedefense` first. All 5 cars must be different, and each of the 5 laps needs its own screenshot.
-**Result:** Your 5-course defense is sent to staff for approval. Once approved, it becomes your locked defense.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🔄 `/changedefense`",
-                value="""**Usage:** `/changedefense`
-**Purpose:** Generate 5 new random courses to replace your current defense. Your old defense stays active until the new one is approved.
-**Cooldown:** Limited to once per 24 hours. You must already have a locked defense to use this.
-**Result:** After generating courses, use `/submitdefense` to submit your new times and cars.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🔍 `/mydefense`",
-                value="""**Usage:** `/mydefense`
-**Purpose:** View your currently locked 5-course ghost defense. Players always have a defense active once set — use `/changedefense` to generate new courses for a replacement.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="⚔️ `/challenge`",
-                value="""**Usage:** `/challenge`
-**Purpose:** Find up to three qualified opponents in your PI tier who have active 5-course defenses.
-**Result:** Select an opponent to see all 5 courses with their ghost times and cars. **Win 3 out of 5 races to win the match!** Pick your own 5 attack cars (one per course) and submit your 5 lap times via the modal. ELO updates automatically based on how many races you win. Results are posted to the match results channel where anyone can report issues.
-**Requirements:** You must have a locked 5-course defense to challenge others.
-**Limits:** Limited to **5 challenges per day** (resets at midnight UTC) and once every 45 seconds per player. The match embed shows your remaining daily challenges.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="👤 `/profile`",
-                value="""**Usage:** `/profile` or `/profile driver:<member>`
-**Purpose:** View a driver's Player ID, ELO, Garage PI, career wins, matches, streak, and active defense information.
-**Note:** The optional `driver` parameter lets you inspect another member.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🏆 `/leaderboard`",
-                value="""**Usage:** `/leaderboard`
-**Purpose:** Opens a dropdown to browse standings by division (Bronze through Legend). Select a division to see all its players ranked by ELO with Player IDs and Garage PI.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🗺️ `/map`",
-                value="""**Usage:** `/map map_name:<map>`
-**Purpose:** View a Gauntlet map's image and its two official routes.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="⏱️ `/besttime`",
-                value="""**Usage:** `/besttime driver:<member> map_name:<map>`
-**Purpose:** Compare a driver's best saved lap for a map with the cross-server universal best record.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🎥 `/reference`",
-                value="""**Usage:** `/reference map_name:<map>`
-**Purpose:** View the currently approved fastest reference lap and its video.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="📤 `/add_reference`",
-                value="""**Usage:** `/add_reference map_name:<map> lap_time:<MM:SS.MS> video_reference:<url>`
-**Purpose:** Submit a faster reference video for staff approval. If approved, it replaces the current reference for that map; if declined, you'll receive a DM with the reason.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="👑 `/top`",
-                value="""**Usage:** `/top`
-**Purpose:** Opens a dropdown to view the top 5 players by Most Wins, Most Active (matches played), or Overall (ELO rating). Select a category from the dropdown to see the leaderboard.""",
-                inline=False,
-            )
-            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
-            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
-            embed.set_footer(text="Player Help • Based on the commands currently implemented in bot.py.")
+            embed.title = "🎮 PLAYER COMMANDS"
+            embed.description = "Quick reference — use the command for the full form/options."
+            embed.add_field(name="📝 `/register`", value="Register your Player ID, PI, controls and proof.", inline=True)
+            embed.add_field(name="📊 `/mystatus`", value="Check registration status.", inline=True)
+            embed.add_field(name="🛡️ `/setdefense`", value="Get your season's 5 defense routes.", inline=True)
+            embed.add_field(name="📤 `/submitdefense`", value="Submit 5 cars, ratings, times and proof.", inline=True)
+            embed.add_field(name="👁️ `/mydefense`", value="View your approved defense.", inline=True)
+            embed.add_field(name="⚔️ `/challenge`", value="Choose an opponent and start a match.", inline=True)
+            embed.add_field(name="🔄 `/changedefense`", value="Submit a replacement defense after cooldown.", inline=True)
+            embed.add_field(name="👤 `/profile`", value="View ELO, stats and defense.", inline=True)
+            embed.add_field(name="🏆 `/leaderboard`", value="View division standings.", inline=True)
+            embed.add_field(name="🥇 `/top`", value="View league leaders.", inline=True)
+            embed.add_field(name="🗺️ `/maps`", value="View map and routes.", inline=True)
+            embed.add_field(name="⏱️ `/besttime`", value="View a driver's best map time.", inline=True)
+            embed.add_field(name="🎥 `/reference`", value="View the approved reference lap.", inline=True)
+            embed.add_field(name="📤 `/add_reference`", value="Submit a faster reference for staff review.", inline=True)
 
         else:
             if not self.is_admin:
-                await interaction.response.send_message(
-                    "❌ **Access Denied:** Admin Commands are only available to administrators or the configured admin role.",
-                    ephemeral=True,
-                )
+                await interaction.response.send_message("❌ Admin Commands are only available to authorized staff.", ephemeral=True)
                 return
+            embed.title = "🛠️ ADMIN COMMANDS"
+            embed.description = "Staff-only command reference."
+            admin_items = [
+                ("`/setup`", "Configure league channels and roles."),
+                ("`/setimage`", "Change bot images."),
+                ("`/season_schedule`", "Set season dates."),
+                ("`/seasonend`", "End season and start the next one."),
+                ("`/pending`", "Review pending registrations."),
+                ("`/listplayers`", "List current-season drivers."),
+                ("`/admin_setpi`", "Change a driver's PI."),
+                ("`/delete_id`", "Reset active registration; keep career history."),
+                ("`/admin_removeracer`", "Permanently remove a driver."),
+                ("`/clearhistory`", "Delete selected server data."),
+                ("`/sync`", "Sync slash commands."),
+                ("`!forcesync`", "Fallback command sync."),
+                ("`/identity`", "Change bot name/avatar."),
+                ("`/diagnostics`", "Run bot health checks."),
+            ]
+            embed.add_field(name="Commands", value="\n".join(f"{cmd} — {desc}" for cmd, desc in admin_items), inline=False)
 
-            embed = discord.Embed(
-                title="🛠️ ADMIN COMMANDS",
-                description="Detailed usage for every administrative/staff command currently implemented in bot.py.",
-                color=ASPHALT_ADMIN_COLOR,
-            )
-            embed.add_field(
-                name="🖼️ `/setimage`",
-                value="""**Usage:** `/setimage image_type:<choice> image:<attachment>`
-**Purpose:** Upload a new custom image (banner or thumbnail) for the bot. The image is stored permanently and replaces the default.
-**Choices:** Help Banner, Match Banner, Leaderboard Banner, Profile Thumbnail, Diagnostics Thumbnail.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="⚙️ `/setup`",
-                value="""**Usage:** `/setup main_channel:<channel> staff_channel:<channel> log_channel:<channel> announcement_channel:<channel> match_results_channel:<channel> admin_role:<role> player_role:<role>`
-**Purpose:** Configure the league's core channels and role mappings.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="📅 `/season_schedule`",
-                value="""**Usage:** `/season_schedule start_date:<YYYY-MM-DD HH:MM> end_date:<YYYY-MM-DD HH:MM>`
-**Purpose:** Set the season timeline. The supplied end date becomes the active season's closing timestamp.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🏁 `/seasonend`",
-                value="""**Usage:** `/seasonend`
-**Purpose:** Force-close the current season, publish divisional results, send the complete leaderboard CSV, softly reset ELO (regressed 50% toward baseline, streaks cleared), clear pending records, and advance the season.
-**Note:** Career stats carry over. Current-season Garage registration and locked defenses are cleared, so every driver must re-register and build a fresh 5-course defense.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner). Admin commands can be run from any channel.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🧹 `/clearhistory`",
-                value="""**Usage:** `/clearhistory target_data:<choice>`
-**Choices:** `Pending Queue Only`, `Approved Drivers Only`, `Reset Everything`.
-**Purpose:** Delete the selected server data collections.
-**Warning:** This is destructive and cannot be undone.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="📊 `/admin_setpi`",
-                value="""**Usage:** `/admin_setpi racer:<member> new_pi:<number>`
-**Purpose:** Manually override a driver's Garage PI value.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🗑️ `/admin_removeracer`",
-                value="""**Usage:** `/admin_removeracer racer:<user>`
-**Purpose:** Permanently delete the selected driver's profile from the current server database, including career stats.
-**Note:** Requires a confirmation button before the profile is permanently deleted.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🔄 `/sync`",
-                value="""**Usage:** `/sync`
-**Purpose:** Manually synchronize the slash-command tree with Discord when commands are not refreshing or appear stuck.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).
-**Recovery:** Use `!forcesync` when slash commands themselves are unavailable.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="⚡ `!forcesync`",
-                value="""**Usage:** `!forcesync`
-**Purpose:** Force a manual application-command synchronization through the traditional prefix command system.
-**Access:** Discord Administrator permission.
-**Use it when:** Slash commands are frozen or not refreshing and `/sync` cannot be invoked.""",
-                inline=False,
-            )
-            embed.add_field(
-                name="⏳ `/pending`",
-                value="""**Usage:** `/pending`
-**Purpose:** Show current-season driver registrations waiting for staff approval.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="📋 `/listplayers`",
-                value="""**Usage:** `/listplayers [page]`
-**Purpose:** List every driver registered for the current season with ELO, Garage PI, and division, sorted by ELO and paginated 20 per page.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🗑️ `/delete_id`",
-                value="""**Usage:** `/delete_id racer:<member>`
-**Purpose:** Reset a driver's active registration (Player ID, Garage PI, defense) without deleting their career stats or match history. They can `/register` again immediately.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🤖 `/identity`",
-                value="""**Usage:** `/identity [username] [avatar]`
-**Purpose:** Change the bot's username and/or avatar.
-**Username:** Optional; leave blank to keep the current name.
-**Avatar:** Optional — upload an image file directly; leave blank to keep the current avatar.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.add_field(
-                name="🖥️ `/diagnostics`",
-                value="""**Usage:** `/diagnostics`
-**Purpose:** Run staff-only health checks for Discord synchronization/latency, MongoDB, PIL processing, and runtime status.
-**Access:** Staff only (Discord Administrator permission, the configured admin role, or the bot owner).""",
-                inline=False,
-            )
-            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
-            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
-            embed.set_footer(text="Admin Help • Privileged commands are shown only to authorized staff.")
-
+        embed.set_image(url=ASPHALT_MEDIA["banner_help"])
+        embed.set_footer(text="ALU Gauntlet Help • Select another section above.")
         await interaction.response.edit_message(embed=embed, view=self.view)
 
 
@@ -2626,35 +2928,96 @@ async def force_command_error(ctx: commands.Context, error: Exception):
 
 @bot.tree.command(name="help", description="Interactive help and command reference.")
 async def help_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=False):
-        return
-    is_admin = await check_admin_privileges(interaction)
+    is_admin = bool(interaction.guild and (interaction.user.guild_permissions.administrator or await check_admin_privileges(interaction)))
     embed = discord.Embed(
-        title="🏁 ALU GAUNTLET — HELP CENTER",
-        description="""Welcome to the **ALU Gauntlet League Help Center**. 🔥
-
-Use the dropdown menu below to choose a section:
-🚀 **Quick Start** — exact player commands in the order you use them.
-📘 **Bot Information / README** — introduction, purpose, and setup.
-📜 **Rules & How to Play** — Gauntlet rules, divisions, ranks, and race flow.
-🎮 **Player Commands** — detailed player command usage.
-🛠️ **Admin Commands** — detailed administrative command usage.""",
+        title="🏁 ALU GAUNTLET — HELP",
+        description="Choose a section below.\n\n📘 Overview  •  📜 Rules  •  🎮 Player Commands  •  🛠️ Admin Commands",
         color=ASPHALT_THEME_COLOR,
     )
     embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
     embed.set_image(url=ASPHALT_MEDIA["banner_help"])
-    embed.add_field(
-        name="🔐 Access",
-        value=(
-            "You are authorized to view the Admin Commands section."
-            if is_admin
-            else "Admin Commands are restricted to Discord administrators or the configured admin role."
-        ),
-        inline=False,
-    )
-    embed.set_footer(text="ALU Gauntlet Help Center • Select a category below.")
-    await interaction.response.send_message(embed=embed, view=HelpView(is_admin=is_admin))
+    embed.set_footer(text="ALU Gauntlet • Quick reference")
+    await interaction.response.send_message(embed=embed, view=HelpView(is_admin=is_admin), ephemeral=True)
 
+@bot.tree.command(name="dbcheck", description="[Staff Only] Audits database consistency and recoverable settlement states.")
+async def dbcheck_cmd(interaction: discord.Interaction):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Admin authorization required.", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+    guild_id = str(interaction.guild.id) if interaction.guild else None
+    if not guild_id:
+        await interaction.followup.send("❌ This command must be used inside a server.", ephemeral=True)
+        return
+
+    issues = []
+    checks = []
+    try:
+        # Current-season driver sanity checks.
+        drivers = await bot.db.drivers.find({"guild_id": guild_id}).to_list(length=5000)
+        checks.append(f"Drivers scanned: {len(drivers)}")
+        seen_ids = set()
+        for d in drivers:
+            if d.get("_id") in seen_ids:
+                issues.append(f"Duplicate driver id: {d.get('_id')}")
+            seen_ids.add(d.get("_id"))
+            elo = d.get("elo", 1000)
+            pi = d.get("garage_pi")
+            if not isinstance(elo, (int, float)) or elo < 100:
+                issues.append(f"Invalid ELO: {d.get('_id')} = {elo}")
+            if pi is not None and (not isinstance(pi, (int, float)) or pi < 0):
+                issues.append(f"Invalid PI: {d.get('_id')} = {pi}")
+
+        # Active challenges: no challenger should have more than one unfinished challenge.
+        active = await bot.db.active_challenges.find({"guild_id": guild_id, "status": {"$in": ["active", "processing"]}}).to_list(length=5000)
+        checks.append(f"Unfinished challenges scanned: {len(active)}")
+        by_challenger = {}
+        for ch in active:
+            by_challenger.setdefault(ch.get("challenger_id"), []).append(ch)
+            if not ch.get("opponent_id"):
+                issues.append(f"Challenge missing opponent: {ch.get('_id')}")
+            if ch.get("status") == "processing" and ch.get("processing_at"):
+                age = time.time() - float(ch.get("processing_at", time.time()))
+                if age > 15 * 60:
+                    issues.append(f"Stale processing challenge: {ch.get('_id')} ({int(age/60)}m)")
+        for uid, rows in by_challenger.items():
+            if len(rows) > 1:
+                issues.append(f"Multiple unfinished challenges for {uid}: {len(rows)}")
+
+        # Settlement reservations: completed rows must have matching driver ELOs; pending rows
+        # are flagged for recovery review rather than silently modified by this audit command.
+        matches = await bot.db.matches.find({"guild_id": guild_id}).to_list(length=5000)
+        checks.append(f"Match settlements scanned: {len(matches)}")
+        for m in matches:
+            status = m.get("settlement_status")
+            if status == "pending":
+                issues.append(f"Pending settlement requires recovery review: {m.get('_id')}")
+                continue
+            if status == "completed" and m.get("challenger_elo_after") is not None and m.get("defender_elo_after") is not None:
+                c = await bot.db.drivers.find_one({"_id": f"{guild_id}_{m.get('challenger_id')}"})
+                d = await bot.db.drivers.find_one({"_id": f"{guild_id}_{m.get('opponent_id')}"})
+                if c and d:
+                    # A later match may legitimately change ELO, so only flag impossible missing drivers.
+                    pass
+                elif not c or not d:
+                    issues.append(f"Completed match references missing driver(s): {m.get('_id')}")
+
+        status_line = "✅ DATABASE CONSISTENT" if not issues else f"⚠️ {len(issues)} ISSUE(S) FOUND"
+        embed = discord.Embed(title="🗄️ ALU GAUNTLET — DATABASE CHECK", description=status_line, color=ASPHALT_VICTORY_COLOR if not issues else ASPHALT_ADMIN_COLOR, timestamp=datetime.now(timezone.utc))
+        embed.add_field(name="Checks", value="\n".join(f"• {x}" for x in checks) or "• No records found", inline=False)
+        if issues:
+            preview = "\n".join(f"• {x}" for x in issues[:20])
+            if len(issues) > 20:
+                preview += f"\n• …and {len(issues)-20} more"
+            embed.add_field(name="Issues / Recovery Review", value=preview[:1024], inline=False)
+        else:
+            embed.add_field(name="Recovery Test", value="• Settlement reservations and challenge locks passed structural checks.\n• No automatic mutations were made.", inline=False)
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        await audit_admin_action(interaction, "DBCheck", f"Database consistency audit: {len(issues)} issue(s).")
+    except Exception as exc:
+        logging.exception("Database consistency check failed", exc_info=exc)
+        await interaction.followup.send(f"❌ Database consistency check failed: `{exc}`", ephemeral=True)
 
 @bot.tree.command(name="diagnostics", description="[Staff Only] Launches structural system tests across host execution environments.")
 async def diagnostics_cmd(interaction: discord.Interaction):
