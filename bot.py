@@ -1237,6 +1237,19 @@ async def admin_removeracer_cmd(interaction: discord.Interaction, racer: discord
 async def track_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=track, value=track) for track in ALU_TRACKS if current.lower() in track.lower()][:25]
 
+async def map_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    """Autocomplete unique map names instead of individual routes."""
+    maps = []
+    seen = set()
+    for track in ALU_TRACKS:
+        map_name = map_name_from_track(track)
+        if map_name in seen:
+            continue
+        seen.add(map_name)
+        if current.lower() in map_name.lower():
+            maps.append(app_commands.Choice(name=map_name, value=map_name))
+    return maps[:25]
+
 async def car_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=car, value=car) for car in ALU_CARS if current.lower() in car.lower()][:25]
 
@@ -1906,94 +1919,49 @@ class ReferenceReviewView(discord.ui.View):
             return
         await interaction.response.send_modal(ReferenceDeclineModal(self.submission_id))
 
-class MapRoutesView(discord.ui.View):
-    """Toggle button for showing/hiding the two official routes for a selected map."""
-    def __init__(self, map_name: str, routes: list[str]):
-        super().__init__(timeout=300)
-        self.map_name = map_name
-        self.routes = routes
-        self.routes_visible = False
-
-    @discord.ui.button(label="Show Routes", emoji="🏁", style=discord.ButtonStyle.secondary)
-    async def view_routes(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.routes_visible = not self.routes_visible
-
-        if self.routes_visible:
-            description = "\n".join(
-                f"🏁 **Route {i + 1}:** `{route}`"
-                for i, route in enumerate(self.routes)
-            )
-            button.label = "Hide Routes"
-            button.emoji = "🔽"
-        else:
-            description = "*Click **Show Routes** below to see the two official Gauntlet routes.*"
-            button.label = "Show Routes"
-            button.emoji = "🏁"
-
-        embed = discord.Embed(
-            title=f"🗺️ {self.map_name}",
-            description=description,
-            color=ASPHALT_THEME_COLOR,
-        )
-        embed.set_footer(text="ALU Gauntlet Map Reference")
-
-        # Re-attach the map thumbnail so the toggle keeps the same map image.
-        icon_file, icon_filename = map_icon_file(self.map_name)
-        if icon_file:
-            add_map_icon(embed, self.map_name, icon_filename)
-            await interaction.response.edit_message(embed=embed, view=self, attachments=[icon_file])
-        else:
-            await interaction.response.edit_message(embed=embed, view=self)
-
-@bot.tree.command(name="map", description="View a Gauntlet map and reveal its official routes.")
-@app_commands.describe(map_name="Map/track to view")
-@app_commands.autocomplete(map_name=track_autocomplete)
+@bot.tree.command(name="maps", description="View a Gauntlet map and its two official routes.")
+@app_commands.describe(map_name="Map to view")
+@app_commands.autocomplete(map_name=map_autocomplete)
 async def map_cmd(interaction: discord.Interaction, map_name: str):
     if not await enforce_channel_constraints(interaction, admin_cmd=False):
         return
     await interaction.response.defer(ephemeral=True)
-    if map_name not in ALU_TRACKS:
-        await interaction.followup.send("❌ Please choose a map from the track list.", ephemeral=True)
+
+    # /maps accepts a map name only; resolve its two official routes internally.
+    routes = [t for t in ALU_TRACKS if map_name_from_track(t).lower() == map_name.lower()]
+    if not routes:
+        await interaction.followup.send("❌ Please choose a map from the map list.", ephemeral=True)
         return
 
-    map_name_only = map_name_from_track(map_name)
-    routes = [t for t in ALU_TRACKS if map_name_from_track(t) == map_name_only]
+    map_name_only = map_name_from_track(routes[0])
     embed = discord.Embed(
         title=f"🗺️ {map_name_only}",
-        description="*Click **View Routes** below to see the two official Gauntlet routes.*",
+        description="\n".join(
+            f"🏁 **Route {i + 1}:** `{route}`"
+            for i, route in enumerate(routes)
+        ),
         color=ASPHALT_THEME_COLOR,
     )
     embed.set_footer(text="ALU Gauntlet Map Reference")
 
-    # /map starts with only the map name/image. Routes are revealed by the button.
-    icon_file, icon_filename = map_icon_file(map_name)
+    # Keep the original simple /map-style presentation: map image + routes, no buttons.
+    icon_file, icon_filename = map_icon_file(routes[0])
     if icon_file:
-        add_map_icon(embed, map_name, icon_filename)
-        await interaction.followup.send(
-            embed=embed,
-            file=icon_file,
-            view=MapRoutesView(map_name_only, routes),
-            ephemeral=True,
-        )
+        add_map_icon(embed, routes[0], icon_filename)
+        await interaction.followup.send(embed=embed, file=icon_file, ephemeral=True)
         return
 
-    # Fall back to the supplied full map image if no icon is available.
-    preview_file, preview_filename = map_preview_file(map_name)
+    preview_file, preview_filename = map_preview_file(routes[0])
     if preview_file:
         add_map_preview(embed, preview_filename)
-        await interaction.followup.send(
-            embed=embed,
-            file=preview_file,
-            view=MapRoutesView(map_name_only, routes),
-            ephemeral=True,
-        )
+        await interaction.followup.send(embed=embed, file=preview_file, ephemeral=True)
     else:
-        embed.add_field(name="🖼️ Map Image", value="*No supplied map image is available for this map yet.*", inline=False)
-        await interaction.followup.send(
-            embed=embed,
-            view=MapRoutesView(map_name_only, routes),
-            ephemeral=True,
+        embed.add_field(
+            name="🖼️ Map Image",
+            value="*No supplied map image is available for this map yet.*",
+            inline=False,
         )
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="besttime", description="Compare a driver's best saved lap on a map with the universal record.")
 @app_commands.describe(driver="Driver to inspect", map_name="Map/track to inspect")
