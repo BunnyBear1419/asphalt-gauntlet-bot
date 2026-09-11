@@ -127,38 +127,6 @@ class GauntletBot(commands.Bot):
         self.db = None
         self.mongo_client = None
 
-    async def sync_application_commands(self):
-        """Synchronize the application command tree globally.
-
-        Global commands are used deliberately so the bot can serve multiple
-        servers without requiring a hard-coded guild/server ID. The extra
-        logging makes it easy to confirm that /help is actually present in
-        the local command tree before Discord receives the sync.
-        """
-        local_commands = self.tree.get_commands()
-        command_names = sorted(command.name for command in local_commands)
-        logging.info(
-            "🔎 Preparing global application-command sync: %d commands registered locally.",
-            len(local_commands),
-        )
-        logging.info("🔎 Registered application commands: %s", ", ".join(command_names))
-
-        if not any(command.name == "help" for command in local_commands):
-            logging.error("🔴 /help is NOT present in bot.tree before synchronization.")
-
-        synced = await self.tree.sync()
-        synced_names = sorted(command.name for command in synced)
-
-        if "help" in synced_names:
-            logging.info("🟢 /help was included in the global application-command sync.")
-        else:
-            logging.error(
-                "🔴 /help was NOT returned by Discord after global sync. Synced commands: %s",
-                ", ".join(synced_names),
-            )
-
-        return synced
-
     async def setup_hook(self):
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
@@ -186,32 +154,68 @@ class GauntletBot(commands.Bot):
                 logging.info(f"🟢 Loaded {len(media_doc['custom_images'])} custom images from DB.")
         except Exception as e:
             logging.warning(f"⚠️ Could not load custom images: {e}")
-        # Register all application commands globally. This is intentionally global
-        # because this bot is installed in multiple servers. Guild-specific syncs
-        # are not used here.
-        synced = await self.sync_application_commands()
-        logging.info("🟢 Application slash commands synchronized globally (%d commands).", len(synced))
+        await self.sync_application_commands()
+        logging.info("🟢 Application slash commands synchronized globally.")
         # Register persistent views so their buttons survive bot restarts
         self.add_view(TopLeaderboardView())
-        self.add_view(LeaderboardDivisionView())
         logging.info("🟢 Persistent views registered.")
+        # Restore pending reference-review buttons after a bot restart.
+        try:
+            pending_refs = await self.db.reference_pending.find({"status": "pending"}).to_list(length=1000)
+            for ref in pending_refs:
+                self.add_view(ReferenceReviewView(ref["_id"]))
+            if pending_refs:
+                logging.info("🟢 Restored %d pending reference-review view(s).", len(pending_refs))
+        except Exception:
+            logging.exception("Could not restore pending reference-review views")
 
     async def recover_season_state(self):
         try:
             now = time.time()
-            state = await self.db.season_state.find_one({"_id": "current_season"})
-            if not state:
+            # Season state is per Discord server. A single global season clock would
+            # cause one server's rollover to reset every other server.
+            configs = await self.db.settings.find({}).to_list(length=1000)
+            if not configs:
+                # Keep a bootstrap record only until /setup is run.
                 await self.db.season_state.update_one(
-                    {"_id": "current_season"},
-                    {"$set": {"season_number": 1, "ends_at": now + (14 * 24 * 60 * 60)}},
+                    {"_id": "bootstrap"},
+                    {"$setOnInsert": {"season_number": 1, "ends_at": now + (14 * 24 * 60 * 60)}},
                     upsert=True
                 )
-                logging.info("⚙️ Initialized Season 1 timer settings data configurations.")
-            else:
-                remaining_hours = max(0, round((state["ends_at"] - now) / 3600, 1))
-                logging.info(f"⚙️ State Recovery Hook: Resumed Season {state.get('season_number', 1)} clock matrix seamlessly.")
+                logging.info("⚙️ No configured guilds yet; season clocks will initialize per server after /setup.")
+                return
+            legacy_state = await self.db.season_state.find_one({"_id": "current_season"})
+            for cfg in configs:
+                guild_id = str(cfg.get("_id"))
+                await self.db.season_state.update_one(
+                    {"_id": f"guild_{guild_id}"},
+                    {"$setOnInsert": {
+                        "guild_id": guild_id,
+                        "season_number": int(legacy_state.get("season_number", 1)) if legacy_state else 1,
+                        "ends_at": float(legacy_state.get("ends_at", now + (14 * 24 * 60 * 60))) if legacy_state else now + (14 * 24 * 60 * 60),
+                    }},
+                    upsert=True
+                )
+            logging.info("⚙️ Recovered %d per-server season clock(s).", len(configs))
         except Exception as state_err:
             logging.error(f"Failed to execute state recovery sequence hooks: {state_err}")
+
+    async def sync_application_commands(self):
+        """Synchronize the global command tree and verify /help is registered."""
+        local_commands = self.tree.get_commands()
+        names = [cmd.name for cmd in local_commands]
+        logging.info("🔎 Preparing global application-command sync: %d local commands.", len(names))
+        logging.info("🔎 Local application commands: %s", ", ".join(sorted(names)))
+        if "help" not in names:
+            logging.error("🔴 /help is NOT present in bot.tree before sync.")
+        synced = await self.tree.sync()
+        synced_names = [cmd.name for cmd in synced]
+        logging.info("🟢 Global application-command sync complete: %d commands.", len(synced_names))
+        if "help" in synced_names:
+            logging.info("🟢 /help was included in the global command payload.")
+        else:
+            logging.error("🔴 /help was NOT returned by Discord after global sync.")
+        return synced
 
     def setup_mock_db(self):
         """Fallback local database simulation if MongoDB Atlas is offline."""
@@ -219,6 +223,7 @@ class GauntletBot(commands.Bot):
             async def find_one(self, *args, **kwargs): return None
             async def update_one(self, *args, **kwargs): return None
             async def insert_one(self, *args, **kwargs): return None
+            async def replace_one(self, *args, **kwargs): return None
             async def delete_one(self, *args, **kwargs): return None
             async def count_documents(self, *args, **kwargs): return 0
             async def delete_many(self, *args, **kwargs):
@@ -248,16 +253,22 @@ bot = GauntletBot()
 @tasks.loop(hours=1)
 async def seasonal_clock_loop_task():
     now = time.time()
-    state = await bot.db.season_state.find_one({"_id": "current_season"})
-    if not state:
-        await bot.db.season_state.update_one(
-            {"_id": "current_season"},
-            {"$set": {"season_number": 1, "ends_at": now + (14 * 24 * 60 * 60)}},
-            upsert=True
-        )
-        return
-    if now >= state["ends_at"]:
-        await trigger_global_season_end()
+    try:
+        configs = await bot.db.settings.find({}).to_list(length=1000)
+        for config in configs:
+            guild_id = str(config.get("_id"))
+            state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+            if not state:
+                await bot.db.season_state.update_one(
+                    {"_id": f"guild_{guild_id}"},
+                    {"$set": {"guild_id": guild_id, "season_number": 1, "ends_at": now + (14 * 24 * 60 * 60)}},
+                    upsert=True
+                )
+                continue
+            if now >= state.get("ends_at", now + 86400):
+                await trigger_global_season_end(guild_id=guild_id)
+    except Exception:
+        logging.exception("Seasonal clock loop failed")
 
 @seasonal_clock_loop_task.before_loop
 async def before_seasonal_clock():
@@ -266,43 +277,26 @@ async def before_seasonal_clock():
 # Bind the standalone task securely to our initialized client body
 bot.seasonal_clock_loop = seasonal_clock_loop_task
 
-async def check_admin_privileges(interaction: discord.Interaction) -> bool:
-    if interaction.user.guild_permissions.administrator:
-        return True
-    cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
-    if cfg and cfg.get("admin_role_id"):
-        target_role = interaction.guild.get_role(int(cfg["admin_role_id"]))
-        if target_role in interaction.user.roles:
-            return True
-    return False
-
-async def enforce_channel_constraints(interaction: discord.Interaction, admin_cmd: bool = False) -> bool:
-    cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
-    if not cfg:
-        await interaction.response.send_message("❌ **System Offline:** Run `/setup` first.", ephemeral=True)
-        return False
-    current_chan = str(interaction.channel_id)
-    if admin_cmd:
-        allowed_admin_chans = [cfg.get("registration_channel_id"), cfg.get("review_channel_id"), cfg.get("log_channel_id"), cfg.get("announcement_channel_id"), cfg.get("match_results_channel_id")]
-        if current_chan not in allowed_admin_chans:
-            await interaction.response.send_message("❌ **Command Blocked:** Administrative actions must be executed within assigned League channels.", ephemeral=True)
-            return False
-        return True
-    else:
-        main_chan_id = cfg.get("registration_channel_id")
-        if current_chan != main_chan_id:
-            await interaction.response.send_message(f"❌ **Lobby Lock Active:** Use the main channel: <#{main_chan_id}>.", ephemeral=True)
-            return False
-        return True
-
 async def dispatch_audit_log(guild_id: str, title: str, description: str, color: int = 0x7f8c8d):
     cfg = await bot.db.settings.find_one({"_id": str(guild_id)})
     if cfg and cfg.get("log_channel_id"):
         chan = bot.get_channel(int(cfg["log_channel_id"]))
         if chan:
             emb = discord.Embed(title=title, description=description, color=color, timestamp=datetime.now(timezone.utc))
-            try: await chan.send(embed=emb)
-            except Exception: pass
+            try:
+                await chan.send(embed=emb)
+            except Exception:
+                logging.exception("Failed to write audit log for guild %s", guild_id)
+
+async def audit_admin_action(interaction: discord.Interaction, action: str, details: str, color: int = ASPHALT_ADMIN_COLOR):
+    """Uniform audit entry for every admin/owner action."""
+    await dispatch_audit_log(
+        str(interaction.guild_id),
+        f"🛡️ Admin Action — {action}",
+        f"**Actor:** {interaction.user.mention} (`{interaction.user.id}`)\n**Channel:** <#{interaction.channel_id}>\n{details}",
+        color=color,
+    )
+
 
 def fuzzy_correct_marker(text: str, target: str, threshold: float = 0.6) -> str:
     words = text.split()
@@ -347,72 +341,115 @@ async def dispatch_automated_announcement(guild_id: str, title: str, description
             try: await chan.send(content=ping_content, embed=emb)
             except Exception: pass
 
-async def apply_season_soft_reset(guild_id: str):
-    """Regresses each driver's ELO 50% back toward the 1000 baseline and clears streaks for
-    the new season, while preserving lifetime career stats and locked defenses."""
+async def apply_season_soft_reset(guild_id: str, season_number: int):
+    """Start a new season without deleting lifetime career statistics.
+
+    ELO is softly regressed, but the player's current-season garage/defense
+    registration is cleared so every driver must re-register and rebuild a
+    five-course defense for the new season.
+    """
     cursor = bot.db.drivers.find({"guild_id": str(guild_id)})
     drivers = await cursor.to_list(length=10000)
     for d in drivers:
         old_elo = d.get("elo", 1000)
         new_elo = max(100, round(1000 + (old_elo - 1000) * 0.5))
-        await bot.db.drivers.update_one({"_id": d["_id"]}, {"$set": {"elo": new_elo, "streak": 0}})
+        await bot.db.drivers.update_one(
+            {"_id": d["_id"]},
+            {
+                "$set": {
+                    "elo": new_elo,
+                    "streak": 0,
+                    "season_registered": False,
+                    "season_number": season_number + 1,
+                    "previous_season_pi": d.get("garage_pi"),
+                    "previous_season_game_id": d.get("game_id"),
+                    "previous_season_division": get_division_for_pi(int(d.get("garage_pi", 0))).get("name") if d.get("garage_pi") is not None else None,
+                },
+                "$unset": {
+                    "garage_pi": "",
+                    "defense_locked": "",
+                    "pending_tracks": "",
+                    "pending_is_change": "",
+                    "defense_review_pending": "",
+                    "last_defense_change": "",
+                },
+            },
+        )
 
-async def trigger_global_season_end(forced_interaction: discord.Interaction = None):
+async def trigger_global_season_end(guild_id: str = None, forced_interaction: discord.Interaction = None):
+    """Close one server's season; automatic calls pass the specific guild."""
     now = time.time()
-    state = await bot.db.season_state.find_one({"_id": "current_season"})
-    current_season_num = state.get("season_number", 1) if state else 1
-    guild_settings_cursor = bot.db.settings.find({})
-    guild_configs = await guild_settings_cursor.to_list(length=100)
-    for config in guild_configs:
-        guild_id = config["_id"]
-        channel_id = config.get("announcement_channel_id") or config.get("registration_channel_id")
-        if not channel_id: continue
-        target_channel = bot.get_channel(int(channel_id))
-        if not target_channel: continue
+    if guild_id is None and forced_interaction:
+        guild_id = str(forced_interaction.guild_id)
+    if guild_id is None:
+        return
+    guild_id = str(guild_id)
+    config = await bot.db.settings.find_one({"_id": guild_id})
+    if not config:
+        return
+    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    current_season_num = int(state.get("season_number", 1)) if state else 1
+    channel_id = config.get("announcement_channel_id") or config.get("registration_channel_id")
+    target_channel = bot.get_channel(int(channel_id)) if channel_id else None
+
+    # Snapshot the season before clearing current-season registration data.
+    if target_channel:
         ping_content = f"<@&{config['player_role_id']}>" if config.get("player_role_id") else ""
-        
         header_embed = discord.Embed(
-            title=f"🏁 SEASON {current_season_num} GAUNTLET FINALE PODIUMS", 
-            description="🏁 **The tournament gates have locked!** Grid positions have compiled and seasonal payouts are distributing. Outstanding honors detailed below:\n\n⚙️ *ELO ratings will be softly reset (regressed 50% toward baseline) for the new season. Career stats and locked defenses carry over.*", 
-            color=0xffaa00
+            title=f"🏁 SEASON {current_season_num} GAUNTLET FINALE PODIUMS",
+            description="🏁 **The season has closed.** Final standings are being archived.\n\n⚙️ *ELO is softly regressed. Career wins/matches remain permanently. Every driver must re-register their Garage for the new season and set a fresh 5-course defense.*",
+            color=0xffaa00,
         )
         header_embed.set_image(url=ASPHALT_MEDIA["banner_leaderboard"])
         await target_channel.send(content=ping_content, embed=header_embed)
-        
-        # Prepare leaderboard file structures
+
         csv_buffer = io.StringIO()
         csv_writer = csv.writer(csv_buffer)
-        csv_writer.writerow(["Division", "Rank", "User ID", "Game ID", "ELO Rating", "Garage PI"])
-        
+        csv_writer.writerow(["Division", "Rank", "User ID", "Game ID", "ELO Rating", "Garage PI", "Career Wins", "Career Played"])
         for div in PI_DIVISIONS:
-            cursor = bot.db.drivers.find({"guild_id": str(guild_id), "garage_pi": division_mongo_query(div)}).sort("elo", -1).limit(100)
+            cursor = bot.db.drivers.find({"guild_id": guild_id, "season_registered": True, "garage_pi": division_mongo_query(div)}).sort("elo", -1).limit(100)
             top_drivers = await cursor.to_list(length=100)
             div_embed = discord.Embed(title=div["name"], color=div["color"])
-            if not top_drivers: 
+            if not top_drivers:
                 div_embed.description = "*No verified driver positions secured in this tier bracket.*"
             else:
-                standings_text = ""
-                for r, d in enumerate(top_drivers[:10]):  # Show top 10 inside the Discord embed channel view
-                    medal = '🥇 ' if r==0 else '🥈 ' if r==1 else '🥉 ' if r==2 else f'**#{r+1}** '
-                    standings_text += f"{medal} <@{d['user_id']}> | `{d['game_id']}` — **{d.get('elo', 1000)} ELO**\n"
-                    
+                lines = []
+                for r, d in enumerate(top_drivers[:10]):
+                    medal = '🥇 ' if r == 0 else '🥈 ' if r == 1 else '🥉 ' if r == 2 else f'**#{r+1}** '
+                    lines.append(f"{medal}<@{d['user_id']}> | `{d.get('game_id', 'Unknown')}` — **{d.get('elo', 1000)} ELO**")
                 for r, d in enumerate(top_drivers):
-                    csv_writer.writerow([div["name"], r+1, d['user_id'], d['game_id'], d.get('elo', 1000), d.get('garage_pi', 0)])
-                    
-                div_embed.add_field(name="🏆 Final Elite Standings Placements", value=standings_text, inline=False)
+                    csv_writer.writerow([div["name"], r + 1, d['user_id'], d.get('game_id', ''), d.get('elo', 1000), d.get('garage_pi', 0), d.get('career_wins', 0), d.get('career_played', 0)])
+                div_embed.add_field(name="🏆 Final Elite Standings Placements", value="\n".join(lines)[:1024], inline=False)
             await target_channel.send(embed=div_embed)
-            
-        # Send full comprehensive leaderboard report asset to the announcement channel streams
-        csv_buffer.seek(0)
-        discord_file = discord.File(fp=io.BytesIO(csv_buffer.getvalue().encode('utf-8')), filename=f"season_{current_season_num}_final_leaderboard.csv")
-        await target_channel.send(content="📊 **Complete System-Wide Divisional Standings Ledger Matrix Download:**", file=discord_file)
 
-        await apply_season_soft_reset(guild_id)
-            
-    await bot.db.pending.delete_many({})
-    await bot.db.season_state.update_one({"_id": "current_season"}, {"$set": {"season_number": current_season_num + 1, "ends_at": now + (14 * 24 * 60 * 60)}}, upsert=True)
+        csv_buffer.seek(0)
+        await target_channel.send(
+            content="📊 **Complete Seasonal Standings Archive:**",
+            file=discord.File(fp=io.BytesIO(csv_buffer.getvalue().encode('utf-8')), filename=f"season_{current_season_num}_final_leaderboard.csv"),
+        )
+
+    # Preserve the final snapshot for historical reporting.
+    await bot.db.season_history.update_one(
+        {"_id": f"{guild_id}_{current_season_num}"},
+        {"$set": {"guild_id": guild_id, "season_number": current_season_num, "closed_at": now}},
+        upsert=True,
+    )
+    await apply_season_soft_reset(guild_id, current_season_num)
+    await bot.db.pending.delete_many({"guild_id": guild_id})
+    await bot.db.season_state.update_one(
+        {"_id": f"guild_{guild_id}"},
+        {"$set": {"guild_id": guild_id, "season_number": current_season_num + 1, "ends_at": now + (14 * 24 * 60 * 60)}},
+        upsert=True,
+    )
     if forced_interaction:
-        await forced_interaction.followup.send(embed=discord.Embed(title="⚙️ Season Rollover Executed", description="All dynamic structural maps cycled securely, podium files dispatched, and ELO ratings softly reset for the new season.", color=ASPHALT_THEME_COLOR))
+        await forced_interaction.followup.send(
+            embed=discord.Embed(
+                title="⚙️ Season Rollover Executed",
+                description=f"Season {current_season_num} closed. Career statistics were preserved. Drivers must re-register their Garage for Season {current_season_num + 1} and submit a new 5-course defense.",
+                color=ASPHALT_THEME_COLOR,
+            )
+        )
+        await audit_admin_action(forced_interaction, "Season Rollover", f"Closed Season {current_season_num}; career stats preserved and current-season garage/defenses reset.")
 
 async def process_match_result(guild_id: str, challenger_id: str, opponent_id: str, defense_courses: list, challenger_times: list, proof_url: str, defender_proof_url: str = None, origin_channel_id: int = None):
     """Calculate ELO changes, apply to DB, save match record. Returns match data dict or None on error."""
@@ -642,6 +679,12 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
             await interaction.followup.send("❌ Could not process match result. One or both player profiles not found.", ephemeral=True)
             return
 
+        season_number = await get_current_season_number(guild_id)
+        for i, course in enumerate(self.defense_courses):
+            attack_course = dict(challenger_times[i])
+            attack_course["track"] = course["track"]
+            await save_driver_best_time(guild_id, self.challenger_id, attack_course, season_number, source="match_attack")
+
         # Post match result to the match results channel
         result_emb = discord.Embed(title="🏁 Gauntlet Match Result", description=match_data["outcome_desc"], color=match_data["display_color"])
         result_emb.add_field(name="Challenger", value=f"<@{self.challenger_id}>", inline=True)
@@ -690,7 +733,15 @@ class DefenseView(discord.ui.View):
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
-        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$set": {"defense_locked": {"courses": self.courses, "proof_url": self.proof_url}, "last_defense_change": time.time()}, "$unset": {"pending_tracks": "", "pending_is_change": "", "defense_review_pending": ""}})
+        state = await bot.db.season_state.find_one({"_id": f"guild_{self.guild_id}"})
+        season_number = int(state.get("season_number", 1)) if state else 1
+        await bot.db.drivers.update_one(
+            {"_id": f"{self.guild_id}_{self.user_id}"},
+            {"$set": {"defense_locked": {"courses": self.courses, "proof_url": self.proof_url, "season_number": season_number}, "last_defense_change": time.time()}, "$unset": {"pending_tracks": "", "pending_is_change": "", "defense_review_pending": ""}}
+        )
+        # Keep a per-driver/per-map best-time database for practice comparisons.
+        for course in self.courses:
+            await save_driver_best_time(self.guild_id, self.user_id, course, season_number, source="defense")
         title = "✅ Gauntlet Defense Updated & Locked" if self.is_change else "✅ Gauntlet Defense Position Approved & Locked"
         await interaction.message.edit(embed=discord.Embed(title=title, color=ASPHALT_VICTORY_COLOR), view=self)
         track_list = ", ".join([c["track"] for c in self.courses])
@@ -752,20 +803,38 @@ class VerificationView(discord.ui.View):
         await interaction.message.edit(view=self)
         await interaction.response.defer()
         
+        state = await bot.db.season_state.find_one({"_id": f"guild_{self.guild_id}"})
+        season_number = int(state.get("season_number", 1)) if state else 1
+        pending = await bot.db.pending.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        if pending and int(pending.get("season_number", season_number)) != season_number:
+            await interaction.response.send_message("❌ This registration belongs to an older season and can no longer be approved.", ephemeral=True)
+            return
+        existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        set_on_insert = {
+            "guild_id": str(self.guild_id),
+            "user_id": str(self.user_id),
+            "career_wins": 0,
+            "career_played": 0,
+        }
+        if not existing:
+            set_on_insert.update({"elo": 1000, "streak": 0})
         await bot.db.drivers.update_one(
             {"_id": f"{str(self.guild_id)}_{str(self.user_id)}"},
-            {"$set": {
-                "guild_id": str(self.guild_id), 
-                "user_id": str(self.user_id), 
-                "game_id": str(self.game_id), 
-                "garage_pi": int(self.rank), 
-                "elo": 1000, 
-                "career_wins": 0, 
-                "career_played": 0, 
-                "streak": 0, 
-                "verified": True
-            }},
-            upsert=True
+            {
+                "$set": {
+                    "guild_id": str(self.guild_id),
+                    "user_id": str(self.user_id),
+                    "game_id": str(self.game_id),
+                    "garage_pi": int(self.rank),
+                    "verified": True,
+                    "season_registered": True,
+                    "season_number": season_number,
+                    "control": self.control,
+                    "registered_at": time.time(),
+                },
+                "$setOnInsert": set_on_insert,
+            },
+            upsert=True,
         )
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
         cfg = await bot.db.settings.find_one({"_id": self.guild_id})
@@ -790,8 +859,16 @@ class VerificationView(discord.ui.View):
             try: await member.send(embed=dm_success)
             except Exception: pass
             
-        await interaction.message.edit(embed=discord.Embed(title="✅ Driver Profile Approved", color=ASPHALT_VICTORY_COLOR), view=self)
-        await dispatch_audit_log(self.guild_id, "👤 Driver Approved", f"User <@{self.user_id}> approved with `{self.rank:,} PI`.", color=0x2ecc71)
+        projected_division = get_division_for_pi(int(self.rank))["name"]
+        await interaction.message.edit(
+            embed=discord.Embed(
+                title="✅ Driver Garage Approved",
+                description=f"Season **{season_number}** Garage registered at `{self.rank:,} PI` → **{projected_division}**. Career statistics were preserved.",
+                color=ASPHALT_VICTORY_COLOR,
+            ),
+            view=self,
+        )
+        await dispatch_audit_log(self.guild_id, "👤 Driver Garage Approved", f"User <@{self.user_id}> approved for Season {season_number} with `{self.rank:,} PI` → {projected_division}. Lifetime career statistics preserved.", color=0x2ecc71)
         await dispatch_automated_announcement(self.guild_id, "🏎️ NEW RACER ENTERED THE GRID", f"✨ Let's welcome <@{self.user_id}> (`{self.game_id}`) to the official competitive track circuit! Profile rated at **`{self.rank:,} PI`** using **`{self.control.upper()}`** dynamics.", color=ASPHALT_THEME_COLOR)
     @discord.ui.button(label="Reject Account", style=discord.ButtonStyle.red, custom_id="reject_driver_btn")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -890,6 +967,7 @@ async def setimage_cmd(interaction: discord.Interaction, image_type: app_command
     await bot.db.settings.update_one({"_id": "global_media"}, {"$set": {f"custom_images.{image_key}": cdn_url}}, upsert=True)
     await interaction.followup.send(embed=discord.Embed(title="✅ Image Updated", description=f"**{image_type.name}** has been updated successfully.\nNew URL: `{cdn_url}`", color=ASPHALT_VICTORY_COLOR).set_image(url=cdn_url), ephemeral=True)
     await dispatch_audit_log(guild_id, "🖼️ Custom Image Updated", f"Admin {interaction.user.mention} updated the **{image_type.name}** image.", color=0x2ecc71)
+    await audit_admin_action(interaction, "Set Image", f"Updated `{image_type.value}`.")
 
 @bot.tree.command(name="setup", description="[Admin Only] Configures all league core channels and permission roles.")
 @app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", match_results_channel="Public room for match results", admin_role="Admin override role", player_role="Verified player role")
@@ -899,8 +977,21 @@ async def setup_cmd(interaction: discord.Interaction, main_channel: discord.Text
         return
     await interaction.response.defer(ephemeral=True)
     await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "player_role_id": str(player_role.id)}}, upsert=True)
+    guild_state = await bot.db.season_state.find_one({"_id": f"guild_{interaction.guild_id}"})
+    if not guild_state:
+        legacy_state = await bot.db.season_state.find_one({"_id": "current_season"})
+        await bot.db.season_state.update_one(
+            {"_id": f"guild_{interaction.guild_id}"},
+            {"$setOnInsert": {
+                "guild_id": str(interaction.guild_id),
+                "season_number": int(legacy_state.get("season_number", 1)) if legacy_state else 1,
+                "ends_at": float(legacy_state.get("ends_at", time.time() + (14 * 24 * 60 * 60))) if legacy_state else time.time() + (14 * 24 * 60 * 60),
+            }},
+            upsert=True,
+        )
     await interaction.followup.send(embed=discord.Embed(title="⚙️ Master League Matrix Configuration Restored", description="All channel streams and dynamic role mapping rules saved successfully. Match results will be posted to the designated channel.", color=ASPHALT_THEME_COLOR))
     await dispatch_audit_log(interaction.guild_id, "⚙️ Master Setup Initialized", f"The bot was initialized perfectly by authority {interaction.user.mention}.", color=ASPHALT_THEME_COLOR)
+    await audit_admin_action(interaction, "Setup", "Updated the league channel and role configuration.")
 
 @bot.tree.command(name="season_schedule", description="[Admin Only] Sets custom calendar horizons for active tournament season grids.")
 @app_commands.describe(start_date="Start date mapping (YYYY-MM-DD HH:MM)", end_date="Closing deadline boundary (YYYY-MM-DD HH:MM)")
@@ -915,8 +1006,8 @@ async def season_schedule_cmd(interaction: discord.Interaction, start_date: str,
         end_timestamp = time.mktime(end_dt.timetuple())
         
         await bot.db.season_state.update_one(
-            {"_id": "current_season"},
-            {"$set": {"ends_at": end_timestamp}},
+            {"_id": f"guild_{interaction.guild_id}"},
+            {"$set": {"guild_id": str(interaction.guild_id), "ends_at": end_timestamp}},
             upsert=True
         )
         
@@ -924,6 +1015,7 @@ async def season_schedule_cmd(interaction: discord.Interaction, start_date: str,
         success_emb.description = f"⏱️ **Horizon Window Verified:**\n• **Start Matrix Point:** `{start_date}`\n• **Lockdown Vector Entry:** `{end_date}`\n\nDynamic tracking clocks synced perfectly."
         await interaction.followup.send(embed=success_emb)
         await dispatch_audit_log(interaction.guild_id, "📅 Timeline Program Updated", f"Season schedule modified manually. Target close entry locks scheduled at: {end_date}", color=ASPHALT_THEME_COLOR)
+        await audit_admin_action(interaction, "Season Schedule", f"Changed season closing time to `{end_date}`.")
     except ValueError:
         await interaction.followup.send("❌ **Timestamp Read Error:** Please verify exact syntax pattern structural formats: `YYYY-MM-DD HH:MM`", ephemeral=True)
 
@@ -936,7 +1028,9 @@ async def clear_history_cmd(interaction: discord.Interaction, target_data: app_c
         if target_data.value in ["pending", "all"]: await bot.db.pending.delete_many({"guild_id": str(interaction.guild_id)})
         if target_data.value in ["drivers", "all"]: await bot.db.drivers.delete_many({"guild_id": str(interaction.guild_id)})
         await interaction.followup.send("🧹 Database Purge Complete")
-    except Exception: pass
+        await audit_admin_action(interaction, "Clear History", f"Purged target `{target_data.value}` from this server.", color=ASPHALT_DEFEAT_COLOR)
+    except Exception:
+        logging.exception("clearhistory failed")
 
 @bot.tree.command(name="seasonend", description="[Staff Only] Force-closes the season.")
 async def season_end_cmd(interaction: discord.Interaction):
@@ -950,6 +1044,7 @@ async def admin_setpi_cmd(interaction: discord.Interaction, racer: discord.Membe
     await interaction.response.defer(ephemeral=True)
     await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}"}, {"$set": {"garage_pi": int(new_pi)}})
     await interaction.followup.send(f"✅ Forced {racer.mention}'s profile rating to `{new_pi:,} PI`.")
+    await audit_admin_action(interaction, "Set PI", f"Changed <@{racer.id}>'s Garage PI to `{new_pi:,}`.")
 
 class ConfirmRemoveRacerView(discord.ui.View):
     def __init__(self, guild_id: str, racer: discord.User):
@@ -982,6 +1077,7 @@ async def admin_removeracer_cmd(interaction: discord.Interaction, racer: discord
         view=ConfirmRemoveRacerView(interaction.guild_id, racer),
         ephemeral=True,
     )
+    await audit_admin_action(interaction, "Remove Racer", f"Opened a purge confirmation for <@{racer.id}>.", color=ASPHALT_ALERT_COLOR)
 
 async def track_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=track, value=track) for track in ALU_TRACKS if current.lower() in track.lower()][:25]
@@ -1157,6 +1253,11 @@ async def challenge_cmd(interaction: discord.Interaction):
     if not user_profile:
         await interaction.followup.send("❌ Run `/register` first.")
         return
+    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    season_number = int(state.get("season_number", 1)) if state else 1
+    if not user_profile.get("season_registered") or int(user_profile.get("season_number", 0)) != season_number:
+        await interaction.followup.send(f"🔄 You must re-register your Garage for Season {season_number} before challenging.")
+        return
     # Challenger must have a locked 5-course defense to challenge others
     if not has_5_course_defense(user_profile):
         await interaction.followup.send("❌ You need a locked 5-course defense to challenge others. Use `/setdefense` to generate your 5 courses and `/submitdefense` to lock your defense.")
@@ -1230,56 +1331,88 @@ async def profile_cmd(interaction: discord.Interaction, driver: discord.Member =
     await interaction.followup.send(embed=embed)
 
 class LeaderboardDivisionView(discord.ui.View):
-    """Persistent dropdown view for browsing the leaderboard by division.
-    Works for everyone — any user can click the dropdown at any time."""
-    def __init__(self):
-        super().__init__(timeout=None)
+    """Interactive, paginated current-season division leaderboard."""
+    def __init__(self, guild_id: str, division_index: int = 5, page: int = 1):
+        super().__init__(timeout=300)
+        self.guild_id = str(guild_id)
+        self.division_index = int(division_index)
+        self.page = max(1, int(page))
+        self.select = discord.ui.Select(
+            placeholder="Select a division...", min_values=1, max_values=1,
+            options=[
+                discord.SelectOption(label=div["name"], value=str(i), default=(i == self.division_index))
+                for i, div in enumerate(PI_DIVISIONS)
+            ]
+        )
+        self.select.callback = self.select_callback
+        self.add_item(self.select)
+        self.prev_button = discord.ui.Button(label="◀ Previous", style=discord.ButtonStyle.secondary)
+        self.next_button = discord.ui.Button(label="Next ▶", style=discord.ButtonStyle.secondary)
+        self.prev_button.callback = self.prev_callback
+        self.next_button.callback = self.next_callback
+        self.add_item(self.prev_button)
+        self.add_item(self.next_button)
 
-    @discord.ui.select(
-        placeholder="Select a division to view standings...",
-        min_values=1, max_values=1,
-        custom_id="leaderboard_division_select",
-        options=[
-            discord.SelectOption(label=div["name"], value=str(i), description=f"PI {div['min']}+" + (f"– {div['max']-1}" if div['max'] else "+"))
-            for i, div in enumerate(PI_DIVISIONS)
-        ]
-    )
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        div = PI_DIVISIONS[int(self.values[0])]
-        guild_id = str(interaction.guild_id)
-        cursor = bot.db.drivers.find({
-            "guild_id": guild_id,
-            "garage_pi": division_mongo_query(div)
-        }).sort("elo", -1).limit(25)
-        drivers = await cursor.to_list(length=25)
-        count = await bot.db.drivers.count_documents({
-            "guild_id": guild_id,
-            "garage_pi": division_mongo_query(div)
-        })
-
-        embed = discord.Embed(title=div["name"], description=f"Standings for this division — {count} driver{'s' if count != 1 else ''} total", color=div["color"])
+    async def render(self, interaction: discord.Interaction, initial: bool = False):
+        div = PI_DIVISIONS[self.division_index]
+        query = {"guild_id": self.guild_id, "season_registered": True, "garage_pi": division_mongo_query(div)}
+        total = await bot.db.drivers.count_documents(query)
+        per_page = 10
+        pages = max(1, (total + per_page - 1) // per_page)
+        self.page = min(self.page, pages)
+        cursor = bot.db.drivers.find(query).sort("elo", -1).skip((self.page - 1) * per_page).limit(per_page)
+        drivers = await cursor.to_list(length=per_page)
+        embed = discord.Embed(
+            title=f"🏆 {div['name']} — Season Leaderboard",
+            description=f"**{total}** registered driver(s) • Page **{self.page}/{pages}** • Ranked by ELO",
+            color=div["color"],
+        )
         embed.set_image(url=ASPHALT_MEDIA["banner_leaderboard"])
-
         if not drivers:
-            embed.description += "\n\n*No verified drivers in this division yet.*"
+            embed.description += "\n\n*No currently registered drivers in this division.*"
         else:
-            board = ""
-            for r, d in enumerate(drivers):
-                medal = "🥇 " if r == 0 else "🥈 " if r == 1 else "🥉 " if r == 2 else f"`#{r+1}` "
-                board += f"{medal} <@{d['user_id']}> | ID: `{d['game_id']}` — **`{d.get('elo', 1000)} ELO`** ({d.get('garage_pi', 0):,} PI)\n"
-            embed.add_field(name="🏁 Division Standings", value=board, inline=False)
-        embed.set_footer(text="Use the dropdown to switch divisions")
-        await interaction.followup.send(embed=embed)
+            lines = []
+            start_rank = (self.page - 1) * per_page + 1
+            for r, d in enumerate(drivers, start=start_rank):
+                lines.append(f"**#{r}** <@{d['user_id']}> — **{d.get('elo', 1000)} ELO** • `{d.get('garage_pi', 0):,} PI` • `{d.get('game_id', 'Unknown')}`")
+            embed.add_field(name="🏁 Standings", value="\n".join(lines), inline=False)
+        embed.set_footer(text="Anyone can view the leaderboard. Use the dropdown or page buttons.")
+        self.prev_button.disabled = self.page <= 1
+        self.next_button.disabled = self.page >= pages
+        if initial:
+            await interaction.followup.send(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(embed=embed, view=self)
 
-@bot.tree.command(name="leaderboard", description="View division standings — pick a division from the dropdown.")
-@app_commands.describe(page="(Legacy) Not used with the dropdown — kept for backwards compatibility.")
-async def leaderboard_cmd(interaction: discord.Interaction, page: int = 1):
+    async def select_callback(self, interaction: discord.Interaction):
+        self.division_index = int(self.select.values[0])
+        self.page = 1
+        for option in self.select.options:
+            option.default = option.value == str(self.division_index)
+        await self.render(interaction)
+
+    async def prev_callback(self, interaction: discord.Interaction):
+        self.page -= 1
+        await self.render(interaction)
+
+    async def next_callback(self, interaction: discord.Interaction):
+        self.page += 1
+        await self.render(interaction)
+
+@bot.tree.command(name="leaderboard", description="View current-season division standings.")
+async def leaderboard_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
     await interaction.response.defer()
-    embed = discord.Embed(title="🏆 DIVISION LEADERBOARD", description="Select a division from the dropdown below to view its full ELO standings.", color=ASPHALT_THEME_COLOR)
+    state = await bot.db.season_state.find_one({"_id": f"guild_{interaction.guild_id}"})
+    season_number = int(state.get("season_number", 1)) if state else 1
+    embed = discord.Embed(
+        title=f"🏆 SEASON {season_number} DIVISION LEADERBOARD",
+        description="Select a division below. Standings are paginated so large divisions never overflow Discord's embed limits.",
+        color=ASPHALT_THEME_COLOR,
+    )
     embed.set_image(url=ASPHALT_MEDIA["banner_leaderboard"])
-    embed.set_footer(text="Select a division below")
-    await interaction.followup.send(embed=embed, view=LeaderboardDivisionView())
+    await interaction.followup.send(embed=embed, view=LeaderboardDivisionView(str(interaction.guild_id)))
 
 class TopLeaderboardView(discord.ui.View):
     """Persistent dropdown view for selecting which top 5 leaderboard to display.
@@ -1347,6 +1480,8 @@ class TopLeaderboardView(discord.ui.View):
 
 @bot.tree.command(name="top", description="View top 5 leaderboards — choose a category.")
 async def top_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
     await interaction.response.defer()
     guild_id = str(interaction.guild_id)
     embed = discord.Embed(title="👑 LEADERBOARD SELECTION", description="Choose a leaderboard category from the dropdown below to view the top 5 players.", color=ASPHALT_THEME_COLOR)
@@ -1354,66 +1489,373 @@ async def top_cmd(interaction: discord.Interaction):
     embed.set_footer(text="Select a category below")
     await interaction.followup.send(embed=embed, view=TopLeaderboardView())
 
-@bot.tree.command(name="register", description="Join registry queue.")
+@bot.tree.command(name="register", description="Join the current season registry or re-register your Garage for a new season.")
 @app_commands.describe(game_id="Your Asphalt Legends unique Player ID string", garage_pi="Your current Garage PI value, as shown in-game", proof_screenshot="Attachment file proving garage level and ratings", control_type="Your input driving mechanics style")
 @app_commands.choices(control_type=[app_commands.Choice(name="TouchDrive Auto Pilot", value="touchdrive"), app_commands.Choice(name="Manual Tilt / Tap Controls", value="manual")])
 async def register_cmd(interaction: discord.Interaction, game_id: str, garage_pi: int, proof_screenshot: discord.Attachment, control_type: app_commands.Choice[str]):
-    await interaction.response.defer(ephemeral=True)
-    cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
-    if not cfg or not cfg.get("review_channel_id"):
-        await interaction.followup.send("❌ **System Configurations Incomplete:** Ask an administrator to execute `/setup` first.")
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
         return
-    if garage_pi <= 0:
-        await interaction.followup.send("❌ **Invalid Value:** Garage PI must be a positive number.")
-        return
-
-    # Check if profile already verified
-    existing = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
-    if existing:
-        await interaction.followup.send("⚠️ **Registry Conflict:** Your profile framework is already verified and locked.")
-        return
-
-    # Check if an application is already awaiting review
-    pending_existing = await bot.db.pending.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
-    if pending_existing:
-        await interaction.followup.send("⚠️ **Application Already Pending:** Your registration is still awaiting staff review. Use `/mystatus` to check.")
-        return
-        
-    review_chan = bot.get_channel(int(cfg["review_channel_id"]))
-    if review_chan:
-        emb = discord.Embed(title="👤 New Driver Registration Application", description="Incoming driver verification packet submitted by user.\n**Staff:** please compare the declared Garage PI against the attached screenshot before approving.", color=ASPHALT_ADMIN_COLOR)
-        emb.add_field(name="Applicant User", value=interaction.user.mention, inline=True)
-        emb.add_field(name="Declared Game ID", value=f"`{game_id}`", inline=True)
-        emb.add_field(name="Declared Garage PI", value=f"`{garage_pi:,} PI`", inline=True)
-        emb.add_field(name="Dynamic Driving Layout", value=f"`{control_type.name}`", inline=False)
-        emb.set_image(url=proof_screenshot.url)
-        
-        await bot.db.pending.update_one(
-            {"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"},
-            {"$set": {"guild_id": str(interaction.guild_id), "user_id": str(interaction.user.id), "game_id": game_id, "rank": garage_pi, "control": control_type.value}},
-            upsert=True
-        )
-        
-        await review_chan.send(embed=emb, view=VerificationView(str(interaction.user.id), str(interaction.guild_id), game_id, garage_pi, control_type.value))
-        await interaction.followup.send("📥 **Application Transferred:** Driver entry log routed to administration queues securely.")
-
-@bot.tree.command(name="mystatus", description="Check your driver registration status.")
-async def my_status_cmd(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+    cfg = await bot.db.settings.find_one({"_id": guild_id})
+    if not cfg or not cfg.get("review_channel_id"):
+        await interaction.followup.send("❌ **System Configurations Incomplete:** Ask an administrator to execute `/setup` first.", ephemeral=True)
+        return
+    if garage_pi <= 0:
+        await interaction.followup.send("❌ **Invalid Value:** Garage PI must be a positive number.", ephemeral=True)
+        return
+    if not proof_screenshot.content_type or not proof_screenshot.content_type.startswith("image/"):
+        await interaction.followup.send("❌ **Invalid Proof:** Please attach an image screenshot of your current Garage PI.", ephemeral=True)
+        return
+
+    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    season_number = int(state.get("season_number", 1)) if state else 1
+    existing = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    if existing and existing.get("season_registered") and int(existing.get("season_number", 0)) == season_number:
+        await interaction.followup.send("⚠️ **Already Registered:** Your Garage is already registered for the current season. Your career stats are safe; use `/profile` to view them.", ephemeral=True)
+        return
+
+    pending_id = f"{guild_id}_{user_id}"
+    pending_existing = await bot.db.pending.find_one({"_id": pending_id})
+    if pending_existing and int(pending_existing.get("season_number", season_number)) == season_number:
+        await interaction.followup.send("⚠️ **Application Already Pending:** Your current-season Garage registration is awaiting staff review. Use `/mystatus` to check.", ephemeral=True)
+        return
+
+    review_chan = bot.get_channel(int(cfg["review_channel_id"]))
+    if not review_chan:
+        await interaction.followup.send("❌ Staff review channel could not be found. Ask an administrator to run `/setup`.", ephemeral=True)
+        return
+
+    is_rereg = bool(existing)
+    previous_pi = existing.get("garage_pi") if existing else None
+    division = get_division_for_pi(garage_pi)["name"]
+    emb = discord.Embed(
+        title="🔄 Garage Re-Registration" if is_rereg else "👤 New Driver Registration Application",
+        description=(
+            f"Season **{season_number}** Garage verification packet. This is a **re-registration**; lifetime career statistics must be preserved.\n**Staff:** compare the declared Garage PI against the screenshot before approving."
+            if is_rereg else
+            "Incoming driver verification packet submitted by user.\n**Staff:** please compare the declared Garage PI against the attached screenshot before approving."
+        ),
+        color=ASPHALT_ADMIN_COLOR,
+    )
+    emb.add_field(name="Applicant User", value=interaction.user.mention, inline=True)
+    emb.add_field(name="Declared Game ID", value=f"`{game_id}`", inline=True)
+    emb.add_field(name="Declared Garage PI", value=f"`{garage_pi:,} PI`", inline=True)
+    emb.add_field(name="Projected Division", value=division, inline=True)
+    emb.add_field(name="Season", value=f"`{season_number}`", inline=True)
+    if previous_pi is not None:
+        emb.add_field(name="Previous Season PI", value=f"`{int(previous_pi):,} PI`", inline=True)
+    emb.add_field(name="Dynamic Driving Layout", value=f"`{control_type.name}`", inline=False)
+    emb.set_image(url=proof_screenshot.url)
+
+    await bot.db.pending.update_one(
+        {"_id": pending_id},
+        {"$set": {
+            "guild_id": guild_id, "user_id": user_id, "game_id": game_id, "rank": garage_pi,
+            "control": control_type.value, "season_number": season_number, "is_reregistration": is_rereg,
+            "submitted_at": time.time(), "proof_url": proof_screenshot.url,
+        }},
+        upsert=True,
+    )
+    await review_chan.send(embed=emb, view=VerificationView(user_id, guild_id, game_id, garage_pi, control_type.value))
+    await interaction.followup.send(
+        f"📥 **Season {season_number} Garage Registration Submitted:** Staff can approve your `{garage_pi:,} PI` projected **{division}** placement. Career stats are retained.",
+        ephemeral=True,
+    )
+
+@bot.tree.command(name="mystatus", description="Check your current-season driver registration status.")
+async def my_status_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    await interaction.response.defer(ephemeral=True)
+    guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    season_number = int(state.get("season_number", 1)) if state else 1
     profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
-    if profile:
+    if profile and profile.get("season_registered") and int(profile.get("season_number", 0)) == season_number:
+        division = get_division_for_pi(int(profile.get("garage_pi", 0)))["name"]
         defense = profile.get("defense_locked")
-        if defense and defense.get("courses"):
-            await interaction.followup.send(f"✅ **Verified Driver:** `{profile.get('elo', 1000)} ELO` / `{profile.get('garage_pi', 0):,} PI`. Defense: 5 courses locked. Use `/profile` for full details.", ephemeral=True)
-        else:
-            await interaction.followup.send(f"✅ **Verified Driver:** `{profile.get('elo', 1000)} ELO` / `{profile.get('garage_pi', 0):,} PI`. ⚠️ No defense set up yet — use `/setdefense` to generate your 5 courses.", ephemeral=True)
+        defense_status = "5-course defense locked" if has_5_course_defense(profile) else "defense still needs to be set"
+        await interaction.followup.send(
+            f"✅ **Season {season_number} Driver:** `{profile.get('elo', 1000)} ELO` / `{profile.get('garage_pi', 0):,} PI` → **{division}**. {defense_status}.",
+            ephemeral=True,
+        )
         return
     pending = await bot.db.pending.find_one({"_id": f"{guild_id}_{user_id}"})
-    if pending:
-        await interaction.followup.send("⏳ **Pending Review:** Your driver application is still awaiting staff review. You'll get a DM once it's approved or declined.", ephemeral=True)
+    if pending and int(pending.get("season_number", season_number)) == season_number:
+        division = get_division_for_pi(int(pending.get("rank", 0)))["name"]
+        await interaction.followup.send(f"⏳ **Season {season_number} Pending Review:** Garage `{int(pending.get('rank', 0)):,} PI` → projected **{division}**. Staff approval is still required.", ephemeral=True)
         return
-    await interaction.followup.send("ℹ️ **Not Registered:** You haven't applied yet. Run `/register` to join the league.", ephemeral=True)
+    career = profile.get("career_wins", 0) if profile else 0
+    played = profile.get("career_played", 0) if profile else 0
+    await interaction.followup.send(
+        f"🔄 **Season {season_number} Re-Registration Required.** Your career record remains safe (`{career}` wins / `{played}` matches). Run `/register` with your current Garage PI to enter this season.",
+        ephemeral=True,
+    )
+
+
+async def save_driver_best_time(guild_id: str, user_id: str, course: dict, season_number: int, source: str = "unknown"):
+    """Persist a driver's best known lap and update the cross-server universal record."""
+    track = course.get("track")
+    ms = int(course.get("ms", -1))
+    if not track or ms < 0:
+        return
+    doc_id = f"{guild_id}_{user_id}_{track}"
+    existing = await bot.db.lap_times.find_one({"_id": doc_id})
+    if existing and int(existing.get("best_ms", 10**18)) <= ms:
+        return
+    record = {
+        "_id": doc_id, "guild_id": str(guild_id), "user_id": str(user_id), "track": track,
+        "best_ms": ms, "best_lap_time": course.get("lap_time") or course.get("lap_time_str"),
+        "car": course.get("car"), "proof_url": course.get("proof_url"),
+        "season_number": int(season_number), "source": source, "updated_at": time.time(),
+    }
+    await bot.db.lap_times.replace_one({"_id": doc_id}, record, upsert=True)
+    global_id = re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")
+    global_record = await bot.db.map_records.find_one({"_id": global_id})
+    if not global_record or ms < int(global_record.get("best_ms", 10**18)):
+        await bot.db.map_records.replace_one({"_id": global_id}, {
+            "_id": global_id, "track": track, "best_ms": ms,
+            "best_lap_time": record["best_lap_time"], "car": record.get("car"),
+            "guild_id": str(guild_id), "user_id": str(user_id),
+            "proof_url": record.get("proof_url"), "source": source, "updated_at": time.time(),
+        }, upsert=True)
+
+async def get_current_season_number(guild_id: str) -> int:
+    state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+    return int(state.get("season_number", 1)) if state else 1
+
+async def send_driver_best_time(interaction: discord.Interaction, driver: discord.Member, track: str):
+    guild_id = str(interaction.guild_id)
+    rec = await bot.db.lap_times.find_one({"_id": f"{guild_id}_{driver.id}_{track}"})
+    global_id = re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")
+    global_rec = await bot.db.map_records.find_one({"_id": global_id})
+    embed = discord.Embed(title=f"⏱️ {driver.display_name} — {track}", color=ASPHALT_THEME_COLOR)
+    if rec:
+        embed.add_field(name="Driver Best", value=f"**`{rec['best_lap_time']}`**\n🚗 `{rec.get('car', 'Unknown')}`", inline=True)
+    else:
+        embed.add_field(name="Driver Best", value="*No saved lap for this map yet.*", inline=True)
+    if global_rec:
+        embed.add_field(name="🌎 Universal Best", value=f"**`{global_rec['best_lap_time']}`**\n👤 <@{global_rec['user_id']}> • 🚗 `{global_rec.get('car', 'Unknown')}`", inline=True)
+    else:
+        embed.add_field(name="🌎 Universal Best", value="*No universal record saved yet.*", inline=True)
+    await interaction.followup.send(embed=embed)
+
+class ReferenceDeclineModal(discord.ui.Modal, title="Decline Reference Submission"):
+    reason_input = discord.ui.TextInput(label="Reason", style=discord.TextStyle.paragraph, required=True, max_length=400)
+
+    def __init__(self, submission_id: str):
+        super().__init__()
+        self.submission_id = submission_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
+        sub = await bot.db.reference_pending.find_one({"_id": self.submission_id})
+        if not sub or sub.get("status") != "pending":
+            await interaction.response.send_message("❌ Reference submission is no longer pending.", ephemeral=True)
+            return
+        await bot.db.reference_pending.update_one({"_id": self.submission_id}, {"$set": {
+            "status": "declined", "declined_by": str(interaction.user.id),
+            "reason": self.reason_input.value, "decided_at": time.time()
+        }})
+        member = interaction.guild.get_member(int(sub["user_id"]))
+        if member:
+            try:
+                await member.send(embed=discord.Embed(
+                    title="❌ Reference Submission Declined",
+                    description=f"Your `/add_reference` submission for **{sub['track']}** was declined.\n\n**Reason:** {self.reason_input.value}",
+                    color=ASPHALT_DEFEAT_COLOR,
+                ))
+            except Exception:
+                pass
+        await interaction.response.send_message("❌ Reference declined and the player was notified by DM.", ephemeral=True)
+        await dispatch_audit_log(sub["guild_id"], "🎥 Reference Declined", f"Staff {interaction.user.mention} declined <@{sub['user_id']}> reference for `{sub['track']}`. Reason: {self.reason_input.value}", color=ASPHALT_DEFEAT_COLOR)
+
+class ReferenceReviewView(discord.ui.View):
+    def __init__(self, submission_id: str):
+        super().__init__(timeout=None)
+        self.submission_id = submission_id
+        self.children[0].custom_id = f"reference_approve:{submission_id}"
+        self.children[1].custom_id = f"reference_decline:{submission_id}"
+
+    @discord.ui.button(label="Approve", style=discord.ButtonStyle.green, custom_id="reference_approve")
+    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
+        sub = await bot.db.reference_pending.find_one({"_id": self.submission_id})
+        if not sub or sub.get("status", "pending") != "pending":
+            await interaction.response.send_message("❌ This reference is no longer pending.", ephemeral=True)
+            return
+        ref_id = re.sub(r"[^a-z0-9]+", "_", sub["track"].lower()).strip("_")
+        current = await bot.db.map_references.find_one({"_id": ref_id})
+        if current and int(sub["ms"]) >= int(current.get("best_ms", 10**18)):
+            await interaction.response.send_message("❌ This lap is not faster than the current approved reference.", ephemeral=True)
+            return
+        await bot.db.map_references.replace_one({"_id": ref_id}, {
+            "_id": ref_id, "track": sub["track"], "best_ms": int(sub["ms"]),
+            "best_lap_time": sub["lap_time"], "video_url": sub["video_url"],
+            "submitted_by": sub["user_id"], "guild_id": sub["guild_id"],
+            "approved_by": str(interaction.user.id), "approved_at": time.time(),
+        }, upsert=True)
+        await bot.db.reference_pending.update_one({"_id": self.submission_id}, {"$set": {
+            "status": "approved", "approved_by": str(interaction.user.id), "decided_at": time.time()
+        }})
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(
+            embed=discord.Embed(title="✅ Reference Approved", description=f"`{sub['track']}` → **{sub['lap_time']}** is now the approved reference lap.", color=ASPHALT_VICTORY_COLOR),
+            view=self,
+        )
+        await dispatch_audit_log(sub["guild_id"], "🎥 Reference Approved", f"Staff {interaction.user.mention} approved <@{sub['user_id']}> reference for `{sub['track']}` at `{sub['lap_time']}`. Video: {sub['video_url']}", color=ASPHALT_VICTORY_COLOR)
+
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.red, custom_id="reference_decline")
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
+        await interaction.response.send_modal(ReferenceDeclineModal(self.submission_id))
+
+@bot.tree.command(name="besttime", description="Compare a driver's best saved lap on a map with the universal record.")
+@app_commands.describe(driver="Driver to inspect", map_name="Map/track to inspect")
+@app_commands.autocomplete(map_name=track_autocomplete)
+async def besttime_cmd(interaction: discord.Interaction, driver: discord.Member, map_name: str):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    await interaction.response.defer()
+    if map_name not in ALU_TRACKS:
+        await interaction.followup.send("❌ Please choose a map from the track list.", ephemeral=True)
+        return
+    await send_driver_best_time(interaction, driver, map_name)
+
+@bot.tree.command(name="reference", description="Show the approved best reference lap and video for a map.")
+@app_commands.describe(map_name="Map/track to inspect")
+@app_commands.autocomplete(map_name=track_autocomplete)
+async def reference_cmd(interaction: discord.Interaction, map_name: str):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    await interaction.response.defer()
+    if map_name not in ALU_TRACKS:
+        await interaction.followup.send("❌ Please choose a map from the track list.", ephemeral=True)
+        return
+    ref_id = re.sub(r"[^a-z0-9]+", "_", map_name.lower()).strip("_")
+    ref = await bot.db.map_references.find_one({"_id": ref_id})
+    embed = discord.Embed(title=f"🎥 Reference Lap — {map_name}", color=ASPHALT_THEME_COLOR)
+    if ref:
+        embed.description = f"**Best Approved Lap:** `{ref['best_lap_time']}`\n**Video Reference:** {ref['video_url']}\n**Submitted by:** <@{ref['submitted_by']}>"
+    else:
+        embed.description = "*No approved reference video exists for this map yet.* Use `/add_reference` to submit one."
+    await interaction.followup.send(embed=embed)
+
+@bot.tree.command(name="add_reference", description="Submit a faster map lap video for staff approval.")
+@app_commands.describe(map_name="Map/track", lap_time="Lap time in MM:SS.MS", video_reference="Video URL proving the lap")
+@app_commands.autocomplete(map_name=track_autocomplete)
+async def add_reference_cmd(interaction: discord.Interaction, map_name: str, lap_time: str, video_reference: str):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    await interaction.response.defer(ephemeral=True)
+    if map_name not in ALU_TRACKS:
+        await interaction.followup.send("❌ Please choose a map from the track list.", ephemeral=True)
+        return
+    ms = parse_lap_time(lap_time)
+    if ms < 0:
+        await interaction.followup.send("❌ Lap time must use `MM:SS.MS`.", ephemeral=True)
+        return
+    if not video_reference.lower().startswith(("http://", "https://")):
+        await interaction.followup.send("❌ Video reference must be a valid URL.", ephemeral=True)
+        return
+    ref_id = re.sub(r"[^a-z0-9]+", "_", map_name.lower()).strip("_")
+    current = await bot.db.map_references.find_one({"_id": ref_id})
+    if current and ms >= int(current.get("best_ms", 10**18)):
+        await interaction.followup.send(f"ℹ️ `{lap_time}` is not faster than the current approved reference `{current['best_lap_time']}`.", ephemeral=True)
+        return
+    guild_id = str(interaction.guild_id)
+    season = await get_current_season_number(guild_id)
+    submitter = await bot.db.drivers.find_one({"_id": f"{guild_id}_{interaction.user.id}"})
+    if not submitter or not submitter.get("season_registered") or int(submitter.get("season_number", 0)) != season:
+        await interaction.followup.send(f"❌ You must be registered for Season {season} before submitting a reference lap.", ephemeral=True)
+        return
+    cfg = await bot.db.settings.find_one({"_id": guild_id})
+    review_chan = bot.get_channel(int(cfg["review_channel_id"])) if cfg and cfg.get("review_channel_id") else None
+    if not review_chan:
+        await interaction.followup.send("❌ Staff review channel is not configured.", ephemeral=True)
+        return
+    submission_id = f"{guild_id}_{interaction.user.id}_{int(time.time()*1000)}"
+    await bot.db.reference_pending.insert_one({
+        "_id": submission_id, "guild_id": guild_id, "user_id": str(interaction.user.id),
+        "track": map_name, "lap_time": lap_time, "ms": ms, "video_url": video_reference,
+        "status": "pending", "submitted_at": time.time(),
+    })
+    emb = discord.Embed(title="🎥 New Reference Lap Submission", description=f"<@{interaction.user.id}> submitted a potential new reference for **{map_name}**.\n\n**Lap:** `{lap_time}`\n**Video:** {video_reference}", color=ASPHALT_ADMIN_COLOR)
+    if current:
+        emb.add_field(name="Current Approved Lap", value=f"`{current['best_lap_time']}`", inline=True)
+    await review_chan.send(embed=emb, view=ReferenceReviewView(submission_id))
+    await interaction.followup.send("📥 Reference submitted to staff for approval. If approved, it replaces the current reference for that map.", ephemeral=True)
+
+@bot.tree.command(name="pending", description="[Staff Only] Show all drivers awaiting current-season approval.")
+async def pending_cmd(interaction: discord.Interaction):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    guild_id = str(interaction.guild_id)
+    season = await get_current_season_number(guild_id)
+    rows = await bot.db.pending.find({"guild_id": guild_id, "season_number": season}).to_list(length=1000)
+    if not rows:
+        await interaction.followup.send(f"✅ No pending driver registrations for Season {season}.", ephemeral=True)
+        return
+    lines = [f"<@{d['user_id']}> — `{d.get('game_id','?')}` — `{int(d.get('rank',0)):,} PI` → **{get_division_for_pi(int(d.get('rank',0)))['name']}**" for d in rows]
+    await interaction.followup.send(embed=discord.Embed(title=f"⏳ PENDING DRIVERS — SEASON {season}", description="\n".join(lines)[:4096], color=ASPHALT_ALERT_COLOR), ephemeral=True)
+    await audit_admin_action(interaction, "Pending Drivers", f"Viewed {len(rows)} pending Season {season} registration(s).")
+
+@bot.tree.command(name="listplayers", description="[Staff Only] List every driver registered in this server with ELO and division.")
+@app_commands.describe(page="Page number")
+async def listplayers_cmd(interaction: discord.Interaction, page: int = 1):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    page = max(1, page)
+    guild_id = str(interaction.guild_id)
+    season = await get_current_season_number(guild_id)
+    query = {"guild_id": guild_id, "season_registered": True, "season_number": season}
+    total = await bot.db.drivers.count_documents(query)
+    per_page = 20
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages)
+    drivers = await bot.db.drivers.find(query).sort("elo", -1).skip((page - 1) * per_page).limit(per_page).to_list(length=per_page)
+    lines = [f"**#{i}** <@{d['user_id']}> — `{d.get('game_id','?')}` — **{d.get('elo',1000)} ELO** — `{d.get('garage_pi',0):,} PI` — {get_division_for_pi(int(d.get('garage_pi',0)))['name']}" for i, d in enumerate(drivers, start=(page - 1) * per_page + 1)]
+    embed = discord.Embed(title=f"📋 REGISTERED PLAYERS — SEASON {season}", description="\n".join(lines) if lines else "*No registered drivers.*", color=ASPHALT_ADMIN_COLOR)
+    embed.set_footer(text=f"Page {page}/{pages} • {total} total registered drivers")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+    await audit_admin_action(interaction, "List Players", f"Viewed registered player list page {page}/{pages}.")
+
+@bot.tree.command(name="delete_id", description="[Staff Only] Remove a driver's active registration by Discord member.")
+@app_commands.describe(racer="Driver whose active profile should be removed")
+async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+        return
+    profile = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{racer.id}"})
+    if not profile:
+        await interaction.response.send_message("ℹ️ No driver record was found for that player.", ephemeral=True)
+        return
+    # /delete_id is an ACTIVE REGISTRATION reset, not a career wipe. Keep the
+    # driver document so career wins/matches remain available on their profile.
+    await bot.db.drivers.update_one(
+        {"_id": f"{interaction.guild_id}_{racer.id}"},
+        {"$set": {"season_registered": False}, "$unset": {
+            "game_id": "", "garage_pi": "", "defense_locked": "",
+            "pending_tracks": "", "pending_is_change": "", "defense_review_pending": "",
+            "last_defense_change": "",
+        }}
+    )
+    await bot.db.pending.delete_one({"_id": f"{interaction.guild_id}_{racer.id}"})
+    await interaction.response.send_message(f"🧹 Removed <@{racer.id}>'s active registration. Career wins/matches and match history were preserved. They can `/register` again.", ephemeral=True)
+    await audit_admin_action(interaction, "Delete ID", f"Reset active registration for <@{racer.id}>. Career statistics and match history were retained.", color=ASPHALT_DEFEAT_COLOR)
+
 
 class HelpCategorySelect(discord.ui.Select):
     def __init__(self, is_admin: bool = False):
@@ -1536,6 +1978,21 @@ This bot manages the server's competitive racing league workflow inside Discord.
                 inline=False,
             )
             embed.add_field(
+                name="⏱️ `/besttime`",
+                value="**Usage:** `/besttime driver:<member> map_name:<map>`\n**Purpose:** Compare a driver's best saved lap for a map with the cross-server universal best record.",
+                inline=False,
+            )
+            embed.add_field(
+                name="🎥 `/reference`",
+                value="**Usage:** `/reference map_name:<map>`\n**Purpose:** View the currently approved fastest reference lap and its video.",
+                inline=False,
+            )
+            embed.add_field(
+                name="📤 `/add_reference`",
+                value="**Usage:** `/add_reference map_name:<map> lap_time:<MM:SS.MS> video_reference:<url>`\n**Purpose:** Submit a faster reference video for staff approval. Approved faster laps replace the old reference.",
+                inline=False,
+            )
+            embed.add_field(
                 name="👑 `/top`",
                 value="""**Usage:** `/top`
 **Purpose:** Opens a dropdown to view the top 5 players by Most Wins, Most Active (matches played), or Overall (ELO rating). Select a category from the dropdown to see the leaderboard.""",
@@ -1584,7 +2041,7 @@ This bot manages the server's competitive racing league workflow inside Discord.
                 name="🏁 `/seasonend`",
                 value="""**Usage:** `/seasonend`
 **Purpose:** Force-close the current season, publish divisional results, send the complete leaderboard CSV, softly reset ELO (regressed 50% toward baseline, streaks cleared), clear pending records, and advance the season.
-**Note:** Career stats and locked defenses carry over into the new season.
+**Note:** Career stats carry over. Current-season Garage registration and locked defenses are cleared, so every driver must re-register and build a fresh 5-course defense.
 **Access:** Staff/admin only and subject to configured admin-channel restrictions.""",
                 inline=False,
             )
@@ -1629,6 +2086,21 @@ This bot manages the server's competitive racing league workflow inside Discord.
                     "**Access:** Discord Administrator permission.\n"
                     "**Use it when:** Slash commands are frozen or not refreshing and `/sync` cannot be invoked."
                 ),
+                inline=False,
+            )
+            embed.add_field(
+                name="⏳ `/pending`",
+                value="**Usage:** `/pending`\n**Purpose:** Show current-season driver registrations waiting for staff approval. Staff only.",
+                inline=False,
+            )
+            embed.add_field(
+                name="📋 `/listplayers`",
+                value="**Usage:** `/listplayers [page]`\n**Purpose:** List every currently registered driver with ELO, Garage PI, and division. Staff only.",
+                inline=False,
+            )
+            embed.add_field(
+                name="🗑️ `/delete_id`",
+                value="**Usage:** `/delete_id racer:<member>`\n**Purpose:** Reset a driver's active registration without deleting career/match history. Staff only.",
                 inline=False,
             )
             embed.add_field(
@@ -1698,6 +2170,7 @@ async def identity_cmd(interaction: discord.Interaction, username: str = None, a
         embed = discord.Embed(title="✅ Bot Identity Updated", description="\n".join(changed), color=ASPHALT_VICTORY_COLOR)
         embed.set_footer(text=f"Updated by {interaction.user}")
         await interaction.followup.send(embed=embed, ephemeral=True)
+        await audit_admin_action(interaction, "Bot Identity", "Updated the bot username and/or avatar.")
     except discord.HTTPException as exc:
         await interaction.followup.send(f"❌ Discord rejected the identity update: `{exc}`", ephemeral=True)
     except Exception as exc:
@@ -1720,6 +2193,7 @@ async def sync_cmd(interaction: discord.Interaction):
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
         logging.info("Manual /sync completed by %s; %d commands synchronized.", interaction.user, len(synced))
+        await audit_admin_action(interaction, "Sync", f"Synchronized {len(synced)} global application commands.")
     except Exception as exc:
         logging.exception("Manual /sync failed")
         await interaction.followup.send(f"❌ Slash command synchronization failed:\n`{exc}`", ephemeral=True)
@@ -1742,6 +2216,8 @@ async def force_command(ctx: commands.Context):
         )
         await ctx.send(embed=embed)
         logging.info("Manual !forcesync completed by %s; %d commands synchronized.", ctx.author, len(synced))
+        if ctx.guild:
+            await dispatch_audit_log(str(ctx.guild.id), "🛡️ Admin Action — Force Sync", f"**Actor:** {ctx.author.mention} (`{ctx.author.id}`)\n**Channel:** <#{ctx.channel.id}>\nSynchronized {len(synced)} global application commands.", color=ASPHALT_ADMIN_COLOR)
     except Exception as exc:
         logging.exception("Manual !forcesync failed")
         await ctx.send(f"❌ Force sync failed: `{exc}`")
@@ -1758,6 +2234,8 @@ async def force_command_error(ctx: commands.Context, error: Exception):
 
 @bot.tree.command(name="help", description="Interactive help and command reference.")
 async def help_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
     is_admin = await check_admin_privileges(interaction)
     embed = discord.Embed(
         title="🏁 ALU GAUNTLET — HELP CENTER",
@@ -1823,6 +2301,7 @@ async def diagnostics_cmd(interaction: discord.Interaction):
     embed.add_field(name="Operational Checks Ledger Ledger", value="\n".join(report), inline=False)
     
     await interaction.followup.send(embed=embed)
+    await audit_admin_action(interaction, "Diagnostics", "Ran staff diagnostics.")
 
 if __name__ == "__main__":
     token = os.getenv("DISCORD_BOT_TOKEN")
