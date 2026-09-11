@@ -1900,6 +1900,7 @@ class HelpCategorySelect(discord.ui.Select):
         self.is_admin = is_admin
         options = [
             discord.SelectOption(label="Bot Information / README", description="Introduction, purpose, and setup instructions.", emoji="📘", value="readme"),
+            discord.SelectOption(label="Quick Start", description="Exact player commands in the order you use them.", emoji="🚀", value="quickstart"),
             discord.SelectOption(label="Player Commands", description="Detailed usage for all player commands.", emoji="🎮", value="player"),
             discord.SelectOption(label="Admin Commands", description="Detailed usage for all admin commands.", emoji="🛠️", value="admin"),
         ]
@@ -1908,7 +1909,57 @@ class HelpCategorySelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         category = self.values[0]
 
-        if category == "readme":
+        if category == "quickstart":
+            embed = discord.Embed(
+                title="🚀 ALU GAUNTLET — QUICK START",
+                description="Follow these commands in order to get from a new driver to your first Gauntlet match.",
+                color=ASPHALT_THEME_COLOR,
+            )
+            embed.add_field(
+                name="1️⃣ Register",
+                value="`/register game_id:<Player ID> garage_pi:<number> proof_screenshot:<attachment> control_type:<choice>`\nSubmit your Asphalt Legends Player ID, Garage PI, proof screenshot, and control type. Wait for staff approval.",
+                inline=False,
+            )
+            embed.add_field(
+                name="2️⃣ Check your status",
+                value="`/mystatus`\nConfirm that your registration has been approved before continuing.",
+                inline=False,
+            )
+            embed.add_field(
+                name="3️⃣ Create your defense",
+                value="`/setdefense`\nThe bot gives you 5 random courses. Race all 5 courses using 5 different cars.",
+                inline=False,
+            )
+            embed.add_field(
+                name="4️⃣ Submit your defense",
+                value="`/submitdefense`\nSubmit all 5 lap times, the 5 cars you used, and one proof screenshot for each lap. Wait for staff approval.",
+                inline=False,
+            )
+            embed.add_field(
+                name="5️⃣ Check your locked defense",
+                value="`/mydefense`\nOnce approved, your 5-course defense is active and can be challenged by other players.",
+                inline=False,
+            )
+            embed.add_field(
+                name="6️⃣ Challenge an opponent",
+                value="`/challenge`\nChoose a qualified opponent in your PI tier, race their 5-course defense, and submit your 5 attack times. You need **3 wins out of 5 races** to win the match.",
+                inline=False,
+            )
+            embed.add_field(
+                name="7️⃣ Climb the standings",
+                value="`/profile` — View your ELO, wins, matches, streak, PI, and defense.\n`/leaderboard` — Browse your current division standings.\n`/top` — View the league's top performers.",
+                inline=False,
+            )
+            embed.add_field(
+                name="🔄 Need to change your defense?",
+                value="`/changedefense`\nGenerate a new 5-course defense. This is limited to once every 24 hours, and your old approved defense remains active until the new one is approved.",
+                inline=False,
+            )
+            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
+            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
+            embed.set_footer(text="Quick Start • Complete each step before moving to the next.")
+
+        elif category == "readme":
             embed = discord.Embed(
                 title="📘 ALU GAUNTLET — BOT INFORMATION / README",
                 description="""Welcome to the **Asphalt Legends Unite Gauntlet League** bot. 🏁
@@ -2280,6 +2331,7 @@ async def help_cmd(interaction: discord.Interaction):
         description="""Welcome to the **ALU Gauntlet League Help Center**. 🔥
 
 Use the dropdown menu below to choose a section:
+🚀 **Quick Start** — exact player commands in the order you use them.
 📘 **Bot Information / README** — introduction, purpose, and setup.
 🎮 **Player Commands** — detailed player command usage.
 🛠️ **Admin Commands** — detailed administrative command usage.""",
