@@ -747,73 +747,213 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, proof_scr
         await review_chan.send(embed=emb, view=VerificationView(str(interaction.user.id), str(interaction.guild_id), game_id, detected_rank, control_type.value))
         await interaction.followup.send("📥 **Application Transferred:** Driver entry log routed to administration queues securely.")
 
-@bot.tree.command(name="help", description="Guide mapping panel.")
+class HelpCategorySelect(discord.ui.Select):
+    def __init__(self, is_admin: bool = False):
+        self.is_admin = is_admin
+        options = [
+            discord.SelectOption(label="Bot Information / README", description="Introduction, purpose, and setup instructions.", emoji="📘", value="readme"),
+            discord.SelectOption(label="Player Commands", description="Detailed usage for all player commands.", emoji="🎮", value="player"),
+            discord.SelectOption(label="Admin Commands", description="Detailed usage for all admin commands.", emoji="🛠️", value="admin"),
+        ]
+        super().__init__(placeholder="Select a help category...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        category = self.values[0]
+
+        if category == "readme":
+            embed = discord.Embed(
+                title="📘 ALU GAUNTLET — BOT INFORMATION / README",
+                description="""Welcome to the **Asphalt Legends Unite Gauntlet League** bot. 🏁
+
+This bot manages the server's competitive racing league workflow inside Discord. It handles driver registration, verification, profiles, defensive ghost setups, matchmaking, race-result ELO updates, leaderboards, seasonal events, administration, logs, and announcements.""",
+                color=ASPHALT_THEME_COLOR,
+            )
+            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
+            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
+            embed.add_field(
+                name="🎯 What the bot does",
+                value="""• Registers Asphalt Legends players and their Player IDs
+• Queues applications for staff verification
+• Tracks Garage PI, ELO, wins, matches, and streaks
+• Stores approved 5-car defensive ghost setups
+• Matches players with qualified opponents
+• Resolves submitted race times and updates ELO
+• Displays current and lifetime leaderboards
+• Runs season rollover, podium, CSV, logging, and announcement workflows""",
+                inline=False,
+            )
+            embed.add_field(
+                name="⚙️ Setup / Installation",
+                value="""1. Invite the bot to your Discord server with the permissions required for your channels/roles.
+2. Set `DISCORD_BOT_TOKEN` in the bot environment.
+3. Set `MONGO_URI` when using MongoDB Atlas; the current code falls back to a mock database if MongoDB is unavailable.
+4. Start the bot.
+5. A server administrator runs `/setup` and selects the main, staff review, log, and announcement channels plus the admin, driver, and announcement roles.
+6. Players can then run `/register` and begin the league workflow after approval.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="🏎️ Typical player flow",
+                value="`/register` → staff approval → `/profile` → `/setdefense` → `/challenge` → submit results → climb the standings.",
+                inline=False,
+            )
+            embed.set_footer(text="ALU Gauntlet Help • Use the dropdown below to switch sections.")
+
+        elif category == "player":
+            embed = discord.Embed(
+                title="🎮 PLAYER COMMANDS",
+                description="Detailed usage for every player-facing slash command currently implemented in bot.py.",
+                color=ASPHALT_THEME_COLOR,
+            )
+            embed.add_field(
+                name="📝 `/register`",
+                value="""**Usage:** `/register game_id:<Player ID> proof_screenshot:<attachment> control_type:<choice>`
+**Purpose:** Submit your driver application for staff verification.
+**Parameters:** `game_id` = Asphalt Legends Player ID; `proof_screenshot` = garage/rating proof; `control_type` = TouchDrive Auto Pilot or Manual Tilt / Tap Controls.
+**Result:** A pending application is created and sent to the configured review channel.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="🛡️ `/setdefense`",
+                value="""**Usage:** `/setdefense track:<track> lap_time:<MM:SS.MS> proof_screenshot:<attachment> car_1:<car> car_2:<car> car_3:<car> car_4:<car> car_5:<car>`
+**Purpose:** Submit your official five-car defensive ghost package.
+**Requirements:** You must already have a verified driver profile and the lap time must use `MM:SS.MS`.
+**Result:** The lineup is sent to staff for approval before it becomes locked.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="⚔️ `/challenge`",
+                value="""**Usage:** `/challenge`
+**Purpose:** Generate a random track and find up to three qualified opponents in your PI tier who have active defenses.
+**Result:** Select an opponent from the dropdown to open a match lobby against that driver's locked ghost setup.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="👤 `/profile`",
+                value="""**Usage:** `/profile` or `/profile driver:<member>`
+**Purpose:** View a driver's Player ID, ELO, Garage PI, career wins, matches, streak, and active defense information.
+**Note:** The optional `driver` parameter lets you inspect another member.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="🏆 `/leaderboard`",
+                value="""**Usage:** `/leaderboard`
+**Purpose:** Display the server's current top 10 competitive standings with Player IDs, ELO, and Garage PI.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="👑 `/top`",
+                value="""**Usage:** `/top`
+**Purpose:** Display the top five lifetime career performers ranked by career wins.""",
+                inline=False,
+            )
+            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
+            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
+            embed.set_footer(text="Player Help • Based on the commands currently implemented in bot.py.")
+
+        else:
+            if not self.is_admin:
+                await interaction.response.send_message(
+                    "❌ **Access Denied:** Admin Commands are only available to administrators or the configured admin role.",
+                    ephemeral=True,
+                )
+                return
+
+            embed = discord.Embed(
+                title="🛠️ ADMIN COMMANDS",
+                description="Detailed usage for every administrative/staff command currently implemented in bot.py.",
+                color=ASPHALT_ADMIN_COLOR,
+            )
+            embed.add_field(
+                name="⚙️ `/setup`",
+                value="""**Usage:** `/setup main_channel:<channel> staff_channel:<channel> log_channel:<channel> announcement_channel:<channel> admin_role:<role> driver_role:<role> announcement_role:<role>`
+**Purpose:** Configure the league's core channels and role mappings.
+**Access:** Discord Administrator or configured admin role.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="📅 `/season_schedule`",
+                value="""**Usage:** `/season_schedule start_date:<YYYY-MM-DD HH:MM> end_date:<YYYY-MM-DD HH:MM>`
+**Purpose:** Set the season timeline; the current implementation stores the supplied end date as the active season closing timestamp.
+**Access:** Admin only.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="🏁 `/seasonend`",
+                value="""**Usage:** `/seasonend`
+**Purpose:** Force-close the current season, publish divisional results, send the complete leaderboard CSV, clear pending records, and advance the season.
+**Access:** Staff/admin only and subject to configured admin-channel restrictions.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="🧹 `/clearhistory`",
+                value="""**Usage:** `/clearhistory target_data:<choice>`
+**Choices:** `Pending Queue Only`, `Approved Drivers Only`, `Reset Everything`.
+**Purpose:** Delete the selected server data collections.
+**Warning:** This is destructive.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="📊 `/admin_setpi`",
+                value="""**Usage:** `/admin_setpi racer:<member> new_pi:<number>`
+**Purpose:** Manually override a driver's Garage PI value.
+**Access:** Staff/admin only.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="🗑️ `/admin_removeracer`",
+                value="""**Usage:** `/admin_removeracer racer:<user>`
+**Purpose:** Remove the selected driver's profile from the current server database.
+**Access:** Staff/admin only.""",
+                inline=False,
+            )
+            embed.add_field(
+                name="🖥️ `/diagnostics`",
+                value="""**Usage:** `/diagnostics`
+**Purpose:** Run staff-only health checks for Discord synchronization/latency, MongoDB, PIL processing, and runtime status.
+**Access:** Staff/admin only.""",
+                inline=False,
+            )
+            embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
+            embed.set_image(url=ASPHALT_MEDIA["banner_help"])
+            embed.set_footer(text="Admin Help • Privileged commands are shown only to authorized staff.")
+
+        await interaction.response.edit_message(embed=embed, view=self.view)
+
+
+class HelpView(discord.ui.View):
+    def __init__(self, is_admin: bool = False):
+        super().__init__(timeout=900)
+        self.add_item(HelpCategorySelect(is_admin=is_admin))
+
+
+@bot.tree.command(name="help", description="Interactive help and command reference.")
 async def help_cmd(interaction: discord.Interaction):
     is_admin = await check_admin_privileges(interaction)
-    
     embed = discord.Embed(
-        title="🏁 COMMITTED TO THE GRID: ALU GAUNTLET LEAGUE", 
-        description="Welcome to the ultimate automated asynchronous matchmaking ladder matrix system! 🔥\n\n*Compete against live defense ghosts, climb the Elo ranks, and dominate the seasonal brackets.*", 
-        color=ASPHALT_THEME_COLOR
+        title="🏁 ALU GAUNTLET — HELP CENTER",
+        description="""Welcome to the **ALU Gauntlet League Help Center**. 🔥
+
+Use the dropdown menu below to choose a section:
+📘 **Bot Information / README** — introduction, purpose, and setup.
+🎮 **Player Commands** — detailed player command usage.
+🛠️ **Admin Commands** — detailed administrative command usage.""",
+        color=ASPHALT_THEME_COLOR,
     )
     embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
     embed.set_image(url=ASPHALT_MEDIA["banner_help"])
-    
-    player_guide = (
-        "📝 **/register**\n└ Submit your profile framework with an image attachment scan queue.\n\n"
-        "🛡️ **/setdefense**\n└ Deploy your optimal 5-car ghost lineup onto an official race circuit.\n\n"
-        "⚔️ **/challenge**\n└ Instantly match against live defensive ghost presets inside your group tier.\n\n"
-        "📈 **Climb Standings**\n└ Smash target records to harvest ELO and claim podium honors!"
+    embed.add_field(
+        name="🔐 Access",
+        value=(
+            "You are authorized to view the Admin Commands section."
+            if is_admin
+            else "Admin Commands are restricted to Discord administrators or the configured admin role."
+        ),
+        inline=False,
     )
-    embed.add_field(name="🎮 DRIVER TOURNAMENT LOOP FLOW SEQUENCE", value=player_guide, inline=False)
-    
-    if is_admin:
-        admin_guide = (
-            "🔧 **Authority Operations Panel Access Active:**\n"
-            "• `/setup` ── Anchor core workspace matrix boundaries into channels.\n"
-            "• `/season_schedule` ── Setup calendar start/end date timeline rules.\n"
-            "• `/seasonend` ── Force closure on tournament timers and post podium logs + files.\n"
-            "• `/clearhistory` ── Purge structural tracking files cleanly out of database state tables."
-        )
-        embed.add_field(name="🛠️ ADMINISTRATIVE COMPLIANCE MANUAL", value=admin_guide, inline=False)
-        embed.set_footer(text="Clearance Profile: Administrator Security Clearance Level 1", icon_url=interaction.user.display_avatar.url)
-    else:
-        embed.set_footer(text="Clearance Profile: Standard Verified Racer Grid Status Active", icon_url=interaction.user.display_avatar.url)
-        
-    await interaction.response.send_message(embed=embed)
+    embed.set_footer(text="ALU Gauntlet Help Center • Select a category below.")
+    await interaction.response.send_message(embed=embed, view=HelpView(is_admin=is_admin))
 
-@bot.tree.command(name="commands", description="Lists reference catalog with deep parameter descriptions.")
-async def commands_cmd(interaction: discord.Interaction):
-    is_admin = await check_admin_privileges(interaction)
-    embed = discord.Embed(title="🤖 SLASH COMMAND MAPPING CATALOGUE MATRIX", description="Structural index mapping catalog of system options:", color=ASPHALT_THEME_COLOR)
-    embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
-    
-    player_commands = (
-        "• `/help` ── Generates framework manual layout panel.\n"
-        "• `/register` ── Enter registry queues via game screenshot check.\n"
-        "• `/setdefense` ── Save 5-car ghost array profile package data structures.\n"
-        "• `/challenge` ── Query pairs matching active performance boundaries.\n"
-        "• `/profile` ── Inspect historical pilot credential file card metrics ledger.\n"
-        "• `/leaderboard` ── Render current division standings ranking ladders.\n"
-        "• `/top` ── View historical milestone veteran statistics registry."
-    )
-    embed.add_field(name="🎮 Standard Pilot Directives", value=player_commands, inline=False)
-    
-    if is_admin:
-        admin_commands = (
-            "• `/setup` ── Map interface nodes and core dynamic roles structural routing rules.\n"
-            "• `/season_schedule` ── Program absolute operational date time horizons manually.\n"
-            "• `/seasonend` ── Instantly terminates tournament frame clock matrices, uploads results spreadsheet file and awards podiums.\n"
-            "• `/clearhistory` ── Flush target collection records clean out of host states.\n"
-            "• `/admin_setpi` ── Override racer PI value metrics bypassing script scans.\n"
-            "• `/admin_removeracer` ── Wipe pilot configuration file targets entirely."
-        )
-        embed.add_field(name="🛠️ Management Operations Control Engine", value=admin_commands, inline=False)
-        embed.set_footer(text="Privileged Admin Catalog View Loaded")
-    else:
-        embed.set_footer(text="Standard Racer Interface Index Matrix Loaded")
-        
-    await interaction.user.send_message(embed=embed) # Wait, original has interaction.response.send_message, let's keep that
 
 @bot.tree.command(name="diagnostics", description="[Staff Only] Launches structural system tests across host execution environments.")
 async def diagnostics_cmd(interaction: discord.Interaction):
