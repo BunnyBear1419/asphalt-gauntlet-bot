@@ -913,14 +913,14 @@ This bot manages the server's competitive racing league workflow inside Discord.
                     "**Usage:** `/sync`\n"
                     "**Purpose:** Manually synchronize the slash-command tree with Discord when commands are not refreshing or appear stuck.\n"
                     "**Access:** Administrator or configured admin role.\n"
-                    "**Recovery:** Use `!force sync` when slash commands themselves are unavailable."
+                    "**Recovery:** Use `!forcesync` when slash commands themselves are unavailable."
                 ),
                 inline=False,
             )
             embed.add_field(
-                name="⚡ `!force sync`",
+                name="⚡ `!forcesync`",
                 value=(
-                    "**Usage:** `!force sync`\n"
+                    "**Usage:** `!forcesync`\n"
                     "**Purpose:** Force a manual application-command synchronization through the traditional prefix command system.\n"
                     "**Access:** Discord Administrator permission.\n"
                     "**Use it when:** Slash commands are frozen or not refreshing and `/sync` cannot be invoked."
@@ -1047,12 +1047,12 @@ async def sync_cmd(interaction: discord.Interaction):
 @bot.command(name="force")
 @commands.has_permissions(administrator=True)
 async def force_command(ctx: commands.Context, action: str = None):
-    """Prefix recovery command. Use !force sync to re-sync slash commands."""
+    """Prefix recovery command. Use !forcesync to re-sync slash commands."""
     if action is None:
-        await ctx.send("❌ Usage: `!force sync`")
+        await ctx.send("❌ Usage: `!forcesync`")
         return
     if action.lower() != "sync":
-        await ctx.send("❌ Unknown force action. Use `!force sync`.")
+        await ctx.send("❌ Unknown force action. Use `!forcesync`.")
         return
     try:
         synced = await bot.tree.sync()
@@ -1066,9 +1066,9 @@ async def force_command(ctx: commands.Context, action: str = None):
             color=ASPHALT_VICTORY_COLOR,
         )
         await ctx.send(embed=embed)
-        logging.info("Manual !force sync completed by %s; %d commands synchronized.", ctx.author, len(synced))
+        logging.info("Manual !forcesync completed by %s; %d commands synchronized.", ctx.author, len(synced))
     except Exception as exc:
-        logging.exception("Manual !force sync failed")
+        logging.exception("Manual !forcesync failed")
         await ctx.send(f"❌ Force sync failed: `{exc}`")
 
 
