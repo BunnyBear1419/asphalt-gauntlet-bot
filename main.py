@@ -379,21 +379,26 @@ class GauntletBot(commands.Bot):
         return synced
 
     async def sync_guild_application_commands(self):
-        """Refresh server-scoped slash commands to eliminate stale guild overrides."""
+        """Remove stale guild-scoped overrides so Discord uses the current global commands."""
         if not self.guilds:
-            logging.info("ℹ️ No guilds available for server-scoped command sync yet.")
+            logging.info("ℹ️ No guilds available for server-scoped command cleanup yet.")
             return 0
         total = 0
         for guild in self.guilds:
             try:
-                # Copy the current command tree into each guild. This replaces any
-                # stale server-specific definitions, such as an older /diagnostics.
-                self.tree.copy_global_to(guild=guild)
+                # All ALU Gauntlet slash commands are registered globally. A stale
+                # guild-scoped command can override a newer global command with the
+                # same name. Clear the guild override entirely so Discord falls back
+                # to the freshly synchronized global command (including /diagnostics).
+                self.tree.clear_commands(guild=guild)
                 synced = await self.tree.sync(guild=guild)
                 total += len(synced)
-                logging.info("🟢 Server command sync complete for %s (%s): %d commands.", guild.name, guild.id, len(synced))
+                logging.info(
+                    "🧹 Cleared server-scoped command overrides for %s (%s): %d guild commands remain.",
+                    guild.name, guild.id, len(synced)
+                )
             except Exception:
-                logging.exception("🔴 Server command sync failed for %s (%s)", guild.name, guild.id)
+                logging.exception("🔴 Server command cleanup failed for %s (%s)", guild.name, guild.id)
         return total
 
     def setup_mock_db(self):
