@@ -1,0 +1,205 @@
+name: Weekly MongoDB Backup Verification
+
+on:
+  schedule:
+    # Every Sunday at 07:30 UTC
+    - cron: "30 7 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check required secret
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -e
+          if [ -z "$MONGO_URI" ]; then
+            echo "ERROR: MONGO_URI GitHub secret is missing."
+            exit 1
+          fi
+          echo "Required secret is configured."
+
+      - name: Install MongoDB Database Tools
+        run: |
+          set -e
+          curl -fsSL \
+            "https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb" \
+            -o mongodb-database-tools.deb
+          sudo apt-get update
+          sudo apt-get install -y ./mongodb-database-tools.deb
+          mongorestore --version
+          mongodump --version
+
+      - name: Find latest successful backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+
+          RUN_ID=$(gh run list \
+            --workflow mongodb-backup.yml \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "ERROR: No successful MongoDB backup workflow run was found."
+            exit 1
+          fi
+
+          echo "Latest successful backup run: $RUN_ID"
+          echo "BACKUP_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+
+      - name: Download latest backup artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+
+          rm -rf backup-download
+          mkdir -p backup-download
+
+          gh run download "$BACKUP_RUN_ID" \
+            --name mongodb-backup \
+            --dir backup-download
+
+          ARCHIVE=$(find backup-download -type f -name "mongodb.archive.gz" -print -quit)
+
+          if [ -z "$ARCHIVE" ]; then
+            echo "ERROR: mongodb.archive.gz was not found in the backup artifact."
+            find backup-download -maxdepth 3 -type f -print
+            exit 1
+          fi
+
+          SIZE=$(stat -c%s "$ARCHIVE")
+          echo "Backup archive: $ARCHIVE"
+          echo "Backup size: $SIZE bytes"
+
+          if [ "$SIZE" -le 112 ]; then
+            echo "ERROR: Backup archive is unexpectedly small."
+            exit 1
+          fi
+
+          echo "BACKUP_ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Restore backup into isolated verification database
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -e
+
+          TEST_DB="asphalt_gauntlet_restore_verify_${GITHUB_RUN_ID}"
+          echo "TEST_DB=$TEST_DB" >> "$GITHUB_ENV"
+
+          BACKUP_URI="${MONGO_URI%%\?*}"
+          QUERY=""
+          if [[ "$MONGO_URI" == *\?* ]]; then
+            QUERY="?${MONGO_URI#*\?}"
+          fi
+
+          # Keep the original connection options while selecting the
+          # temporary verification database.
+          if [[ "$BACKUP_URI" == */ ]]; then
+            BACKUP_URI="${BACKUP_URI}${TEST_DB}"
+          else
+            BACKUP_URI="${BACKUP_URI}/${TEST_DB}"
+          fi
+          BACKUP_URI="${BACKUP_URI}${QUERY}"
+
+          echo "Restoring latest backup into isolated database..."
+          mongorestore \
+            --uri="$BACKUP_URI" \
+            --archive="$BACKUP_ARCHIVE" \
+            --gzip \
+            --nsFrom="asphalt_gauntlet.*" \
+            --nsTo="${TEST_DB}.*" \
+            --verbose
+
+      - name: Verify restored collections and documents
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          TEST_DB: ${{ env.TEST_DB }}
+        run: |
+          set -e
+
+          python -m pip install --quiet pymongo
+
+          MONGO_URI="$MONGO_URI" TEST_DB="$TEST_DB" python - <<'PY'
+          import os
+          from pymongo import MongoClient
+
+          uri = os.environ["MONGO_URI"]
+          db_name = os.environ["TEST_DB"]
+
+          client = MongoClient(uri, serverSelectionTimeoutMS=15000)
+          client.admin.command("ping")
+
+          db = client[db_name]
+          collections = db.list_collection_names()
+
+          if not collections:
+              raise SystemExit("ERROR: Restore completed but no collections were found.")
+
+          total_documents = 0
+          nonempty_collections = 0
+
+          print("Restored collections:")
+          for name in sorted(collections):
+              count = db[name].count_documents({})
+              print(f"  {name}: {count} documents")
+              total_documents += count
+              if count > 0:
+                  nonempty_collections += 1
+
+          if total_documents == 0:
+              raise SystemExit("ERROR: Restore completed but all collections are empty.")
+
+          print(
+              f"Verification passed: {len(collections)} collections, "
+              f"{nonempty_collections} non-empty collections, "
+              f"{total_documents} total documents."
+          )
+
+          client.close()
+          PY
+
+      - name: Cleanup verification database
+        if: ${{ always() }}
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          TEST_DB: ${{ env.TEST_DB }}
+        run: |
+          set -e
+
+          if [ -z "$TEST_DB" ]; then
+            echo "No verification database was created; cleanup not required."
+            exit 0
+          fi
+
+          python -m pip install --quiet pymongo
+
+          MONGO_URI="$MONGO_URI" TEST_DB="$TEST_DB" python - <<'PY'
+          import os
+          from pymongo import MongoClient
+
+          uri = os.environ["MONGO_URI"]
+          db_name = os.environ["TEST_DB"]
+
+          client = MongoClient(uri, serverSelectionTimeoutMS=15000)
+          client.drop_database(db_name)
+          print(f"Cleaned up verification database: {db_name}")
+          client.close()
+          PY
+
+      - name: Verification passed
+        run: |
+          echo "Weekly MongoDB backup verification passed."
+          echo "The latest successful backup was restored and verified."
