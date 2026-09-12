@@ -104,3 +104,36 @@ jobs:
         run: |
           echo "Production health check passed."
           echo "Discloud application is healthy and the Discord bot token is valid."
+
+      - name: Notify central monitoring channel on failure
+        if: ${{ failure() }}
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -e
+
+          # This webhook is intentionally a single central monitoring destination.
+          # It is NOT tied to any Discord server where the bot is installed.
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "WARNING: DISCORD_WEBHOOK_URL GitHub secret is missing; failure notification skipped."
+            exit 0
+          fi
+
+          payload=$(python - <<'PY'
+import json, os
+print(json.dumps({
+    "content": "🚨 **Production Health Check FAILED**\n"
+               f"Bot application: `{os.environ.get('DISCLOUD_APP_ID', 'configured app')}`\n"
+               f"Repository: `{os.environ['GITHUB_REPOSITORY']}`\n"
+               f"Workflow run: {os.environ['RUN_URL']}"
+}))
+PY
+          )
+
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            --data "$payload" \
+            "$DISCORD_WEBHOOK_URL"
+
+          echo "Central monitoring notification sent."
