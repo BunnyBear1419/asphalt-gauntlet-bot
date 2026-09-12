@@ -621,7 +621,7 @@ async def player_reminder_loop():
                 try:
                     user = bot.get_user(int(d["user_id"])) or await bot.fetch_user(int(d["user_id"]))
                     await user.send(f"🛡️ **ALU Gauntlet reminder**\nYour Season {season} defense is not locked yet. Run `/setdefense`, then `/submitdefense`.")
-                    await bot.db.drivers.update_one({"_id": d["_id"]}, {"$set": {"last_defense_reminder": now}})
+                    await bot.db.drivers.update_one({"_id": d["_id"], "guild_id": guild_id}, {"$set": {"last_defense_reminder": now}})
                 except Exception:
                     pass
 
@@ -637,7 +637,7 @@ async def player_reminder_loop():
                 try:
                     user = bot.get_user(int(challenge["challenger_id"])) or await bot.fetch_user(int(challenge["challenger_id"]))
                     await user.send(f"⚔️ **ALU Gauntlet reminder**\nYou have an unfinished match against <@{challenge['opponent_id']}>. Use `/submitmatch` when your 5 race results are ready.")
-                    await bot.db.active_challenges.update_one({"_id": challenge["_id"]}, {"$set": {"last_reminder": now}})
+                    await bot.db.active_challenges.update_one({"_id": challenge["_id"], "guild_id": guild_id}, {"$set": {"last_reminder": now}})
                 except Exception:
                     pass
     except Exception:
@@ -810,7 +810,7 @@ async def apply_season_soft_reset(guild_id: str, season_number: int):
         old_elo = d.get("elo", 1000)
         new_elo = max(100, round(1000 + (old_elo - 1000) * 0.5))
         await bot.db.drivers.update_one(
-            {"_id": d["_id"]},
+            {"_id": d["_id"], "guild_id": str(guild_id)},
             {
                 "$set": {
                     "elo": new_elo,
@@ -848,13 +848,13 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
     state_id = f"guild_{guild_id}"
     lock_now = time.time()
     lock_result = await bot.db.season_state.update_one(
-        {"_id": state_id, "$or": [{"rollover_lock_at": {"$exists": False}}, {"rollover_lock_at": {"$lt": lock_now - 900}}]},
+        {"_id": state_id, "guild_id": guild_id, "$or": [{"rollover_lock_at": {"$exists": False}}, {"rollover_lock_at": {"$lt": lock_now - 900}}]},
         {"$set": {"rollover_lock_at": lock_now}},
     )
     if not lock_result or getattr(lock_result, "modified_count", 0) != 1:
         logging.info("Season rollover already in progress for guild %s; skipping duplicate trigger.", guild_id)
         return
-    state = await bot.db.season_state.find_one({"_id": state_id})
+    state = await bot.db.season_state.find_one({"_id": state_id, "guild_id": guild_id})
     current_season_num = int(state.get("season_number", 1)) if state else 1
     channel_id = config.get("announcement_channel_id") or config.get("registration_channel_id")
     target_channel = bot.get_channel(int(channel_id)) if channel_id else None
@@ -906,7 +906,7 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
             "career_wins": int(d.get("career_wins", 0)), "career_played": int(d.get("career_played", 0)),
         })
     await bot.db.season_history.update_one(
-        {"_id": f"{guild_id}_{current_season_num}"},
+        {"_id": f"{guild_id}_{current_season_num}", "guild_id": guild_id},
         {"$set": {"guild_id": guild_id, "season_number": current_season_num, "closed_at": now, "standings": archive_rows, "player_count": len(archive_rows)}},
         upsert=True,
     )
@@ -918,7 +918,7 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
         {"$set": {"status": "expired", "expired_at": now, "expired_season": current_season_num}},
     )
     await bot.db.season_state.update_one(
-        {"_id": f"guild_{guild_id}"},
+        {"_id": f"guild_{guild_id}", "guild_id": guild_id},
         {"$set": {"guild_id": guild_id, "season_number": current_season_num + 1, "ends_at": now + (14 * 24 * 60 * 60)}, "$unset": {"rollover_lock_at": ""}},
         upsert=True,
     )
@@ -941,8 +941,8 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         if existing_match.get("settlement_status") in (None, "completed"):
             return existing_match
         # Recover a crash that happened after the reservation but before finalization.
-        p1_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}"})
-        p2_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}"})
+        p1_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}", "guild_id": str(guild_id)})
+        p2_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}", "guild_id": str(guild_id)})
         if p1_now and p2_now and p1_now.get("elo") == existing_match.get("challenger_elo_after") and p2_now.get("elo") == existing_match.get("defender_elo_after"):
             await bot.db.matches.update_one({"_id": match_id, "guild_id": str(guild_id), "settlement_status": "pending"}, {"$set": {"settlement_status": "completed"}})
             existing_match["settlement_status"] = "completed"
@@ -950,8 +950,8 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         logging.warning("Found incomplete match settlement %s with uncertain DB state; refusing duplicate scoring.", match_id)
         return None
 
-    p1 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}"})
-    p2 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}"})
+    p1 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}", "guild_id": str(guild_id)})
+    p2 = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}", "guild_id": str(guild_id)})
     if not p1 or not p2 or len(defense_courses) != 5 or len(challenger_times) != 5:
         return None
     current_season = await get_current_season_number(guild_id)
@@ -1025,12 +1025,12 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
     async def _atomic_settlement(session):
         await bot.db.matches.insert_one(reservation, session=session)
         await bot.db.drivers.update_one(
-            {"_id": f"{guild_id}_{w_id}"},
+            {"_id": f"{guild_id}_{w_id}", "guild_id": str(guild_id)},
             {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}},
             session=session,
         )
         await bot.db.drivers.update_one(
-            {"_id": f"{guild_id}_{l_id}"},
+            {"_id": f"{guild_id}_{l_id}", "guild_id": str(guild_id)},
             {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}},
             session=session,
         )
@@ -1057,8 +1057,8 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
             if existing and existing.get("settlement_status") == "completed":
                 return existing
             raise
-        await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
-        await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
+        await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}", "guild_id": str(guild_id)}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
+        await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}", "guild_id": str(guild_id)}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
 
     match_record = {
         "_id": match_id,
@@ -1180,8 +1180,8 @@ class MatchRevertView(discord.ui.View):
             )
             return
 
-        p1 = await bot.db.drivers.find_one({"_id": f"{match['guild_id']}_{match['challenger_id']}"})
-        p2 = await bot.db.drivers.find_one({"_id": f"{match['guild_id']}_{match['opponent_id']}"})
+        p1 = await bot.db.drivers.find_one({"_id": f"{match['guild_id']}_{match['challenger_id']}", "guild_id": str(match['guild_id'])})
+        p2 = await bot.db.drivers.find_one({"_id": f"{match['guild_id']}_{match['opponent_id']}", "guild_id": str(match['guild_id'])})
         if not p1 or not p2:
             await interaction.response.send_message("❌ Player profiles not found.", ephemeral=True)
             return
@@ -1308,7 +1308,7 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
             await interaction.followup.send("❌ This challenge is already submitted or no longer active. Start a new `/challenge` if needed.", ephemeral=True)
             return
         if str(active.get("opponent_id")) != str(self.opponent_id) or len(active.get("defense_courses", [])) != 5:
-            await release_active_challenge(active["_id"])
+            await release_active_challenge(active["_id"], guild_id)
             await interaction.followup.send("❌ The saved challenge no longer matches this lobby. Start a new `/challenge`.", ephemeral=True)
             return
 
@@ -1317,7 +1317,7 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
         defender_proof_url = active.get("defender_proof_url")
         match_data = await process_match_result(guild_id, self.challenger_id, self.opponent_id, defense_courses, challenger_times, proof_url, defender_proof_url, interaction.channel_id)
         if not match_data:
-            await release_active_challenge(active["_id"])
+            await release_active_challenge(active["_id"], guild_id)
             await interaction.followup.send("❌ Could not process match result. One or both player profiles not found.", ephemeral=True)
             return
 
@@ -1390,7 +1390,7 @@ class DefenseView(discord.ui.View):
         state = await bot.db.season_state.find_one({"_id": f"guild_{self.guild_id}"})
         season_number = int(state.get("season_number", 1)) if state else 1
         await bot.db.drivers.update_one(
-            {"_id": f"{self.guild_id}_{self.user_id}"},
+            {"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)},
             {"$set": {"defense_locked": {"courses": self.courses, "proof_url": self.proof_url, "season_number": season_number, "car_rank_total": get_car_rank_total(self.courses)}, "last_defense_change": time.time()}, "$unset": {"pending_tracks": "", "pending_is_change": "", "defense_review_pending": ""}}
         )
         # Keep a per-driver/per-map best-time database for practice comparisons.
@@ -1414,7 +1414,7 @@ class DefenseView(discord.ui.View):
         await interaction.message.edit(view=self)
         await interaction.response.defer()
         # Clear review-pending flag so the player can resubmit with the same pending tracks
-        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}"}, {"$unset": {"defense_review_pending": "", "defense_review_payload": ""}})
+        await bot.db.drivers.update_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)}, {"$unset": {"defense_review_pending": "", "defense_review_payload": ""}})
         if self.is_change:
             title = "❌ Defense Change Rejected"
             desc = "The defense change was rejected. Your current defense remains active. You can resubmit using `/submitdefense` with the same courses."
@@ -1467,11 +1467,11 @@ class VerificationView(discord.ui.View):
         
         state = await bot.db.season_state.find_one({"_id": f"guild_{self.guild_id}"})
         season_number = int(state.get("season_number", 1)) if state else 1
-        pending = await bot.db.pending.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        pending = await bot.db.pending.find_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
         if pending and int(pending.get("season_number", season_number)) != season_number:
             await interaction.followup.send("❌ This registration belongs to an older season and can no longer be approved.", ephemeral=True)
             return
-        existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
         set_on_insert = {
             "career_wins": 0,
             "career_played": 0,
@@ -1500,7 +1500,7 @@ class VerificationView(discord.ui.View):
         # Re-registration within a season does not reroll them. A new season
         # clears this field during the soft reset, so the next /setdefense gets
         # a fresh five-route set.
-        refreshed = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        refreshed = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
         if not refreshed.get("season_defense_tracks") or int(refreshed.get("season_number", 0)) != season_number:
             await bot.db.drivers.update_one(
                 {"_id": f"{self.guild_id}_{self.user_id}"},
@@ -1570,12 +1570,12 @@ class ChallengeDropdown(discord.ui.Select):
         # Do not overwrite an unfinished challenge or consume another daily attempt.
         guild_id, user_id = self.view.guild_id, self.view.user_id
         active_id = f"{guild_id}_{user_id}"
-        existing_active = await bot.db.active_challenges.find_one({"_id": active_id, "status": {"$in": ["active", "processing"]}})
+        existing_active = await bot.db.active_challenges.find_one({"_id": active_id, "guild_id": guild_id, "status": {"$in": ["active", "processing"]}})
         if existing_active:
             await interaction.followup.send("🟡 You already have an unfinished challenge. Finish it with `/submitmatch` first.", ephemeral=True)
             return
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+        profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)})
         challenge_date = profile.get("challenge_date") if profile else None
         challenge_count = profile.get("challenge_count", 0) if profile else 0
         if challenge_date == today and challenge_count >= 5:
@@ -1583,11 +1583,11 @@ class ChallengeDropdown(discord.ui.Select):
             return
         # Increment daily challenge counter when an opponent is actually selected
         new_count = (challenge_count + 1) if challenge_date == today else 1
-        await bot.db.drivers.update_one({"_id": f"{guild_id}_{user_id}"}, {"$set": {"challenge_count": new_count, "challenge_date": today}})
+        await bot.db.drivers.update_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)}, {"$set": {"challenge_count": new_count, "challenge_date": today}})
         remaining = 5 - new_count
         
-        opponent_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{target_user_id}"})
-        await bot.db.active_challenges.replace_one({"_id": active_id}, {
+        opponent_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{target_user_id}", "guild_id": str(guild_id)})
+        await bot.db.active_challenges.replace_one({"_id": active_id, "guild_id": guild_id}, {
             "_id": active_id, "guild_id": guild_id, "challenger_id": user_id,
             "opponent_id": target_user_id, "defense_courses": opp_data["courses"],
             "defender_proof_url": opp_data.get("proof_url"), "status": "active",
@@ -1665,7 +1665,7 @@ async def send_dashboard(interaction: discord.Interaction):
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
     state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
     season = int(state.get("season_number", 1)) if state else 1
-    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)})
     if not profile:
         desc = "You are not registered yet.\n\n👉 Run `/register` to join the league."
         embed = discord.Embed(title="🏁 ALU GAUNTLET", description=desc, color=ASPHALT_THEME_COLOR)
@@ -1936,7 +1936,7 @@ async def season_end_cmd(interaction: discord.Interaction):
 async def admin_setpi_cmd(interaction: discord.Interaction, racer: discord.Member, new_pi: int):
     if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}"}, {"$set": {"garage_pi": int(new_pi)}})
+    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}", "guild_id": str(interaction.guild_id)}, {"$set": {"garage_pi": int(new_pi)}})
     await interaction.followup.send(f"✅ Forced {racer.mention}'s profile rating to `{new_pi:,} PI`.")
     await audit_admin_action(interaction, "Set PI", f"Changed <@{racer.id}>'s Garage PI to `{new_pi:,}`.")
 
@@ -1965,7 +1965,7 @@ class ConfirmRemoveRacerView(discord.ui.View):
 @bot.tree.command(name="admin_removeracer", description="[Staff Only] Purges a driver.")
 async def admin_removeracer_cmd(interaction: discord.Interaction, racer: discord.User):
     if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
-    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}", "guild_id": str(interaction.guild_id)})
     if not profile:
         await interaction.response.send_message(f"ℹ️ {racer.name} doesn't have a driver profile to remove.", ephemeral=True)
         return
@@ -1999,7 +1999,7 @@ async def car_autocomplete(interaction: discord.Interaction, current: str) -> li
 async def set_defense_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
-    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}", "guild_id": str(interaction.guild_id)})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.", ephemeral=True)
         return
@@ -2031,7 +2031,7 @@ async def set_defense_cmd(interaction: discord.Interaction):
             {"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"},
             {"$set": {"season_defense_tracks": tracks}}
         )
-    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"pending_tracks": tracks, "pending_is_change": False}})
+    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}", "guild_id": str(interaction.guild_id)}, {"$set": {"pending_tracks": tracks, "pending_is_change": False}})
     courses = [{"track": t, "car": "TBD", "lap_time": "TBD"} for t in tracks]
     embeds, files = build_course_embeds(
         courses,
@@ -2047,7 +2047,7 @@ async def my_defense_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
-    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.", ephemeral=True)
         return
@@ -2069,7 +2069,7 @@ async def my_defense_cmd(interaction: discord.Interaction):
 async def change_defense_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
-    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}", "guild_id": str(interaction.guild_id)})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.", ephemeral=True)
         return
@@ -2110,7 +2110,7 @@ async def change_defense_cmd(interaction: discord.Interaction):
     if len(tracks) != 5:
         await interaction.followup.send("❌ Your season route set is missing. Ask staff to repair your defense profile before changing it.", ephemeral=True)
         return
-    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {"season_defense_tracks": tracks, "pending_tracks": tracks, "pending_is_change": True}})
+    await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}", "guild_id": str(interaction.guild_id)}, {"$set": {"season_defense_tracks": tracks, "pending_tracks": tracks, "pending_is_change": True}})
     courses = [{"track": t, "car": "TBD", "lap_time": "TBD"} for t in tracks]
     embeds, files = build_course_embeds(
         courses,
@@ -2131,7 +2131,7 @@ async def change_defense_cmd(interaction: discord.Interaction):
 async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, lap_time_2: str, lap_time_3: str, lap_time_4: str, lap_time_5: str, car_1: str, car_2: str, car_3: str, car_4: str, car_5: str, car_rank_1: int, car_rank_2: int, car_rank_3: int, car_rank_4: int, car_rank_5: int, proof_screenshot_1: discord.Attachment, proof_screenshot_2: discord.Attachment, proof_screenshot_3: discord.Attachment, proof_screenshot_4: discord.Attachment, proof_screenshot_5: discord.Attachment):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
-    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}", "guild_id": str(interaction.guild_id)})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.", ephemeral=True)
         return
@@ -2193,7 +2193,7 @@ async def submit_defense_cmd(interaction: discord.Interaction, lap_time_1: str, 
             review_embeds.append(course_emb)
         await chan.send(embeds=review_embeds, files=icon_files, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), courses, courses[0]["proof_url"], is_change=is_change))
         # Set review-pending flag (don't clear pending_tracks so they can resubmit if rejected)
-        await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"}, {"$set": {
+        await bot.db.drivers.update_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}", "guild_id": str(interaction.guild_id)}, {"$set": {
             "defense_review_pending": True,
             "defense_review_payload": {"courses": courses, "proof_url": courses[0]["proof_url"], "is_change": bool(is_change), "submitted_at": time.time()}
         }})
@@ -2210,7 +2210,7 @@ async def challenge_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer()
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
-    user_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    user_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)})
     if not user_profile:
         await interaction.followup.send("❌ Run `/register` first.")
         return
@@ -2269,7 +2269,7 @@ async def challenge_cmd_error(interaction: discord.Interaction, error: app_comma
 async def claim_active_challenge(guild_id: str, user_id: str):
     """Atomically claim an active challenge; recover stale processing locks."""
     active_id = f"{guild_id}_{user_id}"
-    active = await bot.db.active_challenges.find_one({"_id": active_id})
+    active = await bot.db.active_challenges.find_one({"_id": active_id, "guild_id": str(guild_id)})
     if not active:
         return None
     now = time.time()
@@ -2277,16 +2277,16 @@ async def claim_active_challenge(guild_id: str, user_id: str):
         processing_at = float(active.get("processing_at", 0))
         if now - processing_at > 15 * 60:
             await bot.db.active_challenges.update_one(
-                {"_id": active_id, "status": "processing", "processing_at": active.get("processing_at")},
+                {"_id": active_id, "guild_id": str(guild_id), "status": "processing", "processing_at": active.get("processing_at")},
                 {"$set": {"status": "active", "last_reminder": 0}, "$unset": {"processing_at": ""}},
             )
-            active = await bot.db.active_challenges.find_one({"_id": active_id})
+            active = await bot.db.active_challenges.find_one({"_id": active_id, "guild_id": str(guild_id)})
         else:
             return None
     if active.get("status") != "active":
         return None
     result = await bot.db.active_challenges.update_one(
-        {"_id": active_id, "status": "active"},
+        {"_id": active_id, "guild_id": str(guild_id), "status": "active"},
         {"$set": {"status": "processing", "processing_at": now}},
     )
     if not result or getattr(result, "modified_count", 0) != 1:
@@ -2296,9 +2296,9 @@ async def claim_active_challenge(guild_id: str, user_id: str):
     return active
 
 
-async def release_active_challenge(active_id: str):
+async def release_active_challenge(active_id: str, guild_id: str):
     await bot.db.active_challenges.update_one(
-        {"_id": active_id, "status": "processing"},
+        {"_id": active_id, "guild_id": str(guild_id), "status": "processing"},
         {"$set": {"status": "active"}, "$unset": {"processing_at": ""}},
     )
 
@@ -2324,30 +2324,30 @@ async def submitmatch_cmd(interaction: discord.Interaction, lap1: str, lap2: str
     lookup={c.casefold():c for c in ALU_CARS}; canonical=[]
     for i,c in enumerate(cars):
         if c.casefold() not in lookup:
-            await release_active_challenge(active["_id"]); await interaction.followup.send(f"❌ Car {i+1} is not in the approved ALU roster.",ephemeral=True); return
+            await release_active_challenge(active["_id"], guild_id); await interaction.followup.send(f"❌ Car {i+1} is not in the approved ALU roster.",ephemeral=True); return
         canonical.append(lookup[c.casefold()])
     if len({c.casefold() for c in canonical}) != 5:
-        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ All 5 attack cars must be different.",ephemeral=True); return
+        await release_active_challenge(active["_id"], guild_id); await interaction.followup.send("❌ All 5 attack cars must be different.",ephemeral=True); return
     if any(int(r)<=0 for r in ranks):
-        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ All 5 car performance ratings must be greater than 0.",ephemeral=True); return
+        await release_active_challenge(active["_id"], guild_id); await interaction.followup.send("❌ All 5 car performance ratings must be greater than 0.",ephemeral=True); return
     challenger_times=[]
     for i,l in enumerate(laps):
         ms=parse_lap_time(l.strip())
         if ms<0:
-            await release_active_challenge(active["_id"]); await interaction.followup.send(f"❌ Lap {i+1} is invalid. Use `MM:SS.MS`.",ephemeral=True); return
+            await release_active_challenge(active["_id"], guild_id); await interaction.followup.send(f"❌ Lap {i+1} is invalid. Use `MM:SS.MS`.",ephemeral=True); return
         challenger_times.append({"lap_time_str":l.strip(),"ms":ms,"car":canonical[i],"car_rank":int(ranks[i])})
     proof=proof.strip()
     if not proof.lower().startswith(("http://","https://")):
-        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ Proof must be an image URL starting with `http://` or `https://`.",ephemeral=True); return
+        await release_active_challenge(active["_id"], guild_id); await interaction.followup.send("❌ Proof must be an image URL starting with `http://` or `https://`.",ephemeral=True); return
     current_season=await get_current_season_number(guild_id)
     if int(active.get("season_number", 0)) != current_season:
-        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ This challenge belongs to an older season. Start a new `/challenge`.",ephemeral=True); return
+        await release_active_challenge(active["_id"], guild_id); await interaction.followup.send("❌ This challenge belongs to an older season. Start a new `/challenge`.",ephemeral=True); return
     defense=active.get("defense_courses",[])
     if len(defense)!=5:
-        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ The saved challenge data is incomplete. Please start a new `/challenge`.",ephemeral=True); return
+        await release_active_challenge(active["_id"], guild_id); await interaction.followup.send("❌ The saved challenge data is incomplete. Please start a new `/challenge`.",ephemeral=True); return
     match_data=await process_match_result(guild_id,user_id,str(active["opponent_id"]),defense,challenger_times,proof,active.get("defender_proof_url"),interaction.channel_id,settlement_id=f"{active['_id']}:match")
     if not match_data:
-        await release_active_challenge(active["_id"]); await interaction.followup.send("❌ Could not process this match.",ephemeral=True); return
+        await release_active_challenge(active["_id"], guild_id); await interaction.followup.send("❌ Could not process this match.",ephemeral=True); return
     await bot.db.active_challenges.update_one({"_id":active["_id"], "guild_id": str(guild_id)},{"$set":{"status":"completed","completed_at":time.time(),"match_id":match_data["_id"]}})
     season=current_season
     for i,c in enumerate(defense):
@@ -2584,13 +2584,13 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, garage_pi
 
     state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
     season_number = int(state.get("season_number", 1)) if state else 1
-    existing = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    existing = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)})
     if existing and existing.get("season_registered") and int(existing.get("season_number", 0)) == season_number:
         await interaction.followup.send("⚠️ **Already Registered:** Your Garage is already registered for the current season. Your career stats are safe; use `/profile` to view them.", ephemeral=True)
         return
 
     pending_id = f"{guild_id}_{user_id}"
-    pending_existing = await bot.db.pending.find_one({"_id": pending_id})
+    pending_existing = await bot.db.pending.find_one({"_id": pending_id, "guild_id": guild_id})
     if pending_existing and int(pending_existing.get("season_number", season_number)) == season_number:
         await interaction.followup.send("⚠️ **Application Already Pending:** Your current-season Garage registration is awaiting staff review. Use `/mystatus` to check.", ephemeral=True)
         return
@@ -2623,7 +2623,7 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, garage_pi
     emb.set_image(url=proof_screenshot.url)
 
     await bot.db.pending.update_one(
-        {"_id": pending_id},
+        {"_id": pending_id, "guild_id": guild_id},
         {"$set": {
             "guild_id": guild_id, "user_id": user_id, "game_id": game_id, "rank": garage_pi,
             "control": control_type.value, "season_number": season_number, "is_reregistration": is_rereg,
@@ -2645,7 +2645,7 @@ async def my_status_cmd(interaction: discord.Interaction):
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
     state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
     season_number = int(state.get("season_number", 1)) if state else 1
-    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)})
     if profile and profile.get("season_registered") and int(profile.get("season_number", 0)) == season_number:
         division = get_division_for_pi(int(profile.get("garage_pi", 0)))["name"]
         defense = profile.get("defense_locked")
@@ -2655,7 +2655,7 @@ async def my_status_cmd(interaction: discord.Interaction):
             ephemeral=True,
         )
         return
-    pending = await bot.db.pending.find_one({"_id": f"{guild_id}_{user_id}"})
+    pending = await bot.db.pending.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": guild_id})
     if pending and int(pending.get("season_number", season_number)) == season_number:
         division = get_division_for_pi(int(pending.get("rank", 0)))["name"]
         await interaction.followup.send(f"⏳ **Season {season_number} Pending Review:** Garage `{int(pending.get('rank', 0)):,} PI` → projected **{division}**. Staff approval is still required.", ephemeral=True)
@@ -2675,7 +2675,7 @@ async def save_driver_best_time(guild_id: str, user_id: str, course: dict, seaso
     if not track or ms < 0:
         return
     doc_id = f"{guild_id}_{user_id}_{track}"
-    existing = await bot.db.lap_times.find_one({"_id": doc_id})
+    existing = await bot.db.lap_times.find_one({"_id": doc_id, "guild_id": str(guild_id)})
     if existing and int(existing.get("best_ms", 10**18)) <= ms:
         return
     record = {
@@ -2684,7 +2684,7 @@ async def save_driver_best_time(guild_id: str, user_id: str, course: dict, seaso
         "car": course.get("car"), "car_rank": course.get("car_rank"), "proof_url": course.get("proof_url"),
         "season_number": int(season_number), "source": source, "updated_at": time.time(),
     }
-    await bot.db.lap_times.replace_one({"_id": doc_id}, record, upsert=True)
+    await bot.db.lap_times.replace_one({"_id": doc_id, "guild_id": str(guild_id)}, record, upsert=True)
     global_id = re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")
     global_record = await bot.db.map_records.find_one({"_id": global_id})
     if not global_record or ms < int(global_record.get("best_ms", 10**18)):
@@ -2701,7 +2701,7 @@ async def get_current_season_number(guild_id: str) -> int:
 
 async def send_driver_best_time(interaction: discord.Interaction, driver: discord.Member, track: str):
     guild_id = str(interaction.guild_id)
-    rec = await bot.db.lap_times.find_one({"_id": f"{guild_id}_{driver.id}_{track}"})
+    rec = await bot.db.lap_times.find_one({"_id": f"{guild_id}_{driver.id}_{track}", "guild_id": str(guild_id)})
     global_id = re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")
     global_rec = await bot.db.map_records.find_one({"_id": global_id})
     embed = discord.Embed(title=f"⏱️ {driver.display_name} — {track}", color=ASPHALT_THEME_COLOR)
@@ -2966,7 +2966,7 @@ async def delete_me_cmd(interaction: discord.Interaction):
         return
     guild_id = str(interaction.guild_id)
     user_id = str(interaction.user.id)
-    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": str(guild_id)})
     pending = await bot.db.pending.find_one({"_id": f"{guild_id}_{user_id}"})
     if not profile and not pending:
         await interaction.response.send_message("ℹ️ You do not have an active ALU Gauntlet record in this server.", ephemeral=True)
@@ -2986,7 +2986,7 @@ async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member)
     if not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
         return
-    profile = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{racer.id}"})
+    profile = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{racer.id}", "guild_id": str(interaction.guild_id)})
     if not profile:
         await interaction.response.send_message("ℹ️ No driver record was found for that player.", ephemeral=True)
         return
@@ -3000,7 +3000,7 @@ async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member)
             "last_defense_change": "",
         }}
     )
-    await bot.db.pending.delete_one({"_id": f"{interaction.guild_id}_{racer.id}"})
+    await bot.db.pending.delete_one({"_id": f"{interaction.guild_id}_{racer.id}", "guild_id": str(interaction.guild_id)})
     await interaction.response.send_message(f"🧹 Removed <@{racer.id}>'s active registration. Career wins/matches and match history were preserved. They can `/register` again.", ephemeral=True)
     await audit_admin_action(interaction, "Delete ID", f"Reset active registration for <@{racer.id}>. Career statistics and match history were retained.", color=ASPHALT_DEFEAT_COLOR)
 
@@ -3027,10 +3027,10 @@ async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
 
     async def erase(session=None):
         kwargs = {"session": session} if session is not None else {}
-        result = await bot.db.drivers.delete_one({"_id": driver_id}, **kwargs)
+        result = await bot.db.drivers.delete_one({"_id": driver_id, "guild_id": guild_id}, **kwargs)
         counts["driver"] = int(getattr(result, "deleted_count", 0) or 0)
 
-        result = await bot.db.pending.delete_one({"_id": driver_id}, **kwargs)
+        result = await bot.db.pending.delete_one({"_id": driver_id, "guild_id": guild_id}, **kwargs)
         counts["pending"] = int(getattr(result, "deleted_count", 0) or 0)
 
         result = await bot.db.active_challenges.delete_many(
@@ -3063,7 +3063,7 @@ async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
             if len(filtered) != len(standings):
                 counts["season_rows"] += len(standings) - len(filtered)
                 await bot.db.season_history.update_one(
-                    {"_id": archive["_id"]},
+                    {"_id": archive["_id"], "guild_id": guild_id},
                     {"$set": {"standings": filtered, "player_count": len(filtered)}},
                     **kwargs
                 )
