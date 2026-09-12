@@ -12,12 +12,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Install MongoDB Database Tools
         run: |
           set -e
           wget -q https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
           sudo apt install -y ./mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
           mongorestore --version
+
+      - name: Install Python dependency
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pymongo
 
       - name: Download latest successful backup
         env:
@@ -41,15 +49,17 @@ jobs:
 
           mkdir -p restore_input
 
-          gh run download "$RUN_ID" \
-            --name "mongodb-backup-${RUN_ID}" \
-            --dir restore_input
+          # Download all artifacts from the selected successful backup run.
+          # Do not depend on the artifact name containing the workflow run ID:
+          # the backup workflow uses github.run_number for its artifact name.
+          gh run download "$RUN_ID" --dir restore_input
 
           ARCHIVE=$(find restore_input -type f -name 'mongodb.archive.gz' -print -quit)
 
           if [ -z "$ARCHIVE" ]; then
-            echo "ERROR: mongodb.archive.gz was not found in the backup artifact."
-            find restore_input -maxdepth 3 -type f -print
+            echo "ERROR: mongodb.archive.gz was not found."
+            echo "Downloaded files:"
+            find restore_input -maxdepth 4 -type f -print
             exit 1
           fi
 
@@ -74,9 +84,6 @@ jobs:
             exit 1
           fi
 
-          # Build a URI for the same MongoDB cluster but with no production
-          # database in the URI. The production database is selected explicitly
-          # by mongodump/mongorestore arguments below.
           BACKUP_URI=$(python3 - <<'PY'
           import os
           from urllib.parse import urlsplit, urlunsplit
@@ -87,6 +94,9 @@ jobs:
           if not parts.scheme or not parts.netloc:
               raise SystemExit("ERROR: MONGO_URI is not a valid MongoDB URI.")
 
+          # Keep the cluster/auth/query information but remove the production
+          # database name. The required slash prevents URI parsing errors when
+          # the original URI contains query parameters.
           print(urlunsplit((
               parts.scheme,
               parts.netloc,
@@ -97,11 +107,10 @@ jobs:
           PY
           )
 
-          # Every restore uses a unique database name. This prevents the test
-          # from writing into the live asphalt_gauntlet database.
           TEST_DB="restore_test_${GITHUB_RUN_ID}"
 
-          echo "Restoring backup into isolated database: $TEST_DB"
+          echo "Restoring into isolated database: $TEST_DB"
+          echo "Production database will not be used as the restore target."
 
           mongorestore \
             --uri="$BACKUP_URI" \
@@ -111,13 +120,8 @@ jobs:
             --nsTo="${TEST_DB}.*" \
             --verbose 2>&1 | tee restore_input/mongorestore.log
 
-          if grep -q "0 document(s) restored" restore_input/mongorestore.log; then
-            echo "ERROR: Restore reported zero restored documents."
-            exit 1
-          fi
-
-          if grep -q "0 collection(s) restored" restore_input/mongorestore.log; then
-            echo "ERROR: Restore reported zero restored collections."
+          if grep -qE "0 document\(s\) restored|0 collection\(s\) restored" restore_input/mongorestore.log; then
+            echo "ERROR: Restore reported zero restored data."
             exit 1
           fi
 
@@ -151,7 +155,8 @@ jobs:
               raise SystemExit("ERROR: Restore database contains no collections.")
 
           total_documents = 0
-          for name in collections:
+
+          for name in sorted(collections):
               count = db[name].estimated_document_count()
               print(f"  {name}: approximately {count} document(s)")
               total_documents += count
@@ -161,6 +166,8 @@ jobs:
 
           print(f"Total restored documents: approximately {total_documents}")
           print("SAFE RESTORE TEST PASSED.")
+
+          client.close()
           PY
 
       - name: Cleanup isolated test database
@@ -189,4 +196,6 @@ jobs:
 
           print(f"Deleted isolated test database: {test_db}")
           print("Production database was not targeted.")
+
+          client.close()
           PY
