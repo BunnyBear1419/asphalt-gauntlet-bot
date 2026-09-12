@@ -73,28 +73,28 @@ ALU_TRACKS = [
 # Map icon assets supplied in the Gauntlet map reference sheet (matched to each map by city).
 # The assets are embedded so the bot remains portable as a single Python file.
 ALU_MAP_ICONS = {
-    'Auckland': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXt6uvg3+bh2uDM2ezf0tjQ0uPF0ei30ezCyOLRxs2xxumzxN+7vdGrvOC1tMKzoZSbwemauOGOseSXsNaOqNmHntGVnaSNjZdhsupso+BznNhYnN5okdZvjLdTj9Y[...]
-    'Buenos Aires': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXu8vjv7uri5vDn39jY4ezM3+/Q1+O+1e3XyLfEyNKwze6xwt3JsZiwr7S5nIqrmY6dx/CVv+yQuOaBtuuNrdd7rOV0quVnqOaFnMKblI9uod5rmNRan+Faldp[...]
-    'Cairo': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX87dD86Lrv3s/53qru07v20IHtwprwwG7c19fdzsHbwrLevZPQz9fQwrzJyNGqyNXWtaHhsm7Ita7KsJPKo4vQolDElmDBiVirq7Osl4CqhXSrgUaWnrKUgmh/jaBEjL[...]
-    'Greenland': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX9/v71+/3y9vnv7/Pm8vnm6/LU8frV6vfg4+3Y4u/Q4fLC4fTR2OfC1urCz+S+xtyo4Pmk0vCxxeCcxuipu9iYuNqcrcuQqdiHqt5rrN/JlYeWkaOEotiEjaZ0oNx0nNNxksZzepJjmNdhj81TjdE0jtBSfLZbdJUzfMU[...]
-    'Himalayas': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX8/Pz08fXm6/Te4O7Y1uTG0+zFyNvAvMqqx+2out+isdukq7+KvO6Jqt1xs+kyuOyKndGVm6aQiH1/hpRwnNpwjcZtf7Rwc2NdjdJbe7YtiM08eMVRb7VVbIxBbb[...]
-    'Nevada': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX27+Lr3M7ryrbVyMfktqDLtLDXoI7CnpSYweaSrNeonKh/nNFkr+wltOxlmds8muPGiH2uhICQiJqQeoKsamqUZGd/a3V/Wl9kg7pjaIYmidMvcbBiXXVgU2NKVXksV[...]
-    'New York': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX4+fns7O3b6fbQ4PPV2ty92fjGytfJw5+v0/WlyvKbw/KnvcaGy/aGuu5rxPM6xvSrqbeupnWHp9CPnYuTjYR9jIiHfHR3eHhlpNolotdqf49DgJ9ibZZmbWJQbIU[...]
-    'Norway': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz8vLB4PjRzcCnyPDKs4intbe7nHKkmG6UwveRrsxus9orseGFlriLk2hpk8kulMWYhWeVdF96gnp3cmhdgsFmeXVfaYBhZkNJe85GealBa7RIZnoaeagmbKAtZLAiY[...]
-    'Osaka': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX98PXm6/L43evj3Ofz0Ojfzefvy9rRy9Xput7Sttzatc7TtLvapMvJosLKl7/HjLas0vehwe+Vtu2qsMaCvPJ/ru1qsu47veycn8mqiruhlYqdhY5uoOt0j7pYl98Xkt[...]
-    'Paris': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz8ets5Nne4unP3uvM1eXb08C/0uWy0Ou8x9jVwpqqyuiqwt3OsX+ssK6zmpO7lUKcx+qXwemXut+Mu+aSrdKVqMGSmrWXkFqCuOWBp89xrt49reJ5lsJ8jqNkjrk3ks[...]
-    'Rome': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX69u/t5+Ty5c3n2cLh0L/vxHnmsHfjoGHR0dnRyKnOuIbSn2u7t5G3oXGjp5RitcbSj1a9i1+ji3+kh0yzeU6Zd1ypaT+UZ0mHfVyHbFyEY1KEWUV2aFNSbWd1WE5jWE5[...]
-    'San Francisco': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXq6vTh2+rl0uHN0uvPyefHv+TawMjVsLWfzPagv/GntOCNs/V0u/txrfhBuPxGq/rLmZSelbK+fXmUfZp2mth5hLqBdZttdKhUnfU5mfcRnPkHkfZHf9BNb7[...]
-    'Scotland': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXx9vvV3ue91vWs1frVwKSzxdSgyvifvuSOyPuMwfiLvfaHt/F8v/l7tfRxt/ZXt/nBpIikoHx4q+qJnZuZjGiQe2B4hnV4dWNjqvFfmtZJpOwhovFggI9gcWlIeqI[...]
-    'Shanghai': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX08/bf4u7Y1uLE0uvEyt7QuLG0xeWzvNOow+qlu+Ghtd2ers+TsuGQqdiHqt5rrN/JlYeWkaOEotiEjaZ0oNx0nNNxksZzepJjmNdhj81TjdE0jtBSfLZbdJUzfMU[...]
-    'Singapore': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX28/Pd5fXX1uXA0/K1x/DDxc22tdC5rZGVwfOQteuJqeOWo7FxsflqpvNepPk4pO2NkrKSjW1blN9piLJ2d5V5cFBXdKlaaGxCj+oUid43eMUKeNlBZp0oZrEJas[...]
-    'The Caribbean': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz/Pzp8ffl7+zs39TP8PO27vPH3+yo3+rf09Ppzraqzvqwy9u9vsSZvvCuq6Crk2J53ux/xuuItepzsulU0+cfyOhHsugJsuV0nMd7kohAo/FBktEfnOkDn9[...]
-    'Tuscany': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXv7t/i1rTiw5DFv6/NsIGxrqnNmWasnHaRqr2PmZsRsukJn+WMjpeUjFBjjL4Ii+W2b02KelN7fF94bEhoeJBrcDlmZkJkXT1TeK5TZWoFguQScblVV05WVy9LVEgq[...]
-    'U.S. Midwest': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz6eHJ3/XY0ter0ffbw77Ssq6qxu2pudiUyPmLv/WMue2RsOF6ufd0svNms/QsufXPn5u2m6GWocSZk6qzhIebgI2JgqKLeH9pouBwjb9ofLRvdpg9lt4NldF[...]
-    'Chicago': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX18OrZ5/Pd2drD1e7awbS+wdLErKfDmoCrzO+mvuOprcmnmZeTtd9ft+WFl7Q7lsurhG+VgH55h59+eIKPamF8ZmNuanVsWVtXfqpVZoITgsMca6NWVnNZU1BAU3Ei[...]
-    'India': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX54bLxz67ixMLwwI3eq5XvpVPrkVLYkFuxxdKyrMW+mZGbma8wz/Y7rOJHlecJkd/igEnPfVGzfna4eUbGbUTBXzina1KlW0SPc1mPYk2OV0qLT0NyYVFyUUcNgNg8VG[...]
-    'Mt. Fuji': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXu7+ne2tq+2e2ozenLuMGwtc6Uv+iYq86Ewe+Auu15tOt8qdtrsu0ste9mqOktpua4lZWBk7bEc2CEc4dhm+Nkj8hkgKtjZoVLl+sgk+FJgMUsfMg/bKk+XYobbbY[...]
-    'San Diego': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXw7u7f3ejH0e3Y0dDTxMC7xeHWrZS+qZ+sxe2nvumlt9ypo66XuOh0uOyIoswsoNq6j3iTjJe9cVmOcmlyjb5xeZhqZYVvYFVGhs1KcqobhssicsFKYJRQW3E1XJ[...]
+    'Auckland': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXt6uvg3+bh2uDM2ezf0tjQ0uPF0ei30ezCyOLRxs2xxumzxN+7vdGrvOC1tMKzoZSbwemauOGOseSXsNaOqNmHntGVnaSNjZdhsupso+BznNhYnN5okdZvjLdTj9Y9idJOgKhXkbB9jr9rnbhylsJ8jqNkjrk3kshPkMBLj8FOhLFCf7BAfJ0/VF5KVE5HUk4g',
+    'Buenos Aires': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXu8vjv7uri5vDn39jY4ezM3+/Q1+O+1e3XyLfEyNKwze6xwt3JsZiwr7S5nIqrmY6dx/CVv+yQuOaBtuuNrdd7rOV0quVnqOaFnMKblI9uod5rmNRan+Faldpvj8RvkbZxk7VtkLBiiLNkfbBjd5FfeKZYcZ9UZHZJWmFHT0tAQEY5PCE4NysxIg==',
+    'Cairo': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX87dD86Lrv3s/53qru07v20IHtwprwwG7c19fdzsHbwrLevZPQz9fQwrzJyNGqyNXWtaHhsm7Ita7KsJPKo4vQolDElmDBiVirq7Osl4CqhXSrgUaWnrKUgmh/jaBEjL9CfqJBcaZGZHJJVmRCUENlTzZhSCJKOy8iPSE7MyAsHwE=',
+    'Greenland': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX9/v31+/3y9vnv7/Pm8vnm6/LU8frV6vfg4+3Y4u/Q4fLC4fTR2OfC1urCz+S+xtyo4Pmk0vCxxeCcxuipu9iYuNqcrcuQq898yfN7tuaFptJ1pttIvPE/r+1KpOZGm7M8kqxFio89jKo4eoRJcIcsVEkgGDkZCxI=',
+    'Himalayas': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX8/Pz08fXm6/Te4O7Y1uTG0+zFyNvAvMqqx+2out+isdukq7+KvO6Jqt1xs+kyuOyKndGVm6aQiH1/hpRwnNpwjcZtf7Rwc2NdjdJbe7YtiM08eMVRb7VVbIxBbbguULw5S7o0PaMbHDc=',
+    'Nevada': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX27+Lr3M7ryrbVyMfktqDLtLDXoI7CnpSYweaSrNeonKh/nNFkr+wltOxlmds8muPGiH2uhICQiJqQeoKsamqUZGd/a3V/Wl9kg7pjaIYmidMvcbBiXXVgU2NKVXksVkwgOEYTPTsAPi0=',
+    'New York': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX4+fns7O3b6fbQ4PPV2ty92fjGytfJw5+v0/WlyvKbw/KnvcaGy/aGuu5rxPM6xvSrqbeupnWHp9CPnYuTjYR9jIiHfHR3eHhlpNolotdqf49DgJ9ibZZmbWJQbIU=',
+    'Norway': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz8vLB4PjRzcCnyPDKs4intbe7nHKkmG6UwveRrsxus9orseGFlriLk2hpk8kulMWYhWeVdF96gnp3cmhdgsFmeXVfaYBhZkNJe85GealBa7RIZnoaeagmbKAtZLAiY=',
+    'Osaka': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX98PXm6/L43evj3Ofz0Ojfzefvy9rRy9Xput7Sttzatc7TtLvapMvJosLKl7/HjLas0vehwe+Vtu2qsMaCvPJ/ru1qsu43veycn8mqiruhlYqdhY5uoOt0j7pYl98Xkt=',
+    'Paris': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz8evs5Nne4unP3uvM1eXb08C/0uWy0Ou8x9jVwpqqyuiqwt3OsX+ssK6zmpO7lUKcx+qXwemXut+Mu+aSrdKVqMGSmrWXkFqCuOWBp89xrt49reJ5lsJ8jqNkjrk3ks=',
+    'Rome': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX69u/t5+Ty5c3n2cLh0L/vxHvmsHfjoGHR0dnRyKnOuIbSn2u7t5G3oXGjp5RitcbSj1a9i1+ji3+kh0yzeU6Zd1ypaT+UZ0mHfVyHbFyEY1KEWUV2aFNSbWd1WE5jWE5=',
+    'San Francisco': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXq6vTh2+rl0uHN0uvPyefHv+TawMjVsLWfzPagv/GntOCNs/V0u/txrfhBuPxGq/rLmZSelbK+fXmUfZp2mth5hLqBdZttdKhUnfU5mfcRnPkHkfZHf9BNb7=',
+    'Scotland': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXx9vvV3ue91vWs1frVwKSzxdSgyvifvuSOyPuMwfiLvfaHt/F8v/l7tfRxt/ZXt/nBpIikoHx4q+qJnZuZjGiQe2B4hnV4dWNjqvFfmtZJpOwhovFggI9gcWlIeqI=',
+    'Shanghai': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX08/bf4u7Y1uLE0uvEyt7QuLG0xeWzvNOow+qlu+Ghtd2ers+TsuGQqdiHqt5rrN/JlYeWkaOEotiEjaZ0oNx0nNNxksZzepJjmNdhj81TjdE0jtBSfLZbdJUzfMU=',
+    'Singapore': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX28/Pd5fXX1uXA0/K1x/DDxc22tdC5rZGVwfOQteuJqeOWo7FxsflqpvNepPk4pO2NkrKSjW1blN9piLJ2d5V5cFBXdKlaaGxCj+oUid43eMUKeNlBZp0oZrEJas=',
+    'The Caribbean': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz/Pzp8ffl7+zs39TP8PO27vPH3+yo3+rf09Ppzraqzvqwy9u9vsSZvvCuq6Crk2J53ux/xuuItepzsulU0+cfyOhHsugJsuV0nMd7kohAo/FBktEfnOkDn9=',
+    'Tuscany': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXv7t/i1rTiw5DFv6/NsIGxrqnNmWasnHaRqr2PmZsRsukJn+WMjpeUjFBjjL4Ii+W2b02KelN7fF94bEhoeJBrcDlmZkJkXT1TeK5TZWoFguQScblVV05WVy9LVEgq',
+    'U.S. Midwest': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXz6eHJ3/XY0ter0ffbw77Ssq6qxu2pudiUyPmLv/WMue2RsOF6ufd0svNms/QsufXPn5u2m6GWocSZk6qzhIebgI2JgqKLeH9pouBwjb9ofLRvdpg9lt4NldF=',
+    'Chicago': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX18OrZ5/Pd2drD1e7awbS+wdLErKfDmoCrzO+mvuOprcmnmZeTtd9ft+WFl7Q7lsurhG+VgH55h59+eIKPamF8ZmNuanVsWVtXfqpVZoITgsMca6NWVnNZU1BAU3Ei=',
+    'India': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEX54bLxz67ixMLwwI3eq5XvpVPrkVLYkFuxxdKyrMW+mZGbma8wz/Y7rOJHlecJkd/igEnPfVGzfna4eUbGbUTBXzina1KlW0SPc1mPYk2OV0qLT0NyYVFyUUcNgNg8VG=',
+    'Mt. Fuji': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXu7+ne2tq+2e2ozenLuMGwtc6Uv+iYq86Ewe+Auu15tOt8qdtrsu0ste9mqOktpua4lZWBk7bEc2CEc4dhm+Nkj8hkgKtjZoVLl+sgk+FJgMUsfMg/bKk+XYobbbY=',
+    'San Diego': 'iVBORw0KGgoAAAANSUhEUgAAAIwAAABFCAMAAACv+f5wAAAAwFBMVEXw7u7f3ejH0e3Y0dDTxMC7xeHWrZS+qZ+sxe2nvumlt9ypo66XuOh0uOyIoswsoNq6j3iTjJe9cVmOcmlyjb5xeZhqZYVvYFVGhs1KcqobhssicsFKYJRQW3E1XJ='
 }
 
 def parse_lap_time(time_str):
