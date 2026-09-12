@@ -135,23 +135,23 @@ jobs:
         run: |
           set -e
 
-          TEST_DB="asphalt_gauntlet_restore_verify_${GITHUB_RUN_ID}"
+          # Kept short: some Atlas tiers (e.g. serverless/flex) cap database names at 38 bytes.
+          TEST_DB="gv_verify_${GITHUB_RUN_ID}"
           echo "TEST_DB=$TEST_DB" >> "$GITHUB_ENV"
 
-          BACKUP_URI="${MONGO_URI%%\?*}"
           QUERY=""
+          BASE="$MONGO_URI"
           if [[ "$MONGO_URI" == *\?* ]]; then
+            BASE="${MONGO_URI%%\?*}"
             QUERY="?${MONGO_URI#*\?}"
           fi
 
-          # Keep the original connection options while selecting the
-          # temporary verification database.
-          if [[ "$BACKUP_URI" == */ ]]; then
-            BACKUP_URI="${BACKUP_URI}${TEST_DB}"
-          else
-            BACKUP_URI="${BACKUP_URI}/${TEST_DB}"
-          fi
-          BACKUP_URI="${BACKUP_URI}${QUERY}"
+          # Replace (not append to) any existing default database in the URI path.
+          # e.g. mongodb+srv://user:pass@cluster/myDiscordBot -> .../gv_verify_12345
+          SCHEME_PREFIX="${BASE%%://*}://"
+          REST="${BASE#*://}"
+          HOST_PART="${REST%%/*}"
+          BACKUP_URI="${SCHEME_PREFIX}${HOST_PART}/${TEST_DB}${QUERY}"
 
           echo "Restoring latest backup into isolated database..."
           mongorestore \
