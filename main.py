@@ -250,7 +250,7 @@ class GauntletBot(commands.Bot):
         self.started_at = time.time()
 
     async def setup_hook(self):
-                logging.info("🚀🚀🚀 BUILD MARKER TEST-001 🚀🚀🚀")
+        logging.info("🚀🚀🚀 BUILD MARKER TEST-001 🚀🚀🚀")
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
             try:
