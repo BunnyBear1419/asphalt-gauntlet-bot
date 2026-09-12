@@ -1,0 +1,106 @@
+name: Production Health Monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Discloud application status
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+        run: |
+          set -e
+
+          if [ -z "$DISCLOUD_TOKEN" ]; then
+            echo "ERROR: DISCLOUD_TOKEN GitHub secret is missing."
+            exit 1
+          fi
+
+          if [ -z "$DISCLOUD_APP_ID" ]; then
+            echo "ERROR: DISCLOUD_APP_ID GitHub secret is missing."
+            exit 1
+          fi
+
+          echo "Checking Discloud application status..."
+
+          HTTP_CODE=$(curl -sS -o discloud-status.json -w "%{http_code}"             -H "api-token: $DISCLOUD_TOKEN"             -H "Accept: application/json"             "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status")
+
+          echo "HTTP status: $HTTP_CODE"
+          cat discloud-status.json
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Discloud status API request failed."
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("discloud-status.json").read_text())
+
+          values = []
+
+          def collect(value):
+              if isinstance(value, dict):
+                  for item in value.values():
+                      collect(item)
+              elif isinstance(value, list):
+                  for item in value:
+                      collect(item)
+              elif isinstance(value, str):
+                  values.append(value.strip().lower())
+
+          collect(data)
+
+          healthy_states = {"running", "online", "active", "ready"}
+          found = sorted(healthy_states.intersection(values))
+
+          if not found:
+              print("ERROR: Discloud did not report a healthy running state.")
+              print("Observed status values:", values)
+              raise SystemExit(1)
+
+          print("Discloud health check passed:", ", ".join(found))
+          PY
+
+      - name: Check Discord bot token
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          set -e
+
+          if [ -z "$DISCORD_BOT_TOKEN" ]; then
+            echo "ERROR: DISCORD_BOT_TOKEN GitHub secret is missing."
+            exit 1
+          fi
+
+          HTTP_CODE=$(curl -sS -o discord-user.json -w "%{http_code}"             -H "Authorization: Bot $DISCORD_BOT_TOKEN"             -H "Accept: application/json"             "https://discord.com/api/v10/users/@me")
+
+          echo "Discord API HTTP status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Discord bot token/API check failed."
+            cat discord-user.json
+            exit 1
+          fi
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("discord-user.json").read_text())
+          print(f"Discord bot reachable: {data.get('username', 'unknown')}")
+          print(f"Bot ID: {data.get('id', 'unknown')}")
+          PY
+
+      - name: Health check passed
+        run: |
+          echo "Production health check passed."
+          echo "Discloud application is healthy and the Discord bot token is valid."
