@@ -70,6 +70,29 @@ jobs:
           rm -rf backup-download
           mkdir -p backup-download
 
+          echo "Artifacts available on run $BACKUP_RUN_ID:"
+          gh api "repos/${{ github.repository }}/actions/runs/$BACKUP_RUN_ID/artifacts" \
+            --jq '.artifacts[] | "  - \(.name) (expired: \(.expired), size: \(.size_in_bytes) bytes)"'
+
+          ARTIFACT_JSON=$(gh api "repos/${{ github.repository }}/actions/runs/$BACKUP_RUN_ID/artifacts" \
+            --jq '[.artifacts[] | select(.name == "mongodb-backup")][0]')
+
+          if [ -z "$ARTIFACT_JSON" ] || [ "$ARTIFACT_JSON" = "null" ]; then
+            echo "ERROR: No artifact named 'mongodb-backup' was found on run $BACKUP_RUN_ID."
+            echo "This usually means either:"
+            echo "  1. The artifact's retention period expired before this verification ran, or"
+            echo "  2. mongodb-backup.yml is uploading it under a different artifact name."
+            echo "Check the 'actions/upload-artifact' step in mongodb-backup.yml for the 'name:' and 'retention-days:' values."
+            exit 1
+          fi
+
+          IS_EXPIRED=$(echo "$ARTIFACT_JSON" | jq -r '.expired')
+          if [ "$IS_EXPIRED" = "true" ]; then
+            echo "ERROR: The 'mongodb-backup' artifact on run $BACKUP_RUN_ID has expired and can no longer be downloaded."
+            echo "Consider increasing 'retention-days' on the upload step in mongodb-backup.yml, or running this verification sooner after each backup."
+            exit 1
+          fi
+
           gh run download "$BACKUP_RUN_ID" \
             --name mongodb-backup \
             --dir backup-download
