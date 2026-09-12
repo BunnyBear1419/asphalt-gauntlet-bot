@@ -250,6 +250,7 @@ class GauntletBot(commands.Bot):
         self.started_at = time.time()
 
     async def setup_hook(self):
+        logging.info("🟢 ALU GAUNTLET BUILD: DIAGNOSTICS-GUILD-FIX-01")
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
             try:
@@ -306,9 +307,8 @@ class GauntletBot(commands.Bot):
         await self.sync_application_commands()
         logging.info("🟢 Application slash commands synchronized globally.")
 
-        # setup_hook runs before READY, so self.guilds may still be empty.
-        # Fetch guilds through Discord REST and clear stale guild-scoped overrides
-        # immediately during startup.
+        # Remove any stale guild-scoped slash-command overrides immediately at startup.
+        # All ALU Gauntlet commands are global, so guild overrides must be empty.
         try:
             cleaned = await self.sync_guild_application_commands(force_fetch=True)
             logging.info(
@@ -316,8 +316,7 @@ class GauntletBot(commands.Bot):
                 cleaned,
             )
         except Exception:
-            logging.exception("🔴 Startup guild command cleanup failed.")
-
+            logging.exception("🔴 Startup guild command override cleanup failed.")
         # Register persistent views so their buttons survive bot restarts
         self.add_view(TopLeaderboardView())
         logging.info("🟢 Persistent views registered.")
@@ -392,43 +391,34 @@ class GauntletBot(commands.Bot):
         return synced
 
     async def sync_guild_application_commands(self, force_fetch: bool = False):
-        """Remove stale guild-scoped slash commands so Discord uses the global tree."""
+        """Remove stale guild-scoped overrides so Discord uses the current global commands."""
         guilds = list(self.guilds)
         if force_fetch or not guilds:
-            try:
-                # setup_hook runs before the gateway READY event, so self.guilds can
-                # be empty. Fetch the bot's guild list through Discord REST instead.
-                guilds = [g async for g in self.fetch_guilds(limit=200)]
-            except Exception:
-                logging.exception("🔴 Could not fetch guild list for server command cleanup.")
-                if not guilds:
-                    return 0
+            # setup_hook can run before READY populates self.guilds. Fetch the guild
+            # list through Discord's REST API so cleanup does not depend on the cache.
+            guilds = [guild async for guild in self.fetch_guilds(limit=200)]
+
+        if not guilds:
+            logging.info("ℹ️ No guilds available for server-scoped command cleanup.")
+            return 0
 
         total = 0
         for guild in guilds:
             try:
                 guild_obj = discord.Object(id=int(guild.id))
-
-                # All ALU Gauntlet slash commands are intended to be GLOBAL.
-                # A stale guild-scoped command with the same name takes precedence
-                # over the global command. Sending an empty guild command payload
-                # removes that override.
+                # All ALU Gauntlet slash commands are registered globally. A stale
+                # guild-scoped command can override a newer global command with the
+                # same name. Clear the guild override entirely so Discord falls back
+                # to the freshly synchronized global command (including /diagnostics).
                 self.tree.clear_commands(guild=guild_obj)
                 synced = await self.tree.sync(guild=guild_obj)
                 total += len(synced)
-
                 logging.info(
                     "🧹 Cleared server-scoped command overrides for %s (%s): %d guild commands remain.",
-                    getattr(guild, "name", "Unknown Server"),
-                    guild.id,
-                    len(synced),
+                    getattr(guild, "name", "unknown"), guild.id, len(synced)
                 )
             except Exception:
-                logging.exception(
-                    "🔴 Server command cleanup failed for %s (%s)",
-                    getattr(guild, "name", "Unknown Server"),
-                    guild.id,
-                )
+                logging.exception("🔴 Server command cleanup failed for %s (%s)", getattr(guild, "name", "unknown"), guild.id)
         return total
 
     def setup_mock_db(self):
@@ -3525,7 +3515,7 @@ async def on_ready():
                 await asyncio.sleep(3)
                 continue
 
-            cleaned = await bot.sync_guild_application_commands(force_fetch=not bool(bot.guilds))
+            cleaned = await bot.sync_guild_application_commands()
             logging.info(
                 "🟢 GUILD COMMAND OVERRIDE CLEANUP COMPLETE — %d server command(s) synchronized.",
                 cleaned,
