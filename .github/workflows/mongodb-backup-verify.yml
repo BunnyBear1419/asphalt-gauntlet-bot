@@ -243,3 +243,34 @@ jobs:
         run: |
           echo "Weekly MongoDB backup verification passed."
           echo "The latest successful backup was restored and verified."
+
+      - name: Notify ops channel on failure
+        if: failure()
+        env:
+          DISCORD_ALERT_WEBHOOK: ${{ secrets.DISCORD_ALERT_WEBHOOK }}
+        run: |
+          set -e
+          if [ -z "$DISCORD_ALERT_WEBHOOK" ]; then
+            echo "DISCORD_ALERT_WEBHOOK secret not set; skipping notification."
+            exit 0
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          PAYLOAD=$(jq -n \
+            --arg title "🔴 MongoDB Backup Verification Failed" \
+            --arg desc "The **Weekly MongoDB Backup Verification** workflow failed on \`${{ github.repository }}\`." \
+            --arg run_url "$RUN_URL" \
+            --arg run_number "${{ github.run_number }}" \
+            '{embeds: [{
+              title: $title,
+              description: $desc,
+              color: 15158332,
+              fields: [
+                {name: "Run", value: ("[#" + $run_number + " logs](" + $run_url + ")"), inline: true}
+              ]
+            }]}')
+
+          curl -sf -X POST "$DISCORD_ALERT_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
