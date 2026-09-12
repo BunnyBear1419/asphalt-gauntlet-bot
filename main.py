@@ -217,8 +217,6 @@ def parse_lap_time(lap_str: str) -> int:
         return -1
     m, s = lap_str.split(":")
     sec, ms = s.split(".")
-    if int(sec) >= 60:
-        return -1
     return (int(m) * 60 * 1000) + (int(sec) * 1000) + int(ms)
 
 def has_5_course_defense(profile: dict) -> bool:
@@ -251,6 +249,32 @@ class GauntletBot(commands.Bot):
         self.mongo_client = None
         self.started_at = time.time()
 
+    async def startup_self_test(self):
+        """Validate critical production dependencies before the bot starts background work."""
+        token_present = bool(os.getenv("DISCORD_BOT_TOKEN"))
+        mongo_uri_present = bool(os.getenv("MONGO_URI"))
+
+        if not token_present:
+            raise RuntimeError("DISCORD_BOT_TOKEN is missing from the environment.")
+        if not mongo_uri_present:
+            raise RuntimeError("MONGO_URI is missing from the environment.")
+        if self.mongo_client is None or self.db is None:
+            raise RuntimeError("MongoDB client/database was not initialized.")
+
+        await self.mongo_client.admin.command("ping")
+        required_collections = {
+            "drivers", "pending", "matches", "active_challenges",
+            "season_state", "season_history", "settings", "reference_pending",
+        }
+        existing = set(await self.db.list_collection_names())
+        missing = sorted(required_collections - existing)
+        if missing:
+            logging.warning("⚠️ Startup self-test: collections not yet created: %s", ", ".join(missing))
+
+        logging.info(
+            "🟢 STARTUP SELF-TEST PASSED — Discord token present, MongoDB ping OK, database ready."
+        )
+
     async def setup_hook(self):
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
@@ -273,6 +297,9 @@ class GauntletBot(commands.Bot):
         else:
             logging.warning("⚠️ MONGO_URI missing from environment variables.")
             self.setup_mock_db()
+
+        # Refuse to continue startup if a critical production dependency is unavailable.
+        await self.startup_self_test()
 
         # Execute background state recovery sequence hooks
         await self.recover_season_state()
@@ -1676,7 +1703,8 @@ async def mychallenges_cmd(interaction: discord.Interaction):
 
 @bot.tree.command(name="missingdefense", description="[Staff Only] List current-season drivers without a locked defense.")
 async def missing_defense_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True); return
     guild_id=str(interaction.guild_id); season=await get_current_season_number(guild_id)
     docs=await bot.db.drivers.find({"guild_id":guild_id,"season_registered":True,"season_number":season,"defense_locked.courses.4":{"$exists":False}}).to_list(length=1000)
     lines=[f"• <@{d['user_id']}> — `{d.get('game_id','?')}`" for d in docs]
@@ -1686,7 +1714,8 @@ async def missing_defense_cmd(interaction: discord.Interaction):
 @bot.tree.command(name="adminlog", description="[Staff Only] View recent administrative audit entries.")
 @app_commands.describe(limit="Number of recent log entries to show (1-15)")
 async def adminlog_cmd(interaction: discord.Interaction, limit: int = 10):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True); return
     limit=max(1,min(15,limit)); cfg=await bot.db.settings.find_one({"_id":str(interaction.guild_id)})
     if not cfg or not cfg.get("log_channel_id"):
         await interaction.response.send_message("ℹ️ Log channel is not configured.",ephemeral=True); return
@@ -1705,7 +1734,8 @@ async def adminlog_cmd(interaction: discord.Interaction, limit: int = 10):
 
 @bot.tree.command(name="admin", description="[Staff Only] Open the admin dashboard.")
 async def admin_dashboard_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True); return
     await send_admin_dashboard(interaction)
 
 @bot.tree.command(name="setimage", description="[Admin Only] Update a custom bot image (banner or thumbnail).")
@@ -1718,7 +1748,9 @@ async def admin_dashboard_cmd(interaction: discord.Interaction):
     app_commands.Choice(name="Diagnostics Thumbnail", value="thumb_diagnostics"),
 ])
 async def setimage_cmd(interaction: discord.Interaction, image_type: app_commands.Choice[str], image: discord.Attachment):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Admin only.", ephemeral=True)
+        return
     await interaction.response.defer(ephemeral=True)
     guild_id = str(interaction.guild_id)
     # Validate it's an image
@@ -1753,7 +1785,9 @@ async def setimage_cmd(interaction: discord.Interaction, image_type: app_command
 @bot.tree.command(name="setup", description="[Admin Only] Configures all league core channels and permission roles.")
 @app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", match_results_channel="Public room for match results", admin_role="Admin override role", player_role="Verified player role")
 async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Admin role overrides missing.", ephemeral=True)
+        return
     await interaction.response.defer(ephemeral=True)
     await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "player_role_id": str(player_role.id)}}, upsert=True)
     guild_state = await bot.db.season_state.find_one({"_id": f"guild_{interaction.guild_id}"})
@@ -1775,7 +1809,9 @@ async def setup_cmd(interaction: discord.Interaction, main_channel: discord.Text
 @bot.tree.command(name="season_schedule", description="[Admin Only] Sets custom calendar horizons for active tournament season grids.")
 @app_commands.describe(start_date="Start date mapping (YYYY-MM-DD HH:MM)", end_date="Closing deadline boundary (YYYY-MM-DD HH:MM)")
 async def season_schedule_cmd(interaction: discord.Interaction, start_date: str, end_date: str):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Requires admin access clearance level.", ephemeral=True)
+        return
     await interaction.response.defer(ephemeral=True)
     try:
         start_dt = datetime.strptime(start_date.strip(), "%Y-%m-%d %H:%M")
@@ -2834,7 +2870,9 @@ async def add_reference_cmd(interaction: discord.Interaction, map_name: str, lap
 
 @bot.tree.command(name="pending", description="[Staff Only] Show all drivers awaiting current-season approval.")
 async def pending_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+        return
     await interaction.response.defer(ephemeral=True)
     guild_id = str(interaction.guild_id)
     season = await get_current_season_number(guild_id)
@@ -2849,7 +2887,9 @@ async def pending_cmd(interaction: discord.Interaction):
 @bot.tree.command(name="listplayers", description="[Staff Only] List every driver registered in this server with ELO and division.")
 @app_commands.describe(page="Page number")
 async def listplayers_cmd(interaction: discord.Interaction, page: int = 1):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+        return
     await interaction.response.defer(ephemeral=True)
     page = max(1, page)
     guild_id = str(interaction.guild_id)
@@ -2889,7 +2929,9 @@ async def delete_me_cmd(interaction: discord.Interaction):
 @bot.tree.command(name="delete_id", description="[Staff Only] Remove a driver's active registration by Discord member.")
 @app_commands.describe(racer="Driver whose active profile should be removed")
 async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+        return
     profile = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{racer.id}"})
     if not profile:
         await interaction.response.send_message("ℹ️ No driver record was found for that player.", ephemeral=True)
@@ -3126,7 +3168,9 @@ async def identity_cmd(interaction: discord.Interaction, username: str = None, a
     if not interaction.guild:
         await interaction.response.send_message("❌ This command can only be used inside a server.", ephemeral=True)
         return
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
+        return
 
     await interaction.response.defer(ephemeral=True)
     changed = []
@@ -3162,7 +3206,9 @@ async def identity_cmd(interaction: discord.Interaction, username: str = None, a
 @bot.tree.command(name="sync", description="[Admin Only] Synchronize slash commands with Discord.")
 @app_commands.describe(full_cleanup="Also clear stale per-server command overrides (slower; only needed occasionally, not on every deploy).")
 async def sync_cmd(interaction: discord.Interaction, full_cleanup: bool = False):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
+        return
     await interaction.response.defer(ephemeral=True)
     try:
         synced = await bot.sync_application_commands()
@@ -3244,7 +3290,9 @@ async def help_cmd(interaction: discord.Interaction):
 
 @bot.tree.command(name="dbcheck", description="[Staff Only] Audits database consistency and recoverable settlement states.")
 async def dbcheck_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Admin authorization required.", ephemeral=True)
+        return
 
     await interaction.response.defer(ephemeral=True)
     guild_id = str(interaction.guild.id) if interaction.guild else None
@@ -3351,7 +3399,9 @@ async def seasonhistory_cmd(interaction: discord.Interaction, season: int = None
 
 @bot.tree.command(name="backup", description="[Staff Only] Create an immediate database backup.")
 async def backup_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True)
+        return
     await interaction.response.defer(ephemeral=True)
     try:
         folder = await create_database_backup(f"manual by {interaction.user.id}")
@@ -3367,7 +3417,9 @@ async def backup_cmd(interaction: discord.Interaction):
 
 @bot.tree.command(name="diagnostics", description="[Staff Only] Run a read-only health and database diagnostic report.")
 async def diagnostics_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True)
+        return
 
     await interaction.response.defer(ephemeral=True)
     guild_id = str(interaction.guild_id)
