@@ -16,24 +16,25 @@ jobs:
           sudo apt install -y ./mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
           mongodump --version
 
-- name: Create MongoDB backup
-  env:
-    MONGO_URI: ${{ secrets.MONGO_URI }}
-  run: |
-    mkdir -p backup
-    mongodump \
-      --uri="$MONGO_URI" \
-      --archive=backup/mongodb.archive.gz \
-      --gzip \
-      --verbose
+      - name: Create MongoDB backup
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          mkdir -p backup
 
-    echo "Backup file:"
-    ls -lh backup/mongodb.archive.gz
+          mongodump \
+            --uri="$MONGO_URI" \
+            --archive=backup/mongodb.archive.gz \
+            --gzip \
+            --verbose
 
-    if [ ! -s backup/mongodb.archive.gz ]; then
-      echo "ERROR: Backup archive is empty."
-      exit 1
-    fi
+          echo "Backup file:"
+          ls -lh backup/mongodb.archive.gz
+
+          if [ ! -s backup/mongodb.archive.gz ]; then
+            echo "ERROR: Backup archive is empty."
+            exit 1
+          fi
 
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4
