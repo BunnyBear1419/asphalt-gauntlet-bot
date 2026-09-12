@@ -1,0 +1,192 @@
+name: MongoDB Restore Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  restore-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install MongoDB Database Tools
+        run: |
+          set -e
+          wget -q https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
+          sudo apt install -y ./mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
+          mongorestore --version
+
+      - name: Download latest successful backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+
+          RUN_ID=$(gh run list \
+            --workflow mongodb-backup.yml \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "ERROR: No successful MongoDB Backup workflow run was found."
+            exit 1
+          fi
+
+          echo "Using MongoDB backup workflow run: $RUN_ID"
+
+          mkdir -p restore_input
+
+          gh run download "$RUN_ID" \
+            --name "mongodb-backup-${RUN_ID}" \
+            --dir restore_input
+
+          ARCHIVE=$(find restore_input -type f -name 'mongodb.archive.gz' -print -quit)
+
+          if [ -z "$ARCHIVE" ]; then
+            echo "ERROR: mongodb.archive.gz was not found in the backup artifact."
+            find restore_input -maxdepth 3 -type f -print
+            exit 1
+          fi
+
+          cp "$ARCHIVE" restore_input/mongodb.archive.gz
+
+          echo "Backup archive:"
+          ls -lh restore_input/mongodb.archive.gz
+
+          if [ ! -s restore_input/mongodb.archive.gz ]; then
+            echo "ERROR: Backup archive is empty."
+            exit 1
+          fi
+
+      - name: Restore into isolated test database
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -e
+
+          if [ -z "$MONGO_URI" ]; then
+            echo "ERROR: MONGO_URI secret is missing."
+            exit 1
+          fi
+
+          # Build a URI for the same MongoDB cluster but with no production
+          # database in the URI. The production database is selected explicitly
+          # by mongodump/mongorestore arguments below.
+          BACKUP_URI=$(python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit, urlunsplit
+
+          uri = os.environ["MONGO_URI"]
+          parts = urlsplit(uri)
+
+          if not parts.scheme or not parts.netloc:
+              raise SystemExit("ERROR: MONGO_URI is not a valid MongoDB URI.")
+
+          print(urlunsplit((
+              parts.scheme,
+              parts.netloc,
+              "/",
+              parts.query,
+              parts.fragment,
+          )))
+          PY
+          )
+
+          # Every restore uses a unique database name. This prevents the test
+          # from writing into the live asphalt_gauntlet database.
+          TEST_DB="restore_test_${GITHUB_RUN_ID}"
+
+          echo "Restoring backup into isolated database: $TEST_DB"
+
+          mongorestore \
+            --uri="$BACKUP_URI" \
+            --archive=restore_input/mongodb.archive.gz \
+            --gzip \
+            --nsFrom="asphalt_gauntlet.*" \
+            --nsTo="${TEST_DB}.*" \
+            --verbose 2>&1 | tee restore_input/mongorestore.log
+
+          if grep -q "0 document(s) restored" restore_input/mongorestore.log; then
+            echo "ERROR: Restore reported zero restored documents."
+            exit 1
+          fi
+
+          if grep -q "0 collection(s) restored" restore_input/mongorestore.log; then
+            echo "ERROR: Restore reported zero restored collections."
+            exit 1
+          fi
+
+          echo "Restore completed successfully."
+
+      - name: Verify restored database
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -e
+
+          TEST_DB="restore_test_${GITHUB_RUN_ID}"
+
+          python3 - <<'PY'
+          import os
+          from pymongo import MongoClient
+
+          uri = os.environ["MONGO_URI"]
+          test_db = f"restore_test_{os.environ['GITHUB_RUN_ID']}"
+
+          client = MongoClient(uri, serverSelectionTimeoutMS=10000)
+          client.admin.command("ping")
+
+          db = client[test_db]
+          collections = db.list_collection_names()
+
+          print(f"Restored database: {test_db}")
+          print(f"Collections found: {len(collections)}")
+
+          if not collections:
+              raise SystemExit("ERROR: Restore database contains no collections.")
+
+          total_documents = 0
+          for name in collections:
+              count = db[name].estimated_document_count()
+              print(f"  {name}: approximately {count} document(s)")
+              total_documents += count
+
+          if total_documents <= 0:
+              raise SystemExit("ERROR: Restore database contains no documents.")
+
+          print(f"Total restored documents: approximately {total_documents}")
+          print("SAFE RESTORE TEST PASSED.")
+          PY
+
+      - name: Cleanup isolated test database
+        if: always()
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -e
+
+          if [ -z "$MONGO_URI" ]; then
+            echo "MONGO_URI is missing; nothing to clean up."
+            exit 0
+          fi
+
+          TEST_DB="restore_test_${GITHUB_RUN_ID}"
+
+          python3 - <<'PY'
+          import os
+          from pymongo import MongoClient
+
+          uri = os.environ["MONGO_URI"]
+          test_db = f"restore_test_{os.environ['GITHUB_RUN_ID']}"
+
+          client = MongoClient(uri, serverSelectionTimeoutMS=10000)
+          client.drop_database(test_db)
+
+          print(f"Deleted isolated test database: {test_db}")
+          print("Production database was not targeted.")
+          PY
