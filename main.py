@@ -250,7 +250,6 @@ class GauntletBot(commands.Bot):
         self.started_at = time.time()
 
     async def setup_hook(self):
-        logging.info("🚀🚀🚀 BUILD MARKER TEST-001 🚀🚀🚀")
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
             try:
@@ -1962,6 +1961,7 @@ async def set_defense_cmd(interaction: discord.Interaction):
 
 @bot.tree.command(name="mydefense", description="View your currently locked ghost defense.")
 async def my_defense_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False): return
     await interaction.response.defer(ephemeral=True)
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
     profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
