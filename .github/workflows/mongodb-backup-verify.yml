@@ -74,27 +74,40 @@ jobs:
           gh api "repos/${{ github.repository }}/actions/runs/$BACKUP_RUN_ID/artifacts" \
             --jq '.artifacts[] | "  - \(.name) (expired: \(.expired), size: \(.size_in_bytes) bytes)"'
 
-          ARTIFACT_JSON=$(gh api "repos/${{ github.repository }}/actions/runs/$BACKUP_RUN_ID/artifacts" \
-            --jq '[.artifacts[] | select(.name == "mongodb-backup")][0]')
+          ARTIFACTS_JSON=$(gh api "repos/${{ github.repository }}/actions/runs/$BACKUP_RUN_ID/artifacts" \
+            --jq '[.artifacts[] | select(.name | startswith("mongodb-backup"))]')
 
-          if [ -z "$ARTIFACT_JSON" ] || [ "$ARTIFACT_JSON" = "null" ]; then
-            echo "ERROR: No artifact named 'mongodb-backup' was found on run $BACKUP_RUN_ID."
+          MATCH_COUNT=$(echo "$ARTIFACTS_JSON" | jq 'length')
+
+          if [ "$MATCH_COUNT" -eq 0 ]; then
+            echo "ERROR: No artifact matching 'mongodb-backup*' was found on run $BACKUP_RUN_ID."
             echo "This usually means either:"
             echo "  1. The artifact's retention period expired before this verification ran, or"
-            echo "  2. mongodb-backup.yml is uploading it under a different artifact name."
+            echo "  2. mongodb-backup.yml is uploading it under a name that doesn't start with 'mongodb-backup'."
             echo "Check the 'actions/upload-artifact' step in mongodb-backup.yml for the 'name:' and 'retention-days:' values."
             exit 1
           fi
 
-          IS_EXPIRED=$(echo "$ARTIFACT_JSON" | jq -r '.expired')
+          # If the backup workflow names artifacts per-run (e.g. mongodb-backup-<run number>),
+          # multiple matches can exist on a run; use the most recently created one.
+          SELECTED_ARTIFACT=$(echo "$ARTIFACTS_JSON" | jq -c 'sort_by(.created_at) | reverse | .[0]')
+          ARTIFACT_NAME=$(echo "$SELECTED_ARTIFACT" | jq -r '.name')
+          IS_EXPIRED=$(echo "$SELECTED_ARTIFACT" | jq -r '.expired')
+
+          if [ "$MATCH_COUNT" -gt 1 ]; then
+            echo "Found $MATCH_COUNT artifacts matching 'mongodb-backup*'; using the most recently created: $ARTIFACT_NAME"
+          else
+            echo "Using artifact: $ARTIFACT_NAME"
+          fi
+
           if [ "$IS_EXPIRED" = "true" ]; then
-            echo "ERROR: The 'mongodb-backup' artifact on run $BACKUP_RUN_ID has expired and can no longer be downloaded."
+            echo "ERROR: The '$ARTIFACT_NAME' artifact on run $BACKUP_RUN_ID has expired and can no longer be downloaded."
             echo "Consider increasing 'retention-days' on the upload step in mongodb-backup.yml, or running this verification sooner after each backup."
             exit 1
           fi
 
           gh run download "$BACKUP_RUN_ID" \
-            --name mongodb-backup \
+            --name "$ARTIFACT_NAME" \
             --dir backup-download
 
           ARCHIVE=$(find backup-download -type f -name "mongodb.archive.gz" -print -quit)
