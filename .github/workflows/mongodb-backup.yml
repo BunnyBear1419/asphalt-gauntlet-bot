@@ -4,12 +4,23 @@ on:
   schedule:
     - cron: "30 6 * * *"
   workflow_dispatch:
+    inputs:
+      simulate_failure:
+        description: "Simulate a failure to test the Discord alert (skips the real backup)"
+        type: boolean
+        default: false
 
 jobs:
   backup:
     runs-on: ubuntu-latest
 
     steps:
+      - name: (Test only) Simulate failure for alert testing
+        if: ${{ inputs.simulate_failure == true }}
+        run: |
+          echo "::error::Simulating a failure to test the Discord alert webhook. No real backup was attempted."
+          exit 1
+
       - name: Install MongoDB Database Tools
         run: |
           wget -q https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
