@@ -94,7 +94,6 @@ jobs:
           if-no-files-found: error
 
       - name: Notify ops channel on failure
-        if: failure()
         env:
           DISCORD_ALERT_WEBHOOK: ${{ secrets.DISCORD_ALERT_WEBHOOK }}
         run: |
