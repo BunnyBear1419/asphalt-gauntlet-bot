@@ -1419,8 +1419,6 @@ class VerificationView(discord.ui.View):
             return
         existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
         set_on_insert = {
-            "guild_id": str(self.guild_id),
-            "user_id": str(self.user_id),
             "career_wins": 0,
             "career_played": 0,
         }
