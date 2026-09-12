@@ -20,13 +20,12 @@ jobs:
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
+          set -e
+
           mkdir -p backup
 
-          mongodump \
-            --uri="$MONGO_URI" \
-            --archive=backup/mongodb.archive.gz \
-            --gzip \
-            --verbose
+          echo "Starting MongoDB dump..."
+          mongodump             --uri="$MONGO_URI"             --archive=backup/mongodb.archive.gz             --gzip             --verbose 2>&1
 
           echo "Backup file:"
           ls -lh backup/mongodb.archive.gz
@@ -36,9 +35,21 @@ jobs:
             exit 1
           fi
 
+          FILE_SIZE=$(stat -c%s backup/mongodb.archive.gz)
+          echo "Backup size: ${FILE_SIZE} bytes"
+
+          if [ "$FILE_SIZE" -le 112 ]; then
+            echo "ERROR: Backup contains only the MongoDB archive header."
+            echo "No database data appears to have been dumped."
+            exit 1
+          fi
+
+          echo "MongoDB backup archive created successfully."
+
       - name: Upload backup artifact
         uses: actions/upload-artifact@v4
         with:
           name: mongodb-backup-${{ github.run_number }}
           path: backup/mongodb.archive.gz
           retention-days: 90
+          if-no-files-found: error
