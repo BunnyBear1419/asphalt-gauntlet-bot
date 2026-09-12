@@ -217,6 +217,8 @@ def parse_lap_time(lap_str: str) -> int:
         return -1
     m, s = lap_str.split(":")
     sec, ms = s.split(".")
+    if int(sec) >= 60:
+        return -1
     return (int(m) * 60 * 1000) + (int(sec) * 1000) + int(ms)
 
 def has_5_course_defense(profile: dict) -> bool:
