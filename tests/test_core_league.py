@@ -99,24 +99,33 @@ class FakeCollection:
     def __init__(self):
         self.docs = {}
 
-    async def find_one(self, query):
-        doc = self.docs.get(query.get("_id"))
-        if doc is None:
-            return None
+    @staticmethod
+    def _matches(doc, query):
         for key, expected in query.items():
             if key == "_id":
                 continue
-            if doc.get(key) != expected:
-                return None
+            actual = doc.get(key)
+            if isinstance(expected, dict):
+                if "$in" in expected and actual not in expected["$in"]:
+                    return False
+                if "$ne" in expected and actual == expected["$ne"]:
+                    return False
+                if "$eq" in expected and actual != expected["$eq"]:
+                    return False
+            elif actual != expected:
+                return False
+        return True
+
+    async def find_one(self, query):
+        doc = self.docs.get(query.get("_id"))
+        if doc is None or not self._matches(doc, query):
+            return None
         return dict(doc)
 
     async def update_one(self, query, update):
         doc = self.docs.get(query.get("_id"))
-        if doc is None:
+        if doc is None or not self._matches(doc, query):
             return FakeResult(0)
-        for key, expected in query.items():
-            if doc.get(key) != expected:
-                return FakeResult(0)
         for key, value in update.get("$set", {}).items():
             doc[key] = value
         for key in update.get("$unset", {}):
