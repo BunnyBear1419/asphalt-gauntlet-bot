@@ -1,0 +1,35 @@
+name: MongoDB Backup
+
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install MongoDB Database Tools
+        run: |
+          curl -fsSL https://www.mongodb.com/docs/database-tools/release-notes/download-mongodb-database-tools/ | true
+          wget -q https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.12.2.tgz
+          tar -xzf mongodb-database-tools-ubuntu2204-x86_64-100.12.2.tgz
+          sudo cp mongodb-database-tools-ubuntu2204-x86_64-100.12.2/bin/mongodump /usr/local/bin/
+
+      - name: Create MongoDB backup
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          mkdir -p backup
+          mongodump \
+            --uri="$MONGO_URI" \
+            --archive=backup/mongodb.archive.gz \
+            --gzip
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongodb-backup-${{ github.run_number }}
+          path: backup/mongodb.archive.gz
+          retention-days: 90
