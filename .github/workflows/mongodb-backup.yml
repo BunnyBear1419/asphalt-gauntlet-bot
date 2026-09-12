@@ -12,10 +12,9 @@ jobs:
     steps:
       - name: Install MongoDB Database Tools
         run: |
-          curl -fsSL https://www.mongodb.com/docs/database-tools/release-notes/download-mongodb-database-tools/ | true
-          wget -q https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.12.2.tgz
-          tar -xzf mongodb-database-tools-ubuntu2204-x86_64-100.12.2.tgz
-          sudo cp mongodb-database-tools-ubuntu2204-x86_64-100.12.2/bin/mongodump /usr/local/bin/
+          wget -q https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
+          sudo apt install -y ./mongodb-database-tools-ubuntu2204-x86_64-100.18.0.deb
+          mongodump --version
 
       - name: Create MongoDB backup
         env:
