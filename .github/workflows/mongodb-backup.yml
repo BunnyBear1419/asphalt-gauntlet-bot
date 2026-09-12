@@ -26,7 +26,7 @@ jobs:
 
           echo "Starting MongoDB dump..."
 
-          mongodump             --uri="$MONGO_URI"             --db="asphalt_gauntlet"             --archive=backup/mongodb.archive.gz             --gzip             --verbose 2>&1 | tee backup/mongodump.log
+          mongodump             --uri="$MONGO_URI"             --db="myDiscordBot"             --archive=backup/mongodb.archive.gz             --gzip             --verbose 2>&1 | tee backup/mongodump.log
 
           echo "Checking dump result..."
 
