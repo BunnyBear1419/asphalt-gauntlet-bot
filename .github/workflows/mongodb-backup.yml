@@ -81,3 +81,34 @@ jobs:
           path: backup/mongodb.archive.gz
           retention-days: 90
           if-no-files-found: error
+
+      - name: Notify ops channel on failure
+        if: failure()
+        env:
+          DISCORD_ALERT_WEBHOOK: ${{ secrets.DISCORD_ALERT_WEBHOOK }}
+        run: |
+          set -e
+          if [ -z "$DISCORD_ALERT_WEBHOOK" ]; then
+            echo "DISCORD_ALERT_WEBHOOK secret not set; skipping notification."
+            exit 0
+          fi
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          PAYLOAD=$(jq -n \
+            --arg title "🔴 MongoDB Backup Failed" \
+            --arg desc "The **MongoDB Backup** workflow failed on \`${{ github.repository }}\`." \
+            --arg run_url "$RUN_URL" \
+            --arg run_number "${{ github.run_number }}" \
+            '{embeds: [{
+              title: $title,
+              description: $desc,
+              color: 15158332,
+              fields: [
+                {name: "Run", value: ("[#" + $run_number + " logs](" + $run_url + ")"), inline: true}
+              ]
+            }]}')
+
+          curl -sf -X POST "$DISCORD_ALERT_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
