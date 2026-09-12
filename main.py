@@ -250,7 +250,6 @@ class GauntletBot(commands.Bot):
         self.started_at = time.time()
 
     async def setup_hook(self):
-        logging.info("🟢 ALU GAUNTLET BUILD: DIAGNOSTICS-GUILD-FIX-01")
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
             try:
@@ -307,16 +306,28 @@ class GauntletBot(commands.Bot):
         await self.sync_application_commands()
         logging.info("🟢 Application slash commands synchronized globally.")
 
-        # Remove any stale guild-scoped slash-command overrides immediately at startup.
-        # All ALU Gauntlet commands are global, so guild overrides must be empty.
+        # setup_hook runs before READY, so self.guilds may still be empty.
+        # The per-guild stale-command cleanup is expensive (one Discord API
+        # call per server) and only needs to happen once ever, not on every
+        # boot — Discloud restarts this process on every GitHub push, and
+        # re-running a full guild-by-guild sync on every single restart risks
+        # tripping Discord's command-sync rate limit. We persist a flag so it
+        # only actually runs the first time (or after an admin resets it via
+        # `/sync full_cleanup:True`).
         try:
-            cleaned = await self.sync_guild_application_commands(force_fetch=True)
-            logging.info(
-                "🟢 GUILD COMMAND OVERRIDE CLEANUP COMPLETE — %d server command(s) synchronized.",
-                cleaned,
-            )
+            meta = await self.db.settings.find_one({"_id": "global_meta"})
+            if meta and meta.get("guild_overrides_cleaned"):
+                logging.info("🟢 Guild command override cleanup already completed previously; skipping on this boot.")
+            else:
+                cleaned = await self.sync_guild_application_commands(force_fetch=True)
+                await self.db.settings.update_one({"_id": "global_meta"}, {"$set": {"guild_overrides_cleaned": True}}, upsert=True)
+                logging.info(
+                    "🟢 GUILD COMMAND OVERRIDE CLEANUP COMPLETE — %d server command(s) synchronized.",
+                    cleaned,
+                )
         except Exception:
-            logging.exception("🔴 Startup guild command override cleanup failed.")
+            logging.exception("🔴 Startup guild command cleanup failed.")
+
         # Register persistent views so their buttons survive bot restarts
         self.add_view(TopLeaderboardView())
         logging.info("🟢 Persistent views registered.")
@@ -391,34 +402,43 @@ class GauntletBot(commands.Bot):
         return synced
 
     async def sync_guild_application_commands(self, force_fetch: bool = False):
-        """Remove stale guild-scoped overrides so Discord uses the current global commands."""
+        """Remove stale guild-scoped slash commands so Discord uses the global tree."""
         guilds = list(self.guilds)
         if force_fetch or not guilds:
-            # setup_hook can run before READY populates self.guilds. Fetch the guild
-            # list through Discord's REST API so cleanup does not depend on the cache.
-            guilds = [guild async for guild in self.fetch_guilds(limit=200)]
-
-        if not guilds:
-            logging.info("ℹ️ No guilds available for server-scoped command cleanup.")
-            return 0
+            try:
+                # setup_hook runs before the gateway READY event, so self.guilds can
+                # be empty. Fetch the bot's guild list through Discord REST instead.
+                guilds = [g async for g in self.fetch_guilds(limit=200)]
+            except Exception:
+                logging.exception("🔴 Could not fetch guild list for server command cleanup.")
+                if not guilds:
+                    return 0
 
         total = 0
         for guild in guilds:
             try:
                 guild_obj = discord.Object(id=int(guild.id))
-                # All ALU Gauntlet slash commands are registered globally. A stale
-                # guild-scoped command can override a newer global command with the
-                # same name. Clear the guild override entirely so Discord falls back
-                # to the freshly synchronized global command (including /diagnostics).
+
+                # All ALU Gauntlet slash commands are intended to be GLOBAL.
+                # A stale guild-scoped command with the same name takes precedence
+                # over the global command. Sending an empty guild command payload
+                # removes that override.
                 self.tree.clear_commands(guild=guild_obj)
                 synced = await self.tree.sync(guild=guild_obj)
                 total += len(synced)
+
                 logging.info(
                     "🧹 Cleared server-scoped command overrides for %s (%s): %d guild commands remain.",
-                    getattr(guild, "name", "unknown"), guild.id, len(synced)
+                    getattr(guild, "name", "Unknown Server"),
+                    guild.id,
+                    len(synced),
                 )
             except Exception:
-                logging.exception("🔴 Server command cleanup failed for %s (%s)", getattr(guild, "name", "unknown"), guild.id)
+                logging.exception(
+                    "🔴 Server command cleanup failed for %s (%s)",
+                    getattr(guild, "name", "Unknown Server"),
+                    guild.id,
+                )
         return total
 
     def setup_mock_db(self):
@@ -3154,21 +3174,31 @@ async def identity_cmd(interaction: discord.Interaction, username: str = None, a
 
 
 @bot.tree.command(name="sync", description="[Admin Only] Synchronize slash commands with Discord.")
-async def sync_cmd(interaction: discord.Interaction):
+@app_commands.describe(full_cleanup="Also clear stale per-server command overrides (slower; only needed occasionally, not on every deploy).")
+async def sync_cmd(interaction: discord.Interaction, full_cleanup: bool = False):
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
     try:
         synced = await bot.sync_application_commands()
+        description = f"Discord received **{len(synced)}** application commands from this bot."
+        cleaned_count = None
+        if full_cleanup:
+            cleaned_count = await bot.sync_guild_application_commands(force_fetch=True)
+            await bot.db.settings.update_one({"_id": "global_meta"}, {"$set": {"guild_overrides_cleaned": True}}, upsert=True)
+            description += f"\nAlso cleared stale per-server command overrides on **{cleaned_count}** server(s)."
         embed = discord.Embed(
             title="🔄 Slash Commands Synchronized",
-            description=f"Discord received **{len(synced)}** application commands from this bot.",
+            description=description,
             color=ASPHALT_VICTORY_COLOR,
         )
         await interaction.followup.send(embed=embed, ephemeral=True)
-        logging.info("Manual /sync completed by %s; %d commands synchronized.", interaction.user, len(synced))
-        await audit_admin_action(interaction, "Sync", f"Synchronized {len(synced)} global application commands.")
+        if cleaned_count is not None:
+            logging.info("Manual /sync (full_cleanup) completed by %s; %d commands synchronized, %d server override(s) cleared.", interaction.user, len(synced), cleaned_count)
+        else:
+            logging.info("Manual /sync completed by %s; %d commands synchronized.", interaction.user, len(synced))
+        await audit_admin_action(interaction, "Sync", f"Synchronized {len(synced)} global application commands." + (f" Cleared {cleaned_count} server override(s)." if cleaned_count is not None else ""))
     except Exception as exc:
         logging.exception("Manual /sync failed")
         await interaction.followup.send(f"❌ Slash command synchronization failed:\n`{exc}`", ephemeral=True)
@@ -3176,23 +3206,31 @@ async def sync_cmd(interaction: discord.Interaction):
 
 @bot.command(name="forcesync")
 @commands.has_permissions(administrator=True)
-async def force_command(ctx: commands.Context):
-    """Prefix recovery command. Use !forcesync to re-sync slash commands."""
+async def force_command(ctx: commands.Context, full_cleanup: str = None):
+    """Prefix recovery command. Use !forcesync to re-sync slash commands, or
+    !forcesync full to also clear stale per-server command overrides."""
     try:
         synced = await bot.sync_application_commands()
+        description_extra = ""
+        cleaned_count = None
+        if full_cleanup and full_cleanup.lower() in ("full", "cleanup", "true"):
+            cleaned_count = await bot.sync_guild_application_commands(force_fetch=True)
+            await bot.db.settings.update_one({"_id": "global_meta"}, {"$set": {"guild_overrides_cleaned": True}}, upsert=True)
+            description_extra = f"\n**Server overrides cleared:** `{cleaned_count}`"
         embed = discord.Embed(
             title="⚡ FORCE SYNC COMPLETE",
             description=(
                 f"Slash-command tree was manually synchronized with Discord.\n\n"
                 f"**Commands synced:** `{len(synced)}`\n"
                 f"**Requested by:** {ctx.author.mention}"
+                f"{description_extra}"
             ),
             color=ASPHALT_VICTORY_COLOR,
         )
         await ctx.send(embed=embed)
         logging.info("Manual !forcesync completed by %s; %d commands synchronized.", ctx.author, len(synced))
         if ctx.guild:
-            await dispatch_audit_log(str(ctx.guild.id), "🛡️ Admin Action — Force Sync", f"**Actor:** {ctx.author.mention} (`{ctx.author.id}`)\n**Channel:** <#{ctx.channel.id}>\nSynchronized {len(synced)} global application commands.", color=ASPHALT_ADMIN_COLOR)
+            await dispatch_audit_log(str(ctx.guild.id), "🛡️ Admin Action — Force Sync", f"**Actor:** {ctx.author.mention} (`{ctx.author.id}`)\n**Channel:** <#{ctx.channel.id}>\nSynchronized {len(synced)} global application commands." + (f" Cleared {cleaned_count} server override(s)." if cleaned_count is not None else ""), color=ASPHALT_ADMIN_COLOR)
     except Exception as exc:
         logging.exception("Manual !forcesync failed")
         await ctx.send(f"❌ Force sync failed: `{exc}`")
@@ -3408,6 +3446,14 @@ async def diagnostics_cmd(interaction: discord.Interaction):
                     counts[name] = await getattr(bot.db, name).count_documents({})
                 except Exception:
                     counts[name] = "?"
+            try:
+                meta = await bot.db.settings.find_one({"_id": "global_meta"})
+                if meta and meta.get("guild_overrides_cleaned"):
+                    runtime.append(("Guild Command Overrides", "🟢 Cleared (cached — skipped on future boots)"))
+                else:
+                    runtime.append(("Guild Command Overrides", "🟡 Not yet cleared — will run on next boot, or use `/sync full_cleanup:True`"))
+            except Exception:
+                runtime.append(("Guild Command Overrides", "🔴 Could not check status"))
         else:
             runtime.append(("MongoDB", "🔴 Not connected • mock DB active"))
     except Exception as exc:
@@ -3503,7 +3549,19 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 
 @bot.event
 async def on_ready():
-    """Remove stale guild-scoped command overrides after Discord populates the guild cache."""
+    """Fallback: remove stale guild-scoped command overrides if the setup_hook
+    attempt couldn't run (e.g. the guild cache was still empty at that point).
+    Skips entirely once the cleanup has already completed, so reconnects and
+    Discloud auto-redeploys don't repeatedly hammer Discord's per-guild sync
+    endpoint."""
+    try:
+        meta = await bot.db.settings.find_one({"_id": "global_meta"})
+        if meta and meta.get("guild_overrides_cleaned"):
+            return
+    except Exception:
+        logging.exception("🔴 Could not check guild command override cleanup status.")
+        return
+
     logging.info("🔄 Discord READY received; starting server-scoped command cleanup.")
 
     # Discord may populate the guild cache just after READY. Retry briefly so the
@@ -3515,7 +3573,8 @@ async def on_ready():
                 await asyncio.sleep(3)
                 continue
 
-            cleaned = await bot.sync_guild_application_commands()
+            cleaned = await bot.sync_guild_application_commands(force_fetch=not bool(bot.guilds))
+            await bot.db.settings.update_one({"_id": "global_meta"}, {"$set": {"guild_overrides_cleaned": True}}, upsert=True)
             logging.info(
                 "🟢 GUILD COMMAND OVERRIDE CLEANUP COMPLETE — %d server command(s) synchronized.",
                 cleaned,
