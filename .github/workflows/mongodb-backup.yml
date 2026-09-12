@@ -24,19 +24,48 @@ jobs:
 
           mkdir -p backup
 
+          # The bot uses the asphalt_gauntlet database.
+          # Remove any database name from MONGO_URI first so --db
+          # does not conflict with a database name already in the URI.
+          BACKUP_URI=$(python - <<'PY'
+          import os
+          from urllib.parse import urlsplit, urlunsplit
+
+          uri = os.environ["MONGO_URI"]
+          parts = urlsplit(uri)
+
+          if not parts.scheme or not parts.netloc:
+              raise SystemExit("ERROR: MONGO_URI is invalid.")
+
+          print(urlunsplit((
+              parts.scheme,
+              parts.netloc,
+              "",
+              parts.query,
+              parts.fragment,
+          )))
+          PY
+          )
+
           echo "Starting MongoDB dump..."
+          mongodump \
+            --uri="$BACKUP_URI" \
+            --db="asphalt_gauntlet" \
+            --archive=backup/mongodb.archive.gz \
+            --gzip \
+            --verbose 2>&1 | tee backup/mongodump.log
 
-          mongodump             --uri="$MONGO_URI"             --db="myDiscordBot"             --archive=backup/mongodb.archive.gz             --gzip             --verbose 2>&1 | tee backup/mongodump.log
-
-          echo "Checking dump result..."
-
-          if grep -q "dumping up to 0 collections in parallel" backup/mongodump.log; then
-            echo "ERROR: No collections were dumped from asphalt_gauntlet."
-            exit 1
-          fi
+          echo "Backup file:"
+          ls -lh backup/mongodb.archive.gz
 
           if [ ! -s backup/mongodb.archive.gz ]; then
             echo "ERROR: Backup archive is empty."
+            exit 1
+          fi
+
+          if grep -q "dumping up to 0 collections in parallel" backup/mongodump.log; then
+            echo "ERROR: No collections were dumped from asphalt_gauntlet."
+            echo "The backup would contain no database data."
             exit 1
           fi
 
