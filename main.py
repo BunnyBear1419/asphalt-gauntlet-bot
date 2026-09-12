@@ -250,6 +250,8 @@ class GauntletBot(commands.Bot):
         self.db = None
         self.mongo_client = None
         self.started_at = time.time()
+        self.database_available = False
+        self.database_mode = "uninitialized"
 
     async def startup_self_test(self):
         """Validate critical production dependencies before the bot starts background work."""
@@ -284,12 +286,19 @@ class GauntletBot(commands.Bot):
                 self.mongo_client = AsyncIOMotorClient(mongo_uri)
                 await self.mongo_client.admin.command('ping')
                 self.db = self.mongo_client.get_database("asphalt_gauntlet")
+                self.database_available = True
+                self.database_mode = "mongodb"
                 logging.info("🟢 Successfully connected to MongoDB Atlas Cloud Cluster.")
                 try:
                     await self.db.drivers.create_index([("guild_id", 1), ("season_registered", 1), ("season_number", 1), ("garage_pi", 1), ("elo", -1)])
                     await self.db.pending.create_index([("guild_id", 1), ("season_number", 1)])
                     await self.db.matches.create_index([("guild_id", 1), ("timestamp", -1)])
                     await self.db.active_challenges.create_index([("guild_id", 1), ("status", 1), ("challenger_id", 1)])
+                    await self.db.active_challenges.create_index([("guild_id", 1), ("status", 1), ("opponent_id", 1)])
+                    await self.db.matches.create_index([("guild_id", 1), ("challenger_id", 1), ("timestamp", -1)])
+                    await self.db.matches.create_index([("guild_id", 1), ("opponent_id", 1), ("timestamp", -1)])
+                    await self.db.reference_pending.create_index([("guild_id", 1), ("status", 1), ("submitted_at", -1)])
+                    await self.db.season_history.create_index([("guild_id", 1), ("season_number", -1)])
                     logging.info("🟢 Performance indexes verified.")
                 except Exception:
                     logging.exception("Could not create MongoDB performance indexes")
@@ -376,7 +385,7 @@ class GauntletBot(commands.Bot):
 
         # Restore pending reference-review buttons after a bot restart.
         try:
-            pending_refs = await self.db.reference_pending.find({"status": "pending"}).to_list(length=1000)
+            pending_refs = await self.db.reference_pending.find({"guild_id": {"$exists": True, "$nin": [None, ""]}, "status": "pending"}).to_list(length=1000)
             for ref in pending_refs:
                 self.add_view(ReferenceReviewView(ref["_id"]))
             if pending_refs:
@@ -473,7 +482,12 @@ class GauntletBot(commands.Bot):
         return total
 
     def setup_mock_db(self):
-        """Fallback local database simulation if MongoDB Atlas is offline."""
+        """Install a non-persistent database stub for diagnostics only.
+
+        Production commands must check database_available before writing data.
+        """
+        self.database_available = False
+        self.database_mode = "unavailable"
         class MockCollection:
             async def find_one(self, *args, **kwargs): return None
             async def update_one(self, *args, **kwargs): return None
@@ -640,6 +654,46 @@ async def before_seasonal_clock():
 # Bind the standalone task securely to our initialized client body
 bot.seasonal_clock_loop = seasonal_clock_loop_task
 bot.backup_loop = backup_loop
+
+def guild_record_id(guild_id: int | str, user_id: int | str) -> str:
+    """Return the canonical server-isolated user record ID."""
+    return f"{str(guild_id)}_{str(user_id)}"
+
+
+def interaction_guild_id(interaction: discord.Interaction) -> str | None:
+    """Return a normalized guild ID, or None when used in DMs."""
+    return str(interaction.guild_id) if interaction.guild_id is not None else None
+
+
+async def require_guild_context(interaction: discord.Interaction) -> str | None:
+    """Reject commands that require a Discord server when used in DMs."""
+    guild_id = interaction_guild_id(interaction)
+    if guild_id is None:
+        message = "❌ This command can only be used inside a Discord server."
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+        return None
+    return guild_id
+
+
+async def require_database(interaction: discord.Interaction) -> bool:
+    """Reject persistent-data commands when MongoDB is unavailable."""
+    if not getattr(bot, "database_available", False):
+        message = "⚠️ The database is currently unavailable. No changes were saved. Please try again later."
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+        return False
+    return True
+
+
+async def get_guild_match(match_id: str, guild_id: int | str):
+    """Retrieve a match only if it belongs to the requested guild."""
+    return await bot.db.matches.find_one({"_id": str(match_id), "guild_id": str(guild_id)})
+
 
 async def check_admin_privileges(interaction: discord.Interaction) -> bool:
     """Return True for Discord admins, configured admin-role members, or the bot owner."""
@@ -882,7 +936,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
     """Calculate ELO changes, apply to DB, save match record. Returns match data dict or None on error."""
     # A deterministic settlement id makes retries safe: the same active challenge can only create one match record.
     match_id = settlement_id or f"{guild_id}_{challenger_id}_{opponent_id}_{int(time.time())}"
-    existing_match = await bot.db.matches.find_one({"_id": match_id})
+    existing_match = await bot.db.matches.find_one({"_id": match_id, "guild_id": str(guild_id)})
     if existing_match:
         if existing_match.get("settlement_status") in (None, "completed"):
             return existing_match
@@ -890,7 +944,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         p1_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}"})
         p2_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}"})
         if p1_now and p2_now and p1_now.get("elo") == existing_match.get("challenger_elo_after") and p2_now.get("elo") == existing_match.get("defender_elo_after"):
-            await bot.db.matches.update_one({"_id": match_id, "settlement_status": "pending"}, {"$set": {"settlement_status": "completed"}})
+            await bot.db.matches.update_one({"_id": match_id, "guild_id": str(guild_id), "settlement_status": "pending"}, {"$set": {"settlement_status": "completed"}})
             existing_match["settlement_status"] = "completed"
             return existing_match
         logging.warning("Found incomplete match settlement %s with uncertain DB state; refusing duplicate scoring.", match_id)
@@ -987,7 +1041,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
                 async with session.start_transaction():
                     await _atomic_settlement(session)
         except Exception:
-            existing = await bot.db.matches.find_one({"_id": match_id})
+            existing = await bot.db.matches.find_one({"_id": match_id, "guild_id": str(guild_id)})
             if existing and existing.get("settlement_status") == "completed":
                 return existing
             # Transaction failure means MongoDB should have rolled back the writes.
@@ -999,7 +1053,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         try:
             await bot.db.matches.insert_one(reservation)
         except Exception:
-            existing = await bot.db.matches.find_one({"_id": match_id})
+            existing = await bot.db.matches.find_one({"_id": match_id, "guild_id": str(guild_id)})
             if existing and existing.get("settlement_status") == "completed":
                 return existing
             raise
@@ -1038,7 +1092,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         "settlement_status": "completed",
         "timestamp": time.time()
     }
-    await bot.db.matches.update_one({"_id": match_id, "settlement_status": "pending"}, {"$set": {k: v for k, v in match_record.items() if k != "_id"}})
+    await bot.db.matches.update_one({"_id": match_id, "guild_id": str(guild_id), "settlement_status": "pending"}, {"$set": {k: v for k, v in match_record.items() if k != "_id"}})
     return match_record
 
 
@@ -1051,7 +1105,7 @@ class MatchResultPostView(discord.ui.View):
 
     @discord.ui.button(label="Report Issue", style=discord.ButtonStyle.danger, custom_id="report_match")
     async def report_issue(self, interaction: discord.Interaction, button: discord.ui.Button):
-        match = await bot.db.matches.find_one({"_id": self.match_id})
+        match = await get_guild_match(self.match_id, interaction.guild_id)
         if not match:
             await interaction.response.send_message("❌ Match record not found.", ephemeral=True)
             return
@@ -1075,7 +1129,7 @@ class MatchResultPostView(discord.ui.View):
         report_emb.set_image(url=match["proof_url"])
         report_emb.set_footer(text=f"Match ID: {self.match_id}")
 
-        await bot.db.matches.update_one({"_id": self.match_id}, {"$set": {
+        await bot.db.matches.update_one({"_id": self.match_id, "guild_id": str(interaction.guild_id)}, {"$set": {
             "reported": True, "reported_by": str(interaction.user.id), "reported_at": time.time()
         }})
         await admin_chan.send(embed=report_emb, view=MatchRevertView(self.match_id))
@@ -1099,7 +1153,7 @@ class MatchRevertView(discord.ui.View):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
 
-        match = await bot.db.matches.find_one({"_id": self.match_id})
+        match = await get_guild_match(self.match_id, interaction.guild_id)
         if not match:
             await interaction.response.send_message("❌ Match record not found.", ephemeral=True)
             return
@@ -1155,7 +1209,7 @@ class MatchRevertView(discord.ui.View):
             "career_played": int(defender_before.get("career_played", p2.get("career_played", 0))),
             "streak": int(defender_before.get("streak", p2.get("streak", 0))),
         }})
-        await bot.db.matches.update_one({"_id": self.match_id}, {"$set": {"reverted": True, "reverted_at": time.time(), "reverted_by": str(interaction.user.id)}})
+        await bot.db.matches.update_one({"_id": self.match_id, "guild_id": str(interaction.guild_id)}, {"$set": {"reverted": True, "reverted_at": time.time(), "reverted_by": str(interaction.user.id)}})
 
         for item in self.children:
             item.disabled = True
@@ -1267,7 +1321,7 @@ class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
             await interaction.followup.send("❌ Could not process match result. One or both player profiles not found.", ephemeral=True)
             return
 
-        await bot.db.active_challenges.update_one({"_id": active["_id"], "status": "processing"}, {"$set": {"status": "completed", "completed_at": time.time(), "match_id": match_data["_id"]}})
+        await bot.db.active_challenges.update_one({"_id": active["_id"], "guild_id": str(guild_id), "status": "processing"}, {"$set": {"status": "completed", "completed_at": time.time(), "match_id": match_data["_id"]}})
 
         season_number = await get_current_season_number(guild_id)
         for i, course in enumerate(self.defense_courses):
@@ -1378,7 +1432,7 @@ class RegistrationDeclineModal(discord.ui.Modal, title="Specify Application Reje
         
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
         
         # Dispatch customized Direct Message notification alerting applicant
         guild = bot.get_guild(int(self.guild_id))
@@ -1452,7 +1506,7 @@ class VerificationView(discord.ui.View):
                 {"_id": f"{self.guild_id}_{self.user_id}"},
                 {"$set": {"season_defense_tracks": random.sample(ALU_TRACKS, 5)}}
             )
-        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
         cfg = await bot.db.settings.find_one({"_id": self.guild_id})
         
         guild = bot.get_guild(int(self.guild_id))
@@ -1897,7 +1951,7 @@ class ConfirmRemoveRacerView(discord.ui.View):
             await interaction.response.send_message("❌ Staff only.", ephemeral=True)
             return
         for item in self.children: item.disabled = True
-        await bot.db.drivers.delete_one({"_id": f"{self.guild_id}_{self.racer.id}"})
+        await bot.db.drivers.delete_one({"_id": f"{self.guild_id}_{self.racer.id}", "guild_id": str(self.guild_id)})
         await interaction.response.edit_message(content=f"🧹 **Purged:** {self.racer.name}'s driver profile was permanently removed.", view=self)
         await dispatch_audit_log(self.guild_id, "🧹 Driver Purged", f"Staff {interaction.user.mention} permanently removed <@{self.racer.id}>'s driver profile.", color=0xe74c3c)
         self.stop()
@@ -2294,7 +2348,7 @@ async def submitmatch_cmd(interaction: discord.Interaction, lap1: str, lap2: str
     match_data=await process_match_result(guild_id,user_id,str(active["opponent_id"]),defense,challenger_times,proof,active.get("defender_proof_url"),interaction.channel_id,settlement_id=f"{active['_id']}:match")
     if not match_data:
         await release_active_challenge(active["_id"]); await interaction.followup.send("❌ Could not process this match.",ephemeral=True); return
-    await bot.db.active_challenges.update_one({"_id":active["_id"]},{"$set":{"status":"completed","completed_at":time.time(),"match_id":match_data["_id"]}})
+    await bot.db.active_challenges.update_one({"_id":active["_id"], "guild_id": str(guild_id)},{"$set":{"status":"completed","completed_at":time.time(),"match_id":match_data["_id"]}})
     season=current_season
     for i,c in enumerate(defense):
         x=dict(challenger_times[i]); x["track"]=c["track"]
@@ -2677,11 +2731,11 @@ class ReferenceDeclineModal(discord.ui.Modal, title="Decline Reference Submissio
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
-        sub = await bot.db.reference_pending.find_one({"_id": self.submission_id})
+        sub = await bot.db.reference_pending.find_one({"_id": self.submission_id, "guild_id": str(interaction.guild_id)})
         if not sub or sub.get("status") != "pending":
             await interaction.response.send_message("❌ Reference submission is no longer pending.", ephemeral=True)
             return
-        await bot.db.reference_pending.update_one({"_id": self.submission_id}, {"$set": {
+        await bot.db.reference_pending.update_one({"_id": self.submission_id, "guild_id": str(interaction.guild_id)}, {"$set": {
             "status": "declined", "declined_by": str(interaction.user.id),
             "reason": self.reason_input.value, "decided_at": time.time()
         }})
@@ -2710,7 +2764,7 @@ class ReferenceReviewView(discord.ui.View):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
-        sub = await bot.db.reference_pending.find_one({"_id": self.submission_id})
+        sub = await bot.db.reference_pending.find_one({"_id": self.submission_id, "guild_id": str(interaction.guild_id)})
         if not sub or sub.get("status", "pending") != "pending":
             await interaction.response.send_message("❌ This reference is no longer pending.", ephemeral=True)
             return
@@ -2725,7 +2779,7 @@ class ReferenceReviewView(discord.ui.View):
             "submitted_by": sub["user_id"], "guild_id": sub["guild_id"],
             "approved_by": str(interaction.user.id), "approved_at": time.time(),
         }, upsert=True)
-        await bot.db.reference_pending.update_one({"_id": self.submission_id}, {"$set": {
+        await bot.db.reference_pending.update_one({"_id": self.submission_id, "guild_id": str(interaction.guild_id)}, {"$set": {
             "status": "approved", "approved_by": str(interaction.user.id), "decided_at": time.time()
         }})
         for item in self.children:
