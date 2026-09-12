@@ -387,7 +387,7 @@ class GauntletBot(commands.Bot):
         try:
             pending_refs = await self.db.reference_pending.find({"guild_id": {"$exists": True, "$nin": [None, ""]}, "status": "pending"}).to_list(length=1000)
             for ref in pending_refs:
-                self.add_view(ReferenceReviewView(ref["_id"]))
+                self.add_view(ReferenceReviewView(ref["_id"], ref["guild_id"]))
             if pending_refs:
                 logging.info("🟢 Restored %d pending reference-review view(s).", len(pending_refs))
         except Exception:
@@ -690,13 +690,24 @@ async def require_database(interaction: discord.Interaction) -> bool:
     return True
 
 
+def interaction_matches_view_guild(interaction: discord.Interaction, guild_id: str | int) -> bool:
+    """Ensure a persistent component can only be used in the guild that created it."""
+    return interaction.guild_id is not None and str(interaction.guild_id) == str(guild_id)
+
+
 async def get_guild_match(match_id: str, guild_id: int | str):
     """Retrieve a match only if it belongs to the requested guild."""
     return await bot.db.matches.find_one({"_id": str(match_id), "guild_id": str(guild_id)})
 
 
 async def check_admin_privileges(interaction: discord.Interaction) -> bool:
-    """Return True for Discord admins, configured admin-role members, or the bot owner."""
+    """Return True for Discord admins, configured admin-role members, or the bot owner.
+
+    Administrative authorization is only meaningful inside a Discord guild.
+    Reject DMs before touching guild permissions/configuration.
+    """
+    if interaction.guild_id is None or interaction.guild is None:
+        return False
     if interaction.user.guild_permissions.administrator:
         return True
 
@@ -1197,13 +1208,13 @@ class MatchRevertView(discord.ui.View):
             await interaction.response.send_message("❌ This legacy match lacks safe rollback snapshots. Use a manual staff adjustment.", ephemeral=True)
             return
         defender_before = match.get("defender_before", {})
-        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['challenger_id']}"}, {"$set": {
+        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['challenger_id']}", "guild_id": str(match["guild_id"])}, {"$set": {
             "elo": new_challenger_elo,
             "career_wins": int(challenger_before.get("career_wins", p1.get("career_wins", 0))),
             "career_played": int(challenger_before.get("career_played", p1.get("career_played", 0))),
             "streak": int(challenger_before.get("streak", p1.get("streak", 0))),
         }})
-        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['opponent_id']}"}, {"$set": {
+        await bot.db.drivers.update_one({"_id": f"{match['guild_id']}_{match['opponent_id']}", "guild_id": str(match["guild_id"])}, {"$set": {
             "elo": new_defender_elo,
             "career_wins": int(defender_before.get("career_wins", p2.get("career_wins", 0))),
             "career_played": int(defender_before.get("career_played", p2.get("career_played", 0))),
@@ -1384,6 +1395,9 @@ class DefenseView(discord.ui.View):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
+            return
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
@@ -1410,6 +1424,9 @@ class DefenseView(discord.ui.View):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
+            return
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
@@ -1431,6 +1448,12 @@ class RegistrationDeclineModal(discord.ui.Modal, title="Specify Application Reje
         self.user_id, self.guild_id = str(user_id), str(guild_id)
         
     async def on_submit(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
+            return
         await interaction.response.defer()
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
         
@@ -1461,6 +1484,9 @@ class VerificationView(discord.ui.View):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
+            return
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.defer()
@@ -1479,7 +1505,7 @@ class VerificationView(discord.ui.View):
         if not existing:
             set_on_insert.update({"elo": 1000, "streak": 0})
         await bot.db.drivers.update_one(
-            {"_id": f"{str(self.guild_id)}_{str(self.user_id)}"},
+            {"_id": f"{str(self.guild_id)}_{str(self.user_id)}", "guild_id": str(self.guild_id)},
             {
                 "$set": {
                     "guild_id": str(self.guild_id),
@@ -1503,7 +1529,7 @@ class VerificationView(discord.ui.View):
         refreshed = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
         if not refreshed.get("season_defense_tracks") or int(refreshed.get("season_number", 0)) != season_number:
             await bot.db.drivers.update_one(
-                {"_id": f"{self.guild_id}_{self.user_id}"},
+                {"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)},
                 {"$set": {"season_defense_tracks": random.sample(ALU_TRACKS, 5)}}
             )
         await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}", "guild_id": str(self.guild_id)})
@@ -1549,6 +1575,9 @@ class VerificationView(discord.ui.View):
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
             return
         # Fire modal frame allowing typing rejection specifications
         await interaction.response.send_modal(RegistrationDeclineModal(self.user_id, self.guild_id))
@@ -2703,6 +2732,7 @@ async def send_driver_best_time(interaction: discord.Interaction, driver: discor
     guild_id = str(interaction.guild_id)
     rec = await bot.db.lap_times.find_one({"_id": f"{guild_id}_{driver.id}_{track}", "guild_id": str(guild_id)})
     global_id = re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")
+    # map_records is intentionally global across guilds: universal track record.
     global_rec = await bot.db.map_records.find_one({"_id": global_id})
     embed = discord.Embed(title=f"⏱️ {driver.display_name} — {track}", color=ASPHALT_THEME_COLOR)
     if rec:
@@ -2723,13 +2753,17 @@ async def send_driver_best_time(interaction: discord.Interaction, driver: discor
 class ReferenceDeclineModal(discord.ui.Modal, title="Decline Reference Submission"):
     reason_input = discord.ui.TextInput(label="Reason", style=discord.TextStyle.paragraph, required=True, max_length=400)
 
-    def __init__(self, submission_id: str):
+    def __init__(self, submission_id: str, guild_id: str):
         super().__init__()
         self.submission_id = submission_id
+        self.guild_id = str(guild_id)
 
     async def on_submit(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+            return
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
             return
         sub = await bot.db.reference_pending.find_one({"_id": self.submission_id, "guild_id": str(interaction.guild_id)})
         if not sub or sub.get("status") != "pending":
@@ -2753,9 +2787,10 @@ class ReferenceDeclineModal(discord.ui.Modal, title="Decline Reference Submissio
         await dispatch_audit_log(sub["guild_id"], "🎥 Reference Declined", f"Staff {interaction.user.mention} declined <@{sub['user_id']}> reference for `{sub['track']}`. Reason: {self.reason_input.value}", color=ASPHALT_DEFEAT_COLOR)
 
 class ReferenceReviewView(discord.ui.View):
-    def __init__(self, submission_id: str):
+    def __init__(self, submission_id: str, guild_id: str):
         super().__init__(timeout=None)
         self.submission_id = submission_id
+        self.guild_id = str(guild_id)
         self.children[0].custom_id = f"reference_approve:{submission_id}"
         self.children[1].custom_id = f"reference_decline:{submission_id}"
 
@@ -2764,11 +2799,15 @@ class ReferenceReviewView(discord.ui.View):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
+            return
         sub = await bot.db.reference_pending.find_one({"_id": self.submission_id, "guild_id": str(interaction.guild_id)})
         if not sub or sub.get("status", "pending") != "pending":
             await interaction.response.send_message("❌ This reference is no longer pending.", ephemeral=True)
             return
         ref_id = re.sub(r"[^a-z0-9]+", "_", sub["track"].lower()).strip("_")
+        # map_references is intentionally global across guilds: universal approved reference.
         current = await bot.db.map_references.find_one({"_id": ref_id})
         if current and int(sub["ms"]) >= int(current.get("best_ms", 10**18)):
             await interaction.response.send_message("❌ This lap is not faster than the current approved reference.", ephemeral=True)
@@ -2795,7 +2834,10 @@ class ReferenceReviewView(discord.ui.View):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
-        await interaction.response.send_modal(ReferenceDeclineModal(self.submission_id))
+        if not interaction_matches_view_guild(interaction, self.guild_id):
+            await interaction.response.send_message("❌ This action belongs to a different server.", ephemeral=True)
+            return
+        await interaction.response.send_modal(ReferenceDeclineModal(self.submission_id, self.guild_id))
 
 @bot.tree.command(name="maps", description="View a Gauntlet map and its two official routes.")
 @app_commands.describe(map_name="Map to view")
@@ -2901,7 +2943,7 @@ async def add_reference_cmd(interaction: discord.Interaction, map_name: str, lap
         return
     guild_id = str(interaction.guild_id)
     season = await get_current_season_number(guild_id)
-    submitter = await bot.db.drivers.find_one({"_id": f"{guild_id}_{interaction.user.id}"})
+    submitter = await bot.db.drivers.find_one({"_id": f"{guild_id}_{interaction.user.id}", "guild_id": guild_id})
     if not submitter or not submitter.get("season_registered") or int(submitter.get("season_number", 0)) != season:
         await interaction.followup.send(f"❌ You must be registered for Season {season} before submitting a reference lap.", ephemeral=True)
         return
@@ -2919,7 +2961,7 @@ async def add_reference_cmd(interaction: discord.Interaction, map_name: str, lap
     emb = discord.Embed(title="🎥 New Reference Lap Submission", description=f"<@{interaction.user.id}> submitted a potential new reference for **{map_name}**.\n\n**Lap:** `{lap_time}`\n**Video:** {video_reference}", color=ASPHALT_ADMIN_COLOR)
     if current:
         emb.add_field(name="Current Approved Lap", value=f"`{current['best_lap_time']}`", inline=True)
-    await review_chan.send(embed=emb, view=ReferenceReviewView(submission_id))
+    await review_chan.send(embed=emb, view=ReferenceReviewView(submission_id, guild_id))
     await interaction.followup.send("📥 Reference submitted to staff for approval. If approved, it replaces the current reference for that map.", ephemeral=True)
 
 @bot.tree.command(name="pending", description="[Staff Only] Show all drivers awaiting current-season approval.")
@@ -2993,7 +3035,7 @@ async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member)
     # /delete_id is an ACTIVE REGISTRATION reset, not a career wipe. Keep the
     # driver document so career wins/matches remain available on their profile.
     await bot.db.drivers.update_one(
-        {"_id": f"{interaction.guild_id}_{racer.id}"},
+        {"_id": f"{interaction.guild_id}_{racer.id}", "guild_id": str(interaction.guild_id)},
         {"$set": {"season_registered": False}, "$unset": {
             "game_id": "", "garage_pi": "", "defense_locked": "",
             "pending_tracks": "", "pending_is_change": "", "defense_review_pending": "",
