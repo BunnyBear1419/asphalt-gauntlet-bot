@@ -158,6 +158,7 @@ jobs:
             --uri="$BACKUP_URI" \
             --archive="$BACKUP_ARCHIVE" \
             --gzip \
+            --nsInclude="asphalt_gauntlet.*" \
             --nsFrom="asphalt_gauntlet.*" \
             --nsTo="${TEST_DB}.*" \
             --verbose
