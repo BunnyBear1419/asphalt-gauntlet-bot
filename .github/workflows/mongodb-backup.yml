@@ -25,8 +25,8 @@ jobs:
           mkdir -p backup
 
           # The bot uses the asphalt_gauntlet database.
-          # Remove any database name from MONGO_URI first so --db
-          # does not conflict with a database name already in the URI.
+          # Strip the database name from MONGO_URI while preserving
+          # query options. MongoDB requires "/" before a query string.
           BACKUP_URI=$(python - <<'PY'
           import os
           from urllib.parse import urlsplit, urlunsplit
@@ -40,7 +40,7 @@ jobs:
           print(urlunsplit((
               parts.scheme,
               parts.netloc,
-              "",
+              "/",
               parts.query,
               parts.fragment,
           )))
