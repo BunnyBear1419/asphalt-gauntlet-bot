@@ -2458,7 +2458,7 @@ async def season_start_cmd(interaction: discord.Interaction):
     )
     season_number = int(state.get("season_number", 1))
     await announce_season_start(gid, season_number, reason="early")
-    await interaction.followup.send(f"✅ **Season {season_number} started early.** The original scheduled end time remains unchanged, so the season will still automatically end at the scheduled end time.", ephemeral=True)
+    await interaction.followup.send(f"✅ **Season {season_number} started early.** The scheduled end time remains unchanged, so the season will still automatically end at the scheduled end time.", ephemeral=True)
     await audit_admin_action(interaction, "Season Start", f"Explicitly started Season {season_number}.")
 
 @bot.tree.command(name="seasonstatus", description="[Staff Only] Show the current season schedule and automation state.")
