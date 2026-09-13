@@ -229,3 +229,19 @@ def test_help_menu_is_organized_into_player_and_admin_categories():
         assert category in source
     for command in ("/whatnext", "/mychallenges", "/submitmatch", "/seasonstatus", "/admin_backups", "/admin_restore", "/missingdefense"):
         assert command in source
+
+
+def test_player_reminder_dms_are_72h_and_opt_out():
+    source = Path(main.__file__).read_text(encoding="utf-8")
+    assert "72 * 60 * 60" in source
+    assert 'd.get("dm_notifications_enabled", True) is False' in source
+    assert 'challenger.get("dm_notifications_enabled", True) is False' in source
+
+
+def test_notifications_command_controls_reminder_dms():
+    source = Path(main.__file__).read_text(encoding="utf-8")
+    assert '@bot.tree.command(name="notifications"' in source
+    assert 'value="on"' in source
+    assert 'value="off"' in source
+    assert 'dm_notifications_enabled' in source
+    assert "Server-wide season announcements are not affected." in source
