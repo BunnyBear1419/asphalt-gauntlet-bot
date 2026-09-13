@@ -217,3 +217,15 @@ def test_automatic_rollover_announces_new_season_and_preserves_schedule_duration
     assert 'season_duration = previous_end - previous_start' in source
     assert 'await announce_season_start(guild_id, next_season, reason="rollover")' in source
     assert '"ends_at": now + season_duration' in source
+
+
+def test_help_menu_is_organized_into_player_and_admin_categories():
+    source = Path(main.__file__).read_text(encoding="utf-8")
+    for category in (
+        'value="getting_started"', 'value="defense"', 'value="racing"',
+        'value="rankings"', 'value="account"', 'value="admin_setup"',
+        'value="admin_seasons"', 'value="admin_players"', 'value="admin_tools"',
+    ):
+        assert category in source
+    for command in ("/whatnext", "/mychallenges", "/submitmatch", "/seasonstatus", "/admin_backups", "/admin_restore", "/missingdefense"):
+        assert command in source
