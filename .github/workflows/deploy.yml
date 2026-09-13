@@ -1,19 +1,4 @@
-name: Deploy to Discloud
 
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
-
-      - name: Deploy to Discloud Container
-        uses: discloud/deploy-action@v1
-        with:
-          token: ${{ secrets.DISCLOUD_TOKEN }}
+concurrency:
+  group: discloud-production-deploy
+  cancel-in-progress: false
