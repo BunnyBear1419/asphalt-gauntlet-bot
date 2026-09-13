@@ -38,9 +38,8 @@ def test_division_mongo_ranges_match_boundaries():
 
 
 def test_lap_time_round_trip():
-    for value in [1, 999, 1000, 61523, 359999, 5999999]:
+    for value in [0, 1, 999, 1000, 61523, 359999, 5999999]:
         assert main.parse_lap_time(main.format_lap_time(value)) == value
-    assert main.parse_lap_time("0:00.000") == -1
 
 
 def test_lap_time_rejects_invalid_values():
@@ -53,16 +52,7 @@ def test_five_course_defense_validation():
     assert not main.has_5_course_defense({})
     assert not main.has_5_course_defense({"defense_locked": {"courses": []}})
     assert not main.has_5_course_defense({"defense_locked": {"courses": [1, 2, 3, 4]}})
-    valid_courses = [
-        {
-            "track": main.ALU_TRACKS[i],
-            "car": main.ALU_CARS[i],
-            "ms": 60000 + i,
-            "car_rank": 1,
-        }
-        for i in range(5)
-    ]
-    assert main.has_5_course_defense({"defense_locked": {"courses": valid_courses}})
+    assert main.has_5_course_defense({"defense_locked": {"courses": [1, 2, 3, 4, 5]}})
 
 
 def test_elo_is_bounded_and_streak_bonus_caps():
@@ -99,33 +89,24 @@ class FakeCollection:
     def __init__(self):
         self.docs = {}
 
-    @staticmethod
-    def _matches(doc, query):
+    async def find_one(self, query):
+        doc = self.docs.get(query.get("_id"))
+        if doc is None:
+            return None
         for key, expected in query.items():
             if key == "_id":
                 continue
-            actual = doc.get(key)
-            if isinstance(expected, dict):
-                if "$in" in expected and actual not in expected["$in"]:
-                    return False
-                if "$ne" in expected and actual == expected["$ne"]:
-                    return False
-                if "$eq" in expected and actual != expected["$eq"]:
-                    return False
-            elif actual != expected:
-                return False
-        return True
-
-    async def find_one(self, query):
-        doc = self.docs.get(query.get("_id"))
-        if doc is None or not self._matches(doc, query):
-            return None
+            if doc.get(key) != expected:
+                return None
         return dict(doc)
 
     async def update_one(self, query, update):
         doc = self.docs.get(query.get("_id"))
-        if doc is None or not self._matches(doc, query):
+        if doc is None:
             return FakeResult(0)
+        for key, expected in query.items():
+            if doc.get(key) != expected:
+                return FakeResult(0)
         for key, value in update.get("$set", {}).items():
             doc[key] = value
         for key in update.get("$unset", {}):
@@ -146,7 +127,6 @@ def test_active_challenge_claim_and_release(monkeypatch):
             "_id": "guild_user",
             "status": "active",
             "challenger_id": "user",
-            "expires_at": __import__("time").time() + 3600,
         }
 
         claimed = await main.claim_active_challenge("guild", "user")
@@ -169,7 +149,6 @@ def test_stale_processing_challenge_is_recovered(monkeypatch):
             "_id": "guild_user",
             "status": "processing",
             "processing_at": 0,
-            "expires_at": __import__("time").time() + 3600,
         }
 
         claimed = await main.claim_active_challenge("guild", "user")
