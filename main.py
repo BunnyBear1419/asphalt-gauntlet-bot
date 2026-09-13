@@ -3738,10 +3738,23 @@ class HelpCategorySelect(discord.ui.Select):
         options = [
             discord.SelectOption(label="Overview", description="What the bot does and the basic flow.", emoji="📘", value="overview"),
             discord.SelectOption(label="Rules", description="Match, defense, ELO and division rules.", emoji="📜", value="rules"),
-            discord.SelectOption(label="Player Commands", description="Quick command reference.", emoji="🎮", value="player"),
-            discord.SelectOption(label="Admin Commands", description="Staff command reference.", emoji="🛠️", value="admin"),
+            discord.SelectOption(label="Getting Started", description="Register and check what to do next.", emoji="🚦", value="getting_started"),
+            discord.SelectOption(label="Defense", description="Set up and manage your defense.", emoji="🛡️", value="defense"),
+            discord.SelectOption(label="Racing", description="Challenges and match submissions.", emoji="⚔️", value="racing"),
+            discord.SelectOption(label="Rankings & Stats", description="Profiles, leaderboards, times and references.", emoji="🏆", value="rankings"),
+            discord.SelectOption(label="Account", description="Your status and account deletion.", emoji="👤", value="account"),
         ]
+        if is_admin:
+            options.append(discord.SelectOption(label="Admin — League Setup", description="Server configuration and bot settings.", emoji="⚙️", value="admin_setup"))
+            options.append(discord.SelectOption(label="Admin — Season Control", description="Schedule, start, end and manage seasons.", emoji="🏁", value="admin_seasons"))
+            options.append(discord.SelectOption(label="Admin — Players", description="Registrations, drivers and defenses.", emoji="👥", value="admin_players"))
+            options.append(discord.SelectOption(label="Admin — Data & Tools", description="Backups, cleanup, logs and diagnostics.", emoji="🗃️", value="admin_tools"))
         super().__init__(placeholder="Choose a help section…", min_values=1, max_values=1, options=options)
+
+    @staticmethod
+    def _command_field(embed, name, commands, inline=False):
+        value = "\n".join(f"{cmd} — {desc}" for cmd, desc in commands)
+        embed.add_field(name=name, value=value, inline=inline)
 
     async def callback(self, interaction: discord.Interaction):
         category = self.values[0]
@@ -3756,6 +3769,7 @@ class HelpCategorySelect(discord.ui.Select):
             embed.add_field(name="⚔️ Challenge", value="Race the same 5 courses with your own cars and ratings. Fastest time wins each race; 3/5 wins the match.", inline=False)
             embed.add_field(name="📈 Progress", value="Garage PI = division • ELO = standings • career stats carry between seasons", inline=False)
             embed.add_field(name="🔄 Defense changes", value="`/changedefense` can replace your defense once per 24 hours after approval.", inline=False)
+            embed.add_field(name="💡 Need help?", value="Use `/whatnext` anytime you are unsure what to do next.", inline=False)
 
         elif category == "rules":
             embed.title = "📜 ALU GAUNTLET — RULES"
@@ -3768,53 +3782,125 @@ class HelpCategorySelect(discord.ui.Select):
             embed.add_field(name="📅 Seasons", value="Career wins, matches and history stay. Garage registration and defense reset each season.", inline=False)
             embed.add_field(name="🤝 Fair play", value="Submit accurate times and required proof. No edited or unsupported results.", inline=False)
 
-        elif category == "player":
-            embed.title = "🎮 PLAYER COMMANDS"
-            embed.description = "Quick reference — use the command for the full form/options."
-            embed.add_field(name="📝 `/register`", value="Register your Player ID, PI, controls and proof.", inline=True)
-            embed.add_field(name="📊 `/mystatus`", value="Check registration status.", inline=True)
-            embed.add_field(name="🛡️ `/setdefense`", value="Get your season's 5 defense routes.", inline=True)
-            embed.add_field(name="📤 `/submitdefense`", value="Submit 5 cars, ratings, times and proof.", inline=True)
-            embed.add_field(name="👁️ `/mydefense`", value="View your approved defense.", inline=True)
-            embed.add_field(name="⚔️ `/challenge`", value="Choose an opponent and start a match.", inline=True)
-            embed.add_field(name="🔄 `/changedefense`", value="Submit a replacement defense after cooldown.", inline=True)
-            embed.add_field(name="👤 `/profile`", value="View ELO, stats and defense.", inline=True)
-            embed.add_field(name="🗑️ `/delete_me`", value="Permanently delete your league data.", inline=True)
-            embed.add_field(name="🏆 `/leaderboard`", value="View division standings.", inline=True)
-            embed.add_field(name="🥇 `/top`", value="View league leaders.", inline=True)
-            embed.add_field(name="🗺️ `/maps`", value="View map and routes.", inline=True)
-            embed.add_field(name="⏱️ `/besttime`", value="View a driver's best map time.", inline=True)
-            embed.add_field(name="🎥 `/reference`", value="View the approved reference lap.", inline=True)
-            embed.add_field(name="📤 `/add_reference`", value="Submit a faster reference for staff review.", inline=True)
+        elif category == "getting_started":
+            embed.title = "🚦 GETTING STARTED"
+            embed.description = "Start here if you are a new or returning driver."
+            self._command_field(embed, "📝 Registration", [
+                ("`/register`", "Register your Player ID, PI, controls and proof."),
+                ("`/mystatus`", "Check your registration and approval status."),
+                ("`/whatnext`", "Show the next required Gauntlet step for you."),
+            ])
+            embed.add_field(name="Quick path", value="`/register` → staff approval → `/setdefense` → `/submitdefense` → `/challenge`", inline=False)
 
-        else:
+        elif category == "defense":
+            embed.title = "🛡️ DEFENSE COMMANDS"
+            embed.description = "Build, submit and manage your 5-course defense."
+            self._command_field(embed, "Defense", [
+                ("`/setdefense`", "Get your season's 5 defense routes."),
+                ("`/submitdefense`", "Submit 5 cars, ratings, times and proof."),
+                ("`/mydefense`", "View your approved defense."),
+                ("`/changedefense`", "Submit a replacement defense after cooldown."),
+            ])
+
+        elif category == "racing":
+            embed.title = "⚔️ RACING COMMANDS"
+            embed.description = "Find an opponent, manage your matches and submit results."
+            self._command_field(embed, "Racing", [
+                ("`/challenge`", "Choose an opponent and start a match."),
+                ("`/mychallenges`", "View your active and recent challenges."),
+                ("`/submitmatch`", "Submit your completed match results and proof."),
+            ])
+            embed.add_field(name="🏁 Match format", value="5 races per match • fastest valid time wins each race • first to 3 wins the match.", inline=False)
+
+        elif category == "rankings":
+            embed.title = "🏆 RANKINGS & STATS"
+            embed.description = "See your performance, league standings and reference times."
+            self._command_field(embed, "Stats", [
+                ("`/profile`", "View ELO, stats and defense."),
+                ("`/leaderboard`", "View division standings."),
+                ("`/top`", "View league leaders."),
+                ("`/besttime`", "View a driver's best map time."),
+                ("`/maps`", "View available maps and routes."),
+            ])
+            self._command_field(embed, "References", [
+                ("`/reference`", "View the approved reference lap."),
+                ("`/add_reference`", "Submit a faster reference for staff review."),
+            ])
+
+        elif category == "account":
+            embed.title = "👤 ACCOUNT"
+            embed.description = "Manage your own league status and data."
+            self._command_field(embed, "Account", [
+                ("`/mystatus`", "Check your registration status."),
+                ("`/profile`", "View your ELO, stats and defense."),
+                ("`/delete_me`", "Permanently delete your league data from this server."),
+            ])
+            embed.add_field(name="⚠️ Important", value="`/delete_me` is permanent. If you register again, you start as a new player.", inline=False)
+
+        elif category == "admin_setup":
             if not self.is_admin:
                 await interaction.response.send_message("❌ Admin Commands are only available to authorized staff.", ephemeral=True)
                 return
-            embed.title = "🛠️ ADMIN COMMANDS"
-            embed.description = "Staff-only command reference."
-            admin_items = [
-                ("`/setup`", "Configure league channels and roles."),
+            embed.title = "⚙️ ADMIN — LEAGUE SETUP"
+            embed.description = "Configure the server and bot identity."
+            self._command_field(embed, "Setup", [
+                ("`/setup`", "Configure league channels, roles and server settings."),
+                ("`/timezone`", "Set the server timezone used for season scheduling."),
                 ("`/setimage`", "Change bot images."),
-                ("`/season_schedule`", "Set season dates."),
-                ("`/timezone`", "Set server timezone for season scheduling."),
-                ("`/seasonend`", "End season; next season requires an explicit staff start."),
-                ("`/seasonstart`", "Start a scheduled season early; its scheduled end still applies."),
-                ("`/seasonauto`", "Choose whether scheduled endings automatically start the next season."),
+                ("`/identity`", "Change the bot's username or avatar."),
+            ])
+
+        elif category == "admin_seasons":
+            if not self.is_admin:
+                await interaction.response.send_message("❌ Admin Commands are only available to authorized staff.", ephemeral=True)
+                return
+            embed.title = "🏁 ADMIN — SEASON CONTROL"
+            embed.description = "Everything staff needs to schedule and control seasons."
+            self._command_field(embed, "Season lifecycle", [
+                ("`/season_schedule`", "Set the automatic start and end dates/times."),
+                ("`/seasonstart`", "Start the scheduled season early while preserving its scheduled end."),
+                ("`/seasonend`", "End the current season early; the next season will not auto-start."),
+                ("`/seasonauto`", "Turn automatic next-season rollover ON or OFF."),
+                ("`/seasonstatus`", "View the current season state and schedule."),
+                ("`/seasonreset`", "Reset season numbering or perform a full pre-launch/test reset."),
+                ("`/seasonhistory`", "View completed season archives."),
+            ])
+            embed.add_field(name="💡 How it works", value="Scheduled start/end always follow `/season_schedule`. `/seasonauto` only controls whether a scheduled ending automatically starts the next season.", inline=False)
+
+        elif category == "admin_players":
+            if not self.is_admin:
+                await interaction.response.send_message("❌ Admin Commands are only available to authorized staff.", ephemeral=True)
+                return
+            embed.title = "👥 ADMIN — PLAYER MANAGEMENT"
+            embed.description = "Manage registrations, drivers and defense readiness."
+            self._command_field(embed, "Players", [
                 ("`/pending`", "Review pending registrations."),
-                ("`/listplayers`", "List current-season drivers."),
+                ("`/listplayers`", "List current-season drivers with ELO and division."),
+                ("`/missingdefense`", "Find current-season drivers without a locked defense."),
                 ("`/admin_setpi`", "Change a driver's PI."),
-                ("`/delete_id`", "Reset active registration; keep career history."),
-                ("`/admin_removeracer`", "Permanently remove a driver."),
+                ("`/delete_id`", "Reset active registration while keeping career history."),
+                ("`/admin_removeracer`", "Permanently remove a driver and their league data."),
+            ])
+            embed.add_field(name="🧹 Deletion difference", value="`/delete_id` = registration reset. `/admin_removeracer` = permanent league-data purge.", inline=False)
+
+        elif category == "admin_tools":
+            if not self.is_admin:
+                await interaction.response.send_message("❌ Admin Commands are only available to authorized staff.", ephemeral=True)
+                return
+            embed.title = "🗃️ ADMIN — DATA & TOOLS"
+            embed.description = "Maintenance, backups, auditing and command management."
+            self._command_field(embed, "Data", [
+                ("`/backup`", "Create an immediate database backup."),
+                ("`/admin_backups`", "List available database backups."),
+                ("`/admin_restore`", "Restore a database backup with confirmation."),
                 ("`/clearhistory`", "Delete selected server data."),
+            ])
+            self._command_field(embed, "Operations", [
+                ("`/diagnostics`", "Run bot health checks."),
+                ("`/adminlog`", "View recent administrative audit entries."),
                 ("`/sync`", "Sync slash commands."),
                 ("`!forcesync`", "Fallback command sync."),
-                ("`/identity`", "Change bot name/avatar."),
-                ("`/diagnostics`", "Run bot health checks."),
-                ("`/backup`", "Create an immediate database backup."),
-                ("`/seasonhistory`", "View completed season archives."),
-            ]
-            embed.add_field(name="Commands", value="\n".join(f"{cmd} — {desc}" for cmd, desc in admin_items), inline=False)
+            ])
 
         embed.set_image(url=ASPHALT_MEDIA["banner_help"])
         embed.set_footer(text="ALU Gauntlet Help • Select another section above.")
