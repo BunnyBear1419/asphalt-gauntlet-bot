@@ -201,6 +201,13 @@ def test_season_controls_require_explicit_start_when_rollover_is_disabled():
     assert 'start_next_season: bool = False' in source
 
 
+def test_scheduled_end_only_closes_active_seasons_and_status_command_exists():
+    source = Path(main.__file__).read_text(encoding="utf-8")
+    assert 'if bool(state.get("season_active", False)) and ends_at' in source
+    assert '@bot.tree.command(name="seasonstatus"' in source
+    assert "Scheduled start times never start seasons automatically" in source
+
+
 def test_forced_season_end_never_starts_next_season():
     source = Path(main.__file__).read_text(encoding="utf-8")
     assert 'trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction, start_next_season=False)' in source
