@@ -734,7 +734,10 @@ async def seasonal_clock_loop_task():
 
 @tasks.loop(hours=6)
 async def player_reminder_loop():
-    """Lightweight player reminders: missing defense and unfinished active challenges."""
+    """Lightweight player reminders: missing defense and unfinished active challenges.
+
+    Reminder DMs are opt-out and rate-limited to once every 72 hours per player.
+    """
     try:
         configs = await bot.db.settings.find({"_id": {"$regex": r"^\d+$"}}).to_list(length=1000)
         now = time.time()
@@ -742,7 +745,8 @@ async def player_reminder_loop():
             guild_id = str(cfg.get("_id"))
             state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
             season = int(state.get("season_number", 1)) if state else 1
-            # Missing defense reminders are limited to once per 24h per player.
+            # Missing defense reminders are limited to once per 72h per player and
+            # respect the player's DM notification preference (default: ON).
             missing = await bot.db.drivers.find({
                 "guild_id": guild_id,
                 "season_registered": True,
@@ -750,8 +754,10 @@ async def player_reminder_loop():
                 "defense_locked.courses.4": {"$exists": False},
             }).to_list(length=1000)
             for d in missing:
+                if d.get("dm_notifications_enabled", True) is False:
+                    continue
                 last = float(d.get("last_defense_reminder", 0) or 0)
-                if now - last < 86400:
+                if now - last < 72 * 60 * 60:
                     continue
                 try:
                     user = bot.get_user(int(d["user_id"])) or await bot.fetch_user(int(d["user_id"]))
@@ -760,7 +766,8 @@ async def player_reminder_loop():
                 except Exception:
                     pass
 
-            # Remind challengers about active submissions after 24h, at most once/day.
+            # Remind challengers about active submissions after 24h, at most once every 72h,
+            # and only when the player has DM notifications enabled.
             active = await bot.db.active_challenges.find({"guild_id": guild_id, "status": "active"}).to_list(length=1000)
             for challenge in active:
                 if float(challenge.get("expires_at", now + 1)) <= now:
@@ -769,8 +776,11 @@ async def player_reminder_loop():
                 created = float(challenge.get("created_at", now))
                 if now - created < 86400:
                     continue
+                challenger = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenge['challenger_id']}"})
+                if challenger and challenger.get("dm_notifications_enabled", True) is False:
+                    continue
                 last = float(challenge.get("last_reminder", 0) or 0)
-                if now - last < 86400:
+                if now - last < 72 * 60 * 60:
                     continue
                 try:
                     user = bot.get_user(int(challenge["challenger_id"])) or await bot.fetch_user(int(challenge["challenger_id"]))
@@ -3215,6 +3225,36 @@ async def register_cmd(interaction: discord.Interaction, game_id: str, garage_pi
         ephemeral=True,
     )
 
+@bot.tree.command(name="notifications", description="Turn your Gauntlet reminder DMs on or off.")
+@app_commands.describe(setting="Choose whether ALU Gauntlet reminder DMs are enabled")
+@app_commands.choices(setting=[
+    app_commands.Choice(name="On — receive reminder DMs", value="on"),
+    app_commands.Choice(name="Off — stop reminder DMs", value="off"),
+])
+async def notifications_cmd(interaction: discord.Interaction, setting: app_commands.Choice[str]):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": guild_id})
+    if not profile:
+        await interaction.response.send_message(
+            "❌ You need a player profile first. Run `/register` to join the league.",
+            ephemeral=True,
+        )
+        return
+
+    enabled = setting.value == "on"
+    await bot.db.drivers.update_one(
+        {"_id": f"{guild_id}_{user_id}", "guild_id": guild_id},
+        {"$set": {"dm_notifications_enabled": enabled}},
+    )
+    if enabled:
+        message = "🔔 **Gauntlet reminder DMs are ON.** You can turn them off anytime with `/notifications`."
+    else:
+        message = "🔕 **Gauntlet reminder DMs are OFF.** You will no longer receive automated reminder DMs. Server-wide season announcements are not affected."
+    await interaction.response.send_message(message, ephemeral=True)
+
+
 @bot.tree.command(name="mystatus", description="Check your current-season driver registration status.")
 async def my_status_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False):
@@ -3834,7 +3874,9 @@ class HelpCategorySelect(discord.ui.Select):
                 ("`/mystatus`", "Check your registration status."),
                 ("`/profile`", "View your ELO, stats and defense."),
                 ("`/delete_me`", "Permanently delete your league data from this server."),
+                ("`/notifications`", "Turn automated reminder DMs on or off."),
             ])
+            embed.add_field(name="🔔 Notifications", value="Reminder DMs are **ON by default** and can be disabled anytime with `/notifications`. Turning them off does not hide public server announcements.", inline=False)
             embed.add_field(name="⚠️ Important", value="`/delete_me` is permanent. If you register again, you start as a new player.", inline=False)
 
         elif category == "admin_setup":
