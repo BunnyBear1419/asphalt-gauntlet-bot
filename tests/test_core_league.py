@@ -179,3 +179,12 @@ def test_stale_processing_challenge_is_recovered(monkeypatch):
         assert "processing_at" in claimed
         assert fake_db.active_challenges.docs["guild_user"]["status"] == "processing"
     asyncio.run(run())
+
+
+def test_seasonal_clock_has_scheduled_start_and_end_automation():
+    source = Path(main.__file__).read_text(encoding="utf-8")
+    assert "@tasks.loop(minutes=1)" in source
+    assert "start_announced_season" in source
+    assert "SEASON {season_number} IS NOW LIVE!" in source
+    assert "SEASON {season_number} AUTOMATICALLY ENDED" in source
+    assert "await trigger_global_season_end(guild_id=guild_id)" in source
