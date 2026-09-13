@@ -181,33 +181,39 @@ def test_stale_processing_challenge_is_recovered(monkeypatch):
     asyncio.run(run())
 
 
-def test_seasonal_clock_uses_scheduled_end_for_optional_automatic_rollover():
+def test_season_schedule_automatically_starts_and_ends():
     source = Path(main.__file__).read_text(encoding="utf-8")
-    assert "@tasks.loop(minutes=1)" in source
-    assert "automatic_season_end" in source
-    assert "await trigger_global_season_end(guild_id=guild_id, start_next_season=auto_rollover)" in source
-    assert "Scheduled start times never start seasons automatically" in source
-    assert "start_announced_season" not in source
+    assert "starts_at" in source and "ends_at" in source
+    assert 'if (not bool(state.get("season_active", False)) and starts_at' in source
+    assert 'now >= starts_at and now < ends_at' in source
+    assert 'await announce_season_start(guild_id, season_number, reason="scheduled")' in source
+    assert 'if bool(state.get("season_active", False)) and ends_at and now >= ends_at' in source
 
 
-def test_season_controls_require_explicit_start_when_rollover_is_disabled():
+def test_seasonauto_controls_only_scheduled_end_rollover():
     source = Path(main.__file__).read_text(encoding="utf-8")
     assert '@bot.tree.command(name="seasonauto"' in source
     assert 'app_commands.Choice(name="Enable automatic season rollover", value="on")' in source
     assert 'app_commands.Choice(name="Disable automatic season rollover", value="off")' in source
-    assert '@bot.tree.command(name="seasonstart"' in source
-    assert '"awaiting_staff_start": True' in source
-    assert '"season_active": False' in source
-    assert 'start_next_season: bool = False' in source
+    assert 'await trigger_global_season_end(guild_id=guild_id, start_next_season=auto_rollover)' in source
+    assert '"automatic_season_end": False' in source
 
 
-def test_scheduled_end_only_closes_active_seasons_and_status_command_exists():
+def test_seasonstart_early_preserves_scheduled_end():
     source = Path(main.__file__).read_text(encoding="utf-8")
-    assert 'if bool(state.get("season_active", False)) and ends_at' in source
-    assert '@bot.tree.command(name="seasonstatus"' in source
-    assert "Scheduled start times never start seasons automatically" in source
+    assert '@bot.tree.command(name="seasonstart"' in source
+    assert '"scheduled end time remains unchanged"' in source
+    assert '"season_active": True' in source
 
 
-def test_forced_season_end_never_starts_next_season():
+def test_manual_seasonend_never_auto_rolls_next_season():
     source = Path(main.__file__).read_text(encoding="utf-8")
     assert 'trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction, start_next_season=False)' in source
+    assert 'the next season will not roll over automatically' in source
+
+
+def test_automatic_rollover_announces_new_season_and_preserves_schedule_duration():
+    source = Path(main.__file__).read_text(encoding="utf-8")
+    assert 'season_duration = previous_end - previous_start' in source
+    assert 'await announce_season_start(guild_id, next_season, reason="rollover")' in source
+    assert '"ends_at": now + season_duration' in source
