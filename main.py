@@ -10,6 +10,7 @@ import base64
 import random
 import csv
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import discord
@@ -2060,14 +2061,50 @@ async def setimage_cmd(interaction: discord.Interaction, image_type: app_command
     await dispatch_audit_log(guild_id, "🖼️ Custom Image Updated", f"Admin {interaction.user.mention} updated the **{image_type.name}** image.", color=0x2ecc71)
     await audit_admin_action(interaction, "Set Image", f"Updated `{image_type.value}`.")
 
+TIMEZONE_CHOICES = [
+    ("UTC", "UTC"),
+    ("Eastern Time", "America/New_York"),
+    ("Central Time", "America/Chicago"),
+    ("Mountain Time", "America/Denver"),
+    ("Pacific Time", "America/Los_Angeles"),
+    ("Alaska Time", "America/Anchorage"),
+    ("Hawaii Time", "Pacific/Honolulu"),
+    ("UK / Ireland", "Europe/London"),
+    ("Central Europe", "Europe/Berlin"),
+    ("Eastern Europe", "Europe/Bucharest"),
+    ("India", "Asia/Kolkata"),
+    ("China / Singapore", "Asia/Shanghai"),
+    ("Japan", "Asia/Tokyo"),
+    ("Korea", "Asia/Seoul"),
+    ("Australia Eastern", "Australia/Sydney"),
+    ("New Zealand", "Pacific/Auckland"),
+]
+TIMEZONE_MAP = {label: value for label, value in TIMEZONE_CHOICES}
+
+def get_guild_timezone(config: dict | None) -> str:
+    """Return the configured IANA timezone for a guild; UTC preserves legacy behavior."""
+    value = (config or {}).get("timezone", "UTC")
+    try:
+        ZoneInfo(value)
+        return value
+    except (ZoneInfoNotFoundError, TypeError):
+        return "UTC"
+
+def timezone_label(tz_name: str) -> str:
+    for label, value in TIMEZONE_CHOICES:
+        if value == tz_name:
+            return label
+    return tz_name
+
 @bot.tree.command(name="setup", description="[Admin Only] Configures all league core channels and permission roles.")
-@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", match_results_channel="Public room for match results", admin_role="Admin override role", player_role="Verified player role")
-async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role):
+@app_commands.describe(main_channel="Public room for commands", staff_channel="Private room for staff reviews", log_channel="Private room for logs", announcement_channel="Public awards room", match_results_channel="Public room for match results", admin_role="Admin override role", player_role="Verified player role", timezone_name="Server timezone used for season scheduling")
+@app_commands.choices(timezone_name=[app_commands.Choice(name=label, value=value) for label, value in TIMEZONE_CHOICES])
+async def setup_cmd(interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role, timezone_name: app_commands.Choice[str] = None):
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Admin role overrides missing.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "player_role_id": str(player_role.id)}}, upsert=True)
+    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "player_role_id": str(player_role.id), "timezone": timezone_name.value if timezone_name else "UTC"}}, upsert=True)
     guild_state = await bot.db.season_state.find_one({"_id": f"guild_{interaction.guild_id}"})
     if not guild_state:
         legacy_state = await bot.db.season_state.find_one({"_id": "current_season"})
@@ -2084,6 +2121,25 @@ async def setup_cmd(interaction: discord.Interaction, main_channel: discord.Text
     await dispatch_audit_log(interaction.guild_id, "⚙️ Master Setup Initialized", f"The bot was initialized perfectly by authority {interaction.user.mention}.", color=ASPHALT_THEME_COLOR)
     await audit_admin_action(interaction, "Setup", "Updated the league channel and role configuration.")
 
+@bot.tree.command(name="timezone", description="[Admin Only] Set this Discord server's timezone for season scheduling.")
+@app_commands.describe(timezone_name="Timezone used when admins enter season start/end times")
+@app_commands.choices(timezone_name=[app_commands.Choice(name=label, value=value) for label, value in TIMEZONE_CHOICES])
+async def timezone_cmd(interaction: discord.Interaction, timezone_name: app_commands.Choice[str]):
+    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Access Denied: Requires admin access clearance level.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    await bot.db.settings.update_one(
+        {"_id": str(interaction.guild_id)},
+        {"$set": {"timezone": timezone_name.value}},
+        upsert=True,
+    )
+    await interaction.followup.send(
+        f"🌎 **Server timezone updated:** `{timezone_name.name}` (`{timezone_name.value}`)\n\n`/season_schedule` will now interpret entered times using this timezone.",
+        ephemeral=True,
+    )
+    await audit_admin_action(interaction, "Timezone", f"Set server timezone to `{timezone_name.value}`.")
+
 @bot.tree.command(name="season_schedule", description="[Admin Only] Sets custom calendar horizons for active tournament season grids.")
 @app_commands.describe(start_date="Start date mapping (YYYY-MM-DD HH:MM)", end_date="Closing deadline boundary (YYYY-MM-DD HH:MM)")
 async def season_schedule_cmd(interaction: discord.Interaction, start_date: str, end_date: str):
@@ -2092,12 +2148,15 @@ async def season_schedule_cmd(interaction: discord.Interaction, start_date: str,
         return
     await interaction.response.defer(ephemeral=True)
     try:
-        start_dt = datetime.strptime(start_date.strip(), "%Y-%m-%d %H:%M")
-        end_dt = datetime.strptime(end_date.strip(), "%Y-%m-%d %H:%M")
+        config = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
+        tz_name = get_guild_timezone(config)
+        local_tz = ZoneInfo(tz_name)
+        start_dt = datetime.strptime(start_date.strip(), "%Y-%m-%d %H:%M").replace(tzinfo=local_tz)
+        end_dt = datetime.strptime(end_date.strip(), "%Y-%m-%d %H:%M").replace(tzinfo=local_tz)
         if end_dt <= start_dt:
             raise ValueError("end date must be after start date")
-        start_timestamp = start_dt.replace(tzinfo=timezone.utc).timestamp()
-        end_timestamp = end_dt.replace(tzinfo=timezone.utc).timestamp()
+        start_timestamp = start_dt.timestamp()
+        end_timestamp = end_dt.timestamp()
         
         await bot.db.season_state.update_one(
             {"_id": f"guild_{interaction.guild_id}"},
@@ -2106,7 +2165,7 @@ async def season_schedule_cmd(interaction: discord.Interaction, start_date: str,
         )
         
         success_emb = discord.Embed(title="📅 TOURNAMENT CALENDAR TIMELINE INITIALIZED", color=ASPHALT_VICTORY_COLOR)
-        success_emb.description = f"⏱️ **Horizon Window Verified:**\n• **Start Matrix Point:** `{start_date}`\n• **Lockdown Vector Entry:** `{end_date}`\n\nDynamic tracking clocks synced perfectly."
+        success_emb.description = f"⏱️ **Horizon Window Verified:**\n• **Server Timezone:** `{timezone_label(tz_name)}` (`{tz_name}`)\n• **Start Matrix Point:** `{start_date}`\n• **Lockdown Vector Entry:** `{end_date}`\n\nDynamic tracking clocks synced perfectly. Times are interpreted in the server timezone and stored internally as UTC."
         await interaction.followup.send(embed=success_emb)
         await dispatch_audit_log(interaction.guild_id, "📅 Timeline Program Updated", f"Season schedule modified manually. Target close entry locks scheduled at: {end_date}", color=ASPHALT_THEME_COLOR)
         await audit_admin_action(interaction, "Season Schedule", f"Changed season closing time to `{end_date}`.")
@@ -3460,6 +3519,7 @@ class HelpCategorySelect(discord.ui.Select):
                 ("`/setup`", "Configure league channels and roles."),
                 ("`/setimage`", "Change bot images."),
                 ("`/season_schedule`", "Set season dates."),
+                ("`/timezone`", "Set server timezone for season scheduling."),
                 ("`/seasonend`", "End season and start the next one."),
                 ("`/pending`", "Review pending registrations."),
                 ("`/listplayers`", "List current-season drivers."),
