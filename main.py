@@ -647,25 +647,85 @@ async def backup_loop():
 async def before_backup_loop():
     await bot.wait_until_ready()
 
-@tasks.loop(hours=1)
+@tasks.loop(minutes=1)
 async def seasonal_clock_loop_task():
+    """Drive scheduled season start/end events for every configured guild.
+
+    Schedule timestamps are stored as UTC epoch seconds, so the clock is
+    timezone-independent at runtime.  The server timezone is only used when
+    admins enter the schedule.  Start/end announcements are persisted so a
+    restart or the one-minute polling cadence cannot spam duplicate starts.
+    """
     now = time.time()
     try:
         configs = await bot.db.settings.find({"_id": {"$regex": r"^\d+$"}}).to_list(length=1000)
-        for config in configs:
-            guild_id = str(config.get("_id"))
+    except Exception:
+        logging.exception("Seasonal clock loop could not load guild settings")
+        return
+
+    for config in configs:
+        guild_id = str(config.get("_id"))
+        try:
             state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
             if not state:
                 await bot.db.season_state.update_one(
                     {"_id": f"guild_{guild_id}"},
-                    {"$set": {"guild_id": guild_id, "season_number": 1, "ends_at": now + (14 * 24 * 60 * 60)}},
-                    upsert=True
+                    {"$set": {
+                        "guild_id": guild_id,
+                        "season_number": 1,
+                        "starts_at": now,
+                        "ends_at": now + (14 * 24 * 60 * 60),
+                    }},
+                    upsert=True,
                 )
-                continue
-            if now >= state.get("ends_at", now + 86400):
+                state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+                if not state:
+                    continue
+
+            season_number = int(state.get("season_number", 1))
+            starts_at = float(state.get("starts_at", 0) or 0)
+            ends_at = float(state.get("ends_at", 0) or 0)
+
+            # Scheduled start announcement.  Claim it atomically so reconnects
+            # and duplicate task runners cannot repeatedly announce the same season.
+            if starts_at and now >= starts_at and not state.get("start_announced_season") == season_number:
+                claim = await bot.db.season_state.update_one(
+                    {"_id": f"guild_{guild_id}", "season_number": season_number,
+                     "$or": [{"start_announced_season": {"$exists": False}},
+                             {"start_announced_season": {"$ne": season_number}}]},
+                    {"$set": {"start_announced_season": season_number, "start_announced_at": now}},
+                )
+                if getattr(claim, "modified_count", 0) == 1:
+                    tz_name = get_guild_timezone(config)
+                    await dispatch_automated_announcement(
+                        guild_id,
+                        f"🏁 SEASON {season_number} IS NOW LIVE!",
+                        f"🔥 **Season {season_number} has officially started!**\n\n"
+                        f"The Gauntlet is open. Drivers may compete, challenge opponents, and submit matches.\n"
+                        f"🌎 Server timezone: `{timezone_label(tz_name)}` (`{tz_name}`).",
+                        color=ASPHALT_VICTORY_COLOR,
+                        image_url=ASPHALT_MEDIA.get("banner_leaderboard"),
+                    )
+                    await send_admin_alert(
+                        guild_id,
+                        f"SEASON {season_number} STARTED",
+                        f"Scheduled season start reached at {datetime.fromtimestamp(starts_at, tz=timezone.utc).isoformat()}."
+                    )
+
+            # Scheduled end.  trigger_global_season_end already performs the
+            # durable rollover and public finale announcement.  Also notify staff
+            # explicitly so the automatic path is visible in the admin/log channel.
+            if ends_at and now >= ends_at:
                 await trigger_global_season_end(guild_id=guild_id)
-    except Exception:
-        logging.exception("Seasonal clock loop failed")
+                post_state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
+                if post_state and int(post_state.get("season_number", season_number)) != season_number:
+                    await send_admin_alert(
+                        guild_id,
+                        f"SEASON {season_number} AUTOMATICALLY ENDED",
+                        f"The scheduled Season {season_number} end time was reached and the rollover completed automatically. New active season: {post_state.get('season_number')}."
+                    )
+        except Exception:
+            logging.exception("Seasonal clock processing failed for guild %s", guild_id)
 
 
 @tasks.loop(hours=6)
