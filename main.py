@@ -1615,9 +1615,10 @@ class VerificationView(discord.ui.View):
             await interaction.followup.send("❌ This registration belongs to an older season and can no longer be approved.", ephemeral=True)
             return
         existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
+        # guild_id/user_id are already written by $set below. Keeping them
+        # in $setOnInsert as well causes MongoDB path-conflict error code 40.
+        # Only true insert-only defaults belong in $setOnInsert.
         set_on_insert = {
-            "guild_id": str(self.guild_id),
-            "user_id": str(self.user_id),
             "career_wins": 0,
             "career_played": 0,
         }
