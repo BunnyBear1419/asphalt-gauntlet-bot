@@ -670,21 +670,29 @@ async def seasonal_clock_loop_task():
             if not state:
                 continue
 
-            # Season start is deliberately manual. We only monitor the deadline.
-            if not bool(config.get("automatic_season_end", False)):
-                continue
-
+            # A scheduled end always closes the current season. The /seasonauto
+            # switch controls only whether that scheduled close also starts the
+            # next season immediately. Scheduled start timestamps never start a
+            # season by themselves.
             season_number = int(state.get("season_number", 1))
             ends_at = float(state.get("ends_at", 0) or 0)
-            if ends_at and now >= ends_at:
-                await trigger_global_season_end(guild_id=guild_id)
+            if ends_at and now >= ends_at and not state.get("rollover_phase"):
+                auto_rollover = bool(config.get("automatic_season_end", False))
+                await trigger_global_season_end(guild_id=guild_id, start_next_season=auto_rollover)
                 post_state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
                 if post_state and int(post_state.get("season_number", season_number)) != season_number:
-                    await send_admin_alert(
-                        guild_id,
-                        f"SEASON {season_number} AUTOMATICALLY ENDED",
-                        f"Automatic season closing is enabled. The scheduled Season {season_number} end time was reached and the rollover completed. New active season: {post_state.get('season_number')}."
-                    )
+                    if auto_rollover:
+                        await send_admin_alert(
+                            guild_id,
+                            f"SEASON {season_number} AUTOMATICALLY ENDED",
+                            f"The scheduled Season {season_number} end time was reached. Season {season_number} was archived and Season {post_state.get('season_number')} started automatically."
+                        )
+                    else:
+                        await send_admin_alert(
+                            guild_id,
+                            f"SEASON {season_number} ENDED — STAFF ACTION REQUIRED",
+                            f"The scheduled Season {season_number} end time was reached and the season was archived. Season {post_state.get('season_number')} is waiting for staff to set its schedule and explicitly start it."
+                        )
         except Exception:
             logging.exception("Seasonal clock processing failed for guild %s", guild_id)
 
@@ -889,7 +897,7 @@ async def apply_season_soft_reset(guild_id: str, season_number: int):
             },
         )
 
-async def trigger_global_season_end(guild_id: str = None, forced_interaction: discord.Interaction = None):
+async def trigger_global_season_end(guild_id: str = None, forced_interaction: discord.Interaction = None, start_next_season: bool = False):
     """Close one server's season; automatic calls pass the specific guild."""
     now = time.time()
     if guild_id is None and forced_interaction:
@@ -979,9 +987,30 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
         {"guild_id": guild_id, "status": {"$in": ["active", "processing"]}},
         {"$set": {"status": "expired", "expired_at": now, "expired_season": current_season_num}},
     )
+    next_season = current_season_num + 1
+    if start_next_season:
+        next_state = {
+            "guild_id": guild_id,
+            "season_number": next_season,
+            "starts_at": now,
+            "ends_at": now + (14 * 24 * 60 * 60),
+            "season_active": True,
+            "awaiting_staff_start": False,
+        }
+    else:
+        # The season has ended, but the next season must not begin until staff
+        # explicitly schedules and starts it. Keep the next season dormant.
+        next_state = {
+            "guild_id": guild_id,
+            "season_number": next_season,
+            "starts_at": 0,
+            "ends_at": 0,
+            "season_active": False,
+            "awaiting_staff_start": True,
+        }
     await bot.db.season_state.update_one(
         {"_id": f"guild_{guild_id}"},
-        {"$set": {"guild_id": guild_id, "season_number": current_season_num + 1, "starts_at": now, "ends_at": now + (14 * 24 * 60 * 60)}, "$unset": {"rollover_lock_at": "", "rollover_phase": ""}},
+        {"$set": next_state, "$unset": {"rollover_lock_at": "", "rollover_phase": "", "rollover_season": ""}},
         upsert=True,
     )
     if forced_interaction:
@@ -992,7 +1021,7 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
                 color=ASPHALT_THEME_COLOR,
             )
         )
-        await audit_admin_action(forced_interaction, "Season Rollover", f"Closed Season {current_season_num}; career stats preserved and current-season garage/defenses reset.")
+        await audit_admin_action(forced_interaction, "Season Rollover", f"Closed Season {current_season_num}; next season {'started automatically' if start_next_season else 'left waiting for staff start'}, career stats preserved and current-season garage/defenses reset.")
 
 async def process_match_result(guild_id: str, challenger_id: str, opponent_id: str, defense_courses: list, challenger_times: list, proof_url: str, defender_proof_url: str = None, origin_channel_id: int = None, settlement_id: str = None):
     """Calculate ELO changes, apply to DB, save match record. Returns match data dict or None on error."""
@@ -2125,7 +2154,7 @@ async def setup_cmd(interaction: discord.Interaction, main_channel: discord.Text
         await interaction.response.send_message("❌ Access Denied: Admin role overrides missing.", ephemeral=True)
         return
     await interaction.response.defer(ephemeral=True)
-    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "player_role_id": str(player_role.id), "timezone": timezone_name.value if timezone_name else "UTC", "automatic_season_end": False}}, upsert=True)
+    await bot.db.settings.update_one({"_id": str(interaction.guild_id)}, {"$set": {"registration_channel_id": str(main_channel.id), "review_channel_id": str(staff_channel.id), "log_channel_id": str(log_channel.id), "announcement_channel_id": str(announcement_channel.id), "match_results_channel_id": str(match_results_channel.id), "admin_role_id": str(admin_role.id), "player_role_id": str(player_role.id), "timezone": timezone_name.value if timezone_name else "UTC"}, "$setOnInsert": {"automatic_season_end": False}}, upsert=True)
     guild_state = await bot.db.season_state.find_one({"_id": f"guild_{interaction.guild_id}"})
     if not guild_state:
         legacy_state = await bot.db.season_state.find_one({"_id": "current_season"})
@@ -2161,11 +2190,11 @@ async def timezone_cmd(interaction: discord.Interaction, timezone_name: app_comm
     )
     await audit_admin_action(interaction, "Timezone", f"Set server timezone to `{timezone_name.value}`.")
 
-@bot.tree.command(name="seasonauto", description="[Admin Only] Turn automatic season closing on or off. Season starts are always manual.")
-@app_commands.describe(mode="Choose whether scheduled season endings may automatically roll over the season")
+@bot.tree.command(name="seasonauto", description="[Admin Only] Control whether a scheduled season end automatically starts the next season.")
+@app_commands.describe(mode="Choose whether scheduled season endings may automatically roll into the next season")
 @app_commands.choices(mode=[
-    app_commands.Choice(name="Enable automatic season end", value="on"),
-    app_commands.Choice(name="Disable automatic season end", value="off"),
+    app_commands.Choice(name="Enable automatic season rollover", value="on"),
+    app_commands.Choice(name="Disable automatic season rollover", value="off"),
 ])
 async def season_auto_cmd(interaction: discord.Interaction, mode: app_commands.Choice[str]):
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
@@ -2180,15 +2209,15 @@ async def season_auto_cmd(interaction: discord.Interaction, mode: app_commands.C
     )
     status = "ENABLED" if enabled else "DISABLED"
     detail = (
-        "When the scheduled end time is reached, the bot will automatically close the season, archive standings, reset current-season registration/defenses, and notify staff."
+        "When a scheduled season end is reached, the bot will close the current season and immediately start the next season."
         if enabled else
-        "Scheduled times remain visible, but the bot will NOT close the season automatically. Staff can use `/seasonend` when ready."
+        "When a scheduled season end is reached, the bot will close the current season, but the next season will wait for staff to schedule and explicitly start it."
     )
     await interaction.followup.send(
-        f"⚙️ **Automatic Season End: {status}**\n\n{detail}\n\n🏁 **Season starts are always manual** — the bot will never automatically advance/start a new season.",
+        f"⚙️ **Automatic Season Rollover: {status}**\n\n{detail}\n\n📅 **Scheduled start times never start seasons automatically.** `/seasonend` also never auto-starts the next season.",
         ephemeral=True,
     )
-    await audit_admin_action(interaction, "Season Automation", f"Automatic season end set to `{enabled}`. Season starts remain manual.")
+    await audit_admin_action(interaction, "Season Automation", f"Automatic scheduled rollover set to `{enabled}`. Scheduled starts remain manual.")
 
 @bot.tree.command(name="season_schedule", description="[Admin Only] Sets custom calendar horizons for active tournament season grids.")
 @app_commands.describe(start_date="Start date mapping (YYYY-MM-DD HH:MM)", end_date="Closing deadline boundary (YYYY-MM-DD HH:MM)")
@@ -2243,11 +2272,14 @@ class ConfirmSeasonResetView(discord.ui.View):
         await bot.db.season_state.update_one(
             {"_id": f"guild_{gid}"},
             {"$set": {
-                "guild_id": gid, "season_number": 1, "starts_at": now,
-                "ends_at": now + (14 * 24 * 60 * 60),
+                "guild_id": gid, "season_number": 1, "starts_at": 0,
+                "ends_at": 0, "season_active": False, "awaiting_staff_start": True,
             }, "$unset": {"rollover_lock_at": "", "rollover_phase": "", "rollover_season": "", "start_announced_season": "", "start_announced_at": ""}},
             upsert=True,
         )
+        # Counter reset means existing driver records are aligned to Season 1,
+        # but historical archives and career totals are retained.
+        await bot.db.drivers.update_many({"guild_id": gid}, {"$set": {"season_number": 1}})
 
         if self.full_reset:
             # This is intended for pre-launch/test cleanup. Preserve the driver
@@ -2330,12 +2362,42 @@ class ConfirmSeasonEndView(discord.ui.View):
             await interaction.response.send_message("❌ Staff only.",ephemeral=True); return
         for x in self.children: x.disabled=True
         await interaction.response.edit_message(content="🏁 Closing season…",view=self)
-        await trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction)
+        await trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction, start_next_season=False)
         await audit_admin_action(interaction,"Season End","Confirmed manual season rollover.",color=ASPHALT_ALERT_COLOR); self.stop()
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         for x in self.children: x.disabled=True
         await interaction.response.edit_message(content="❌ Season end cancelled.",view=self); self.stop()
+
+@bot.tree.command(name="seasonstart", description="[Staff Only] Explicitly starts the scheduled next season.")
+async def season_start_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    await interaction.response.defer(ephemeral=True)
+    gid = str(interaction.guild_id)
+    state = await bot.db.season_state.find_one({"_id": f"guild_{gid}"})
+    if not state:
+        await interaction.followup.send("❌ No season state exists. Use `/season_schedule` first.", ephemeral=True)
+        return
+    if bool(state.get("season_active", True)) and not bool(state.get("awaiting_staff_start", False)):
+        await interaction.followup.send(f"ℹ️ Season {int(state.get('season_number', 1))} is already active.", ephemeral=True)
+        return
+    start_at = float(state.get("starts_at", 0) or 0)
+    end_at = float(state.get("ends_at", 0) or 0)
+    if not start_at or not end_at or end_at <= start_at:
+        await interaction.followup.send("❌ Set a valid start and end schedule with `/season_schedule` before explicitly starting this season.", ephemeral=True)
+        return
+    await bot.db.season_state.update_one(
+        {"_id": f"guild_{gid}", "season_number": int(state.get("season_number", 1))},
+        {"$set": {"season_active": True, "awaiting_staff_start": False, "started_at": time.time()}, "$unset": {"rollover_phase": "", "rollover_season": ""}},
+    )
+    season_number = int(state.get("season_number", 1))
+    config = await bot.db.settings.find_one({"_id": gid})
+    channel_id = (config or {}).get("announcement_channel_id") or (config or {}).get("registration_channel_id")
+    channel = bot.get_channel(int(channel_id)) if channel_id else None
+    if channel:
+        await channel.send(embed=discord.Embed(title=f"🏁 SEASON {season_number} IS NOW LIVE!", description="Staff has explicitly opened the season. Drivers may register their Garage and submit their defense.", color=ASPHALT_VICTORY_COLOR))
+    await interaction.followup.send(f"✅ **Season {season_number} started.** The scheduled start time was not used to auto-start it; this command explicitly opened the season.", ephemeral=True)
+    await audit_admin_action(interaction, "Season Start", f"Explicitly started Season {season_number}.")
 
 @bot.tree.command(name="seasonend", description="[Staff Only] Force-closes the season.")
 async def season_end_cmd(interaction: discord.Interaction):
@@ -3640,7 +3702,9 @@ class HelpCategorySelect(discord.ui.Select):
                 ("`/setimage`", "Change bot images."),
                 ("`/season_schedule`", "Set season dates."),
                 ("`/timezone`", "Set server timezone for season scheduling."),
-                ("`/seasonend`", "End season and start the next one."),
+                ("`/seasonend`", "End season; next season requires an explicit staff start."),
+                ("`/seasonstart`", "Explicitly start the scheduled season."),
+                ("`/seasonauto`", "Choose whether scheduled endings automatically start the next season."),
                 ("`/pending`", "Review pending registrations."),
                 ("`/listplayers`", "List current-season drivers."),
                 ("`/admin_setpi`", "Change a driver's PI."),
