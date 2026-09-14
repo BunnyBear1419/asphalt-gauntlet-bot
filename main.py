@@ -304,6 +304,7 @@ class GauntletBot(commands.Bot):
                     await self.db.season_history.create_index([("guild_id", 1), ("season_number", -1)])
                     await self.db.reference_pending.create_index([("guild_id", 1), ("status", 1)])
                     await self.db.lap_times.create_index([("guild_id", 1), ("user_id", 1), ("track", 1)])
+                    await self.db.system_events.create_index([("guild_id", 1), ("timestamp", -1)])
                     logging.info("🟢 Performance indexes verified.")
                 except Exception:
                     logging.exception("Could not create MongoDB performance indexes")
@@ -1979,6 +1980,98 @@ class _GauntletModalBase(discord.ui.Modal):
             await interaction.response.send_message(message, ephemeral=True)
 
 
+class ConfirmActionView(discord.ui.View):
+    """Reusable confirmation dialog for important player actions."""
+    def __init__(self, owner_id: str, confirm_callback, prompt: str):
+        super().__init__(timeout=120)
+        self.owner_id = str(owner_id)
+        self.confirm_callback = confirm_callback
+        self.prompt = prompt
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("❌ This confirmation belongs to another player.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="✅ Confirm", style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(content="⏳ Processing…", view=self)
+        try:
+            await self.confirm_callback(interaction)
+        except Exception:
+            logging.exception("Confirmed action failed")
+            await interaction.followup.send("❌ We couldn't complete that action. Nothing else was intentionally changed. Please try again or contact staff.", ephemeral=True)
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(content="↩️ Action cancelled. No changes were made.", view=self)
+
+
+class RegistrationModal(_GauntletModalBase, title="ALU Gauntlet • Registration"):
+    game_id = discord.ui.TextInput(label="Asphalt Legends Player ID", placeholder="Enter your exact in-game Player ID", max_length=100)
+    garage_pi = discord.ui.TextInput(label="Garage PI", placeholder="Example: 2450", max_length=10)
+    control_type = discord.ui.TextInput(label="Controls", placeholder="TouchDrive or Manual", max_length=30)
+    proof_url = discord.ui.TextInput(label="Garage proof image URL", placeholder="https://...", max_length=500)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        game_id = self.game_id.value.strip()
+        proof = self.proof_url.value.strip()
+        try:
+            pi = int(self.garage_pi.value.strip())
+            if pi <= 0:
+                raise ValueError
+        except ValueError:
+            await self.fail(interaction, "❌ Garage PI must be a positive whole number. Example: `2450`.")
+            return
+        if not proof.lower().startswith(("http://", "https://")):
+            await self.fail(interaction, "❌ Proof must be an image URL beginning with `http://` or `https://`.")
+            return
+        control_raw = self.control_type.value.strip().casefold()
+        if "touch" in control_raw:
+            control_value, control_name = "touchdrive", "TouchDrive Auto Pilot"
+        elif "manual" in control_raw or "tilt" in control_raw or "tap" in control_raw:
+            control_value, control_name = "manual", "Manual Tilt / Tap Controls"
+        else:
+            await self.fail(interaction, "❌ Controls must be `TouchDrive` or `Manual`.")
+            return
+        from types import SimpleNamespace
+        attachment = SimpleNamespace(content_type="image/jpeg", url=proof)
+        choice = SimpleNamespace(value=control_value, name=control_name)
+        await register_cmd(interaction, game_id, pi, attachment, choice)
+
+
+class MatchConfirmView(discord.ui.View):
+    def __init__(self, owner_id: str, state: dict):
+        super().__init__(timeout=180)
+        self.owner_id = str(owner_id)
+        self.state = state
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("❌ This submission belongs to another player.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="✅ Submit Match", style=discord.ButtonStyle.green)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(content="⏳ Submitting your match…", view=self)
+        try:
+            await submitmatch_cmd(interaction, *self.state["laps"], *self.state["cars"], *self.state["ranks"], self.state["proof"])
+        except Exception:
+            logging.exception("Confirmed guided match submission failed")
+            await interaction.followup.send("❌ We couldn't submit the match. Please use `/submitmatch` or contact staff if the problem continues.", ephemeral=True)
+
+    @discord.ui.button(label="✏️ Go Back", style=discord.ButtonStyle.secondary)
+    async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(MatchProofModal(self.state))
+
 class MatchLapsModal(_GauntletModalBase, title="Match Submission • Lap Times"):
     lap1 = discord.ui.TextInput(label="Course 1 lap", placeholder="MM:SS.MS", max_length=16)
     lap2 = discord.ui.TextInput(label="Course 2 lap", placeholder="MM:SS.MS", max_length=16)
@@ -2033,20 +2126,12 @@ class MatchProofModal(_GauntletModalBase, title="Match Submission • Proof"):
             await self.fail(interaction, "❌ Proof must be an image URL beginning with http:// or https://.")
             return
         self.state["proof"] = proof
-        try:
-            await submitmatch_cmd(
-                interaction,
-                *self.state["laps"],
-                *self.state["cars"],
-                *self.state["ranks"],
-                proof,
-            )
-        except Exception:
-            logging.exception("Guided match submission failed")
-            if not interaction.response.is_done():
-                await interaction.response.send_message("❌ The guided submission failed. Your active challenge was not intentionally modified; please try `/submitmatch` directly.", ephemeral=True)
-            else:
-                await interaction.followup.send("❌ The guided submission failed. Please try `/submitmatch` directly.", ephemeral=True)
+        summary = discord.Embed(title="🏁 Review Match Submission", description="Please confirm everything is correct before the match is processed.", color=ASPHALT_THEME_COLOR)
+        summary.add_field(name="Lap Times", value="\n".join(f"Course {i+1}: `{x}`" for i, x in enumerate(self.state["laps"])), inline=True)
+        summary.add_field(name="Attack Cars", value="\n".join(f"Course {i+1}: `{x}`" for i, x in enumerate(self.state["cars"])), inline=True)
+        summary.add_field(name="Car Ratings", value="\n".join(f"Course {i+1}: `{x}`" for i, x in enumerate(self.state["ranks"])), inline=True)
+        summary.add_field(name="Proof", value="Attached URL received ✅", inline=False)
+        await interaction.response.send_message(embed=summary, content="**Ready to submit?**", view=MatchConfirmView(interaction.user.id, self.state), ephemeral=True)
 
 
 class DefenseTimesModal(_GauntletModalBase, title="Defense Setup • Lap Times"):
@@ -2126,14 +2211,15 @@ class DashboardActionSelect(discord.ui.Select):
         actions = {
             "profile": [
                 ("👤 Profile", "profile", "View your driver card"),
+                ("📝 Register", "register_wizard", "Open the guided registration form"),
                 ("📊 My Status", "mystatus", "Check registration and season status"),
                 ("⚔️ Match Center", "matchcenter", "View your active match and next step"),
                 ("🎯 What Next?", "whatnext", "Show your next required step"),
             ],
             "defense": [
                 ("👁️ View Defense", "mydefense", "View your locked defense"),
-                ("📝 Set Defense", "setdefense_direct", "Generate your five seasonal routes"),
-                ("🔄 Change Defense", "changedefense_direct", "Start an eligible defense change"),
+                ("📝 Set Defense", "setdefense_confirm", "Generate your five seasonal routes"),
+                ("🔄 Change Defense", "changedefense_confirm", "Start an eligible defense change"),
                 ("📤 Submit Defense", "submitdefense_direct", "Open the guided five-course submission workflow"),
             ],
             "challenges": [
@@ -2195,6 +2281,18 @@ class DashboardView(discord.ui.View):
         }
         if action == "matchcenter":
             await send_match_center(interaction); return
+        if action == "register_wizard":
+            await interaction.response.send_modal(RegistrationModal()); return
+        if action == "setdefense_confirm":
+            async def do_set(i):
+                await set_defense_cmd(i)
+            embed = discord.Embed(title="🛡️ Confirm Defense Setup", description="This will generate/prepare your five seasonal defense routes. Your existing approved defense is not replaced by this confirmation.", color=ASPHALT_THEME_COLOR)
+            await interaction.response.send_message(embed=embed, view=ConfirmActionView(interaction.user.id, do_set, embed.description), ephemeral=True); return
+        if action == "changedefense_confirm":
+            async def do_change(i):
+                await change_defense_cmd(i)
+            embed = discord.Embed(title="🔄 Confirm Defense Change", description="This starts your eligible defense-change workflow. Your current approved defense remains active until a replacement is approved.", color=ASPHALT_THEME_COLOR)
+            await interaction.response.send_message(embed=embed, view=ConfirmActionView(interaction.user.id, do_change, embed.description), ephemeral=True); return
         if action == "submitmatch_wizard":
             await interaction.response.send_modal(MatchLapsModal({})); return
         direct_messages = {
@@ -2353,7 +2451,7 @@ class StaffDashboardView(discord.ui.View):
             "season": ("🏆 SEASON CONTROL", "Status, schedule, automation and season lifecycle."),
             "data": ("🗄️ DATA", "Database health, backups and history/reset tools."),
             "setup": ("⚙️ SERVER SETUP", "Initial configuration, timezone and bot appearance."),
-            "system": ("🔧 SYSTEM", "Diagnostics and application-command synchronization."),
+            "system": ("🔧 SYSTEM", "Diagnostics, launch readiness and application-command synchronization."),
         }
         title, desc = labels[category]
         embed = discord.Embed(title=title, description=desc, color=ASPHALT_ADMIN_COLOR)
@@ -2361,6 +2459,7 @@ class StaffDashboardView(discord.ui.View):
 
     async def run_action(self, interaction: discord.Interaction, action: str):
         direct = {
+            "launchcheck": "Run the read-only production readiness check.",
             "player_changes": "Use `/admin_setpi`, `/admin_removeracer`, or `/delete_id` for player changes.",
             "reference_reviews": "Reference submissions appear in the configured staff review queue.",
             "seasonauto_direct": "Use `/seasonauto` to configure automatic season rollover.",
@@ -2372,6 +2471,10 @@ class StaffDashboardView(discord.ui.View):
             "identity_direct": "Use `/identity` to change the bot username or avatar.",
             "setimage_direct": "Use `/setimage` to update a custom Gauntlet image.",
         }
+        if action == "launchcheck":
+            await send_launch_readiness(interaction)
+            await record_system_event(str(interaction.guild_id), "LAUNCH_CHECK", f"Launch readiness check requested by {interaction.user.id}")
+            return
         if action in direct:
             await interaction.response.send_message(direct[action], ephemeral=True); return
         cmd = getattr(bot, "_hidden_commands", {}).get(action) or bot.tree.get_command(action)
@@ -3976,30 +4079,63 @@ async def delete_me_cmd(interaction: discord.Interaction):
         ephemeral=True,
     )
 
-@bot.tree.command(name="delete_id", description="[Staff Only] Remove a driver's active registration by Discord member.")
-@app_commands.describe(racer="Driver whose active profile should be removed")
+class ConfirmActiveRegistrationResetView(discord.ui.View):
+    def __init__(self, guild_id: str, racer_id: int):
+        super().__init__(timeout=60)
+        self.guild_id, self.racer_id = str(guild_id), int(racer_id)
+
+    @discord.ui.button(label="Reset Active Registration", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("⛔ Staff only.", ephemeral=True); return
+        for item in self.children: item.disabled = True
+        await interaction.response.edit_message(content="⏳ Resetting active registration…", view=self)
+        try:
+            driver_key = f"{self.guild_id}_{self.racer_id}"
+            await bot.db.drivers.update_one(
+                {"_id": driver_key},
+                {"$set": {"season_registered": False}, "$unset": {
+                    "game_id": "", "garage_pi": "", "defense_locked": "",
+                    "pending_tracks": "", "pending_is_change": "", "defense_review_pending": "",
+                    "last_defense_change": "",
+                }}
+            )
+            await bot.db.pending.delete_one({"_id": driver_key})
+            await interaction.followup.send(
+                f"🧹 Removed <@{self.racer_id}>'s active registration. Career wins, matches and history were preserved. They can `/register` again.",
+                ephemeral=True,
+            )
+            await audit_admin_action(interaction, "Delete ID", f"Reset active registration for <@{self.racer_id}>. Career statistics and match history were retained.", color=ASPHALT_ALERT_COLOR)
+            await record_system_event(self.guild_id, "ACTIVE_REGISTRATION_RESET", f"Staff {interaction.user.id} reset active registration for {self.racer_id}", "WARN")
+            self.stop()
+        except Exception as exc:
+            error_id = make_error_id()
+            logging.exception("Active registration reset failed [%s]", error_id)
+            await interaction.followup.send(friendly_exception_message(exc, error_id), ephemeral=True)
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children: item.disabled = True
+        await interaction.response.edit_message(content="↩️ Registration reset cancelled. No changes were made.", view=self)
+        self.stop()
+
+
+@bot.tree.command(name="delete_id", description="[Staff Only] Reset a driver's active registration without deleting career history.")
+@app_commands.describe(racer="Driver whose active registration should be reset")
 async def delete_id_cmd(interaction: discord.Interaction, racer: discord.Member):
     if not await check_admin_privileges(interaction):
-        await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
+        await interaction.response.send_message("⛔ Staff only.", ephemeral=True)
         return
     profile = await bot.db.drivers.find_one({"_id": f"{interaction.guild_id}_{racer.id}"})
     if not profile:
         await interaction.response.send_message("ℹ️ No driver record was found for that player.", ephemeral=True)
         return
-    # /delete_id is an ACTIVE REGISTRATION reset, not a career wipe. Keep the
-    # driver document so career wins/matches remain available on their profile.
-    await bot.db.drivers.update_one(
-        {"_id": f"{interaction.guild_id}_{racer.id}"},
-        {"$set": {"season_registered": False}, "$unset": {
-            "game_id": "", "garage_pi": "", "defense_locked": "",
-            "pending_tracks": "", "pending_is_change": "", "defense_review_pending": "",
-            "last_defense_change": "",
-        }}
+    await interaction.response.send_message(
+        f"⚠️ **Confirm active registration reset**\n\nThis will remove {racer.mention}'s current registration, game ID, garage PI and current defense workflow state. **Career wins, matches and history are preserved.**\n\nContinue?",
+        view=ConfirmActiveRegistrationResetView(interaction.guild_id, racer.id),
+        ephemeral=True,
     )
-    await bot.db.pending.delete_one({"_id": f"{interaction.guild_id}_{racer.id}"})
-    await interaction.response.send_message(f"🧹 Removed <@{racer.id}>'s active registration. Career wins/matches and match history were preserved. They can `/register` again.", ephemeral=True)
-    await audit_admin_action(interaction, "Delete ID", f"Reset active registration for <@{racer.id}>. Career statistics and match history were retained.", color=ASPHALT_DEFEAT_COLOR)
-
+    await audit_admin_action(interaction, "Delete ID", f"Opened active-registration reset confirmation for <@{racer.id}>.", color=ASPHALT_ALERT_COLOR)
 
 
 async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
@@ -4746,6 +4882,143 @@ async def diagnostics_cmd(interaction: discord.Interaction):
 # Keep only high-value entry points visible in Discord. The feature commands
 # remain available internally so dashboard actions can call their existing
 # battle-tested callbacks without duplicating game logic.
+# ---------------------------------------------------------------------------
+# PHASE 3/4 PRODUCTION HARDENING + POLISH
+# ---------------------------------------------------------------------------
+# These helpers keep operational checks read-only and make user-facing errors
+# understandable without exposing stack traces or database details.
+
+def make_error_id() -> str:
+    return f"ALU-{int(time.time())}-{random.randint(1000, 9999)}"
+
+
+def friendly_exception_message(exc: Exception, error_id: str) -> str:
+    """Return a safe, useful message while keeping implementation details private."""
+    text = str(exc).lower()
+    if "duplicate" in text or "duplicatekey" in text:
+        detail = "That item already exists, so the duplicate action was not applied."
+    elif "timeout" in text or "timed out" in text:
+        detail = "The database or Discord service took too long to respond. Please try again."
+    elif "mongo" in text or "serverselection" in text or "connection" in text:
+        detail = "The database connection is temporarily unavailable. Please try again shortly."
+    elif "permission" in text or "forbidden" in text:
+        detail = "The bot does not have the Discord permission required for that action."
+    else:
+        detail = "The bot could not complete that action. No additional changes were intentionally made."
+    return f"❌ **Action not completed**\n{detail}\n\nReference: `{error_id}`"
+
+
+async def record_system_event(guild_id: str, event_type: str, details: str, severity: str = "INFO"):
+    """Best-effort structured operational log for staff diagnostics/auditing."""
+    try:
+        if bot.db is None:
+            return
+        await bot.db.system_events.insert_one({
+            "guild_id": str(guild_id) if guild_id is not None else None,
+            "event_type": str(event_type),
+            "severity": str(severity),
+            "details": str(details)[:3500],
+            "timestamp": time.time(),
+        })
+    except Exception:
+        logging.exception("Could not write structured system event")
+
+
+async def build_launch_readiness(guild_id: str) -> tuple[bool, list[str], list[str]]:
+    """Read-only preflight check used by staff before production launch."""
+    checks, warnings = [], []
+    ready = True
+    if bot.user:
+        checks.append("🟢 Discord gateway connected")
+    else:
+        checks.append("🔴 Discord gateway not ready"); ready = False
+    if bot.db is not None and bot.mongo_client is not None:
+        try:
+            await bot.mongo_client.admin.command("ping")
+            checks.append("🟢 MongoDB reachable")
+        except Exception:
+            checks.append("🔴 MongoDB ping failed"); ready = False
+    else:
+        checks.append("🔴 MongoDB is not initialized"); ready = False
+
+    required_collections = ("drivers", "pending", "matches", "active_challenges", "season_history", "reference_pending", "lap_times", "settings", "season_state")
+    if bot.db is not None:
+        try:
+            existing = set(await bot.db.list_collection_names())
+            missing = [name for name in required_collections if name not in existing]
+            if missing:
+                warnings.append("⚠️ Collections will be created on first use: " + ", ".join(missing))
+            else:
+                checks.append("🟢 Required MongoDB collections present")
+        except Exception:
+            warnings.append("⚠️ Could not verify MongoDB collection names")
+
+    visible = {cmd.name for cmd in bot.tree.get_commands()}
+    required_commands = {"gauntlet", "help", "register", "staff"}
+    missing_commands = required_commands - visible
+    if missing_commands:
+        checks.append("🔴 Required commands missing: " + ", ".join(sorted(missing_commands))); ready = False
+    else:
+        checks.append("🟢 Core command surface present")
+
+    if getattr(bot, "_guild_cleanup_failed", False):
+        checks.append("🔴 Guild command cleanup is not verified"); ready = False
+    else:
+        checks.append("🟢 Guild command cleanup state verified")
+
+    for name, label in (("seasonal_clock_loop", "Season scheduler"), ("player_reminder_loop", "Player reminders"), ("backup_loop", "Backup scheduler")):
+        task_obj = getattr(bot, name, None)
+        try:
+            running = bool(task_obj and task_obj.is_running())
+        except Exception:
+            running = False
+        if running:
+            checks.append(f"🟢 {label} running")
+        else:
+            warnings.append(f"⚠️ {label} is not currently running")
+
+    if not os.getenv("DISCORD_BOT_TOKEN"):
+        checks.append("🔴 DISCORD_BOT_TOKEN missing"); ready = False
+    if not os.getenv("MONGO_URI"):
+        checks.append("🔴 MONGO_URI missing"); ready = False
+
+    return ready, checks, warnings
+
+
+class LaunchReadinessView(discord.ui.View):
+    def __init__(self, guild_id: str):
+        super().__init__(timeout=180)
+        self.guild_id = str(guild_id)
+
+    @discord.ui.button(label="🔄 Recheck", style=discord.ButtonStyle.primary)
+    async def recheck(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("⛔ Staff only.", ephemeral=True); return
+        await send_launch_readiness(interaction)
+
+
+async def send_launch_readiness(interaction: discord.Interaction):
+    ready, checks, warnings = await build_launch_readiness(str(interaction.guild_id))
+    status = "🟢 READY FOR LIVE SMOKE TEST" if ready else "🔴 NOT READY — FIX BLOCKERS"
+    description = "\n".join(checks)
+    if warnings:
+        description += "\n\n**Warnings**\n" + "\n".join(warnings)
+    embed = discord.Embed(title="🏁 ALU GAUNTLET • LAUNCH READINESS", description=description, color=ASPHALT_VICTORY_COLOR if ready else ASPHALT_ALERT_COLOR)
+    embed.set_footer(text=status + " • Read-only check")
+    if interaction.response.is_done():
+        await interaction.followup.send(embed=embed, view=LaunchReadinessView(str(interaction.guild_id)), ephemeral=True)
+    else:
+        await interaction.response.send_message(embed=embed, view=LaunchReadinessView(str(interaction.guild_id)), ephemeral=True)
+
+
+@bot.tree.command(name="launchcheck", description="[Staff Only] Run a read-only ALU Gauntlet production readiness check.")
+async def launchcheck_cmd(interaction: discord.Interaction):
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("⛔ Staff only.", ephemeral=True); return
+    await send_launch_readiness(interaction)
+    await record_system_event(str(interaction.guild_id), "LAUNCH_CHECK", f"Launch readiness check requested by {interaction.user.id}")
+
+
 HIDDEN_PLAYER_COMMANDS = {
     "whatnext", "mychallenges", "mydefense", "challenge", "profile",
     "leaderboard", "top", "mystatus", "seasonhistory",
@@ -4753,7 +5026,7 @@ HIDDEN_PLAYER_COMMANDS = {
 HIDDEN_STAFF_COMMANDS = {
     "missingdefense", "adminlog", "admin", "pending", "listplayers",
     "dbcheck", "backup", "diagnostics", "seasonstatus", "seasonstart",
-    "seasonend", "sync",
+    "seasonend", "sync", "launchcheck",
 }
 
 def configure_command_architecture():
@@ -4780,16 +5053,25 @@ def configure_command_architecture():
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    logging.exception("Application command error", exc_info=error)
+    error_id = make_error_id()
+    logging.exception("Application command error [%s]", error_id, exc_info=error)
     try:
+        friendly = friendly_exception_message(error, error_id)
+        if isinstance(error, app_commands.CheckFailure):
+            friendly = "⛔ **You don't have permission to use that action.**"
+        elif isinstance(error, app_commands.CommandOnCooldown):
+            friendly = f"⏳ **Please wait {getattr(error, 'retry_after', 0):.0f}s** before trying that again."
+        elif isinstance(error, app_commands.TransformerError):
+            friendly = "❌ **One of the values you entered is invalid.** Please check the format and try again."
         if not interaction.response.is_done():
-            await interaction.response.send_message("❌ An unexpected bot error occurred. Staff have been alerted.", ephemeral=True)
+            await interaction.response.send_message(friendly, ephemeral=True)
         else:
-            await interaction.followup.send("❌ An unexpected bot error occurred. Staff have been alerted.", ephemeral=True)
+            await interaction.followup.send(friendly, ephemeral=True)
     except Exception:
-        pass
+        logging.exception("Could not send friendly command error [%s]", error_id)
     if interaction.guild_id:
-        await send_admin_alert(str(interaction.guild_id), "BOT COMMAND ERROR", f"Command: `/{getattr(interaction.command, 'name', 'unknown')}`\nError: `{error}`")
+        await send_admin_alert(str(interaction.guild_id), "BOT COMMAND ERROR", f"Reference: `{error_id}`\nCommand: `/{getattr(interaction.command, 'name', 'unknown')}`\nThe technical error is recorded in the bot logs.")
+        await record_system_event(str(interaction.guild_id), "COMMAND_ERROR", f"Reference {error_id}; command /{getattr(interaction.command, 'name', 'unknown')}", "ERROR")
 
 @bot.event
 async def on_guild_join(guild: discord.Guild):
