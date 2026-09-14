@@ -205,6 +205,20 @@ def get_division_for_pi(pi: int) -> dict:
             return division
     return PI_DIVISIONS[-1]
 
+def format_lap_time(total_ms: int) -> str:
+    """Convert milliseconds to the canonical M:SS.mmm display format.
+
+    Kept as a small public utility because the league test suite and result
+    formatting paths use it as the inverse of ``parse_lap_time``.
+    """
+    total_ms = int(total_ms)
+    if total_ms < 0:
+        raise ValueError("Lap time cannot be negative")
+    minutes = total_ms // 60000
+    seconds = (total_ms % 60000) // 1000
+    millis = total_ms % 1000
+    return f"{minutes:01d}:{seconds:02d}.{millis:03d}"
+
 def parse_lap_time(lap_str: str) -> int:
     """Parse a strictly valid MM:SS.mmm lap time into milliseconds. Returns -1 on failure."""
     lap_str = str(lap_str or "").strip()
@@ -570,6 +584,16 @@ class GauntletBot(commands.Bot):
 
 bot = GauntletBot()
 
+# --- Grouped command namespaces ---------------------------------------------
+# Related admin/staff slash commands are grouped under a single top-level
+# command (e.g. "/season schedule", "/season start") instead of being
+# separate top-level entries. This keeps the "/" command picker organized
+# and gives every subcommand the same @require_admin() permission check.
+season_group = app_commands.Group(name="season", description="Manage league seasons.")
+admin_group = app_commands.Group(name="admin", description="[Staff Only] Driver-level admin overrides.")
+bot.tree.add_command(season_group)
+bot.tree.add_command(admin_group)
+
 async def send_admin_alert(guild_id: str, title: str, description: str):
     """Best-effort Discord alert to the configured staff/log channel."""
     try:
@@ -668,10 +692,10 @@ async def announce_season_start(guild_id: str, season_number: int, reason: str =
 async def seasonal_clock_loop_task():
     """Automatically open and close seasons at their configured schedule.
 
-    /season_schedule controls the calendar: the season starts automatically at
+    /season schedule controls the calendar: the season starts automatically at
     the scheduled start time and ends automatically at the scheduled end time.
-    /seasonauto controls only what happens after that scheduled end.
-    /seasonstart can open a scheduled season early without changing its end time.
+    /season auto controls only what happens after that scheduled end.
+    /season start can open a scheduled season early without changing its end time.
     """
     now = time.time()
     try:
@@ -691,7 +715,7 @@ async def seasonal_clock_loop_task():
             starts_at = float(state.get("starts_at", 0) or 0)
             ends_at = float(state.get("ends_at", 0) or 0)
 
-            # /season_schedule is the source of truth for the calendar. When the
+            # /season schedule is the source of truth for the calendar. When the
             # scheduled start arrives, open the season exactly once and announce it.
             # This also works if the bot was offline when the start time passed.
             if (not bool(state.get("season_active", False)) and starts_at and ends_at
@@ -704,7 +728,7 @@ async def seasonal_clock_loop_task():
                     await announce_season_start(guild_id, season_number, reason="scheduled")
                     state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or state
 
-            # A scheduled end always closes an active season. /seasonauto controls
+            # A scheduled end always closes an active season. /season auto controls
             # only whether that scheduled close also starts the next season.
             if bool(state.get("season_active", False)) and ends_at and now >= ends_at and not state.get("rollover_phase"):
                 auto_rollover = bool(config.get("automatic_season_end", False))
@@ -816,6 +840,20 @@ async def check_admin_privileges(interaction: discord.Interaction) -> bool:
             return True
     return False
 
+def require_admin():
+    """Slash-command check: allows Discord admins, configured admin-role members, or the bot owner.
+
+    Replaces the old pattern of manually calling `check_admin_privileges(...)` (and sometimes
+    redundantly `interaction.user.guild_permissions.administrator` alongside it) at the top of
+    every admin/staff command body. On failure this raises `app_commands.CheckFailure`, which the
+    global `on_app_command_error` handler below turns into the standard "Access Denied" message.
+    """
+    async def predicate(interaction: discord.Interaction) -> bool:
+        if await check_admin_privileges(interaction):
+            return True
+        raise app_commands.CheckFailure("admin_required")
+    return app_commands.check(predicate)
+
 async def _send_interaction_message(interaction: discord.Interaction, content: str, *, ephemeral: bool = True, **kwargs):
     """Safely respond whether the interaction has already been acknowledged."""
     if interaction.response.is_done():
@@ -867,6 +905,27 @@ async def audit_admin_action(interaction: discord.Interaction, action: str, deta
         color=color,
     )
 
+
+def calculate_elo_change(winner_elo: int, loser_elo: int, winner_streak: int = 0, k_factor: int = 32):
+    """Return bounded winner/loser ELO updates and the applied streak bonus.
+
+    This is a core league utility retained for compatibility with the league
+    test suite and any existing result-processing integrations.
+    """
+    winner_elo = int(winner_elo)
+    loser_elo = int(loser_elo)
+    winner_streak = max(0, int(winner_streak))
+    k_factor = max(0, int(k_factor))
+
+    expected_winner = 1 / (1 + 10 ** ((loser_elo - winner_elo) / 400))
+    expected_loser = 1 / (1 + 10 ** ((winner_elo - loser_elo) / 400))
+
+    # Extra 4 ELO per two-win streak tier, capped at +20.
+    streak_bonus = min(20, (winner_streak // 2) * 4) if winner_streak >= 2 else 0
+
+    new_winner_elo = winner_elo + round(k_factor * (1 - expected_winner)) + streak_bonus
+    new_loser_elo = loser_elo + round(k_factor * (0 - expected_loser))
+    return max(100, new_winner_elo), max(100, new_loser_elo), streak_bonus
 
 async def dispatch_automated_announcement(guild_id: str, title: str, description: str, color: int = 0x00FFCC, image_url: str = None):
     """Sends a beautifully styled premium global announcement alert to the league."""
@@ -2728,7 +2787,7 @@ class DashboardView(discord.ui.View):
         action_map = {
             "profile": "profile", "mystatus": "mystatus", "whatnext": "whatnext", "mydefense": "mydefense",
             "challenge": "challenge", "matchcenter": "matchcenter", "leaderboard": "leaderboard", "top": "top",
-            "seasonhistory": "seasonhistory", "help": "help",
+            "help": "help",
         }
         if action == "matchcenter":
             await send_match_center(interaction); return
@@ -2758,6 +2817,11 @@ class DashboardView(discord.ui.View):
             await interaction.response.send_message(embed=discord.Embed(title="🔔 NOTIFICATIONS", description=f"Reminder DMs are currently **{'ON' if current else 'OFF'}**.", color=ASPHALT_THEME_COLOR), view=NotificationsView(interaction.user.id), ephemeral=True); return
         if action == "delete_me":
             await delete_me_cmd(interaction); return
+        if action == "seasonhistory":
+            # /season history is now a Group subcommand, so it's no longer
+            # retrievable by name via bot.tree.get_command(); call the
+            # callback object directly instead.
+            await seasonhistory_cmd.callback(interaction); return
         command_name = action_map.get(action)
         if not command_name:
             await interaction.response.send_message("❌ That dashboard action is unavailable.", ephemeral=True); return
@@ -2947,6 +3011,15 @@ class StaffDashboardView(discord.ui.View):
             await interaction.response.send_modal(IdentityModal()); return
         if action == "setimage_direct":
             await interaction.response.send_message(embed=discord.Embed(title="🖼️ CUSTOM IMAGES", description="Choose an image slot, then upload the new image through a private DM session.", color=ASPHALT_ADMIN_COLOR), view=AdminImageTypeView(interaction.user.id), ephemeral=True); return
+        # /season status, /season start and /season end are now Group
+        # subcommands, so they're no longer retrievable by name via
+        # bot.tree.get_command(); call their callback objects directly.
+        if action == "seasonstatus":
+            await season_status_cmd.callback(interaction); return
+        if action == "seasonstart":
+            await season_start_cmd.callback(interaction); return
+        if action == "seasonend":
+            await season_end_cmd.callback(interaction); return
         cmd = getattr(bot, "_hidden_commands", {}).get(action) or bot.tree.get_command(action)
         if not cmd:
             await interaction.response.send_message("❌ That staff feature is unavailable right now.", ephemeral=True); return
@@ -3173,21 +3246,19 @@ async def timezone_cmd(interaction: discord.Interaction, timezone_name: app_comm
         upsert=True,
     )
     await interaction.followup.send(
-        f"🌎 **Server timezone updated:** `{timezone_name.name}` (`{timezone_name.value}`)\n\n`/season_schedule` will now interpret entered times using this timezone.",
+        f"🌎 **Server timezone updated:** `{timezone_name.name}` (`{timezone_name.value}`)\n\n`/season schedule` will now interpret entered times using this timezone.",
         ephemeral=True,
     )
     await audit_admin_action(interaction, "Timezone", f"Set server timezone to `{timezone_name.value}`.")
 
-@bot.tree.command(name="seasonauto", description="[Admin Only] Control whether a scheduled season end automatically starts the next season.")
+@season_group.command(name="auto", description="Control whether a scheduled season end automatically starts the next season.")
 @app_commands.describe(mode="Choose whether scheduled season endings may automatically roll into the next season")
 @app_commands.choices(mode=[
     app_commands.Choice(name="Enable automatic season rollover", value="on"),
     app_commands.Choice(name="Disable automatic season rollover", value="off"),
 ])
+@require_admin()
 async def season_auto_cmd(interaction: discord.Interaction, mode: app_commands.Choice[str]):
-    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
-        await interaction.response.send_message("❌ Access Denied: Requires admin access clearance level.", ephemeral=True)
-        return
     await interaction.response.defer(ephemeral=True)
     enabled = mode.value == "on"
     await bot.db.settings.update_one(
@@ -3202,17 +3273,15 @@ async def season_auto_cmd(interaction: discord.Interaction, mode: app_commands.C
         "When a scheduled season end is reached, the bot will close the current season, but the next season will wait for staff to schedule and explicitly start it."
     )
     await interaction.followup.send(
-        f"⚙️ **Automatic Season Rollover: {status}**\n\n{detail}\n\n📅 `/season_schedule` automatically starts and ends seasons at the selected times. `/seasonstart` may start a season early, but its scheduled end still applies. `/seasonend` always prevents an immediate automatic rollover to the next season.",
+        f"⚙️ **Automatic Season Rollover: {status}**\n\n{detail}\n\n📅 `/season schedule` automatically starts and ends seasons at the selected times. `/season start` may start a season early, but its scheduled end still applies. `/season end` always prevents an immediate automatic rollover to the next season.",
         ephemeral=True,
     )
     await audit_admin_action(interaction, "Season Automation", f"Automatic scheduled rollover set to `{enabled}`. Scheduled starts remain manual.")
 
-@bot.tree.command(name="season_schedule", description="[Admin Only] Sets custom calendar horizons for active tournament season grids.")
+@season_group.command(name="schedule", description="Sets custom calendar horizons for active tournament season grids.")
 @app_commands.describe(start_date="Start date mapping (YYYY-MM-DD HH:MM)", end_date="Closing deadline boundary (YYYY-MM-DD HH:MM)")
+@require_admin()
 async def season_schedule_cmd(interaction: discord.Interaction, start_date: str, end_date: str):
-    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
-        await interaction.response.send_message("❌ Access Denied: Requires admin access clearance level.", ephemeral=True)
-        return
     await interaction.response.defer(ephemeral=True)
     try:
         config = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
@@ -3255,7 +3324,7 @@ async def season_schedule_cmd(interaction: discord.Interaction, start_date: str,
             f"• **Automatic Start:** `{start_date}`\n"
             f"• **Automatic End:** `{end_date}`\n\n"
             f"The season will automatically start at the scheduled time and automatically end at the scheduled time. "
-            f"`/seasonauto` controls whether the scheduled end immediately rolls into the next season. `/seasonstart` may start it early, but the scheduled end remains unchanged."
+            f"`/season auto` controls whether the scheduled end immediately rolls into the next season. `/season start` may start it early, but the scheduled end remains unchanged."
         )
         await interaction.followup.send(embed=success_emb)
         await dispatch_audit_log(interaction.guild_id, "📅 Timeline Program Updated", f"Season schedule modified manually. Target close entry locks scheduled at: {end_date}", color=ASPHALT_THEME_COLOR)
@@ -3342,16 +3411,14 @@ class ConfirmSeasonResetView(discord.ui.View):
         await interaction.response.edit_message(content="❌ Season reset cancelled.", view=self)
         self.stop()
 
-@bot.tree.command(name="seasonreset", description="[Admin Only] Reset this server's season numbering back to Season 1.")
+@season_group.command(name="reset", description="Reset this server's season numbering back to Season 1.")
 @app_commands.describe(mode="Choose whether to reset only the season number or clean all pre-launch test season data")
 @app_commands.choices(mode=[
     app_commands.Choice(name="Season number only", value="counter"),
     app_commands.Choice(name="Full pre-launch/test reset", value="full"),
 ])
+@require_admin()
 async def season_reset_cmd(interaction: discord.Interaction, mode: app_commands.Choice[str]):
-    if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
-        await interaction.response.send_message("❌ Access Denied: Requires admin access clearance level.", ephemeral=True)
-        return
     full = mode.value == "full"
     if full:
         warning = "⚠️ **FULL PRE-LAUNCH/TEST RESET**\n\nThis will return the server to Season 1, delete archived season history, clear pending/challenges/lap-time data, and reset registered drivers to an unregistered Season 1 state with ELO/career counters at zero. This is intended to erase test data before launch."
@@ -3404,9 +3471,10 @@ class ConfirmSeasonEndView(discord.ui.View):
         for x in self.children: x.disabled=True
         await interaction.response.edit_message(content="❌ Season end cancelled.",view=self); self.stop()
 
-@bot.tree.command(name="seasonstart", description="[Staff Only] Start the scheduled season early; its scheduled end still applies.")
+@season_group.command(name="start", description="Start the scheduled season early; its scheduled end still applies.")
+@require_admin()
 async def season_start_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await enforce_channel_constraints(interaction, admin_cmd=True): return
     await interaction.response.defer(ephemeral=True)
     gid = str(interaction.guild_id)
     state = await bot.db.season_state.find_one({"_id": f"guild_{gid}"})
@@ -3431,9 +3499,10 @@ async def season_start_cmd(interaction: discord.Interaction):
     await interaction.followup.send(f"✅ **Season {season_number} started early.** The scheduled end time remains unchanged, so the season will still automatically end at the scheduled end time.", ephemeral=True)  # "scheduled end time remains unchanged"
     await audit_admin_action(interaction, "Season Start", f"Explicitly started Season {season_number}.")
 
-@bot.tree.command(name="seasonstatus", description="[Staff Only] Show the current season schedule and automation state.")
+@season_group.command(name="status", description="Show the current season schedule and automation state.")
+@require_admin()
 async def season_status_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await enforce_channel_constraints(interaction, admin_cmd=True): return
     await interaction.response.defer(ephemeral=True)
     gid = str(interaction.guild_id)
     config = await bot.db.settings.find_one({"_id": gid}) or {}
@@ -3459,20 +3528,22 @@ async def season_status_cmd(interaction: discord.Interaction):
         f"**Scheduled start:** {fmt(start_at)}\n"
         f"**Scheduled end:** {fmt(end_at)}\n"
         f"**Automatic scheduled rollover:** {'ON' if auto else 'OFF'}\n\n"
-        "`/season_schedule` automatically starts and ends the season at the selected times. "
-        "`/seasonstart` can open it early and does not change the scheduled end. "
-        "Automatic rollover only affects a scheduled end; manual `/seasonend` always leaves the next season waiting for a new schedule."
+        "`/season schedule` automatically starts and ends the season at the selected times. "
+        "`/season start` can open it early and does not change the scheduled end. "
+        "Automatic rollover only affects a scheduled end; manual `/season end` always leaves the next season waiting for a new schedule."
     )
     await interaction.followup.send(detail, ephemeral=True)
 
-@bot.tree.command(name="seasonend", description="[Staff Only] Force-closes the season; the next season will not roll over automatically.")
+@season_group.command(name="end", description="Force-closes the season; the next season will not roll over automatically.")
+@require_admin()
 async def season_end_cmd(interaction: discord.Interaction):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
-    await interaction.response.send_message("⚠️ **End the current season?** This will archive the standings and prepare the next season. The next season will NOT start automatically; staff must schedule it and use `/seasonstart`.", view=ConfirmSeasonEndView(interaction.guild_id), ephemeral=True)
+    if not await enforce_channel_constraints(interaction, admin_cmd=True): return
+    await interaction.response.send_message("⚠️ **End the current season?** This will archive the standings and prepare the next season. The next season will NOT start automatically; staff must schedule it and use `/season start`.", view=ConfirmSeasonEndView(interaction.guild_id), ephemeral=True)
 
-@bot.tree.command(name="admin_setpi", description="[Staff Only] Overrides a driver's PI value.")
+@admin_group.command(name="setpi", description="Overrides a driver's PI value.")
+@require_admin()
 async def admin_setpi_cmd(interaction: discord.Interaction, racer: discord.Member, new_pi: int):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await enforce_channel_constraints(interaction, admin_cmd=True): return
     if int(new_pi) < 0 or int(new_pi) > 100000:
         await interaction.response.send_message("❌ PI must be between 0 and 100,000.", ephemeral=True)
         return
@@ -3507,9 +3578,10 @@ class ConfirmRemoveRacerView(discord.ui.View):
         await interaction.response.edit_message(content="❌ Purge cancelled — no changes were made.", view=self)
         self.stop()
 
-@bot.tree.command(name="admin_removeracer", description="[Staff Only] Purges a driver.")
+@admin_group.command(name="removeracer", description="Purges a driver.")
+@require_admin()
 async def admin_removeracer_cmd(interaction: discord.Interaction, racer: discord.User):
-    if not await enforce_channel_constraints(interaction, admin_cmd=True) or not await check_admin_privileges(interaction): return
+    if not await enforce_channel_constraints(interaction, admin_cmd=True): return
     profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(racer.id)}"})
     if not profile:
         await interaction.response.send_message(f"ℹ️ {racer.name} doesn't have a driver profile to remove.", ephemeral=True)
@@ -4849,7 +4921,7 @@ class HelpCategorySelect(discord.ui.Select):
             self._command_field(embed, "📝 Registration", [
                 ("`/register`", "Register your Player ID, PI, controls and proof."),
                 ("**My Gauntlet → My Status**", "Check your registration and approval status."),
-                ("**My Gauntlet → What Next?**", "Show the next required Gauntlet step for you."),
+                ("**My Gauntlet → What Next?**", "Show the next required Gauntlet step for you. You can also use the hidden shortcut `/whatnext`."),
             ])
             embed.add_field(name="Quick path", value="`/register` → staff approval → `/gauntlet` → **Defense** → **Challenges**", inline=False)
 
@@ -4928,7 +5000,7 @@ class HelpCategorySelect(discord.ui.Select):
                 ("**Season → Reset Season**", "Reset season numbering or perform a full pre-launch/test reset."),
                 ("**Competition → Season History**", "View completed season archives."),
             ])
-            embed.add_field(name="💡 How it works", value="Scheduled start/end always follow `/season_schedule`. `/seasonauto` only controls whether a scheduled ending automatically starts the next season.", inline=False)
+            embed.add_field(name="💡 How it works", value="Scheduled start/end always follow `/season schedule`. `/season auto` only controls whether a scheduled ending automatically starts the next season.", inline=False)
 
         elif category == "admin_players":
             if not self.is_admin:
@@ -5196,7 +5268,7 @@ async def dbcheck_cmd(interaction: discord.Interaction):
         logging.exception("Database consistency check failed", exc_info=exc)
         await interaction.followup.send(f"❌ Database consistency check failed: `{exc}`", ephemeral=True)
 
-@bot.tree.command(name="seasonhistory", description="View archived final standings from completed seasons.")
+@season_group.command(name="history", description="View archived final standings from completed seasons.")
 @app_commands.describe(season="Season number to view (optional)")
 async def seasonhistory_cmd(interaction: discord.Interaction, season: int = None):
     if not await enforce_channel_constraints(interaction, admin_cmd=False):
@@ -5616,17 +5688,22 @@ HIDDEN_PLAYER_COMMANDS = {
     # These are intentionally accessed from /gauntlet instead of cluttering
     # Discord's command picker. Direct callbacks remain available internally.
     "whatnext", "mydefense", "challenge", "profile",
-    "leaderboard", "top", "mystatus", "seasonhistory",
+    "leaderboard", "top", "mystatus",
     "setdefense", "changedefense", "submitdefense", "notifications",
     "register_direct", "submitmatch_direct", "submitmatch",
     "maps", "besttime", "reference", "add_reference", "delete_me",
 }
 HIDDEN_STAFF_COMMANDS = {
     "missingdefense", "adminlog", "pending", "listplayers",
-    "dbcheck", "backup", "diagnostics", "seasonstatus", "seasonstart",
-    "seasonend", "sync", "launchcheck", "setimage", "setup", "timezone",
-    "seasonauto", "season_schedule", "seasonreset", "clearhistory",
-    "admin_setpi", "admin_removeracer", "identity", "delete_id",
+    "dbcheck", "backup", "diagnostics",
+    "sync", "launchcheck", "setimage", "setup", "timezone",
+    "clearhistory", "identity", "delete_id",
+    # "season" and "admin" are app_commands.Group parents (see season_group /
+    # admin_group above) — removing the group removes every subcommand
+    # ("/season start", "/admin setpi", etc.) from the picker in one go.
+    # Dashboard buttons still call the underlying *_cmd callbacks directly,
+    # which bypasses the tree entirely, so hiding the group doesn't affect them.
+    "season", "admin",
 }
 
 def configure_command_architecture():
