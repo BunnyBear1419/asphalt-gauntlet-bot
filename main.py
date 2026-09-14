@@ -360,12 +360,13 @@ class GauntletBot(commands.Bot):
         # `/sync full_cleanup:True`).
         try:
             meta = await self.db.settings.find_one({"_id": "global_meta"})
-            if meta and meta.get("guild_overrides_cleaned"):
+            command_arch_version = 3
+            if meta and meta.get("guild_overrides_cleaned") and int(meta.get("command_architecture_version", 0)) == command_arch_version:
                 logging.info("🟢 Guild command override cleanup already completed previously; skipping on this boot.")
             else:
                 cleaned = await self.sync_guild_application_commands(force_fetch=True)
                 if not self._guild_cleanup_failed:
-                    await self.db.settings.update_one({"_id": "global_meta"}, {"$set": {"guild_overrides_cleaned": True}}, upsert=True)
+                    await self.db.settings.update_one({"_id": "global_meta"}, {"$set": {"guild_overrides_cleaned": True, "command_architecture_version": command_arch_version}}, upsert=True)
                     logging.info(
                         "🟢 GUILD COMMAND OVERRIDE CLEANUP COMPLETE — %d server command(s) synchronized and verified.",
                         cleaned,
@@ -823,11 +824,22 @@ async def check_admin_privileges(interaction: discord.Interaction) -> bool:
             return True
     return False
 
+async def _send_interaction_message(interaction: discord.Interaction, content: str, *, ephemeral: bool = True, **kwargs):
+    """Safely respond whether the interaction has already been acknowledged."""
+    if interaction.response.is_done():
+        return await interaction.followup.send(content, ephemeral=ephemeral, **kwargs)
+    return await interaction.response.send_message(content, ephemeral=ephemeral, **kwargs)
+
+
 async def enforce_channel_constraints(interaction: discord.Interaction, admin_cmd: bool = False) -> bool:
-    """Enforce main-channel use for players; admin/owner commands work in any channel."""
+    """Enforce main-channel use for players; admin/owner commands work in any channel.
+
+    This helper is safe to call from buttons/modals that have already acknowledged
+    the interaction, preventing Discord's 'already acknowledged' error.
+    """
     cfg = await bot.db.settings.find_one({"_id": str(interaction.guild_id)})
     if not cfg:
-        await interaction.response.send_message("❌ **System Offline:** Run `/setup` first.", ephemeral=True)
+        await _send_interaction_message(interaction, "❌ **System Offline:** Run `/setup` first.")
         return False
 
     # Staff commands are intentionally not tied to any particular channel.
@@ -836,9 +848,9 @@ async def enforce_channel_constraints(interaction: discord.Interaction, admin_cm
 
     main_chan_id = cfg.get("registration_channel_id")
     if str(interaction.channel_id) != str(main_chan_id):
-        await interaction.response.send_message(
+        await _send_interaction_message(
+            interaction,
             f"❌ **Lobby Lock Active:** Use the main channel: <#{main_chan_id}>.",
-            ephemeral=True,
         )
         return False
     return True
@@ -1998,12 +2010,19 @@ class ConfirmActionView(discord.ui.View):
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         for item in self.children:
             item.disabled = True
-        await interaction.response.edit_message(content="⏳ Processing…", view=self)
+        # Acknowledge once, then let the existing command callback use followups.
+        # The callback helpers are response-aware, so this avoids double-acknowledging
+        # Discord interactions when a dashboard confirmation launches a command.
+        await interaction.response.defer(ephemeral=True)
         try:
             await self.confirm_callback(interaction)
+            try:
+                await interaction.edit_original_response(content="✅ Action completed. Use the new prompt above to continue.", view=self)
+            except Exception:
+                logging.debug("Could not update confirmation message after success", exc_info=True)
         except Exception:
             logging.exception("Confirmed action failed")
-            await interaction.followup.send("❌ We couldn't complete that action. Nothing else was intentionally changed. Please try again or contact staff.", ephemeral=True)
+            await interaction.followup.send("❌ We couldn't complete that action. Please try again or contact staff. No partial confirmation state was intentionally created.", ephemeral=True)
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -2061,9 +2080,13 @@ class MatchConfirmView(discord.ui.View):
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         for item in self.children:
             item.disabled = True
-        await interaction.response.edit_message(content="⏳ Submitting your match…", view=self)
+        await interaction.response.defer(ephemeral=True)
         try:
             await submitmatch_cmd(interaction, *self.state["laps"], *self.state["cars"], *self.state["ranks"], self.state["proof"])
+            try:
+                await interaction.edit_original_response(content="✅ Match submission processed. Check the result message above for the outcome.", view=self)
+            except Exception:
+                logging.debug("Could not update match confirmation message", exc_info=True)
         except Exception:
             logging.exception("Confirmed guided match submission failed")
             await interaction.followup.send("❌ We couldn't submit the match. Please use `/submitmatch` or contact staff if the problem continues.", ephemeral=True)
@@ -2189,6 +2212,31 @@ class DefenseProofModal(_GauntletModalBase, title="Defense Setup • Proof URLs"
             else: await interaction.followup.send("❌ The guided defense submission failed. Please try `/submitdefense` directly.",ephemeral=True)
 
 
+class DefenseStartView(discord.ui.View):
+    """One-click bridge from generated defense routes into the guided submission wizard."""
+    def __init__(self, owner_id: str, tracks: list[str], is_change: bool = False):
+        super().__init__(timeout=900)
+        self.owner_id = str(owner_id)
+        self.tracks = list(tracks)
+        self.is_change = bool(is_change)
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("❌ This defense setup belongs to another player.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="📝 Enter Defense Results", style=discord.ButtonStyle.green)
+    async def start(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(DefenseTimesModal({"tracks": self.tracks, "is_change": self.is_change}))
+
+    @discord.ui.button(label="✖ Close", style=discord.ButtonStyle.secondary)
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(content="Defense setup closed. Your generated routes are still saved.", view=self)
+
+
 async def send_match_center(interaction: discord.Interaction):
     guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
     active = await bot.db.active_challenges.find_one({"_id": f"{guild_id}_{user_id}", "status": {"$in": ["active", "processing"]}})
@@ -2220,7 +2268,6 @@ class DashboardActionSelect(discord.ui.Select):
                 ("👁️ View Defense", "mydefense", "View your locked defense"),
                 ("📝 Set Defense", "setdefense_confirm", "Generate your five seasonal routes"),
                 ("🔄 Change Defense", "changedefense_confirm", "Start an eligible defense change"),
-                ("📤 Submit Defense", "submitdefense_direct", "Open the guided five-course submission workflow"),
             ],
             "challenges": [
                 ("⚔️ Find Challenge", "challenge", "Start a five-course challenge"),
@@ -2298,7 +2345,6 @@ class DashboardView(discord.ui.View):
         direct_messages = {
             "setdefense_direct": "Use the guided Defense workflow or `/setdefense` to generate your five seasonal defense routes.",
             "changedefense_direct": "Use `/changedefense` when your 24-hour change window is available.",
-            "submitdefense_direct": "The guided Defense wizard is recommended; `/submitdefense` remains available for Discord attachments.",
             "submitmatch_direct": "Use the guided Match Submission wizard or `/submitmatch` to submit your active five-course match.",
             "maps_direct": "Use `/maps <map>` to view a specific Gauntlet map.",
             "besttime_direct": "Use `/besttime <driver> <map>` to compare a saved lap.",
@@ -2418,6 +2464,7 @@ class StaffActionSelect(discord.ui.Select):
             ("🖼️ Custom Images", "setimage_direct", "Update Gauntlet images"),
         ],
         "system": [
+            ("🏁 Launch Readiness", "launchcheck", "Run the production readiness check"),
             ("🔍 Diagnostics", "diagnostics", "Run the read-only health report"),
             ("🔄 Sync Commands", "sync", "Synchronize slash commands"),
         ],
@@ -3054,7 +3101,8 @@ async def car_autocomplete(interaction: discord.Interaction, current: str) -> li
 @bot.tree.command(name="setdefense", description="🛡️ Assigns your 5 seasonal defense routes.")
 async def set_defense_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
-    await interaction.response.defer(ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
     profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.", ephemeral=True)
@@ -3072,11 +3120,11 @@ async def set_defense_cmd(interaction: discord.Interaction):
         embeds, files = build_course_embeds(
             courses,
             "🛡️ Your 5 Defense Courses (Already Generated)",
-            "You already have courses generated. Race each track, then use `/submitdefense` to submit your times and cars.",
+            "Your five routes are ready. Race them, then press **📝 Enter Defense Results** below to continue.",
             ASPHALT_THEME_COLOR,
         )
-        embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense setup.")
-        await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
+        embeds[-1].set_footer(text="Next step: press **📝 Enter Defense Results** to enter your five times, cars, ratings and proof.")
+        await interaction.followup.send(embeds=embeds, files=files, view=DefenseStartView(interaction.user.id, pending_tracks, bool(profile.get("pending_is_change"))), ephemeral=True)
         return
     # Use the player's season-locked route set.  These routes are generated once
     # for the season and are reused by /changedefense; only cars/times may change.
@@ -3092,11 +3140,11 @@ async def set_defense_cmd(interaction: discord.Interaction):
     embeds, files = build_course_embeds(
         courses,
         "🛡️ Your 5 Defense Courses Generated",
-        "Race on each of these 5 tracks and record your best lap times. Then use `/submitdefense` to submit your times and cars.",
+        "Race each of these five tracks and record your best lap times. When ready, press **📝 Enter Defense Results** below.",
         ASPHALT_THEME_COLOR,
     )
-    embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense setup.")
-    await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
+    embeds[-1].set_footer(text="Next step: press **📝 Enter Defense Results** to enter your five times, cars, ratings and proof.")
+    await interaction.followup.send(embeds=embeds, files=files, view=DefenseStartView(interaction.user.id, tracks, False), ephemeral=True)
 
 @bot.tree.command(name="mydefense", description="View your currently locked ghost defense.")
 async def my_defense_cmd(interaction: discord.Interaction):
@@ -3124,7 +3172,8 @@ async def my_defense_cmd(interaction: discord.Interaction):
 @bot.tree.command(name="changedefense", description="🛡️ Re-submit your defense on the same 5 seasonal routes (once per 24 hours).")
 async def change_defense_cmd(interaction: discord.Interaction):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
-    await interaction.response.defer(ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
     profile = await bot.db.drivers.find_one({"_id": f"{str(interaction.guild_id)}_{str(interaction.user.id)}"})
     if not profile:
         await interaction.followup.send("❌ Run `/register` first.", ephemeral=True)
@@ -3155,8 +3204,8 @@ async def change_defense_cmd(interaction: discord.Interaction):
             "You already have new courses generated. Race each track and use `/submitdefense` to submit your times and cars.\n\nYour current defense remains active until the new one is approved.",
             ASPHALT_THEME_COLOR,
         )
-        embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense change.")
-        await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
+        embeds[-1].set_footer(text="Next step: press **📝 Enter Defense Results** to enter the replacement lineup and proof.")
+        await interaction.followup.send(embeds=embeds, files=files, view=DefenseStartView(interaction.user.id, pending_tracks, True), ephemeral=True)
         return
     # IMPORTANT: /changedefense never rerolls the courses. The player's five
     # season routes remain locked; only the cars and lap times can be changed.
@@ -3171,11 +3220,11 @@ async def change_defense_cmd(interaction: discord.Interaction):
     embeds, files = build_course_embeds(
         courses,
         "🛡️ Your 5 New Defense Courses Generated",
-        "Race on each of these 5 tracks and record your best lap times. Then use `/submitdefense` to submit your times and cars.\n\nYour current defense remains active until the new one is approved.",
+        "Race each of these five tracks and record your best lap times. When ready, press **📝 Enter Defense Results** below.\n\nYour current defense remains active until the new one is approved.",
         ASPHALT_THEME_COLOR,
     )
-    embeds[-1].set_footer(text="Use /submitdefense with your 5 lap times, 5 cars, and 5 car performance ratings to complete your defense change.")
-    await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
+    embeds[-1].set_footer(text="Next step: press **📝 Enter Defense Results** to enter the replacement lineup and proof.")
+    await interaction.followup.send(embeds=embeds, files=files, view=DefenseStartView(interaction.user.id, tracks, True), ephemeral=True)
 @bot.tree.command(name="submitdefense", description="🛡️ Submit your times, cars, and proof screenshots for your generated defense courses.")
 @app_commands.autocomplete(car_1=car_autocomplete, car_2=car_autocomplete, car_3=car_autocomplete, car_4=car_autocomplete, car_5=car_autocomplete)
 @app_commands.describe(
@@ -3277,7 +3326,7 @@ async def challenge_cmd(interaction: discord.Interaction):
         return
     # Challenger must have a locked 5-course defense to challenge others
     if not has_5_course_defense(user_profile):
-        await interaction.followup.send("❌ You need a locked 5-course defense to challenge others. Use `/setdefense` to generate your 5 courses and `/submitdefense` to lock your defense.")
+        await interaction.followup.send("❌ You need a locked 5-course defense before challenging. Open `/gauntlet` → **Defense** to finish your defense setup.")
         return
     # Daily challenge limit: 5 per day (UTC date boundary)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -3374,7 +3423,8 @@ async def submitmatch_cmd(interaction: discord.Interaction, lap1: str, lap2: str
                           car1: str, car2: str, car3: str, car4: str, car5: str,
                           rank1: int, rank2: int, rank3: int, rank4: int, rank5: int, proof: str):
     if not await enforce_channel_constraints(interaction, admin_cmd=False): return
-    await interaction.response.defer(ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
     guild_id,user_id=str(interaction.guild_id),str(interaction.user.id)
     active=await claim_active_challenge(guild_id,user_id)
     if not active:
@@ -5020,13 +5070,19 @@ async def launchcheck_cmd(interaction: discord.Interaction):
 
 
 HIDDEN_PLAYER_COMMANDS = {
+    # These are intentionally accessed from /gauntlet instead of cluttering
+    # Discord's command picker. Direct callbacks remain available internally.
     "whatnext", "mychallenges", "mydefense", "challenge", "profile",
     "leaderboard", "top", "mystatus", "seasonhistory",
+    "setdefense", "changedefense", "submitdefense", "notifications",
+    "maps", "besttime", "reference", "add_reference", "delete_me",
 }
 HIDDEN_STAFF_COMMANDS = {
     "missingdefense", "adminlog", "admin", "pending", "listplayers",
     "dbcheck", "backup", "diagnostics", "seasonstatus", "seasonstart",
-    "seasonend", "sync", "launchcheck",
+    "seasonend", "sync", "launchcheck", "setimage", "setup", "timezone",
+    "seasonauto", "season_schedule", "seasonreset", "clearhistory",
+    "admin_setpi", "admin_removeracer", "identity", "delete_id",
 }
 
 def configure_command_architecture():
@@ -5049,7 +5105,7 @@ def configure_command_architecture():
     # Legacy prefix !forcesync is intentionally left as a recovery-only prefix
     # command; it is not part of the visible slash-command UI.
     bot._command_architecture_configured = True
-    logging.info("🧭 Clean command architecture enabled: /gauntlet /register /staff /help plus advanced input commands.")
+    logging.info("🧭 Clean command architecture enabled: /gauntlet /register /staff /help plus guided workflows and staff controls.")
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
