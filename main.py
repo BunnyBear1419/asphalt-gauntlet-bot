@@ -11,7 +11,6 @@ import random
 import csv
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from difflib import SequenceMatcher
 from dotenv import load_dotenv
 import discord
 from discord import app_commands
@@ -206,13 +205,6 @@ def get_division_for_pi(pi: int) -> dict:
             return division
     return PI_DIVISIONS[-1]
 
-def format_lap_time(total_ms: int) -> str:
-    """Converts a raw millisecond lap time back into MM:SS.MS display format."""
-    minutes = total_ms // 60000
-    seconds = (total_ms % 60000) // 1000
-    millis = total_ms % 1000
-    return f"{minutes:01d}:{seconds:02d}.{millis:03d}"
-
 def parse_lap_time(lap_str: str) -> int:
     """Parse a strictly valid MM:SS.mmm lap time into milliseconds. Returns -1 on failure."""
     lap_str = str(lap_str or "").strip()
@@ -360,7 +352,7 @@ class GauntletBot(commands.Bot):
         # `/sync full_cleanup:True`).
         try:
             meta = await self.db.settings.find_one({"_id": "global_meta"})
-            command_arch_version = 4
+            command_arch_version = COMMAND_ARCHITECTURE_VERSION
             if meta and meta.get("guild_overrides_cleaned") and int(meta.get("command_architecture_version", 0)) == command_arch_version:
                 logging.info("🟢 Guild command override cleanup already completed previously; skipping on this boot.")
             else:
@@ -875,36 +867,6 @@ async def audit_admin_action(interaction: discord.Interaction, action: str, deta
         color=color,
     )
 
-
-def fuzzy_correct_marker(text: str, target: str, threshold: float = 0.6) -> str:
-    words = text.split()
-    for word in words:
-        cleaned_word = re.sub(r'[^A-Z0-9]', '', word.upper())
-        if not cleaned_word: continue
-        matcher = SequenceMatcher(None, cleaned_word, target)
-        if matcher.ratio() >= threshold: return text.replace(word, target)
-    return text
-
-def preprocess_text_with_fuzzy(text: str) -> str:
-    text = text.upper()
-    text = fuzzy_correct_marker(text, "GARAGE")
-    text = fuzzy_correct_marker(text, "PLAYER")
-    text = fuzzy_correct_marker(text, "LEVEL")
-    text = fuzzy_correct_marker(text, "CLUB")
-    text = re.sub(r'(1D|LD|lD)', 'ID', text)
-    text = re.sub(r'(6ARAGE|GARA6E)', 'GARAGE', text)
-    return text
-
-def calculate_elo_change(winner_elo: int, loser_elo: int, winner_streak: int = 0, k_factor: int = 32):
-    expected_winner = 1 / (1 + 10 ** ((loser_elo - winner_elo) / 400))
-    expected_loser = 1 / (1 + 10 ** ((winner_elo - loser_elo) / 400))
-    
-    # Custom win-streak ELO modifier logic: Adds an extra 4 ELO points per streak tier (caps at +20 ELO bonus)
-    streak_bonus = min(20, (winner_streak // 2) * 4) if winner_streak >= 2 else 0
-    
-    new_winner_elo = winner_elo + round(k_factor * (1 - expected_winner)) + streak_bonus
-    new_loser_elo = loser_elo + round(k_factor * (0 - expected_loser))
-    return max(100, new_winner_elo), max(100, new_loser_elo), streak_bonus
 
 async def dispatch_automated_announcement(guild_id: str, title: str, description: str, color: int = 0x00FFCC, image_url: str = None):
     """Sends a beautifully styled premium global announcement alert to the league."""
@@ -1476,149 +1438,21 @@ class MatchRevertView(discord.ui.View):
         await interaction.message.edit(view=self)
 
 
-class DuelReportModal(discord.ui.Modal, title="Submit Gauntlet Match Results"):
-    challenger_laps = discord.ui.TextInput(label="Your 5 Lap Times (one per line, MM:SS.MS)", style=discord.TextStyle.paragraph, placeholder="01:12.431\n01:15.123\n01:10.567\n01:18.890\n01:14.234", required=True)
-    challenger_cars = discord.ui.TextInput(label="Your 5 Attack Cars (one per line)", style=discord.TextStyle.paragraph, placeholder="Koenigsegg Jesko\nBugatti Bolide\nRimac Nevera\nMcLaren Speedtail\nDevel Sixteen", required=True)
-    challenger_ranks = discord.ui.TextInput(label="Your 5 Car Rankings (one per line)", style=discord.TextStyle.paragraph, placeholder="3000\n2985\n2870\n2750\n3100", required=True)
-    screenshot_proof = discord.ui.TextInput(label="Paste Race Score card Screenshot URL", placeholder="Direct image link...", required=True)
-
-    def __init__(self, challenger_id: str, opponent_id: str, defense_courses: list, defender_proof_url: str = None):
-        super().__init__()
-        self.challenger_id, self.opponent_id, self.defense_courses = str(challenger_id), str(opponent_id), defense_courses
-        self.defender_proof_url = defender_proof_url
-
-    async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        guild_id = str(interaction.guild_id)
-
-        raw_lines = [line.strip() for line in self.challenger_laps.value.strip().split("\n") if line.strip()]
-        if len(raw_lines) != 5:
-            await interaction.followup.send("❌ **Format Denied:** You must provide exactly 5 lap times, one per line in `MM:SS.MS` format.", ephemeral=True)
-            return
-
-        car_lines = [line.strip() for line in self.challenger_cars.value.strip().split("\n") if line.strip()]
-        if len(car_lines) != 5:
-            await interaction.followup.send("❌ **Format Denied:** You must provide exactly 5 attack cars, one per line.", ephemeral=True)
-            return
-
-        if len({c.strip().lower() for c in car_lines}) != len(car_lines):
-            await interaction.followup.send("❌ **Duplicate Cars:** All 5 attack cars must be different.", ephemeral=True)
-            return
-
-        car_lookup = {c.casefold(): c for c in ALU_CARS}
-        normalized_cars = []
-        for i, car in enumerate(car_lines):
-            canonical = car_lookup.get(car.casefold())
-            if not canonical:
-                await interaction.followup.send(f"❌ **Car Not Found:** Attack car {i+1} (`{car}`) is not in the approved ALU car list.", ephemeral=True)
-                return
-            normalized_cars.append(canonical)
-
-        rank_lines = [line.strip().replace(",", "") for line in self.challenger_ranks.value.strip().split("\n") if line.strip()]
-        if len(rank_lines) != 5:
-            await interaction.followup.send("❌ **Format Denied:** You must provide exactly 5 car rankings, one per line.", ephemeral=True)
-            return
-        challenger_ranks = []
-        for i, line in enumerate(rank_lines):
-            try:
-                rank = int(line)
-            except ValueError:
-                await interaction.followup.send(f"❌ **Ranking Denied:** Car ranking {i+1} (`{line}`) must be a whole number.", ephemeral=True)
-                return
-            if rank <= 0:
-                await interaction.followup.send(f"❌ **Ranking Denied:** Car ranking {i+1} must be greater than 0.", ephemeral=True)
-                return
-            challenger_ranks.append(rank)
-
-        challenger_times = []
-        for i, line in enumerate(raw_lines):
-            ms = parse_lap_time(line)
-            if ms <= 0:
-                await interaction.followup.send(f"❌ **Invalid Lap Time:** Lap {i+1} (`{line}`) must be a positive `MM:SS.MS` time with seconds from 00–59.", ephemeral=True)
-                return
-            challenger_times.append({"lap_time_str": line, "ms": ms, "car": normalized_cars[i], "car_rank": challenger_ranks[i]})
-
-        proof_url = self.screenshot_proof.value.strip()
-        if not valid_match_proof_url(proof_url):
-            await interaction.followup.send("❌ **Proof Denied:** Match proof must be a direct HTTPS Discord image attachment URL from `cdn.discordapp.com` or `media.discordapp.net`.", ephemeral=True)
-            return
-
-        # Validate match results channel is configured
-        cfg = await bot.db.settings.find_one({"_id": guild_id})
-        results_chan = bot.get_channel(int(cfg["match_results_channel_id"])) if cfg and cfg.get("match_results_channel_id") else None
-        if not results_chan:
-            await interaction.followup.send("❌ Match results channel is not configured. Ask an administrator to run `/setup`.", ephemeral=True)
-            return
-
-        # Claim the saved challenge only after all user-input validation passes.
-        active = await claim_active_challenge(guild_id, self.challenger_id)
-        if not active:
-            await interaction.followup.send("❌ This challenge is already submitted or no longer active. Start a new challenge from `/gauntlet` → **Challenges**.", ephemeral=True)
-            return
-        if str(active.get("opponent_id")) != str(self.opponent_id) or int(active.get("season_number", 0)) != await get_current_season_number(guild_id) or not validate_five_courses(active.get("defense_courses", [])):
-            await release_active_challenge(active["_id"])
-            await interaction.followup.send("❌ The saved challenge no longer matches this lobby. Start a new challenge from `/gauntlet` → **Challenges**.", ephemeral=True)
-            return
-
-        # Use the server-side saved defense, not stale button data.
-        defense_courses = active["defense_courses"]
-        defender_proof_url = active.get("defender_proof_url")
-        match_data = await process_match_result(guild_id, self.challenger_id, self.opponent_id, defense_courses, challenger_times, proof_url, defender_proof_url, interaction.channel_id)
-        if not match_data:
-            await release_active_challenge(active["_id"])
-            await interaction.followup.send("❌ Could not process match result. One or both player profiles not found.", ephemeral=True)
-            return
-
-        await bot.db.active_challenges.update_one({"_id": active["_id"], "guild_id": guild_id, "challenger_id": self.challenger_id, "status": "processing"}, {"$set": {"status": "completed", "completed_at": time.time(), "match_id": match_data["_id"]}})
-
-        season_number = await get_current_season_number(guild_id)
-        for i, course in enumerate(defense_courses):
-            attack_course = dict(challenger_times[i])
-            attack_course["track"] = course["track"]
-            await save_driver_best_time(guild_id, self.challenger_id, attack_course, season_number, source="match_attack")
-
-        # Post match result to the match results channel
-        result_emb = discord.Embed(title="🏁 Gauntlet Match Result", description=match_data["outcome_desc"], color=match_data["display_color"])
-        result_emb.add_field(name="Challenger", value=f"<@{self.challenger_id}>", inline=True)
-        result_emb.add_field(name="Defender", value=f"<@{self.opponent_id}>", inline=True)
-        winner_delta = match_data["new_w_elo"] - match_data["old_w_elo"]
-        loser_delta = match_data["new_l_elo"] - match_data["old_l_elo"]
-        result_emb.add_field(name="📈 Victor", value=f"<@{match_data['w_id']}> ── **`{match_data['new_w_elo']} ELO`** ({'+' if winner_delta > 0 else ''}{winner_delta})", inline=True)
-        result_emb.add_field(name="📉 Defeated", value=f"<@{match_data['l_id']}> ── **`{match_data['new_l_elo']} ELO`** ({'+' if loser_delta > 0 else ''}{loser_delta})", inline=True)
-        result_emb.set_image(url=proof_url)
-        result_emb.set_footer(text=f"Best-of-5: {match_data['courses_beat']}/5 races won • Click Report Issue if something looks wrong")
-
-        await results_chan.send(embed=result_emb, view=MatchResultPostView(match_data["_id"]))
-
-        # Send confirmation to challenger
-        await interaction.followup.send("✅ **Match submitted!** ELO has been updated automatically. Results posted to the match results channel.", ephemeral=True)
-        try:
-            defender_user = bot.get_user(int(self.opponent_id)) or await bot.fetch_user(int(self.opponent_id))
-            await defender_user.send(f"🏁 **Gauntlet match complete**\nYour defense vs <@{self.challenger_id}> is complete: {match_data['courses_beat']}/5 courses beaten by the challenger. Check the match results channel for the full result.")
-        except Exception:
-            pass
-
-        # Dispatch announcement and audit log
-        await dispatch_audit_log(guild_id, "🏁 Match Result Processed", f"Match between <@{self.challenger_id}> and <@{self.opponent_id}>. Challenger won {match_data['courses_beat']}/5 races.", color=0x2ecc71)
-        await dispatch_automated_announcement(guild_id, match_data["announce_title"], f"🏎️ **Match Event:** <@{self.challenger_id}> challenged <@{self.opponent_id}>!\n🏆 **Result:** {'Challenger won ' if match_data['challenger_won'] else 'Defense held — challenger won '} {match_data['courses_beat']}/5 races.", color=match_data["display_color"])
-
-        # Send result to origin channel
-        origin_channel = bot.get_channel(interaction.channel_id)
-        if origin_channel:
-            try: await origin_channel.send(embed=result_emb)
-            except Exception: pass
-
 class LobbyUIButtons(discord.ui.View):
     def __init__(self, challenger_id: str, opponent_id: str, defense_courses: list, defender_proof_url: str = None):
         super().__init__(timeout=1800)
         self.challenger_id, self.opponent_id, self.defense_courses = str(challenger_id), str(opponent_id), defense_courses
         self.defender_proof_url = defender_proof_url
-    @discord.ui.button(label="Submit Match Results", style=discord.ButtonStyle.blurple, custom_id="lobby_report_btn")
+    @discord.ui.button(label="📤 Submit Match", style=discord.ButtonStyle.blurple, custom_id="lobby_report_btn")
     async def report_match(self, interaction: discord.Interaction, button: discord.ui.Button):
         if str(interaction.user.id) != self.challenger_id:
             await interaction.response.send_message("❌ Access Denied: Challenger only.", ephemeral=True)
             return
-        await interaction.response.send_modal(DuelReportModal(self.challenger_id, self.opponent_id, self.defense_courses, self.defender_proof_url))
+        tracks = [c.get("track", f"Course {i+1}") for i, c in enumerate(self.defense_courses[:5])]
+        if len(tracks) != 5:
+            await interaction.response.send_message("❌ The saved challenge is incomplete. Start a new challenge from `/gauntlet` → **Challenges**.", ephemeral=True)
+            return
+        await interaction.response.send_modal(MatchLapsModal({"tracks": tracks}))
 
 class DefenseView(discord.ui.View):
     def __init__(self, user_id: str, guild_id: str, courses: list, proof_url: str, is_change: bool = False):
@@ -1974,7 +1808,6 @@ class DashboardCategorySelect(discord.ui.Select):
             discord.SelectOption(label="Challenges", value="challenges", emoji="⚔️", description="Start and finish Gauntlet matches"),
             discord.SelectOption(label="Competition", value="competition", emoji="🏆", description="Leaderboards and season history"),
             discord.SelectOption(label="Tracks & Times", value="tracks", emoji="🗺️", description="Maps, records and references"),
-            discord.SelectOption(label="Help", value="help", emoji="❓", description="Open the full interactive help center"),
         ]
         super().__init__(placeholder="Choose a Gauntlet section…", min_values=1, max_values=1, options=options, row=0)
 
@@ -1990,6 +1823,21 @@ class _GauntletModalBase(discord.ui.Modal):
             await interaction.followup.send(message, ephemeral=True)
         else:
             await interaction.response.send_message(message, ephemeral=True)
+
+
+class HomeButton(discord.ui.Button):
+    def __init__(self, staff: bool = False):
+        self.staff = bool(staff)
+        super().__init__(label="🏠 Staff Home" if self.staff else "🏠 Home", style=discord.ButtonStyle.secondary, row=2)
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.staff:
+            if not await check_admin_privileges(interaction):
+                await interaction.response.send_message("❌ Staff only.", ephemeral=True)
+                return
+            await send_admin_dashboard(interaction)
+        else:
+            await send_dashboard(interaction)
 
 
 class ConfirmActionView(discord.ui.View):
@@ -2066,6 +1914,7 @@ class MatchConfirmView(discord.ui.View):
         super().__init__(timeout=180)
         self.owner_id = str(owner_id)
         self.state = state
+        self.add_item(HomeButton(False))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if str(interaction.user.id) != self.owner_id:
@@ -2194,6 +2043,7 @@ class DefenseStartView(discord.ui.View):
         self.owner_id = str(owner_id)
         self.tracks = list(tracks)
         self.is_change = bool(is_change)
+        self.add_item(HomeButton(False))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if str(interaction.user.id) != self.owner_id:
@@ -2224,14 +2074,11 @@ async def send_match_center(interaction: discord.Interaction):
         embed.add_field(name="Opponent", value=f"<@{active.get('opponent_id')}>", inline=True)
         embed.add_field(name="Deadline", value=f"⏳ {h}h {m}m", inline=True)
         courses=active.get("defense_courses") or []
-        completed=active.get("submitted_courses", [])
-        completed_count=len(completed) if isinstance(completed,list) else 0
         lines=[]
         for i,c in enumerate(courses[:5]):
             name=c.get("track",f"Course {i+1}")
-            marker="✅" if i < completed_count else "⬜"
-            lines.append(f"{marker} **{i+1}.** {name}")
-        embed.add_field(name=f"🏁 Course Progress — {completed_count}/5", value="\n".join(lines) if lines else "*Course details unavailable.*", inline=False)
+            lines.append(f"🏁 **{i+1}.** {name}")
+        embed.add_field(name="🏁 Locked Match Courses — 5/5", value="\n".join(lines) if len(lines) == 5 else "*Course details unavailable.*", inline=False)
         embed.add_field(name="Next Step", value="Finish all five races, then choose **Challenges → Submit Match**. Proof is uploaded in the guided workflow.", inline=False)
     recent = await bot.db.matches.find({"guild_id": guild_id, "$or": [{"challenger_id": user_id}, {"opponent_id": user_id}]}).sort("timestamp", -1).limit(5).to_list(length=5)
     if recent:
@@ -2282,9 +2129,10 @@ async def validate_image_url(url: str) -> bool:
                 content_type = (resp.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
                 return content_type.startswith("image/")
     except Exception:
-        # Some hosts block automated validation. The direct Discord attachment path
-        # remains authoritative, while URL fallback remains usable for those hosts.
-        return True
+        # Fail closed for hosted URLs. Direct Discord attachments remain the preferred
+        # upload path and do not depend on this network validation.
+        logging.warning("Hosted image URL validation failed", exc_info=True)
+        return False
 
 
 class ProofUrlModal(_GauntletModalBase, title="Proof • Image URL"):
@@ -2482,6 +2330,7 @@ class MapSelectView(discord.ui.View):
             if name not in seen:
                 seen.add(name); maps.append(name)
         self.add_item(MapSelect(self, maps))
+        self.add_item(HomeButton(False))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if str(interaction.user.id) != self.owner_id:
@@ -2509,10 +2358,28 @@ class MapSelect(discord.ui.Select):
         )
 
 
+class BackToMapButton(discord.ui.Button):
+    def __init__(self, owner_id: int, mode: str):
+        self.owner_id = str(owner_id)
+        self.mode = mode
+        super().__init__(label="◀️ Back to Maps", style=discord.ButtonStyle.secondary, row=2)
+
+    async def callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("❌ This map picker belongs to another player.", ephemeral=True)
+            return
+        await interaction.response.edit_message(
+            embed=discord.Embed(title="🗺️ CHOOSE MAP", description="Pick a map to continue.", color=ASPHALT_THEME_COLOR),
+            view=MapSelectView(interaction.user.id, self.mode),
+        )
+
+
 class RouteSelectView(discord.ui.View):
     def __init__(self, owner_id: int, mode: str, routes: list[str]):
         super().__init__(timeout=180); self.owner_id=str(owner_id); self.mode=mode
         self.add_item(RouteSelect(self, routes))
+        self.add_item(BackToMapButton(owner_id, mode))
+        self.add_item(HomeButton(False))
 
     async def interaction_check(self, interaction):
         if str(interaction.user.id)!=self.owner_id:
@@ -2547,6 +2414,7 @@ class AddReferenceModal(_GauntletModalBase, title="Add Reference Lap"):
 class NotificationsView(discord.ui.View):
     def __init__(self, owner_id: int):
         super().__init__(timeout=120); self.owner_id=str(owner_id)
+        self.add_item(HomeButton(False))
     async def interaction_check(self, interaction):
         if str(interaction.user.id)!=self.owner_id:
             await interaction.response.send_message("❌ This control belongs to another player.", ephemeral=True); return False
@@ -2650,7 +2518,10 @@ class IdentityModal(_GauntletModalBase, title="Staff • Bot Identity"):
 
 
 class PlayerChangesView(discord.ui.View):
-    def __init__(self, owner_id): super().__init__(timeout=180); self.owner_id=str(owner_id)
+    def __init__(self, owner_id):
+        super().__init__(timeout=180)
+        self.owner_id=str(owner_id)
+        self.add_item(HomeButton(True))
     async def interaction_check(self, interaction):
         if str(interaction.user.id)!=self.owner_id:
             await interaction.response.send_message("❌ This staff control belongs to another admin.", ephemeral=True); return False
@@ -2680,6 +2551,7 @@ class StaffMemberTargetModal(_GauntletModalBase, title="Staff • Select Player"
 class TimezoneSelectView(discord.ui.View):
     def __init__(self, owner_id):
         super().__init__(timeout=120); self.owner_id=str(owner_id); self.add_item(TimezoneSelect(self))
+        self.add_item(HomeButton(True))
     async def interaction_check(self, interaction):
         if str(interaction.user.id)!=self.owner_id:
             await interaction.response.send_message("❌ This staff control belongs to another admin.",ephemeral=True); return False
@@ -2699,6 +2571,7 @@ class TimezoneSelect(discord.ui.Select):
 class AdminImageTypeView(discord.ui.View):
     def __init__(self, owner_id):
         super().__init__(timeout=120); self.owner_id=str(owner_id); self.add_item(AdminImageTypeSelect(self))
+        self.add_item(HomeButton(True))
     async def interaction_check(self, interaction):
         if str(interaction.user.id)!=self.owner_id:
             await interaction.response.send_message("❌ This staff control belongs to another admin.",ephemeral=True); return False
@@ -2720,6 +2593,7 @@ class AdminImageTypeSelect(discord.ui.Select):
 class ClearHistorySelectView(discord.ui.View):
     def __init__(self, owner_id):
         super().__init__(timeout=120); self.owner_id=str(owner_id)
+        self.add_item(HomeButton(True))
         self.add_item(ClearHistorySelect(self))
     async def interaction_check(self, interaction):
         if str(interaction.user.id)!=self.owner_id:
@@ -2739,6 +2613,35 @@ class ClearHistorySelect(discord.ui.Select):
     async def callback(self, interaction):
         choice=type("Choice",(),{"value":self.values[0],"name":next(o.label for o in self.options if o.value==self.values[0])})()
         await clear_history_cmd(interaction, choice)
+
+
+async def send_defense_review_queue(interaction: discord.Interaction):
+    """Show drivers whose defense submissions are waiting for staff approval."""
+    if not await check_admin_privileges(interaction):
+        await interaction.response.send_message("❌ Staff only.", ephemeral=True); return
+    guild_id = str(interaction.guild_id)
+    rows = await bot.db.drivers.find({
+        "guild_id": guild_id,
+        "defense_review_pending": True,
+        "defense_review_payload": {"$exists": True},
+    }).sort("defense_review_payload.submitted_at", 1).limit(10).to_list(length=10)
+    if not rows:
+        await interaction.response.send_message("✅ No defense submissions are waiting for staff approval.", ephemeral=True); return
+    cfg = await bot.db.settings.find_one({"_id": guild_id}) or {}
+    review_chan = bot.get_channel(int(cfg["review_channel_id"])) if cfg.get("review_channel_id") else None
+    lines = []
+    for row in rows:
+        payload = row.get("defense_review_payload") or {}
+        kind = "Defense change" if payload.get("is_change") else "New defense"
+        submitted = payload.get("submitted_at")
+        stamp = datetime.fromtimestamp(float(submitted), tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC") if submitted else "time unknown"
+        lines.append(f"• <@{row.get('user_id')}> — **{kind}** — `{stamp}`")
+    description = "\n".join(lines)
+    if review_chan:
+        description += f"\n\n👉 Approve or reject these submissions in {review_chan.mention}."
+    embed = discord.Embed(title="🛡️ DEFENSE REVIEW QUEUE", description=description, color=ASPHALT_ADMIN_COLOR)
+    embed.set_footer(text="The review-channel cards contain the Approve / Reject buttons.")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def send_reference_review_queue(interaction: discord.Interaction):
@@ -2789,9 +2692,6 @@ class DashboardActionSelect(discord.ui.Select):
                 ("🎥 Reference", "reference_direct", "View the approved reference lap"),
                 ("📤 Add Reference", "add_reference_direct", "Submit a faster reference for staff review"),
             ],
-            "help": [
-                ("❓ Open Help", "help", "Open the interactive help center"),
-            ],
         }[category]
         options = [discord.SelectOption(label=label, value=value, description=desc, emoji=label.split()[0]) for label, value, desc in actions]
         super().__init__(placeholder="Choose an action…", min_values=1, max_values=1, options=options, row=1)
@@ -2819,7 +2719,6 @@ class DashboardView(discord.ui.View):
             "challenges": ("⚔️ CHALLENGE CENTER", "Start a challenge or submit an active match."),
             "competition": ("🏆 COMPETITION", "Standings, top-five boards and completed-season history."),
             "tracks": ("🗺️ TRACK CENTER", "Maps, best times and reference laps."),
-            "help": ("❓ HELP", "Use the Help button below or select Open Help."),
         }
         title, desc = titles[category]
         embed = discord.Embed(title=title, description=desc, color=ASPHALT_THEME_COLOR)
@@ -2844,7 +2743,7 @@ class DashboardView(discord.ui.View):
             embed = discord.Embed(title="🔄 Confirm Defense Change", description="This starts your eligible defense-change workflow. Your current approved defense remains active until a replacement is approved.", color=ASPHALT_THEME_COLOR)
             await interaction.response.send_message(embed=embed, view=ConfirmActionView(interaction.user.id, do_change, embed.description), ephemeral=True); return
         if action == "submitmatch_wizard":
-            await interaction.response.send_modal(MatchLapsModal({})); return
+            await open_submitmatch_workflow(interaction); return
         if action == "maps_direct":
             await interaction.response.send_message(embed=discord.Embed(title="🗺️ MAP CENTER", description="Choose a map to view its two official Gauntlet routes.", color=ASPHALT_THEME_COLOR), view=MapSelectView(interaction.user.id, "maps"), ephemeral=True); return
         if action == "reference_direct":
@@ -2891,7 +2790,7 @@ async def send_dashboard(interaction: discord.Interaction):
     season = int(state.get("season_number", 1)) if state else 1
     profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"})
     if not profile:
-        desc = "You are not registered yet.\n\n👉 Use `/register` to join the league, or `/gauntlet` → **My Gauntlet** → **Register** for the guided form."
+        desc = "You are not registered yet.\n\n👉 Use `/register` for the guided registration form, or open `/gauntlet` → **My Gauntlet** → **Register**."
         embed = discord.Embed(title="🏁 ALU GAUNTLET", description=desc, color=ASPHALT_THEME_COLOR)
         await (interaction.followup.send(embed=embed, view=DashboardView(guild_id, user_id, False), ephemeral=True) if interaction.response.is_done() else interaction.response.send_message(embed=embed, view=DashboardView(guild_id, user_id, False), ephemeral=True))
         return
@@ -2918,34 +2817,16 @@ async def send_dashboard(interaction: discord.Interaction):
     is_admin = bool(interaction.guild and (interaction.user.guild_permissions.administrator or await check_admin_privileges(interaction)))
     await (interaction.followup.send(embed=embed, view=DashboardView(guild_id, user_id, is_admin), ephemeral=True) if interaction.response.is_done() else interaction.response.send_message(embed=embed, view=DashboardView(guild_id, user_id, is_admin), ephemeral=True))
 
-async def send_my_challenges(interaction: discord.Interaction, guild_id: str, user_id: str):
-    active = await bot.db.active_challenges.find({"guild_id": str(guild_id), "challenger_id": str(user_id), "status": "active"}).to_list(length=20)
-    recent = await bot.db.matches.find({"guild_id": str(guild_id), "$or": [{"challenger_id": str(user_id)}, {"opponent_id": str(user_id)}]}).sort("timestamp", -1).limit(5).to_list(length=5)
-    embed = discord.Embed(title="⚔️ MY CHALLENGES", color=ASPHALT_THEME_COLOR)
-    if active:
-        embed.add_field(name="🟡 Active", value="\n".join(f"• vs <@{x['opponent_id']}> — open `/gauntlet` → **Challenges** → **Submit Match**" for x in active), inline=False)
-    else:
-        embed.add_field(name="🟢 Active", value="No unfinished challenges.", inline=False)
-    if recent:
-        lines=[]
-        for m in recent:
-            other = m.get("opponent_id") if m.get("challenger_id") == str(user_id) else m.get("challenger_id")
-            won = (m.get("challenger_won") and m.get("challenger_id") == str(user_id)) or ((not m.get("challenger_won")) and m.get("opponent_id") == str(user_id))
-            lines.append(f"• {'🏆' if won else '❌'} vs <@{other}> — {m.get('courses_beat',0)}/5")
-        embed.add_field(name="📜 Recent", value="\n".join(lines), inline=False)
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-
 class StaffActionSelect(discord.ui.Select):
     ACTIONS = {
         "players": [
-            ("⏳ Pending Players", "pending", "View players awaiting approval"),
-            ("📋 Player List", "listplayers", "View registered drivers"),
-            ("🛡️ Missing Defenses", "missingdefense", "Find players without locked defenses"),
+            ("📋 Player List", "listplayers", "List current-season drivers"),
+            ("🛡️ Defense Readiness", "missingdefense", "Find players who still need a locked defense"),
             ("👤 Player Changes", "player_changes", "Manage PI, registration resets and player removals"),
         ],
         "reviews": [
-            ("⏳ Registration Reviews", "pending", "View players awaiting approval"),
-            ("🛡️ Defense Reviews", "missingdefense", "Find players missing a locked defense"),
+            ("⏳ Registration Reviews", "pending", "Review players awaiting approval"),
+            ("🛡️ Defense Reviews", "defense_reviews", "Review defense submissions waiting for approval"),
             ("🎥 Reference Reviews", "reference_reviews", "Open the pending reference review queue"),
             ("📜 Admin Log", "adminlog", "View recent administrative audit entries"),
         ],
@@ -2987,10 +2868,37 @@ class StaffActionSelect(discord.ui.Select):
         await self.owner_view.run_action(interaction, self.values[0])
 
 
+class StaffNextTaskButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="🎯 Next Task", style=discord.ButtonStyle.primary, row=2)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("❌ Staff only.", ephemeral=True)
+            return
+        guild_id = str(interaction.guild_id)
+        season = await get_current_season_number(guild_id)
+        pending = await bot.db.pending.count_documents({"guild_id": guild_id, "season_number": season})
+        missing = await bot.db.drivers.count_documents({"guild_id": guild_id, "season_registered": True, "season_number": season, "defense_locked.courses.4": {"$exists": False}})
+        defense_reviews = await bot.db.drivers.count_documents({"guild_id": guild_id, "defense_review_pending": True, "defense_review_payload": {"$exists": True}})
+        refs = await bot.db.reference_pending.count_documents({"guild_id": guild_id, "status": "pending"})
+        if pending:
+            await pending_cmd(interaction)
+        elif defense_reviews:
+            await send_defense_review_queue(interaction)
+        elif missing:
+            await missing_defense_cmd(interaction)
+        elif refs:
+            await send_reference_review_queue(interaction)
+        else:
+            await send_launch_readiness(interaction)
+
+
 class StaffDashboardView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=900)
         self.add_item(StaffCategorySelect(self))
+        self.add_item(StaffNextTaskButton())
 
     async def show_category(self, interaction: discord.Interaction, category: str):
         for item in list(self.children):
@@ -2998,7 +2906,7 @@ class StaffDashboardView(discord.ui.View):
                 self.remove_item(item)
         self.add_item(StaffActionSelect(self, category))
         labels = {
-            "players": ("👥 PLAYERS", "Approvals, roster, missing defenses and player management."),
+            "players": ("👥 PLAYERS", "Roster, defense readiness and player management."),
             "reviews": ("🛡️ REVIEWS", "Defense/reference review and administrative audit history."),
             "season": ("🏆 SEASON CONTROL", "Status, schedule, automation and season lifecycle."),
             "data": ("🗄️ DATA", "Database health, backups and history/reset tools."),
@@ -3016,6 +2924,8 @@ class StaffDashboardView(discord.ui.View):
             return
         if action == "player_changes":
             await interaction.response.send_message(embed=discord.Embed(title="👤 PLAYER CHANGES", description="Choose a safe player-management action.", color=ASPHALT_ADMIN_COLOR), view=PlayerChangesView(interaction.user.id), ephemeral=True); return
+        if action == "defense_reviews":
+            await send_defense_review_queue(interaction); return
         if action == "reference_reviews":
             await send_reference_review_queue(interaction); return
         if action == "seasonauto_direct":
@@ -3023,8 +2933,10 @@ class StaffDashboardView(discord.ui.View):
         if action == "season_schedule_direct":
             await interaction.response.send_modal(SeasonScheduleModal()); return
         if action == "seasonreset_direct":
-            choice=type("Choice",(),{"value":"counter","name":"Season number only"})()
-            await season_reset_cmd(interaction, choice); return
+            await interaction.response.send_message(
+                "⚠️ **Reset Season**\n\nChoose how much to reset. The full option is intended for pre-launch/test cleanup and deletes season history, matches, challenges and player season data.",
+                view=SeasonResetChoiceView(interaction.user.id), ephemeral=True
+            ); return
         if action == "clearhistory_direct":
             await interaction.response.send_message(embed=discord.Embed(title="🧹 CLEAR HISTORY", description="Choose what should be purged. A second confirmation is required.", color=ASPHALT_ALERT_COLOR), view=ClearHistorySelectView(interaction.user.id), ephemeral=True); return
         if action == "setup_direct":
@@ -3068,16 +2980,20 @@ async def send_admin_dashboard(interaction: discord.Interaction):
     pending = await bot.db.pending.count_documents({"guild_id":guild_id,"season_number":season})
     missing = await bot.db.drivers.count_documents({"guild_id":guild_id,"season_registered":True,"season_number":season,"defense_locked.courses.4":{"$exists":False}})
     active = await bot.db.active_challenges.count_documents({"guild_id":guild_id,"status":"active"})
+    defense_reviews = await bot.db.drivers.count_documents({"guild_id": guild_id, "defense_review_pending": True, "defense_review_payload": {"$exists": True}})
+    pending_references = await bot.db.reference_pending.count_documents({"guild_id":guild_id, "status":"pending"})
     embed=discord.Embed(title="🛠️ ALU GAUNTLET — STAFF CENTER", description="Everything staff needs at a glance. Use the sections below to manage the league.", color=ASPHALT_ADMIN_COLOR)
     embed.add_field(name="🏁 Season", value=f"**{season}**", inline=True)
     embed.add_field(name="👥 Players", value=f"**{registered}**", inline=True)
     embed.add_field(name="⏳ Pending", value=f"**{pending}**", inline=True)
     embed.add_field(name="🛡️ Missing Defense", value=f"**{missing}**", inline=True)
+    embed.add_field(name="🛡️ Defense Reviews", value=f"**{defense_reviews}**", inline=True)
     embed.add_field(name="⚔️ Active Matches", value=f"**{active}**", inline=True)
+    embed.add_field(name="🎥 Pending References", value=f"**{pending_references}**", inline=True)
     mongo_ok = bool(getattr(bot, "mongo_client", None))
     scheduler_ok = all(bool(getattr(bot, name, None) and getattr(bot, name).is_running()) for name in ("seasonal_clock_loop", "player_reminder_loop", "backup_loop") if getattr(bot, name, None) is not None)
     embed.add_field(name="🩺 System", value=("🟢" if mongo_ok else "🔴") + " Database\n" + ("🟢" if scheduler_ok else "🟡") + " Automation", inline=True)
-    embed.add_field(name="🚨 Needs Attention", value=(f"🔴 {pending} registration review(s)\n" if pending else "🟢 No pending registrations\n") + (f"🟠 {missing} missing defense(es)\n" if missing else "🟢 No missing defenses\n") + "🟢 Use the dashboard sections for the rest of staff tools.", inline=False)
+    embed.add_field(name="🚨 Needs Attention", value=(f"🔴 {pending} registration review(s)\n" if pending else "🟢 No pending registrations\n") + (f"🟠 {missing} missing defense(es)\n" if missing else "🟢 No missing defenses\n") + (f"🟠 {pending_references} reference review(s)\n" if pending_references else "🟢 No pending references\n") + "🟢 Use the dashboard sections for the rest of staff tools.", inline=False)
     await interaction.response.send_message(embed=embed, view=StaffDashboardView(), ephemeral=True)
 
 @bot.tree.command(name="gauntlet", description="Open your ALU Gauntlet player dashboard.")
@@ -3092,7 +3008,7 @@ async def whatnext_cmd(interaction: discord.Interaction):
     season=await get_current_season_number(guild_id)
     p=await bot.db.drivers.find_one({"_id":f"{guild_id}_{user_id}"})
     if not p:
-        msg="1️⃣ Run `/register`"
+        msg="1️⃣ Run `/register` to open the guided registration form"
     elif not p.get("season_registered") or int(p.get("season_number",0))!=season:
         msg=f"1️⃣ Re-register for Season {season}: `/register`"
     elif not p.get("defense_locked"):
@@ -3346,6 +3262,29 @@ async def season_schedule_cmd(interaction: discord.Interaction, start_date: str,
         await audit_admin_action(interaction, "Season Schedule", f"Changed season closing time to `{end_date}`.")
     except ValueError:
         await interaction.followup.send("❌ **Timestamp Read Error:** Please verify exact syntax pattern structural formats: `YYYY-MM-DD HH:MM`", ephemeral=True)
+
+
+class SeasonResetChoiceView(discord.ui.View):
+    def __init__(self, owner_id: str):
+        super().__init__(timeout=120)
+        self.owner_id = str(owner_id)
+        self.add_item(HomeButton(True))
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("❌ This staff control belongs to another admin.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Reset Season Number", style=discord.ButtonStyle.secondary)
+    async def counter(self, interaction: discord.Interaction, button: discord.ui.Button):
+        choice = type("Choice", (), {"value": "counter", "name": "Season number only"})()
+        await season_reset_cmd(interaction, choice)
+
+    @discord.ui.button(label="⚠️ Full Pre-Launch Reset", style=discord.ButtonStyle.danger)
+    async def full(self, interaction: discord.Interaction, button: discord.ui.Button):
+        choice = type("Choice", (), {"value": "full", "name": "Full pre-launch/test reset"})()
+        await season_reset_cmd(interaction, choice)
 
 
 class ConfirmSeasonResetView(discord.ui.View):
@@ -3915,7 +3854,24 @@ async def release_active_challenge(active_id: str):
     )
 
 
-@bot.tree.command(name="submitmatch", description="Submit your active 5-course challenge with cars, ratings, times and proof.")
+async def open_submitmatch_workflow(interaction: discord.Interaction):
+    """Open the guided five-course match submission workflow from any supported UI."""
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    active = await bot.db.active_challenges.find_one({"_id": f"{interaction.guild_id}_{interaction.user.id}", "status": {"$in": ["active", "processing"]}})
+    if not active:
+        await interaction.response.send_message("❌ You have no active challenge. Open `/gauntlet` → **Challenges** → **Find Challenge** first.", ephemeral=True)
+        return
+    tracks = [c.get("track", f"Course {i+1}") for i, c in enumerate(active.get("defense_courses", [])[:5])]
+    if len(tracks) != 5:
+        await interaction.response.send_message("❌ Your active challenge does not contain a complete five-course route. Please use **Find Challenge** again or contact staff.", ephemeral=True)
+        return
+    await interaction.response.send_modal(MatchLapsModal({"tracks": tracks}))
+
+async def submitmatch_launcher_cmd(interaction: discord.Interaction):
+    await open_submitmatch_workflow(interaction)
+
+@bot.tree.command(name="submitmatch_direct", description="[Advanced] Submit an active challenge with all five results and proof.")
 @app_commands.describe(
     lap1="Course 1 lap time", lap2="Course 2 lap time", lap3="Course 3 lap time", lap4="Course 4 lap time", lap5="Course 5 lap time",
     car1="Course 1 attack car", car2="Course 2 attack car", car3="Course 3 attack car", car4="Course 4 attack car", car5="Course 5 attack car",
@@ -4176,7 +4132,13 @@ async def top_cmd(interaction: discord.Interaction):
     embed.set_footer(text="Select a category below")
     await interaction.followup.send(embed=embed, view=TopLeaderboardView())
 
-@bot.tree.command(name="register", description="Join the current season registry or re-register your Garage for a new season.")
+@bot.tree.command(name="register", description="Open the guided ALU Gauntlet registration form.")
+async def register_launcher_cmd(interaction: discord.Interaction):
+    if not await enforce_channel_constraints(interaction, admin_cmd=False):
+        return
+    await interaction.response.send_modal(RegistrationModal())
+
+@bot.tree.command(name="register_direct", description="[Advanced] Submit registration fields directly.")
 @app_commands.describe(game_id="Your Asphalt Legends unique Player ID string", garage_pi="Your current Garage PI value, as shown in-game", proof_screenshot="Attachment file proving garage level and ratings", control_type="Your input driving mechanics style")
 @app_commands.choices(control_type=[app_commands.Choice(name="TouchDrive Auto Pilot", value="touchdrive"), app_commands.Choice(name="Manual Tilt / Tap Controls", value="manual")])
 async def register_cmd(interaction: discord.Interaction, game_id: str, garage_pi: int, proof_screenshot: discord.Attachment, control_type: app_commands.Choice[str]):
@@ -4867,7 +4829,7 @@ class HelpCategorySelect(discord.ui.Select):
             embed.add_field(name="🏎️ Defense", value="5 locked courses • 5 different cars • lap times • car ratings • proof", inline=False)
             embed.add_field(name="⚔️ Challenge", value="Race the same 5 courses with your own cars and ratings. Fastest time wins each race; 3/5 wins the match.", inline=False)
             embed.add_field(name="📈 Progress", value="Garage PI = division • ELO = standings • career stats carry between seasons", inline=False)
-            embed.add_field(name="🔄 Defense changes", value="`/changedefense` can replace your defense once per 24 hours after approval.", inline=False)
+            embed.add_field(name="🔄 Defense changes", value="Use **Defense → Change Defense** to replace your defense once per 24 hours after approval.", inline=False)
             embed.add_field(name="💡 Need help?", value="Open `/gauntlet` → **My Gauntlet** → **What Next?** anytime you are unsure what to do next.", inline=False)
 
         elif category == "rules":
@@ -4896,7 +4858,7 @@ class HelpCategorySelect(discord.ui.Select):
             embed.description = "Build, submit and manage your 5-course defense."
             self._command_field(embed, "Defense", [
                 ("**Defense → Set Defense**", "Get your season's 5 defense routes."),
-                ("**Defense → Complete Defense Wizard**", "Submit 5 cars, ratings, times and proof."),
+                ("**Defense → Enter Defense Results**", "Submit 5 cars, ratings, times and proof."),
                 ("**Defense → View Defense**", "View your approved defense."),
                 ("**Defense → Change Defense**", "Submit a replacement defense after cooldown."),
             ])
@@ -4945,10 +4907,10 @@ class HelpCategorySelect(discord.ui.Select):
             embed.title = "⚙️ ADMIN — LEAGUE SETUP"
             embed.description = "Configure the server and bot identity."
             self._command_field(embed, "Setup", [
-                ("`/setup`", "Configure league channels, roles and server settings."),
-                ("`/timezone`", "Set the server timezone used for season scheduling."),
-                ("`/setimage`", "Change bot images."),
-                ("`/identity`", "Change the bot's username or avatar."),
+                ("**Server Setup → Server Setup**", "Configure league channels, roles and server settings."),
+                ("**Server Setup → Timezone**", "Set the server timezone used for season scheduling."),
+                ("**Server Setup → Custom Images**", "Change bot images."),
+                ("**Server Setup → Bot Identity**", "Change the bot's username or avatar."),
             ])
 
         elif category == "admin_seasons":
@@ -4958,13 +4920,13 @@ class HelpCategorySelect(discord.ui.Select):
             embed.title = "🏁 ADMIN — SEASON CONTROL"
             embed.description = "Everything staff needs to schedule and control seasons."
             self._command_field(embed, "Season lifecycle", [
-                ("`/season_schedule`", "Set the automatic start and end dates/times."),
-                ("`/seasonstart`", "Start the scheduled season early while preserving its scheduled end."),
-                ("`/seasonend`", "End the current season early; the next season will not auto-start."),
-                ("`/seasonauto`", "Turn automatic next-season rollover ON or OFF."),
-                ("`/seasonstatus`", "View the current season state and schedule."),
-                ("`/seasonreset`", "Reset season numbering or perform a full pre-launch/test reset."),
-                ("`/seasonhistory`", "View completed season archives."),
+                ("**Season → Season Schedule**", "Set the automatic start and end dates/times."),
+                ("**Season → Start Season**", "Start the scheduled season early while preserving its scheduled end."),
+                ("**Season → End Season**", "End the current season early; the next season will not auto-start."),
+                ("**Season → Season Automation**", "Turn automatic next-season rollover ON or OFF."),
+                ("**Season → Season Status**", "View the current season state and schedule."),
+                ("**Season → Reset Season**", "Reset season numbering or perform a full pre-launch/test reset."),
+                ("**Competition → Season History**", "View completed season archives."),
             ])
             embed.add_field(name="💡 How it works", value="Scheduled start/end always follow `/season_schedule`. `/seasonauto` only controls whether a scheduled ending automatically starts the next season.", inline=False)
 
@@ -4975,14 +4937,15 @@ class HelpCategorySelect(discord.ui.Select):
             embed.title = "👥 ADMIN — PLAYER MANAGEMENT"
             embed.description = "Manage registrations, drivers and defense readiness."
             self._command_field(embed, "Players", [
-                ("`/pending`", "Review pending registrations."),
-                ("`/listplayers`", "List current-season drivers with ELO and division."),
-                ("`/missingdefense`", "Find current-season drivers without a locked defense."),
-                ("`/admin_setpi`", "Change a driver's PI."),
-                ("`/delete_id`", "Reset active registration while keeping career history."),
-                ("`/admin_removeracer`", "Permanently remove a driver and their league data."),
+                ("**Reviews → Registration Reviews**", "Review pending registrations."),
+                ("**Players → Player List**", "List current-season drivers with ELO and division."),
+                ("**Players → Defense Readiness**", "Find current-season drivers without a locked defense."),
+                ("**Reviews → Defense Reviews**", "Review defense submissions waiting for approval."),
+                ("**Players → Player Changes → Change PI**", "Change a driver's PI."),
+                ("**Players → Player Changes → Reset Registration**", "Reset active registration while keeping career history."),
+                ("**Players → Player Changes → Permanent Purge**", "Permanently remove a driver and their league data."),
             ])
-            embed.add_field(name="🧹 Deletion difference", value="`/delete_id` = registration reset. `/admin_removeracer` = permanent league-data purge.", inline=False)
+            embed.add_field(name="🧹 Deletion difference", value="**Reset Registration** = registration reset while keeping career history. **Permanent Purge** = permanent league-data removal.", inline=False)
 
         elif category == "admin_tools":
             if not self.is_admin:
@@ -4991,17 +4954,17 @@ class HelpCategorySelect(discord.ui.Select):
             embed.title = "🗃️ ADMIN — DATA & TOOLS"
             embed.description = "Maintenance, backups, auditing and command management."
             self._command_field(embed, "Data", [
-                ("`/backup`", "Create an immediate database backup."),
-                ("`/admin_backups`", "List available database backups."),
-                ("`/admin_restore`", "Restore a database backup with confirmation."),
-                ("`/clearhistory`", "Delete selected server data."),
+                ("**Data → Backup**", "Create an immediate database backup."),
+                ("**Data → Database Check**", "Audit database consistency and recoverable states."),
+                ("**Data → Clear History**", "Delete selected server data with confirmation."),
             ])
             self._command_field(embed, "Operations", [
-                ("`/diagnostics`", "Run bot health checks."),
-                ("`/adminlog`", "View recent administrative audit entries."),
-                ("`/sync`", "Sync slash commands."),
-                ("`!forcesync`", "Fallback command sync."),
+                ("**System → Diagnostics**", "Run bot health checks."),
+                ("**Reviews → Admin Log**", "View recent administrative audit entries."),
+                ("**System → Sync Commands**", "Synchronize slash commands when needed."),
+                ("`!forcesync`", "Emergency fallback sync if the slash-command surface is stale."),
             ])
+            embed.add_field(name="🏠 Staff workflow", value="Use **/staff** as your home screen. Help describes dashboard actions instead of making you memorize hidden commands.", inline=False)
 
         embed.set_image(url=ASPHALT_MEDIA["banner_help"])
         embed.set_footer(text="ALU Gauntlet Help • Select another section above.")
@@ -5141,7 +5104,7 @@ async def help_cmd(interaction: discord.Interaction):
     is_admin = bool(interaction.guild and (interaction.user.guild_permissions.administrator or await check_admin_privileges(interaction)))
     embed = discord.Embed(
         title="🏁 ALU GAUNTLET — HELP",
-        description="Choose a section below.\n\n📘 Overview  •  📜 Rules  •  🎮 Player Commands  •  🛠️ Admin Commands",
+        description="Choose a section below.\n\n📘 Overview  •  📜 Rules  •  🎮 Player Help  •  🛠️ Staff Help\n\n**Quick commands:** `/gauntlet` • `/register` • `/staff` • `/help`\n\n📤 **Submit Match** is inside `/gauntlet` → **Challenges**.",
         color=ASPHALT_THEME_COLOR,
     )
     embed.set_thumbnail(url=ASPHALT_MEDIA["thumb_profile"])
@@ -5511,15 +5474,66 @@ async def build_launch_readiness(guild_id: str) -> tuple[bool, list[str], list[s
     visible = {cmd.name for cmd in bot.tree.get_commands()}
     required_commands = {"gauntlet", "help", "register", "staff"}
     missing_commands = required_commands - visible
+    unexpected_public = visible - required_commands
     if missing_commands:
-        checks.append("🔴 Required commands missing: " + ", ".join(sorted(missing_commands))); ready = False
+        checks.append("🔴 Required public commands missing: " + ", ".join(sorted(missing_commands))); ready = False
     else:
-        checks.append("🟢 Core command surface present")
+        checks.append("🟢 Public command surface present (4 commands)")
+    if unexpected_public:
+        checks.append("🔴 Unexpected public commands: " + ", ".join(sorted(unexpected_public))); ready = False
+    else:
+        checks.append("🟢 No unexpected public slash commands")
 
-    if getattr(bot, "_guild_cleanup_failed", False):
-        checks.append("🔴 Guild command cleanup is not verified"); ready = False
+    config = await bot.db.settings.find_one({"_id": str(guild_id)}) if bot.db is not None else None
+    setup_keys = {
+        "registration_channel_id": "Public command channel",
+        "review_channel_id": "Staff review channel",
+        "log_channel_id": "Log channel",
+        "announcement_channel_id": "Announcement channel",
+        "match_results_channel_id": "Match results channel",
+        "admin_role_id": "Staff/Admin role",
+        "player_role_id": "Verified player role",
+        "timezone": "Server timezone",
+    }
+    missing_setup = [label for key, label in setup_keys.items() if not config or not config.get(key)]
+    if missing_setup:
+        checks.append("🔴 Server setup incomplete: " + ", ".join(missing_setup)); ready = False
     else:
+        checks.append("🟢 Server setup configuration present")
+        guild = bot.get_guild(int(guild_id)) if str(guild_id).isdigit() else None
+        if guild:
+            bad_channels = []
+            for key, label in list(setup_keys.items())[:5]:
+                try:
+                    if guild.get_channel(int(config[key])) is None: bad_channels.append(label)
+                except Exception:
+                    bad_channels.append(label)
+            bad_roles = []
+            for key, label in (("admin_role_id", "Staff/Admin role"), ("player_role_id", "Verified player role")):
+                try:
+                    if guild.get_role(int(config[key])) is None: bad_roles.append(label)
+                except Exception:
+                    bad_roles.append(label)
+            if bad_channels or bad_roles:
+                checks.append("🔴 Configured channels/roles missing: " + ", ".join(bad_channels + bad_roles)); ready = False
+            else:
+                checks.append("🟢 Configured channels and roles resolve in this server")
+        else:
+            warnings.append("⚠️ Discord guild object is not cached; channel/role existence could not be verified")
+
+    cleanup_verified = False
+    if getattr(bot, "_guild_cleanup_failed", False):
+        cleanup_verified = False
+    elif bot.db is not None:
+        try:
+            meta = await bot.db.settings.find_one({"_id": "global_meta"})
+            cleanup_verified = bool(meta and meta.get("guild_overrides_cleaned") and int(meta.get("command_architecture_version", 0)) == COMMAND_ARCHITECTURE_VERSION)
+        except Exception:
+            cleanup_verified = False
+    if cleanup_verified:
         checks.append("🟢 Guild command cleanup state verified")
+    else:
+        checks.append("🔴 Guild command cleanup is not verified for architecture v5"); ready = False
 
     for name, label in (("seasonal_clock_loop", "Season scheduler"), ("player_reminder_loop", "Player reminders"), ("backup_loop", "Backup scheduler")):
         task_obj = getattr(bot, name, None)
@@ -5544,12 +5558,29 @@ class LaunchReadinessView(discord.ui.View):
     def __init__(self, guild_id: str):
         super().__init__(timeout=180)
         self.guild_id = str(guild_id)
+        self.add_item(HomeButton(True))
 
     @discord.ui.button(label="🔄 Recheck", style=discord.ButtonStyle.primary)
     async def recheck(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("⛔ Staff only.", ephemeral=True); return
         await send_launch_readiness(interaction)
+
+
+async def _expired_view_notice(self):
+    """Disable an expired panel and explain how to restart it when Discord exposes its message."""
+    for item in self.children:
+        item.disabled = True
+    message = getattr(self, "message", None)
+    if message is not None:
+        try:
+            await message.edit(content="⏰ **This panel expired.** No changes were made. Open `/gauntlet` or `/staff` to start again.", view=self)
+        except Exception:
+            logging.debug("Could not update expired view", exc_info=True)
+
+
+for _view_cls in (DefenseStartView, ProofUploadView, MapSelectView, RouteSelectView, NotificationsView, PlayerChangesView, TimezoneSelectView, AdminImageTypeView, ClearHistorySelectView, StaffSeasonAutoView, SeasonResetChoiceView, LaunchReadinessView):
+    _view_cls.on_timeout = _expired_view_notice
 
 
 async def send_launch_readiness(interaction: discord.Interaction):
@@ -5563,7 +5594,7 @@ async def send_launch_readiness(interaction: discord.Interaction):
     blocker_count=sum(1 for x in checks if x.startswith("🔴"))
     warning_count=len(warnings)
     embed.add_field(name="📊 Summary", value=f"🟢 **{pass_count}** passed\n🟡 **{warning_count}** warning(s)\n🔴 **{blocker_count}** blocker(s)", inline=True)
-    embed.add_field(name="🎯 Next", value="Run the live smoke-test checklist in your launch guide before opening the league to players." if ready else "Fix every 🔴 blocker, then press **Recheck**.", inline=True)
+    embed.add_field(name="🎯 Next", value="Run the live smoke-test checklist in your launch guide before opening the league to players." if ready else "Fix every 🔴 blocker, then use **Staff → Server Setup** for configuration issues and press **Recheck**.", inline=True)
     embed.set_footer(text=status + " • Read-only check")
     if interaction.response.is_done():
         await interaction.followup.send(embed=embed, view=LaunchReadinessView(str(interaction.guild_id)), ephemeral=True)
@@ -5579,12 +5610,15 @@ async def launchcheck_cmd(interaction: discord.Interaction):
     await record_system_event(str(interaction.guild_id), "LAUNCH_CHECK", f"Launch readiness check requested by {interaction.user.id}")
 
 
+COMMAND_ARCHITECTURE_VERSION = 7
+
 HIDDEN_PLAYER_COMMANDS = {
     # These are intentionally accessed from /gauntlet instead of cluttering
     # Discord's command picker. Direct callbacks remain available internally.
     "whatnext", "mydefense", "challenge", "profile",
     "leaderboard", "top", "mystatus", "seasonhistory",
     "setdefense", "changedefense", "submitdefense", "notifications",
+    "register_direct", "submitmatch_direct", "submitmatch",
     "maps", "besttime", "reference", "add_reference", "delete_me",
 }
 HIDDEN_STAFF_COMMANDS = {
@@ -5609,7 +5643,7 @@ def configure_command_architecture():
     # Legacy prefix !forcesync is intentionally left as a recovery-only prefix
     # command; it is not part of the visible slash-command UI.
     bot._command_architecture_configured = True
-    logging.info("🧭 Clean command architecture enabled: /gauntlet /register /staff /help plus guided workflows and staff controls.")
+    logging.info("🧭 Clean command architecture enabled: /gauntlet /register /staff /help plus guided workflows and staff controls. Submit Match is inside /gauntlet → Challenges.")
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -5667,7 +5701,7 @@ async def on_ready():
     endpoint."""
     try:
         meta = await bot.db.settings.find_one({"_id": "global_meta"})
-        if meta and meta.get("guild_overrides_cleaned"):
+        if meta and meta.get("guild_overrides_cleaned") and int(meta.get("command_architecture_version", 0)) == COMMAND_ARCHITECTURE_VERSION:
             return
     except Exception:
         logging.exception("🔴 Could not check guild command override cleanup status.")
