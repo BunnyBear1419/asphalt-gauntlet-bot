@@ -2595,6 +2595,7 @@ async def send_match_center(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 pending_proof_sessions = {}
+pending_staff_image_sessions = {}
 
 PROOF_SESSION_TTL = 15 * 60
 
@@ -2863,6 +2864,121 @@ async def finalize_proof_session(key: str, interaction: discord.Interaction):
         else:
             await interaction.followup.send("❌ The proof could not be attached to the workflow. Please try again.", ephemeral=True)
 
+async def save_custom_image_from_attachment(guild_id: str, image_type: str, image_name: str, attachment: discord.Attachment, actor_id: str, source_channel_id: str):
+    """Validate, normalize, and persist a staff-uploaded custom image.
+
+    The image is re-uploaded to the configured log channel so the bot keeps a
+    durable Discord CDN copy instead of depending on the transient source
+    message. MongoDB stores only that canonical CDN URL.
+    """
+    if not attachment or not (attachment.content_type or "").startswith("image/"):
+        raise ValueError("The upload must be an image attachment.")
+    if int(getattr(attachment, "size", 0) or 0) > 8 * 1024 * 1024:
+        raise ValueError("The image is larger than the 8 MB upload limit.")
+    cfg = await bot.db.settings.find_one({"_id": str(guild_id)})
+    if not cfg or not cfg.get("log_channel_id"):
+        raise ValueError("The log channel is not configured.")
+    log_chan = bot.get_channel(int(cfg["log_channel_id"]))
+    if not log_chan or not isinstance(log_chan, discord.TextChannel):
+        raise ValueError("The configured log channel could not be found.")
+    data = await attachment.read()
+    if not data or len(data) > 8 * 1024 * 1024:
+        raise ValueError("The image could not be read or exceeds the 8 MB upload limit.")
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            img.verify()
+    except Exception as exc:
+        raise ValueError("The attachment is not a valid readable image.") from exc
+    ext = "png"
+    filename = (getattr(attachment, "filename", "") or "").lower()
+    if filename.endswith((".jpg", ".jpeg")):
+        ext = "jpg"
+    elif filename.endswith(".gif"):
+        ext = "gif"
+    safe_filename = f"{image_type}.{ext}"
+    sent = await log_chan.send(
+        content=f"📦 Canonical custom image upload: **{image_name}** • by <@{actor_id}>",
+        file=discord.File(fp=io.BytesIO(data), filename=safe_filename),
+    )
+    if not sent.attachments:
+        raise RuntimeError("Discord did not return a canonical attachment URL.")
+    cdn_url = sent.attachments[0].url
+    await bot.db.settings.update_one(
+        {"_id": "global_media"},
+        {"$set": {f"custom_images.{image_type}": cdn_url}},
+        upsert=True,
+    )
+    ASPHALT_MEDIA[image_type] = cdn_url
+    await record_system_event(str(guild_id), "CUSTOM_IMAGE_UPDATED", f"actor={actor_id}; image={image_type}; source_channel={source_channel_id}")
+    return cdn_url
+
+
+async def handle_pending_staff_image_message(message: discord.Message) -> bool:
+    if message.guild is None or not message.author or message.author.bot:
+        return False
+    now = time.time()
+    key = f"{message.guild.id}:{message.author.id}"
+    session = pending_staff_image_sessions.get(key)
+    if not session:
+        return False
+    if session.get("expires_at", 0) < now:
+        pending_staff_image_sessions.pop(key, None)
+        return False
+    if str(message.channel.id) != str(session.get("channel_id")):
+        return False
+    if not await check_admin_privileges_for_message(message):
+        return False
+    images = [a for a in message.attachments if (a.content_type or "").startswith("image/")]
+    if len(message.attachments) != 1 or len(images) != 1:
+        await message.reply("❌ Please post exactly **one image attachment** for this upload. No URL or extra files are needed.", mention_author=False)
+        return True
+    try:
+        url = await save_custom_image_from_attachment(
+            str(message.guild.id), session["image_type"], session["image_name"], images[0],
+            str(message.author.id), str(message.channel.id),
+        )
+        pending_staff_image_sessions.pop(key, None)
+        embed = discord.Embed(
+            title="✅ Custom Image Updated",
+            description=f"**{session['image_name']}** is now active.\n\nUploaded by {message.author.mention}.",
+            color=ASPHALT_VICTORY_COLOR,
+        )
+        embed.set_image(url=url)
+        await message.reply(embed=embed, mention_author=False)
+        await audit_admin_action_message(message, "Set Image", f"Updated `{session['image_type']}` from the configured staff channel.")
+    except Exception as exc:
+        logging.exception("Staff image upload failed")
+        await message.reply(f"❌ Image update failed: {str(exc)[:300]}", mention_author=False)
+    return True
+
+
+async def check_admin_privileges_for_message(message: discord.Message) -> bool:
+    """Authorize a staff-channel message using the same guild-scoped role rules as interactions."""
+    if message.guild is None:
+        return False
+    if message.author.guild_permissions.administrator:
+        return True
+    try:
+        if await bot.is_owner(message.author):
+            return True
+    except Exception:
+        pass
+    cfg = await bot.db.settings.find_one({"_id": str(message.guild.id)}) if bot.db is not None else None
+    role_id = (cfg or {}).get("admin_role_id")
+    role = message.guild.get_role(int(role_id)) if role_id else None
+    return bool(role and role in message.author.roles)
+
+
+async def audit_admin_action_message(message: discord.Message, action: str, details: str):
+    await dispatch_audit_log(
+        str(message.guild.id),
+        f"🛡️ Admin Action — {action}",
+        f"**Actor:** {message.author.mention} (`{message.author.id}`)\n**Channel:** <#{message.channel.id}>\n{details}",
+        color=ASPHALT_ADMIN_COLOR,
+    )
+    await record_system_event(str(message.guild.id), "ADMIN_ACTION", f"actor={message.author.id}; action={action}; channel={message.channel.id}; {details}")
+
+
 async def handle_pending_proof_message(message: discord.Message) -> bool:
     if message.guild is not None or not message.author:
         return False
@@ -3042,7 +3158,7 @@ class StaffSeasonAutoView(discord.ui.View):
         await invoke_hidden_group_command(interaction, "season", "auto", choice)
     @discord.ui.button(label="🟢 Enable", style=discord.ButtonStyle.green)
     async def enable(self, interaction, button): await self.set_mode(interaction, True)
-    @discord.ui.button(label="⚪ Disable", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="🔴 Disable", style=discord.ButtonStyle.danger)
     async def disable(self, interaction, button): await self.set_mode(interaction, False)
 
 class SetupChannelsModal(_GauntletModalBase, title="Staff • Server Setup • Channels"):
@@ -3065,18 +3181,23 @@ class SetupChannelsModal(_GauntletModalBase, title="Staff • Server Setup • C
         await interaction.response.send_modal(SetupRolesModal(chans))
 
 class SetupRolesModal(_GauntletModalBase, title="Staff • Server Setup • Roles"):
-    admin=discord.ui.TextInput(label="Staff/Admin role ID", max_length=25)
-    player=discord.ui.TextInput(label="Verified player role ID", max_length=25)
+    admin=discord.ui.TextInput(label="Staff/Admin role ID", placeholder="123456789012345678", max_length=25)
+    player=discord.ui.TextInput(label="Verified player role ID", placeholder="123456789012345678", max_length=25)
     timezone_name=discord.ui.TextInput(label="Timezone label", placeholder="Eastern Time", max_length=40)
     def __init__(self, channels): super().__init__(); self.channels=channels
     async def on_submit(self, interaction):
         if not await require_staff_interaction(interaction): return
-        vals=[]
+        role_ids=[]
         for field in (self.admin,self.player):
-            m=re.search(r"\d{5,25}",field.value); vals.append(int(m.group()) if m else None)
-        if any(x is None for x in vals): await self.fail(interaction,"❌ Both role fields must be valid role IDs or mentions."); return
-        roles=[interaction.guild.get_role(x) for x in vals]
-        if any(r is None for r in roles): await self.fail(interaction,"❌ One or more role IDs were not found in this server."); return
+            m=re.search(r"\d{5,25}",field.value)
+            role_ids.append(int(m.group()) if m else None)
+        if any(x is None for x in role_ids):
+            await self.fail(interaction,"❌ Staff/Admin and Player role fields must contain valid Discord role IDs."); return
+        roles=[interaction.guild.get_role(x) for x in role_ids]
+        if any(r is None or r.is_default() for r in roles):
+            await self.fail(interaction,"❌ One or more role IDs were not found in this server (and @everyone cannot be used)."); return
+        if roles[0].id == roles[1].id:
+            await self.fail(interaction,"❌ Staff/Admin and Player roles must be different roles."); return
         tz=self.timezone_name.value.strip()
         if tz not in TIMEZONE_MAP and tz not in TIMEZONE_MAP.values():
             await self.fail(interaction,"❌ Use a supported timezone label such as `Eastern Time`, `UTC`, or `Pacific Time`."); return
@@ -3163,7 +3284,40 @@ class AdminImageTypeSelect(discord.ui.Select):
         super().__init__(placeholder="Choose image to replace…",min_values=1,max_values=1,options=[discord.SelectOption(label=a,value=b) for a,b in opts])
     async def callback(self, interaction):
         name=next(o.label for o in self.options if o.value==self.values[0])
-        await start_proof_session(interaction,"admin_image",{"image_type":self.values[0],"image_name":name},1)
+        guild_id = str(interaction.guild_id)
+        cfg = await bot.db.settings.find_one({"_id": guild_id}) if bot.db is not None else None
+        staff_channel_id = (cfg or {}).get("review_channel_id")
+        staff_channel = interaction.guild.get_channel(int(staff_channel_id)) if interaction.guild and staff_channel_id else None
+        if not staff_channel or not isinstance(staff_channel, discord.TextChannel):
+            await interaction.response.send_message(
+                "❌ A Staff Review Channel must be configured first. Use **Staff → Server Setup** and choose the staff channel.",
+                ephemeral=True,
+            )
+            return
+        # One pending image-selection session per admin/guild prevents an upload
+        # from being ambiguously assigned when several staff members are working.
+        key = f"{guild_id}:{interaction.user.id}"
+        pending_staff_image_sessions[key] = {
+            "guild_id": guild_id,
+            "user_id": str(interaction.user.id),
+            "channel_id": str(staff_channel.id),
+            "image_type": self.values[0],
+            "image_name": name,
+            "expires_at": time.time() + 15 * 60,
+        }
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                title=f"🖼️ Upload {name}",
+                description=(
+                    f"Post **one image attachment** in {staff_channel.mention}.\n\n"
+                    "The bot will validate it, save a durable copy, and make it the active image. "
+                    "No URL or DM upload is required.\n\n"
+                    "This upload instruction expires in 15 minutes."
+                ),
+                color=ASPHALT_ADMIN_COLOR,
+            ),
+            ephemeral=True,
+        )
 
 class ClearHistorySelectView(discord.ui.View):
     def __init__(self, owner_id):
@@ -3486,6 +3640,7 @@ class StaffActionSelect(discord.ui.Select):
             ("♻️ Reset Season", "seasonreset_direct", "Reset season numbering"),
         ],
         "data": [
+            ("🩺 Health & Diagnostics", "diagnostics", "Run the single canonical read-only health and diagnostics report"),
             ("🩺 Database Check", "dbcheck", "Audit database consistency"),
             ("💾 Backup", "backup", "Create an immediate database backup"),
             ("🧹 Clear History", "clearhistory_direct", "Run the controlled history/data reset flow"),
@@ -3498,7 +3653,6 @@ class StaffActionSelect(discord.ui.Select):
         ],
         "system": [
             ("🏁 Launch Readiness", "launchcheck", "Run the production readiness check"),
-            ("🔍 Diagnostics", "diagnostics", "Run the read-only health report"),
             ("🛰️ Live Status", "status", "View live bot, database and automation status"),
             ("🔄 Sync Commands", "sync", "Synchronize slash commands"),
         ],
@@ -3589,7 +3743,7 @@ class StaffDashboardView(discord.ui.View):
         embed.add_field(name="🏆 Season", value="Status • schedule • automation • reset controls", inline=False)
         embed.add_field(name="🗄️ Data", value="Database health • backups • history", inline=False)
         embed.add_field(name="⚙️ Server Setup", value="Channels • timezone • identity • images", inline=False)
-        embed.add_field(name="🔧 System", value="Launch readiness • diagnostics • command sync", inline=False)
+        embed.add_field(name="🔧 System", value="Launch readiness • health & diagnostics • command sync", inline=False)
         embed.set_footer(text="ALU Gauntlet • Staff controls are intentionally tucked behind the dashboard")
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -3606,7 +3760,7 @@ class StaffDashboardView(discord.ui.View):
             "season": ("🏆 SEASON CONTROL", "Status, schedule, automation and season lifecycle."),
             "data": ("🗄️ DATA", "Database health, backups and history/reset tools."),
             "setup": ("⚙️ SERVER SETUP", "Initial configuration, timezone and bot appearance."),
-            "system": ("🔧 SYSTEM", "Diagnostics, launch readiness and application-command synchronization."),
+            "system": ("🔧 SYSTEM", "Health & diagnostics, launch readiness and application-command synchronization."),
         }
         title, desc = labels[category]
         embed = discord.Embed(title=title, description=desc + "\n\n**Choose an action below.** Use ↩️ Back to return to Staff Home.", color=ASPHALT_ADMIN_COLOR)
@@ -3628,7 +3782,7 @@ class StaffDashboardView(discord.ui.View):
             "season": ("🏆 SEASON CONTROL", "Status, schedule, automation and season lifecycle."),
             "data": ("🗄️ DATA", "Database health, backups and history/reset tools."),
             "setup": ("⚙️ SERVER SETUP", "Initial configuration, timezone and bot appearance."),
-            "system": ("🔧 SYSTEM", "Diagnostics, launch readiness and application-command synchronization."),
+            "system": ("🔧 SYSTEM", "Health & diagnostics, launch readiness and application-command synchronization."),
         }
         title, desc = labels[category]
         embed = discord.Embed(title=title, description=desc + "\n\n**Choose an action below.** Use ↩️ Back to return to Staff Home.", color=ASPHALT_ADMIN_COLOR)
@@ -3681,7 +3835,7 @@ class StaffCategorySelect(discord.ui.Select):
             discord.SelectOption(label="Season", value="season", emoji="🏆", description="Season lifecycle and schedule"),
             discord.SelectOption(label="Data", value="data", emoji="🗄️", description="Database and backups"),
             discord.SelectOption(label="Server Setup", value="setup", emoji="⚙️", description="Guild configuration and appearance"),
-            discord.SelectOption(label="System", value="system", emoji="🔧", description="Diagnostics and command sync"),
+            discord.SelectOption(label="System", value="system", emoji="🔧", description="Launch readiness and command sync"),
         ]
         super().__init__(placeholder="Choose a staff section…", min_values=1, max_values=1, options=options)
 
@@ -4699,14 +4853,14 @@ class HelpCategorySelect(discord.ui.Select):
                 await interaction.response.send_message("❌ Admin Commands are only available to authorized staff.", ephemeral=True)
                 return
             embed.title = "🗃️ ADMIN — DATA & TOOLS"
-            embed.description = "Maintenance, backups, auditing and command management."
+            embed.description = "Maintenance, backups, health checks, auditing and command management."
             self._command_field(embed, "Data", [
                 ("**Data → Backup**", "Create an immediate database backup."),
                 ("**Data → Database Check**", "Audit database consistency and recoverable states."),
                 ("**Data → Clear History**", "Delete selected server data with confirmation."),
             ])
             self._command_field(embed, "Operations", [
-                ("**System → Diagnostics**", "Run bot health checks."),
+                ("**Data → Health & Diagnostics**", "Run bot health checks."),
                 ("**Reviews → Admin Log**", "View recent administrative audit entries."),
                 ("**System → Sync Commands**", "Synchronize slash commands when needed."),
                 ("`!forcesync`", "Emergency fallback sync if the slash-command surface is stale."),
@@ -5042,6 +5196,9 @@ async def on_guild_join(guild: discord.Guild):
 
 async def on_message(message: discord.Message):
     try:
+        handled = await handle_pending_staff_image_message(message)
+        if handled:
+            return
         handled = await handle_pending_proof_message(message)
         if handled:
             return
