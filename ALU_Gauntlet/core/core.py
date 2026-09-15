@@ -38,7 +38,7 @@ from discord.ext import commands, tasks
 from pymongo import AsyncMongoClient
 from pymongo.server_api import ServerApi
 
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import CollectionInvalid, DuplicateKeyError
 
 from PIL import Image
 
@@ -330,6 +330,19 @@ class GauntletBot(commands.Bot):
                 self.db = self.mongo_client.get_database("asphalt_gauntlet")
                 logging.info("🟢 Successfully connected to MongoDB Atlas Cloud Cluster.")
                 try:
+                    # Materialize every operational collection at startup. MongoDB does not
+                    # create an empty collection merely because the application expects it,
+                    # so a brand-new database could otherwise fail /dbcheck until a feature
+                    # happened to write to map_records or map_references.
+                    existing_collections = set(await self.db.list_collection_names())
+                    for collection_name in REQUIRED_COLLECTIONS:
+                        if collection_name not in existing_collections:
+                            try:
+                                await self.db.create_collection(collection_name)
+                            except CollectionInvalid:
+                                # Safe if another process/materializer created it concurrently.
+                                pass
+                    logging.info("🟢 Required MongoDB collections materialized.")
                     await self.db.drivers.create_index([("guild_id", 1), ("season_registered", 1), ("season_number", 1), ("garage_pi", 1), ("elo", -1)])
                     await self.db.pending.create_index([("guild_id", 1), ("season_number", 1)])
                     await self.db.matches.create_index([("guild_id", 1), ("timestamp", -1)])
