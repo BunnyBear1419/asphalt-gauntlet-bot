@@ -597,14 +597,6 @@ class GauntletBot(commands.Bot):
 
 bot = GauntletBot()
 
-season_group = app_commands.Group(name="season", description="Manage league seasons.")
-
-admin_group = app_commands.Group(name="admin", description="[Staff Only] Driver-level admin overrides.")
-
-bot.tree.add_command(season_group)
-
-bot.tree.add_command(admin_group)
-
 async def send_admin_alert(guild_id: str, title: str, description: str):
     """Best-effort Discord alert to the configured staff/log channel."""
     try:
@@ -4096,8 +4088,8 @@ HIDDEN_STAFF_COMMANDS = {
     "dbcheck", "backup", "diagnostics",
     "sync", "launchcheck", "setimage", "setup", "timezone",
     "clearhistory", "identity", "delete_id",
-    # "season" and "admin" are app_commands.Group parents (see season_group /
-    # admin_group above) — removing the group removes every subcommand
+    # "season" and "admin" are app_commands.Group parents registered by their
+    # respective Cogs — removing the group removes every subcommand
     # ("/season start", "/admin setpi", etc.) from the picker in one go.
     # Dashboard buttons still call the underlying *_cmd callbacks directly,
     # which bypasses the tree entirely, so hiding the group doesn't affect them.

@@ -29,6 +29,9 @@ class SystemCog(commands.Cog):
             logging.exception('Manual !forcesync failed')
             await ctx.send(f'❌ Force sync failed: `{exc}`')
 
+    async def cog_load(self):
+        self.force_command.error(self.force_command_error)
+
     async def force_command_error(self, ctx: commands.Context, error: Exception):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send('❌ Access Denied: Administrator permission is required.')

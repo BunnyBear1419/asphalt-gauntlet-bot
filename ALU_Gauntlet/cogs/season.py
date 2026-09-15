@@ -151,4 +151,7 @@ class SeasonCog(commands.Cog):
         await interaction.response.send_message(embed=discord.Embed(title='🏆 SEASON ARCHIVES', description='\n'.join(lines), color=ASPHALT_THEME_COLOR), ephemeral=True)
 
 async def setup(bot):
-    await bot.add_cog(SeasonCog(bot))
+    cog = SeasonCog(bot)
+    await bot.add_cog(cog)
+    if bot.tree.get_command('season') is None:
+        bot.tree.add_command(cog.season_group)

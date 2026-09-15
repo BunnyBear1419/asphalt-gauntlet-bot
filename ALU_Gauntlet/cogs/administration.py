@@ -174,4 +174,7 @@ class AdministrationCog(commands.Cog):
             await interaction.followup.send(f'❌ Slash command synchronization failed:\n`{exc}`', ephemeral=True)
 
 async def setup(bot):
-    await bot.add_cog(AdministrationCog(bot))
+    cog = AdministrationCog(bot)
+    await bot.add_cog(cog)
+    if bot.tree.get_command('admin') is None:
+        bot.tree.add_command(cog.admin_group)
