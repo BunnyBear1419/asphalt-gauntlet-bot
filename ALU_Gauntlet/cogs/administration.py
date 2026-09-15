@@ -39,7 +39,7 @@ class AdministrationCog(commands.Cog):
         await audit_admin_action(interaction, 'Set Image', f'Updated `{image_type.value}`.')
 
     @app_commands.command(name='setup', description='[Admin Only] Configures all league core channels and permission roles.')
-    @app_commands.describe(main_channel='Public room for commands', staff_channel='Private room for staff reviews', log_channel='Private room for logs', announcement_channel='Public awards room', match_results_channel='Public room for match results', admin_role='Admin override role', player_role='Verified player role', timezone_name='Server timezone used for season scheduling')
+    @app_commands.describe(main_channel='Public room for commands', staff_channel='Private room for staff reviews', log_channel='Private room for logs', announcement_channel='Public awards room', match_results_channel='Public room for match results', admin_role='Staff/admin role (selected by the administrator)', player_role='Player role (selected by the administrator)', timezone_name='Server timezone used for season scheduling')
     @app_commands.choices(timezone_name=[app_commands.Choice(name=label, value=value) for label, value in TIMEZONE_CHOICES])
     async def setup_cmd(self, interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role, timezone_name: app_commands.Choice[str]=None):
         if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
