@@ -36,8 +36,14 @@ def test_project_parses():
 
 def test_required_collections_include_all_operational_collections():
     assert 'REQUIRED_COLLECTIONS' in CORE
-    for name in ('lap_time_history', 'system_events'):
+    for name in ('lap_time_history', 'system_events', 'map_records', 'map_references'):
         assert f'"{name}"' in CORE
+    assert 'await self.db.create_collection(collection_name)' in CORE
+
+
+def test_pymongo_patch_version_is_pinned():
+    requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
+    assert "pymongo==4.18.1" in requirements
 
 def test_registration_reviews_are_submission_scoped():
     assert 'submit_registration_application' in CORE
