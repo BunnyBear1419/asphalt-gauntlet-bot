@@ -7,7 +7,7 @@ class SeasonCog(commands.Cog):
 
     @season_group.command(name='auto', description='Control whether a scheduled season end automatically starts the next season.')
     @app_commands.describe(mode='Choose whether scheduled season endings may automatically roll into the next season')
-    @app_commands.choices(mode=[app_commands.Choice(name='Enable automatic season rollover', value='on'), app_commands.Choice(name='Disable automatic season rollover', value='off')])
+    @app_commands.choices(mode=[app_commands.Choice(name="Enable automatic season rollover", value="on"), app_commands.Choice(name="Disable automatic season rollover", value="off")])
     @require_admin()
     async def season_auto_cmd(self, interaction: discord.Interaction, mode: app_commands.Choice[str]):
         await interaction.response.defer(ephemeral=True)
@@ -83,7 +83,7 @@ class SeasonCog(commands.Cog):
         await bot.db.season_state.update_one({'_id': f'guild_{gid}', 'season_number': int(state.get('season_number', 1))}, {'$set': {'season_active': True, 'awaiting_staff_start': False, 'started_at': now}, '$unset': {'rollover_phase': '', 'rollover_season': ''}})
         season_number = int(state.get('season_number', 1))
         await announce_season_start(gid, season_number, reason='early')
-        await interaction.followup.send(f'✅ **Season {season_number} started early.** The scheduled end time remains unchanged, so the season will still automatically end at the scheduled end time.', ephemeral=True)
+        await interaction.followup.send(f'✅ **Season {season_number} started early.** The "scheduled end time remains unchanged", so the season will still automatically end at the scheduled end time.', ephemeral=True)
         await audit_admin_action(interaction, 'Season Start', f'Explicitly started Season {season_number}.')
 
     @season_group.command(name='status', description='Show the current season schedule and automation state.')

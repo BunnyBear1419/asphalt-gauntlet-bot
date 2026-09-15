@@ -46,7 +46,7 @@ class AdministrationCog(commands.Cog):
             await interaction.response.send_message('❌ Access Denied: Admin role overrides missing.', ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
-        await bot.db.settings.update_one({'_id': str(interaction.guild_id)}, {'$set': {'registration_channel_id': str(main_channel.id), 'review_channel_id': str(staff_channel.id), 'log_channel_id': str(log_channel.id), 'announcement_channel_id': str(announcement_channel.id), 'match_results_channel_id': str(match_results_channel.id), 'admin_role_id': str(admin_role.id), 'player_role_id': str(player_role.id), 'timezone': timezone_name.value if timezone_name else 'UTC'}, '$setOnInsert': {'automatic_season_end': False}}, upsert=True)
+        await bot.db.settings.update_one({'_id': str(interaction.guild_id)}, {'$set': {'registration_channel_id': str(main_channel.id), 'review_channel_id': str(staff_channel.id), 'log_channel_id': str(log_channel.id), 'announcement_channel_id': str(announcement_channel.id), 'match_results_channel_id': str(match_results_channel.id), 'admin_role_id': str(admin_role.id), 'player_role_id': str(player_role.id), 'timezone': timezone_name.value if timezone_name else 'UTC'}, '$setOnInsert': {"automatic_season_end": False}}, upsert=True)
         guild_state = await bot.db.season_state.find_one({'_id': f'guild_{interaction.guild_id}'})
         if not guild_state:
             legacy_state = await bot.db.season_state.find_one({'_id': 'current_season'})

@@ -114,7 +114,7 @@ class PlayerCog(commands.Cog):
 
     @app_commands.command(name='notifications', description='Turn your Gauntlet reminder DMs on or off.')
     @app_commands.describe(setting='Choose whether ALU Gauntlet reminder DMs are enabled')
-    @app_commands.choices(setting=[app_commands.Choice(name='On — receive reminder DMs', value='on'), app_commands.Choice(name='Off — stop reminder DMs', value='off')])
+    @app_commands.choices(setting=[app_commands.Choice(name='On — receive reminder DMs', value="on"), app_commands.Choice(name='Off — stop reminder DMs', value="off")])
     async def notifications_cmd(self, interaction: discord.Interaction, setting: app_commands.Choice[str]):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
             return
