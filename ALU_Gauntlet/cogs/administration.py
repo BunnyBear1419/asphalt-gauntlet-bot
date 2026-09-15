@@ -41,7 +41,7 @@ class AdministrationCog(commands.Cog):
         await dispatch_audit_log(guild_id, '🖼️ Custom Image Updated', f'Admin {interaction.user.mention} updated the **{image_type.name}** image.', color=3066993)
         await audit_admin_action(interaction, 'Set Image', f'Updated `{image_type.value}`.')
 
-    @admin_group.command(name='setup', description='[Admin Only] Configures all league core channels and permission roles.')
+    @app_commands.command(name='setup', description='[Admin Only] Configures all league core channels and permission roles.')
     @app_commands.describe(main_channel='Public room for commands', staff_channel='Private room for staff reviews', log_channel='Private room for logs', announcement_channel='Public awards room', match_results_channel='Public room for match results', admin_role='Staff/admin role (selected by the administrator)', player_role='Player role (selected by the administrator)', timezone_name='Server timezone used for season scheduling')
     @app_commands.choices(timezone_name=[app_commands.Choice(name=label, value=value) for label, value in TIMEZONE_CHOICES])
     async def setup_cmd(self, interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role, timezone_name: app_commands.Choice[str]=None):
@@ -58,7 +58,7 @@ class AdministrationCog(commands.Cog):
         await dispatch_audit_log(interaction.guild_id, '⚙️ Master Setup Initialized', f'The bot was initialized perfectly by authority {interaction.user.mention}.', color=ASPHALT_THEME_COLOR)
         await audit_admin_action(interaction, 'Setup', 'Updated the league channel and role configuration.')
 
-    @admin_group.command(name='timezone', description="[Admin Only] Set this Discord server's timezone for season scheduling.")
+    @app_commands.command(name='timezone', description="[Admin Only] Set this Discord server's timezone for season scheduling.")
     @app_commands.describe(timezone_name='Timezone used when admins enter season start/end times')
     @app_commands.choices(timezone_name=[app_commands.Choice(name=label, value=value) for label, value in TIMEZONE_CHOICES])
     async def timezone_cmd(self, interaction: discord.Interaction, timezone_name: app_commands.Choice[str]):
@@ -98,7 +98,7 @@ class AdministrationCog(commands.Cog):
         await interaction.response.send_message(f"⚠️ **Confirm Purge:** This will permanently delete {racer.mention}'s driver profile (`{profile.get('elo', 1000)} ELO`, `{profile.get('career_wins', 0)} wins`). This cannot be undone.", view=ConfirmRemoveRacerView(interaction.guild_id, racer), ephemeral=True)
         await audit_admin_action(interaction, 'Remove Racer', f'Opened a purge confirmation for <@{racer.id}>.', color=ASPHALT_ALERT_COLOR)
 
-    @admin_group.command(name='delete_id', description="[Staff Only] Reset a driver's active registration without deleting career history.")
+    @app_commands.command(name='delete_id', description="[Staff Only] Reset a driver's active registration without deleting career history.")
     @app_commands.describe(racer='Driver whose active registration should be reset')
     async def delete_id_cmd(self, interaction: discord.Interaction, racer: discord.Member):
         if not await check_admin_privileges(interaction):
@@ -111,7 +111,7 @@ class AdministrationCog(commands.Cog):
         await interaction.response.send_message(f"⚠️ **Confirm active registration reset**\n\nThis will remove {racer.mention}'s current registration, game ID, garage PI and current defense workflow state. **Career wins, matches and history are preserved.**\n\nContinue?", view=ConfirmActiveRegistrationResetView(interaction.guild_id, racer.id), ephemeral=True)
         await audit_admin_action(interaction, 'Delete ID', f'Opened active-registration reset confirmation for <@{racer.id}>.', color=ASPHALT_ALERT_COLOR)
 
-    @admin_group.command(name='identity', description="[Admin Only] Change the bot's username or avatar.")
+    @app_commands.command(name='identity', description="[Admin Only] Change the bot's username or avatar.")
     @app_commands.describe(username='New bot username (leave blank to keep the current one)', avatar='Upload an image to use as the new avatar (leave blank to keep the current one)')
     async def identity_cmd(self, interaction: discord.Interaction, username: str=None, avatar: discord.Attachment=None):
         if not interaction.guild:
@@ -147,7 +147,7 @@ class AdministrationCog(commands.Cog):
             logging.exception('Bot identity update failed')
             await interaction.followup.send(f'❌ Identity update failed: `{exc}`', ephemeral=True)
 
-    @admin_group.command(name='sync', description='[Admin Only] Synchronize slash commands with Discord.')
+    @app_commands.command(name='sync', description='[Admin Only] Synchronize slash commands with Discord.')
     @app_commands.describe(full_cleanup='Also clear stale per-server command overrides (slower; only needed occasionally, not on every deploy).')
     async def sync_cmd(self, interaction: discord.Interaction, full_cleanup: bool=False):
         if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
