@@ -55,7 +55,7 @@ Do not put real secrets in GitHub.
 
 The bot stores league state in MongoDB. Keep MongoDB Atlas network access restricted as much as your deployment setup allows and use a dedicated database user.
 
-The bot also has a `/backup` staff command and a scheduled local JSON backup loop. Local Discloud storage should be treated as best-effort, not as the only backup location.
+The bot also exposes database backups through `/staff` → **Data → Backup** and runs a scheduled local JSON backup loop. Local Discloud storage should be treated as best-effort, not as the only backup location.
 
 ## Recommended Git flow
 
@@ -76,3 +76,18 @@ This bot serves multiple independent Discord servers, so production health monit
 No `HEALTH_CHANNEL_ID` GitHub secret is required.
 
 Optionally, set `HEALTH_WEBHOOK_URL` in the bot environment to receive bot-level `ALU_HEARTBEAT` notifications in a private operations webhook. This is optional and is not associated with any Discord server.
+
+## Production operations and player experience
+
+The production build uses a deliberately small public slash-command surface:
+
+- `/dashboard` — player home screen. Player features such as profile, registration, stats, defense, challenges, leaderboards, maps, references, notifications, and account controls are accessed through the dashboard UI.
+- `/staff` — staff/admin home screen. Staff features such as player management, reviews, season controls, backups, diagnostics, live status, setup, and synchronization are accessed through the staff dashboard UI.
+
+The underlying staff status callback is intentionally hidden from Discord's slash-command picker and is launched from **Staff → System → Live Status**. Player statistics are part of the canonical **Profile & Stats** dashboard view rather than a separate command.
+- Durable admin audit events in `system_events` in addition to the configured Discord log channel.
+- Automated weekly MongoDB restore verification plus manual `workflow_dispatch` support.
+- Required-collection and critical-index checks through `/staff` → **Data → Database Check**.
+- CI dependency auditing, compile checks, unit tests, and lightweight concurrency regression coverage.
+
+For production monitoring, configure `HEALTH_WEBHOOK_URL`, `DISCORD_ALERT_WEBHOOK`, and the GitHub production-health secrets documented below.
