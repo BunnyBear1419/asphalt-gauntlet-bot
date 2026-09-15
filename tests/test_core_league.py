@@ -230,7 +230,7 @@ def test_manual_seasonend_never_auto_rolls_next_season():
 def test_automatic_rollover_announces_new_season_and_preserves_schedule_duration():
     source = _project_source()
     assert "season_duration = previous_end - previous_start" in source
-    assert "announce_season_start" in source and "reason='rollover'" in source
+    assert "announce_season_start" in source and ("reason='rollover'" in source or 'reason="rollover"' in source)
     assert '"ends_at": now + season_duration' in source or "'ends_at': now + season_duration" in source
 
 
