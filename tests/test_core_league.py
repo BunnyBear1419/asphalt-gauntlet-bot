@@ -257,23 +257,83 @@ def test_help_menu_is_organized_into_player_and_admin_categories():
     assert expected_player <= values
     assert expected_admin <= values
 
-    # The current public UX keeps these shortcuts documented in Help.
+    # The dashboard-first UX should not advertise hidden slash shortcuts.
     source = _project_source()
     for command in ("/whatnext", "/submitmatch", "/missingdefense"):
-        assert command in source
+        assert command not in source
+    assert "/dashboard" in source
+    assert "/staff" in source
 
 
 def test_player_reminder_dms_are_72h_and_opt_out():
     source = _project_source()
     assert "72 * 60 * 60" in source
-    assert 'd.get("dm_notifications_enabled", True) is False' in source
-    assert 'challenger.get("dm_notifications_enabled", True) is False' in source
+    assert 'respect_reminder_preference=True' in source
+    assert 'dm_notifications_enabled' in source
 
 
-def test_notifications_command_controls_reminder_dms():
+def test_notifications_panel_controls_reminder_dms():
     source = _project_source()
-    assert "@app_commands.command(name='notifications'" in source
-    assert 'value="on"' in source
-    assert 'value="off"' in source
+    assert "class NotificationsView" in source
     assert "dm_notifications_enabled" in source
-    assert "Server-wide season announcements are not affected." in source
+    assert "Automated reminder DMs are disabled." in source
+    assert "Transactional notices" in source
+    assert "app_commands.command(name='notifications'" not in source
+
+
+def test_dashboard_command_surface_is_exactly_dashboard_and_staff():
+    import ast
+
+    package = ROOT / "ALU_Gauntlet"
+    root_commands = set()
+    group_commands = set()
+    group_names = set()
+    for path in (package / "cogs").glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == "Group":
+                for kw in node.value.keywords:
+                    if kw.arg == "name" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
+                        group_names.add(kw.value.value)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for decorator in node.decorator_list:
+                    if not (isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute) and decorator.func.attr == "command"):
+                        continue
+                    name = next((kw.value.value for kw in decorator.keywords if kw.arg == "name" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str)), None)
+                    if not name:
+                        continue
+                    if isinstance(decorator.func.value, ast.Name) and decorator.func.value.id in group_names:
+                        group_commands.add(name)
+                    else:
+                        root_commands.add(name)
+
+    hidden = set(main.HIDDEN_PLAYER_COMMANDS) | set(main.HIDDEN_STAFF_COMMANDS)
+    public_root = root_commands - hidden
+    public_groups = group_names - hidden
+    assert public_root == {"dashboard", "staff"}
+    assert public_groups == set()
+    assert group_commands >= {"start", "status", "end", "history", "setpi", "removeracer"}
+    assert "submitmatch" not in hidden
+
+
+def test_dashboard_navigation_controls_have_no_duplicate_row_items():
+    player = main.DashboardView("1", "2", False)
+    staff = main.StaffDashboardView()
+
+    for view in (player, staff):
+        custom_ids = [getattr(item, "custom_id", None) for item in view.children if getattr(item, "custom_id", None)]
+        assert len(custom_ids) == len(set(custom_ids))
+        row_counts = {}
+        for item in view.children:
+            row = getattr(item, "row", None)
+            if row is not None:
+                row_counts[row] = row_counts.get(row, 0) + 1
+        assert all(count <= 5 for count in row_counts.values())
+
+
+def test_dashboard_uses_bound_command_bridge_for_hidden_cog_commands():
+    source = _project_source()
+    assert "invoke_hidden_command" in source
+    assert "invoke_hidden_group_command" in source
+    assert 'getattr(cmd, "binding", None)' in source
+    assert '"_hidden_groups"' in source

@@ -25,7 +25,7 @@ def test_cogs_package_exists():
     assert (PACKAGE / "cogs" / "__init__.py").is_file()
 
 
-def test_all_nine_cogs_exist():
+def test_all_cogs_exist():
     expected = {
         "player.py",
         "defense.py",
@@ -36,6 +36,7 @@ def test_all_nine_cogs_exist():
         "administration.py",
         "help.py",
         "system.py",
+        "operations.py",
     }
     actual = {p.name for p in (PACKAGE / "cogs").glob("*.py") if p.name != "__init__.py"}
     assert actual == expected

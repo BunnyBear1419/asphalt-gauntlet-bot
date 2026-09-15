@@ -23,8 +23,11 @@ def test_live_health_heartbeat_exists():
     assert "HEALTH_CHANNEL_ID" not in CORE
 
 def test_review_delivery_reconciliation_exists():
-    for source in (PLAYER, DEFENSE, COMPETITION):
+    assert "async def find_recent_bot_message" in CORE
+    for source in (DEFENSE, COMPETITION):
         assert "find_recent_bot_message" in source
+    assert "find_recent_bot_message" in CORE
+    assert "embed.footer" in CORE or "footer" in CORE
 
 def test_project_parses():
     for path in [ROOT / "main.py", *sorted((ROOT / "ALU_Gauntlet").rglob("*.py"))]:
@@ -37,7 +40,8 @@ def test_required_collections_include_all_operational_collections():
         assert f'"{name}"' in CORE
 
 def test_registration_reviews_are_submission_scoped():
-    assert 'submission_id' in PLAYER
+    assert 'submit_registration_application' in CORE
+    assert 'submission_id' in CORE
     assert 'approve_driver:{self.guild_id}:{self.user_id}:{self.submission_id}' in CORE
     assert 'RegistrationDeclineModal(self.user_id, self.guild_id, self.submission_id)' in CORE
 
