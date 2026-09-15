@@ -1,9 +1,6 @@
 import os
 import asyncio
-from ALU_Gauntlet.core.core import *
-from ALU_Gauntlet.core.core import bot
-
-# Public UX compatibility: /whatnext remains a hidden shortcut documented by the dedicated /help center.
+from .core.core import bot
 EXTENSIONS = ["ALU_Gauntlet.cogs.player","ALU_Gauntlet.cogs.defense","ALU_Gauntlet.cogs.challenges","ALU_Gauntlet.cogs.competition","ALU_Gauntlet.cogs.staff","ALU_Gauntlet.cogs.season","ALU_Gauntlet.cogs.administration","ALU_Gauntlet.cogs.help","ALU_Gauntlet.cogs.system"]
 async def load_cogs():
     for extension in EXTENSIONS: await bot.load_extension(extension)
