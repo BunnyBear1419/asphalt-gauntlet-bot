@@ -5,7 +5,7 @@ import asyncio
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import main
+from ALU_Gauntlet.core import core
 
 
 def _project_source():
@@ -34,12 +34,12 @@ def test_division_boundaries():
         (50000, "Division 6 — Legend Tier"),
     ]
     for pi, expected in cases:
-        assert expected in main.get_division_for_pi(pi)["name"]
+        assert expected in core.get_division_for_pi(pi)["name"]
 
 
 def test_division_mongo_ranges_match_boundaries():
-    for division in main.PI_DIVISIONS:
-        query = main.division_mongo_query(division)
+    for division in core.PI_DIVISIONS:
+        query = core.division_mongo_query(division)
         assert query["$gte"] == division["min"]
         if division["max"] is None:
             assert "$lt" not in query
@@ -49,41 +49,41 @@ def test_division_mongo_ranges_match_boundaries():
 
 def test_lap_time_round_trip():
     for value in [1, 999, 1000, 61523, 359999, 5999999]:
-        assert main.parse_lap_time(main.format_lap_time(value)) == value
+        assert core.parse_lap_time(core.format_lap_time(value)) == value
 
 
 def test_lap_time_rejects_invalid_values():
     invalid = ["", "0:00.000", "1:2.345", "01:02.34", "1:60.000", "abc", "1:02.0000"]
     for value in invalid:
-        assert main.parse_lap_time(value) == -1
+        assert core.parse_lap_time(value) == -1
 
 
 def test_five_course_defense_validation():
-    assert not main.has_5_course_defense({})
-    assert not main.has_5_course_defense({"defense_locked": {"courses": []}})
-    assert not main.has_5_course_defense({"defense_locked": {"courses": [1, 2, 3, 4]}})
+    assert not core.has_5_course_defense({})
+    assert not core.has_5_course_defense({"defense_locked": {"courses": []}})
+    assert not core.has_5_course_defense({"defense_locked": {"courses": [1, 2, 3, 4]}})
     valid_courses = [
         {
-            "track": main.ALU_TRACKS[i],
-            "car": main.ALU_CARS[i],
+            "track": core.ALU_TRACKS[i],
+            "car": core.ALU_CARS[i],
             "ms": 60000 + i,
             "car_rank": 1,
         }
         for i in range(5)
     ]
-    assert main.has_5_course_defense({"defense_locked": {"courses": valid_courses}})
+    assert core.has_5_course_defense({"defense_locked": {"courses": valid_courses}})
 
 
 def test_elo_is_bounded_and_streak_bonus_caps():
-    winner, loser, bonus = main.calculate_elo_change(1000, 1000, winner_streak=100)
+    winner, loser, bonus = core.calculate_elo_change(1000, 1000, winner_streak=100)
     assert winner >= 100
     assert loser >= 100
     assert bonus == 20
 
 
 def test_elo_favors_upset_less_than_expected_win():
-    equal_winner, equal_loser, _ = main.calculate_elo_change(1000, 1000)
-    underdog_winner, underdog_loser, _ = main.calculate_elo_change(800, 1200)
+    equal_winner, equal_loser, _ = core.calculate_elo_change(1000, 1000)
+    underdog_winner, underdog_loser, _ = core.calculate_elo_change(800, 1200)
     assert equal_winner > 1000
     assert equal_loser < 1000
     assert underdog_winner > 800
@@ -91,9 +91,9 @@ def test_elo_favors_upset_less_than_expected_win():
 
 
 def test_elo_streak_bonus_only_starts_at_two():
-    _, _, bonus0 = main.calculate_elo_change(1000, 1000, winner_streak=0)
-    _, _, bonus1 = main.calculate_elo_change(1000, 1000, winner_streak=1)
-    _, _, bonus2 = main.calculate_elo_change(1000, 1000, winner_streak=2)
+    _, _, bonus0 = core.calculate_elo_change(1000, 1000, winner_streak=0)
+    _, _, bonus1 = core.calculate_elo_change(1000, 1000, winner_streak=1)
+    _, _, bonus2 = core.calculate_elo_change(1000, 1000, winner_streak=2)
     assert bonus0 == 0
     assert bonus1 == 0
     assert bonus2 == 4
@@ -150,7 +150,7 @@ class FakeDB:
 def test_active_challenge_claim_and_release(monkeypatch):
     async def run():
         fake_db = FakeDB()
-        monkeypatch.setattr(main.bot, "db", fake_db)
+        monkeypatch.setattr(core.bot, "db", fake_db)
         fake_db.active_challenges.docs["guild_user"] = {
             "_id": "guild_user",
             "guild_id": "guild",
@@ -159,14 +159,14 @@ def test_active_challenge_claim_and_release(monkeypatch):
             "expires_at": __import__("time").time() + 3600,
         }
 
-        claimed = await main.claim_active_challenge("guild", "user")
+        claimed = await core.claim_active_challenge("guild", "user")
         assert claimed["status"] == "processing"
         assert fake_db.active_challenges.docs["guild_user"]["status"] == "processing"
 
-        second_claim = await main.claim_active_challenge("guild", "user")
+        second_claim = await core.claim_active_challenge("guild", "user")
         assert second_claim is None
 
-        await main.release_active_challenge("guild_user")
+        await core.release_active_challenge("guild_user")
         assert fake_db.active_challenges.docs["guild_user"]["status"] == "active"
 
     asyncio.run(run())
@@ -175,7 +175,7 @@ def test_active_challenge_claim_and_release(monkeypatch):
 def test_stale_processing_challenge_is_recovered(monkeypatch):
     async def run():
         fake_db = FakeDB()
-        monkeypatch.setattr(main.bot, "db", fake_db)
+        monkeypatch.setattr(core.bot, "db", fake_db)
         fake_db.active_challenges.docs["guild_user"] = {
             "_id": "guild_user",
             "guild_id": "guild",
@@ -185,7 +185,7 @@ def test_stale_processing_challenge_is_recovered(monkeypatch):
             "expires_at": __import__("time").time() + 3600,
         }
 
-        claimed = await main.claim_active_challenge("guild", "user")
+        claimed = await core.claim_active_challenge("guild", "user")
         assert claimed["status"] == "processing"
         assert "processing_at" in claimed
         assert fake_db.active_challenges.docs["guild_user"]["status"] == "processing"
@@ -234,7 +234,7 @@ def test_automatic_rollover_announces_new_season_and_preserves_schedule_duration
 def test_help_menu_is_organized_into_player_and_admin_categories():
     # Test the actual Discord Select options instead of relying on source-code
     # quote style or where the HelpView class lives in the Cogs split.
-    help_select = getattr(main, "HelpCategorySelect", None)
+    help_select = getattr(core, "HelpCategorySelect", None)
     assert help_select is not None, "HelpCategorySelect is missing from the production bot"
 
     view = help_select(is_admin=True)
@@ -307,7 +307,7 @@ def test_dashboard_command_surface_is_exactly_dashboard_and_staff():
                     else:
                         root_commands.add(name)
 
-    hidden = set(main.HIDDEN_PLAYER_COMMANDS) | set(main.HIDDEN_STAFF_COMMANDS)
+    hidden = set(core.HIDDEN_PLAYER_COMMANDS) | set(core.HIDDEN_STAFF_COMMANDS)
     public_root = root_commands - hidden
     public_groups = group_names - hidden
     assert public_root == {"dashboard", "staff"}
@@ -317,8 +317,8 @@ def test_dashboard_command_surface_is_exactly_dashboard_and_staff():
 
 
 def test_dashboard_navigation_controls_have_no_duplicate_row_items():
-    player = main.DashboardView("1", "2", False)
-    staff = main.StaffDashboardView()
+    player = core.DashboardView("1", "2", False)
+    staff = core.StaffDashboardView()
 
     for view in (player, staff):
         custom_ids = [getattr(item, "custom_id", None) for item in view.children if getattr(item, "custom_id", None)]
