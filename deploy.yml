@@ -1,0 +1,95 @@
+name: CI and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Discloud rejects overlapping deploy requests with HTTP 429. Serialize all
+# production deploy workflows so only one can reach Discloud at a time.
+concurrency:
+  group: discloud-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Compile
+        run: python -m py_compile main.py
+
+      - name: Test
+        run: pytest -q
+
+  deploy:
+    name: deploy
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The Discloud action itself can surface a transient 429 when an older
+      # application process is still finishing. Keep the action unchanged and
+      # retry the deployment rather than failing immediately.
+      - name: Deploy to Discloud (attempt 1)
+        id: deploy1
+        continue-on-error: true
+        uses: discloud/deploy-action@v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          glob: '**'
+          team: false
+
+      - name: Wait before Discloud retry 2
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 45
+
+      - name: Deploy to Discloud (attempt 2)
+        id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        continue-on-error: true
+        uses: discloud/deploy-action@v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          glob: '**'
+          team: false
+
+      - name: Wait before Discloud retry 3
+        if: steps.deploy2.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to Discloud (attempt 3)
+        id: deploy3
+        if: steps.deploy2.outcome == 'failure'
+        continue-on-error: true
+        uses: discloud/deploy-action@v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          glob: '**'
+          team: false
+
+      - name: Fail if all Discloud deploy attempts failed
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure' && steps.deploy3.outcome == 'failure'
+        run: |
+          echo "All Discloud deployment attempts failed."
+          exit 1
