@@ -1,3 +1,4 @@
+import uuid
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
@@ -87,6 +88,7 @@ class PlayerCog(commands.Cog):
             await interaction.followup.send('⚠️ **Already Registered:** Your Garage is already registered for the current season. Your career stats are safe; open `/gauntlet` → **My Gauntlet** → **Profile** to view them.', ephemeral=True)
             return
         pending_id = f'{guild_id}_{user_id}'
+        submission_id = uuid.uuid4().hex
         review_chan = bot.get_channel(int(cfg['review_channel_id']))
         if not review_chan:
             await interaction.followup.send('❌ Staff review channel could not be found. Ask an administrator to run `/setup`.', ephemeral=True)
@@ -106,7 +108,7 @@ class PlayerCog(commands.Cog):
         emb.set_image(url=proof_screenshot.url)
         claim = await bot.db.pending.update_one(
             {'_id': pending_id, 'season_number': {'$ne': season_number}},
-            {'$set': {'guild_id': guild_id, 'user_id': user_id, 'game_id': game_id, 'rank': garage_pi, 'control': control_type.value, 'season_number': season_number, 'is_reregistration': is_rereg, 'submitted_at': time.time(), 'proof_url': proof_screenshot.url, 'delivery_status': 'sending'}},
+            {'$set': {'guild_id': guild_id, 'user_id': user_id, 'game_id': game_id, 'rank': garage_pi, 'control': control_type.value, 'season_number': season_number, 'is_reregistration': is_rereg, 'submitted_at': time.time(), 'proof_url': proof_screenshot.url, 'delivery_status': 'sending', 'submission_id': submission_id}},
             upsert=True,
         )
         if getattr(claim, 'modified_count', 0) != 1 and getattr(claim, 'upserted_id', None) is None:
@@ -114,15 +116,15 @@ class PlayerCog(commands.Cog):
             return
         emb.set_footer(text=f'ALU Registration Submission: {pending_id}')
         try:
-            review_message = await review_chan.send(embed=emb, view=VerificationView(user_id, guild_id, game_id, garage_pi, control_type.value))
-            await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(review_message.id), 'delivery_status': 'delivered'}})
+            review_message = await review_chan.send(embed=emb, view=VerificationView(user_id, guild_id, game_id, garage_pi, control_type.value, submission_id))
+            await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number, 'submission_id': submission_id}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(review_message.id), 'delivery_status': 'delivered'}})
         except Exception:
             logging.exception('Registration review message delivery failed')
             found = await find_recent_bot_message(review_chan, f'ALU Registration Submission: {pending_id}', limit=20)
             if found:
-                await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(found.id), 'delivery_status': 'delivered'}})
+                await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number, 'submission_id': submission_id}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(found.id), 'delivery_status': 'delivered'}})
             else:
-                await bot.db.pending.delete_one({'_id': pending_id, 'season_number': season_number})
+                await bot.db.pending.delete_one({'_id': pending_id, 'season_number': season_number, 'submission_id': submission_id})
                 await interaction.followup.send('❌ Staff review message could not be delivered. Your registration was safely rolled back; please try again.', ephemeral=True)
                 return
         await interaction.followup.send(f'📥 **Season {season_number} Garage Registration Submitted:** Staff can approve your `{garage_pi:,} PI` projected **{division}** placement. Career stats are retained.', ephemeral=True)
