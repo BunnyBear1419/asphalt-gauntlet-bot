@@ -54,3 +54,17 @@ def test_registration_reviews_are_submission_scoped():
 def test_universal_map_rebuild_exists():
     assert 'async def rebuild_universal_map_record(' in CORE
     assert 'replace_one({"_id": global_id}, record, upsert=True' in CORE
+
+
+def test_decorated_top_leaderboard_select_has_discord_ui_callback_signature():
+    source = (ROOT / "ALU_Gauntlet" / "core" / "core.py").read_text(encoding="utf-8")
+    marker = "class TopLeaderboardView"
+    start = source.index(marker)
+    end = source.index("async def save_driver_best_time", start)
+    block = source[start:end]
+    assert "async def callback(self, interaction: discord.Interaction, select: discord.ui.Select):" in block
+
+def test_view_error_handler_matches_bound_view_on_error_signature():
+    source = (ROOT / "ALU_Gauntlet" / "core" / "core.py").read_text(encoding="utf-8")
+    assert "async def _view_error_handler(view, interaction: discord.Interaction, error: Exception, item):" in source
+    assert "_view_cls.on_error = _view_error_handler" in source
