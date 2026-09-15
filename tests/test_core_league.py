@@ -288,10 +288,23 @@ def test_dashboard_command_surface_is_exactly_dashboard_and_staff():
     root_commands = set()
     group_commands = set()
     group_names = set()
+    group_variables = set()
     for path in (package / "cogs").glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
+        # Track both the Python variable (e.g. ``season_group``) and the
+        # registered Discord group name (e.g. ``season``).  Prefix commands
+        # such as ``@commands.command`` are deliberately excluded from this
+        # slash-command surface audit.
         for node in ast.walk(tree):
-            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == "Group":
+            if (
+                isinstance(node, ast.Assign)
+                and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Attribute)
+                and node.value.func.attr == "Group"
+            ):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        group_variables.add(target.id)
                 for kw in node.value.keywords:
                     if kw.arg == "name" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str):
                         group_names.add(kw.value.value)
@@ -299,10 +312,16 @@ def test_dashboard_command_surface_is_exactly_dashboard_and_staff():
                 for decorator in node.decorator_list:
                     if not (isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute) and decorator.func.attr == "command"):
                         continue
+                    # Only app_commands decorators are part of the slash
+                    # command surface.  This prevents ``@commands.command``
+                    # (the recovery-only !forcesync command) from leaking
+                    # into the slash-command audit.
+                    if isinstance(decorator.func.value, ast.Name) and decorator.func.value.id == "commands":
+                        continue
                     name = next((kw.value.value for kw in decorator.keywords if kw.arg == "name" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, str)), None)
                     if not name:
                         continue
-                    if isinstance(decorator.func.value, ast.Name) and decorator.func.value.id in group_names:
+                    if isinstance(decorator.func.value, ast.Name) and decorator.func.value.id in group_variables:
                         group_commands.add(name)
                     else:
                         root_commands.add(name)
@@ -318,7 +337,7 @@ def test_dashboard_command_surface_is_exactly_dashboard_and_staff():
 
 def test_dashboard_navigation_controls_have_no_duplicate_row_items():
     player = core.DashboardView("1", "2", False)
-    staff = core.StaffDashboardView()
+    staff = core.StaffDashboardView("1")
 
     for view in (player, staff):
         custom_ids = [getattr(item, "custom_id", None) for item in view.children if getattr(item, "custom_id", None)]
