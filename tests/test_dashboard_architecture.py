@@ -327,3 +327,23 @@ def test_match_reconciliation_restores_post_settlement_lap_time_writes():
     block = source[source.index('async def reconcile_processing_challenges'):source.index('async def get_current_season_number')]
     assert 'await _reconcile_match_lap_times(match)' in block
     assert 'source="match_attack"' in source
+
+
+def test_v18_setup_roles_are_named_and_image_upload_is_staff_channel_based():
+    source = _source()
+    assert 'label="Staff role name"' in source
+    assert 'label="Player role name"' in source
+    assert 'ensure_named_server_role' in source
+    assert 'pending_staff_image_sessions = {}' in source
+    assert 'handle_pending_staff_image_message' in source
+    assert 'source_channel_id' in source
+    assert 'Upload {name}' in source
+
+
+def test_v18_season_disable_is_danger_and_health_diagnostics_is_canonical_data_action():
+    source = _source()
+    assert '@discord.ui.button(label="🔴 Disable", style=discord.ButtonStyle.danger)' in source
+    data_block = source[source.index('"data": ['):source.index('"setup": [')]
+    assert data_block.count('"diagnostics"') == 1
+    system_block = source[source.index('"system": ['):source.index('class StaffCategorySelect')]
+    assert system_block.count('"diagnostics"') == 0
