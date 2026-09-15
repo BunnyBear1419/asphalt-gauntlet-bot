@@ -62,6 +62,12 @@ ASPHALT_VICTORY_COLOR = 0x2ECC71
 
 ASPHALT_DEFEAT_COLOR = 0xE74C3C
 
+REQUIRED_COLLECTIONS = (
+    "drivers", "pending", "matches", "active_challenges", "season_state",
+    "season_history", "settings", "reference_pending", "lap_times", "lap_time_history",
+    "map_records", "map_references", "system_events",
+)
+
 ASPHALT_MEDIA = {
     "banner_help": "https://images.squarespace-cdn.com/content/v1/5b16954ad274cb7609206ad6/01e9d1bf-5b23-4560-843e-c6df6ba88cc4/Asphalt_Legends_Unite_Key_Art_16x9.jpg",
     "banner_match": "https://img.youtube.com/vi/M7W-wZby6O0/maxresdefault.jpg",
@@ -310,6 +316,7 @@ class GauntletBot(commands.Bot):
         self._guild_cleanup_failed = False
         self._guild_cleanup_lock = asyncio.Lock()
         self._health_message_id = None
+        self.health_session = None
 
     async def setup_hook(self):
         mongo_uri = os.getenv("MONGO_URI")
@@ -351,6 +358,8 @@ class GauntletBot(commands.Bot):
         self.seasonal_clock_loop.start()
         self.player_reminder_loop.start()
         self.backup_loop.start()
+        if os.getenv("HEALTH_WEBHOOK_URL"):
+            self.health_session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10))
         self.production_heartbeat_loop.start()
         # Load custom images from DB into ASPHALT_MEDIA
         try:
@@ -365,7 +374,7 @@ class GauntletBot(commands.Bot):
         try:
             pending_regs = await self.db.pending.find({"season_number": {"$exists": True}}).to_list(length=250)
             for pending in pending_regs:
-                self.add_view(VerificationView(str(pending["user_id"]), str(pending["guild_id"]), str(pending.get("game_id", "Unknown")), int(pending.get("rank", 0)), str(pending.get("control", "touch"))))
+                self.add_view(VerificationView(str(pending["user_id"]), str(pending["guild_id"]), str(pending.get("game_id", "Unknown")), int(pending.get("rank", 0)), str(pending.get("control", "touch")), str(pending.get("submission_id") or pending.get("_id"))))
             pending_defs = await self.db.drivers.find({"defense_review_pending": True, "defense_review_payload": {"$exists": True}}).to_list(length=250)
             for driver in pending_defs:
                 payload = driver.get("defense_review_payload", {})
@@ -605,6 +614,9 @@ class GauntletBot(commands.Bot):
         self.player_reminder_loop.cancel()
         self.backup_loop.cancel()
         self.production_heartbeat_loop.cancel()
+        if self.health_session and not self.health_session.closed:
+            await self.health_session.close()
+            self.health_session = None
         if self.mongo_client:
             await self.mongo_client.close()
         await super().close()
@@ -650,7 +662,7 @@ async def create_database_backup(reason: str = "scheduled"):
     collections = [
         "drivers", "pending", "matches", "active_challenges", "season_state",
         "season_history", "settings", "reference_pending", "lap_times", "lap_time_history",
-        "map_records", "map_references",
+        "map_records", "map_references", "system_events",
     ]
     manifest = {
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -760,11 +772,14 @@ async def production_heartbeat_loop():
             f"guilds={len(bot.guilds)} | uptime={int(time.time() - bot.started_at)}"
         )
         timeout = aiohttp.ClientTimeout(total=10)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(webhook_url, json={"content": content}) as response:
-                if response.status >= 300:
-                    body = await response.text()
-                    logging.error("Production heartbeat webhook returned HTTP %s: %s", response.status, body[:500])
+        session = bot.health_session
+        if session is None or session.closed:
+            session = aiohttp.ClientSession(timeout=timeout)
+            bot.health_session = session
+        async with session.post(webhook_url, json={"content": content}) as response:
+            if response.status >= 300:
+                body = await response.text()
+                logging.error("Production heartbeat webhook returned HTTP %s: %s", response.status, body[:500])
     except Exception:
         logging.exception("Production heartbeat webhook publish failed")
 
@@ -1560,6 +1575,9 @@ class MatchRevertView(discord.ui.View):
                 else:
                     await bot.db.lap_times.delete_one({"_id": current_lap["_id"]}, session=session)
 
+            for track in sorted({str(h.get("track")) for h in lap_history if h.get("track")}):
+                await rebuild_universal_map_record(track, session=session)
+
             rmatch = await bot.db.matches.update_one(
                 {"_id": self.match_id, "guild_id": str(interaction.guild_id), "reverted": {"$ne": True}},
                 {"$set": {"reverted": True, "reverted_at": time.time(), "reverted_by": str(interaction.user.id)}},
@@ -1689,16 +1707,28 @@ class DefenseView(discord.ui.View):
 
 class RegistrationDeclineModal(discord.ui.Modal, title="Specify Application Rejection Reason"):
     reason_input = discord.ui.TextInput(label="Reason for Disapproval", style=discord.TextStyle.paragraph, placeholder="e.g. Blurry screenshot metadata, mismatched game player node ID digits...", required=True, max_length=400)
-    
-    def __init__(self, user_id: str, guild_id: str):
+
+    def __init__(self, user_id: str, guild_id: str, submission_id: str):
         super().__init__()
-        self.user_id, self.guild_id = str(user_id), str(guild_id)
-        
+        self.user_id, self.guild_id, self.submission_id = str(user_id), str(guild_id), str(submission_id)
+
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
-        
-        # Dispatch customized Direct Message notification alerting applicant
+        await interaction.response.defer(ephemeral=True)
+        pending = await bot.db.pending.find_one({
+            "_id": f"{self.guild_id}_{self.user_id}",
+            "submission_id": self.submission_id,
+            "guild_id": self.guild_id,
+            "user_id": self.user_id,
+            "delivery_status": {"$in": ["sending", "delivered"]},
+        })
+        if not pending:
+            await interaction.followup.send("❌ This registration review is stale or has already been replaced.", ephemeral=True)
+            return
+        result = await bot.db.pending.delete_one({"_id": pending["_id"], "submission_id": self.submission_id})
+        if result.deleted_count != 1:
+            await interaction.followup.send("❌ This registration review changed before it could be rejected. No newer application was removed.", ephemeral=True)
+            return
+
         guild = bot.get_guild(int(self.guild_id))
         member = guild.get_member(int(self.user_id)) if guild else None
         if member:
@@ -1709,17 +1739,24 @@ class RegistrationDeclineModal(discord.ui.Modal, title="Specify Application Reje
             )
             dm_embed.add_field(name="📋 Stated Reason For Disapproval", value=f"```\n{self.reason_input.value}\n```", inline=False)
             dm_embed.set_footer(text="Please rectify listed parameter details and re-apply.")
-            try: await member.send(embed=dm_embed)
-            except Exception: pass
-            
+            try:
+                await member.send(embed=dm_embed)
+            except discord.HTTPException:
+                logging.info("Could not DM declined applicant %s in guild %s", self.user_id, self.guild_id)
+            except Exception:
+                logging.exception("Unexpected DM failure for declined applicant %s", self.user_id)
+
         await dispatch_audit_log(self.guild_id, "👤 Driver Application Declined", f"User <@{self.user_id}> entry registration denied. Reason: {self.reason_input.value}", color=0xe74c3c)
+        await interaction.followup.send("✅ Registration rejected. The applicant's current submission was removed safely.", ephemeral=True)
 
 class VerificationView(discord.ui.View):
-    def __init__(self, user_id: str, guild_id: str, game_id: str, rank: int, control: str):
+    def __init__(self, user_id: str, guild_id: str, game_id: str, rank: int, control: str, submission_id: str | None = None):
         super().__init__(timeout=None)
         self.user_id, self.guild_id, self.game_id, self.rank, self.control = str(user_id), str(guild_id), game_id, rank, control
-        self.children[0].custom_id = f"approve_driver:{self.guild_id}:{self.user_id}"
-        self.children[1].custom_id = f"reject_driver:{self.guild_id}:{self.user_id}"
+        self.submission_id = str(submission_id or f"legacy:{self.guild_id}:{self.user_id}")
+        self.children[0].custom_id = f"approve_driver:{self.guild_id}:{self.user_id}:{self.submission_id}"
+        self.children[1].custom_id = f"reject_driver:{self.guild_id}:{self.user_id}:{self.submission_id}"
+
     @discord.ui.button(label="Approve Driver Account", style=discord.ButtonStyle.green, custom_id="approve_driver_btn")
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await check_admin_privileges(interaction):
@@ -1728,97 +1765,104 @@ class VerificationView(discord.ui.View):
         await interaction.response.defer(ephemeral=True)
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
-        
-        state = await bot.db.season_state.find_one({"_id": f"guild_{self.guild_id}"})
-        season_number = int(state.get("season_number", 1)) if state else 1
-        pending = await bot.db.pending.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
-        if pending and int(pending.get("season_number", season_number)) != season_number:
-            await interaction.followup.send("❌ This registration belongs to an older season and can no longer be approved.", ephemeral=True)
-            return
-        existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
-        # guild_id/user_id are already written by $set below. Keeping them
-        # in $setOnInsert as well causes MongoDB path-conflict error code 40.
-        # Only true insert-only defaults belong in $setOnInsert.
-        set_on_insert = {
-            "career_wins": 0,
-            "career_played": 0,
-        }
-        if not existing:
-            set_on_insert.update({"elo": 1000, "streak": 0})
-        await bot.db.drivers.update_one(
-            {"_id": f"{str(self.guild_id)}_{str(self.user_id)}"},
-            {
-                "$set": {
-                    "guild_id": str(self.guild_id),
-                    "user_id": str(self.user_id),
-                    "game_id": str(self.game_id),
-                    "garage_pi": int(self.rank),
-                    "verified": True,
-                    "season_registered": True,
-                    "season_number": season_number,
-                    "control": self.control,
-                    "registered_at": time.time(),
-                },
-                "$setOnInsert": set_on_insert,
-            },
-            upsert=True,
-        )
-        # Assign the driver's five random defense routes once for this season.
-        # Re-registration within a season does not reroll them. A new season
-        # clears this field during the soft reset, so the next /setdefense gets
-        # a fresh five-route set.
-        refreshed = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"})
-        if not refreshed.get("season_defense_tracks") or int(refreshed.get("season_number", 0)) != season_number:
+
+        async def approve_db(session):
+            state = await bot.db.season_state.find_one({"_id": f"guild_{self.guild_id}"}, session=session)
+            season_number = int(state.get("season_number", 1)) if state else 1
+            pending = await bot.db.pending.find_one({
+                "_id": f"{self.guild_id}_{self.user_id}",
+                "submission_id": self.submission_id,
+                "guild_id": self.guild_id,
+                "user_id": self.user_id,
+            }, session=session)
+            if not pending:
+                raise RuntimeError("STALE_REGISTRATION")
+            if int(pending.get("season_number", season_number)) != season_number:
+                raise RuntimeError("OLD_SEASON_REGISTRATION")
+
+            # Use the pending document as the source of truth so an old Discord
+            # view can never approve with stale game_id/PI/control values.
+            game_id = str(pending.get("game_id", self.game_id))
+            rank = int(pending.get("rank", self.rank))
+            control = str(pending.get("control", self.control))
+            existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"}, session=session)
+            set_on_insert = {"career_wins": 0, "career_played": 0}
+            if not existing:
+                set_on_insert.update({"elo": 1000, "streak": 0})
             await bot.db.drivers.update_one(
-                {"_id": f"{self.guild_id}_{self.user_id}"},
-                {"$set": {"season_defense_tracks": random.sample(ALU_TRACKS, 5)}}
+                {"_id": f"{str(self.guild_id)}_{str(self.user_id)}"},
+                {
+                    "$set": {
+                        "guild_id": str(self.guild_id), "user_id": str(self.user_id), "game_id": game_id,
+                        "garage_pi": rank, "verified": True, "season_registered": True,
+                        "season_number": season_number, "control": control, "registered_at": time.time(),
+                    },
+                    "$setOnInsert": set_on_insert,
+                }, upsert=True, session=session,
             )
-        await bot.db.pending.delete_one({"_id": f"{self.guild_id}_{self.user_id}"})
+            refreshed = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"}, session=session)
+            if not refreshed.get("season_defense_tracks") or int(refreshed.get("season_number", 0)) != season_number:
+                await bot.db.drivers.update_one(
+                    {"_id": f"{self.guild_id}_{self.user_id}"},
+                    {"$set": {"season_defense_tracks": random.sample(ALU_TRACKS, 5)}},
+                    session=session,
+                )
+
+            # Claim this exact submission atomically with the profile update.
+            deleted = await bot.db.pending.delete_one({"_id": pending["_id"], "submission_id": self.submission_id}, session=session)
+            if deleted.deleted_count != 1:
+                raise RuntimeError("STALE_REGISTRATION")
+            return season_number, game_id, rank, control
+
+        try:
+            async with bot.mongo_client.start_session() as session:
+                async with session.start_transaction():
+                    season_number, game_id, rank, control = await approve_db(session)
+        except RuntimeError as exc:
+            if str(exc) == "OLD_SEASON_REGISTRATION":
+                await interaction.followup.send("❌ This registration belongs to an older season and can no longer be approved.", ephemeral=True)
+            else:
+                await interaction.followup.send("❌ This registration review is stale or has already been replaced. No newer application was changed.", ephemeral=True)
+            return
+        except Exception:
+            logging.exception("Atomic registration approval failed for %s/%s", self.guild_id, self.user_id)
+            await interaction.followup.send("❌ Registration approval failed safely. No partial database approval was kept.", ephemeral=True)
+            return
+
         cfg = await bot.db.settings.find_one({"_id": self.guild_id})
-        
         guild = bot.get_guild(int(self.guild_id))
         member = guild.get_member(int(self.user_id)) if guild else None
         if member and cfg:
             roles = [guild.get_role(int(cfg[k])) for k in ["player_role_id"] if cfg.get(k) and guild.get_role(int(cfg[k]))]
             if roles:
-                try: await member.add_roles(*roles)
-                except Exception: pass
-                
-            # Send notification update to approved pilot credentials channel inbox
-            dm_success = discord.Embed(
-                title="🏎️ GAUNTLET GRID ENTRY GRANTED",
-                description=f"Congratulations pilot! Your driver application registration for **{guild.name}** was approved.",
-                color=ASPHALT_VICTORY_COLOR
-            )
+                try:
+                    await member.add_roles(*roles)
+                except discord.HTTPException:
+                    logging.info("Could not assign player role to %s in guild %s", self.user_id, self.guild_id)
+                except Exception:
+                    logging.exception("Unexpected role assignment failure for %s", self.user_id)
+            dm_success = discord.Embed(title="🏎️ GAUNTLET GRID ENTRY GRANTED", description=f"Congratulations pilot! Your driver application registration for **{guild.name}** was approved.", color=ASPHALT_VICTORY_COLOR)
             dm_success.add_field(name="📈 Assigned Base ELO", value="`1000 ELO`", inline=True)
-            dm_success.add_field(name="⚙️ Verified Profile Strength", value=f"`{self.rank:,} PI`", inline=True)
+            dm_success.add_field(name="⚙️ Verified Profile Strength", value=f"`{rank:,} PI`", inline=True)
             dm_success.set_footer(text="Next: open /gauntlet → Defense → Set Defense, then use Challenges → Find Challenge when your defense is approved.")
-            try: await member.send(embed=dm_success)
-            except Exception: pass
-            
-        projected_division = get_division_for_pi(int(self.rank))["name"]
-        await interaction.message.edit(
-            embed=discord.Embed(
-                title="✅ Driver Garage Approved",
-                description=f"Season **{season_number}** Garage registered at `{self.rank:,} PI` → **{projected_division}**. Career statistics were preserved.",
-                color=ASPHALT_VICTORY_COLOR,
-            ),
-            view=self,
-        )
-        await dispatch_audit_log(self.guild_id, "👤 Driver Garage Approved", f"User <@{self.user_id}> approved for Season {season_number} with `{self.rank:,} PI` → {projected_division}. Lifetime career statistics preserved.", color=0x2ecc71)
-        await dispatch_automated_announcement(self.guild_id, "🏎️ NEW RACER ENTERED THE GRID", f"✨ Let's welcome <@{self.user_id}> (`{self.game_id}`) to the official competitive track circuit! Profile rated at **`{self.rank:,} PI`** using **`{self.control.upper()}`** dynamics.", color=ASPHALT_THEME_COLOR)
-        try:
-            user = interaction.guild.get_member(int(self.user_id)) or await bot.fetch_user(int(self.user_id))
-            await user.send(f"✅ **ALU Gauntlet approval**\nYou are approved for Season {season_number}!\n\nNext: open `/gauntlet` → **Defense** → **Set Defense** to lock your 5-course defense.")
-        except Exception:
-            pass
+            try:
+                await member.send(embed=dm_success)
+            except discord.HTTPException:
+                logging.info("Could not DM approved applicant %s in guild %s", self.user_id, self.guild_id)
+            except Exception:
+                logging.exception("Unexpected DM failure for approved applicant %s", self.user_id)
+
+        projected_division = get_division_for_pi(rank)["name"]
+        await interaction.message.edit(embed=discord.Embed(title="✅ Driver Garage Approved", description=f"Season **{season_number}** Garage registered at `{rank:,} PI` → **{projected_division}**. Career statistics were preserved.", color=ASPHALT_VICTORY_COLOR), view=self)
+        await dispatch_audit_log(self.guild_id, "👤 Driver Garage Approved", f"User <@{self.user_id}> approved for Season {season_number} with `{rank:,} PI` → {projected_division}. Lifetime career statistics preserved.", color=0x2ecc71)
+        await dispatch_automated_announcement(self.guild_id, "🏎️ NEW RACER ENTERED THE GRID", f"✨ Let's welcome <@{self.user_id}> (`{game_id}`) to the official competitive track circuit! Profile rated at **`{rank:,} PI`** using **`{control.upper()}`** dynamics.", color=ASPHALT_THEME_COLOR)
+
     @discord.ui.button(label="Reject Account", style=discord.ButtonStyle.red, custom_id="reject_driver_btn")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
-        # Fire modal frame allowing typing rejection specifications
-        await interaction.response.send_modal(RegistrationDeclineModal(self.user_id, self.guild_id))
+        await interaction.response.send_modal(RegistrationDeclineModal(self.user_id, self.guild_id, self.submission_id))
         for item in self.children: item.disabled = True
         await interaction.message.edit(view=self)
 
@@ -2260,6 +2304,29 @@ def _proof_session_key(guild_id, user_id, kind):
 MAX_PROOF_BYTES = 8 * 1024 * 1024
 MAX_REDIRECTS = 3
 
+class _PublicOnlyResolver(aiohttp.resolver.DefaultResolver):
+    """Reject private/local addresses at the actual aiohttp resolution step.
+
+    The preflight DNS check remains useful for fail-fast validation, while this
+    resolver closes the DNS-rebinding gap between validation and connection.
+    """
+    async def resolve(self, host, port=0, family=socket.AF_UNSPEC):
+        resolved = await super().resolve(host, port, family)
+        for item in resolved:
+            addr = item.get("host")
+            try:
+                ip = ipaddress.ip_address(addr)
+            except ValueError:
+                raise OSError("resolver returned an invalid address")
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+                raise OSError("resolver returned a private/local/reserved address")
+        return resolved
+
+def _safe_http_session(timeout: aiohttp.ClientTimeout) -> aiohttp.ClientSession:
+    resolver = _PublicOnlyResolver()
+    connector = aiohttp.TCPConnector(resolver=resolver, ttl_dns_cache=60)
+    return aiohttp.ClientSession(timeout=timeout, connector=connector)
+
 async def _resolve_public_host(hostname: str) -> bool:
     """Reject loopback/private/link-local/reserved destinations before HTTP requests."""
     if not hostname or hostname.lower() in {"localhost", "localhost.localdomain"}:
@@ -2321,7 +2388,7 @@ class _URLImageAttachment:
         self.url=url; self.filename=filename; self.content_type="image/jpeg"
     async def read(self):
         timeout = aiohttp.ClientTimeout(total=15)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with _safe_http_session(timeout) as session:
             data, _, _ = await _safe_request(session, self.url, read_limit=MAX_PROOF_BYTES, want_image=True)
             return data
 
@@ -2331,7 +2398,7 @@ async def validate_image_url(url: str) -> bool:
         return False
     try:
         timeout = aiohttp.ClientTimeout(total=10)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with _safe_http_session(timeout) as session:
             _, _, _ = await _safe_request(session, url, headers={"Range": "bytes=0-4095"}, read_limit=64 * 1024, want_image=True)
             return True
     except Exception:
@@ -3571,6 +3638,40 @@ class TopLeaderboardView(discord.ui.View):
         embed.set_footer(text="Use the dropdown to switch categories")
         await interaction.followup.send(embed=embed)
 
+async def rebuild_universal_map_record(track: str, guild_id: str | None = None, session=None):
+    """Rebuild a universal record from the authoritative per-driver lap_times.
+
+    Only sources that historically feed the universal leaderboard are eligible.
+    This is intentionally recomputed after destructive operations instead of
+    trying to incrementally guess which record should remain.
+    """
+    query = {"track": track, "source": {"$in": ["defense", "verified_reference", "staff_verified_match"]}}
+    if guild_id is not None:
+        query["guild_id"] = str(guild_id)
+    cursor = bot.db.lap_times.find(query, session=session) if session is not None else bot.db.lap_times.find(query)
+    rows = await cursor.to_list(length=5000)
+    global_id = re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")
+    if not rows:
+        if session is not None:
+            await bot.db.map_records.delete_one({"_id": global_id}, session=session)
+        else:
+            await bot.db.map_records.delete_one({"_id": global_id})
+        return None
+    best = min(rows, key=lambda r: int(r.get("best_ms", 10**18)))
+    record = {
+        "_id": global_id, "track": track, "best_ms": int(best.get("best_ms", 0)),
+        "best_lap_time": best.get("best_lap_time"), "car": best.get("car"),
+        "car_rank": best.get("car_rank"), "guild_id": str(best.get("guild_id")),
+        "user_id": str(best.get("user_id")), "proof_url": best.get("proof_url"),
+        "source": best.get("source"), "source_guild_id": str(best.get("guild_id")),
+        "updated_at": time.time(),
+    }
+    if session is not None:
+        await bot.db.map_records.replace_one({"_id": global_id}, record, upsert=True, session=session)
+    else:
+        await bot.db.map_records.replace_one({"_id": global_id}, record, upsert=True)
+    return record
+
 async def save_driver_best_time(guild_id: str, user_id: str, course: dict, season_number: int, source: str = "unknown", match_id: str | None = None):
     """Persist a driver's best known lap and preserve match provenance for safe reverts."""
     track = course.get("track")
@@ -3845,20 +3946,23 @@ async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
                 await bot.db.matches.update_one({"_id": match["_id"], "guild_id": guild_id}, {"$set": update}, **kwargs)
                 counts["matches"] += 1
 
+        affected_tracks = await bot.db.lap_times.find(
+            {"guild_id": guild_id, "user_id": user_id},
+            {"track": 1}, session=session
+        ).to_list(length=1000)
+        affected_tracks = sorted({str(row.get("track")) for row in affected_tracks if row.get("track")})
         result = await bot.db.lap_times.delete_many({"guild_id": guild_id, "user_id": user_id}, **kwargs)
         await bot.db.lap_time_history.delete_many({"guild_id": guild_id, "user_id": user_id}, **kwargs)
         counts["lap_times"] = int(getattr(result, "deleted_count", 0) or 0)
 
-        # Rebuild any universal records owned by the deleted player from the remaining
-        # verified driver-best records rather than leaving a dangling identity.
-        owned_records = await bot.db.map_records.find({"guild_id": guild_id, "user_id": user_id}, session=session).to_list(length=1000)
-        for rec in owned_records:
-            candidates = await bot.db.lap_times.find({"track": rec.get("track"), "source": {"$in": ["defense", "verified_reference", "staff_verified_match"]}, "user_id": {"$ne": user_id}}, session=session).sort("best_ms", 1).limit(1).to_list(length=1)
-            if candidates:
-                c = candidates[0]
-                await bot.db.map_records.update_one({"_id": rec["_id"]}, {"$set": {"best_ms": c["best_ms"], "best_lap_time": c.get("best_lap_time"), "car": c.get("car"), "car_rank": c.get("car_rank"), "guild_id": c.get("guild_id"), "user_id": c.get("user_id"), "proof_url": c.get("proof_url"), "source": c.get("source"), "source_guild_id": c.get("guild_id"), "updated_at": time.time()}}, **kwargs)
-            else:
-                await bot.db.map_records.delete_one({"_id": rec["_id"]}, **kwargs)
+        # Recompute every affected universal record from the authoritative remaining
+        # lap_times collection. This also repairs a stale global record even when
+        # its previous owner was not the only record touching that track.
+        for track in affected_tracks:
+            before = await bot.db.map_records.find_one({"_id": re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")}, session=session)
+            await rebuild_universal_map_record(track, session=session)
+            after = await bot.db.map_records.find_one({"_id": re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")}, session=session)
+            if before and not after:
                 counts["map_records"] += 1
 
         result = await bot.db.reference_pending.delete_many(
@@ -4165,13 +4269,13 @@ async def build_launch_readiness(guild_id: str) -> tuple[bool, list[str], list[s
     else:
         checks.append("🔴 MongoDB is not initialized"); ready = False
 
-    required_collections = ("drivers", "pending", "matches", "active_challenges", "season_history", "reference_pending", "lap_times", "map_records", "map_references", "settings", "season_state")
+    required_collections = REQUIRED_COLLECTIONS
     if bot.db is not None:
         try:
             existing = set(await bot.db.list_collection_names())
             missing = [name for name in required_collections if name not in existing]
             if missing:
-                warnings.append("⚠️ Collections will be created on first use: " + ", ".join(missing))
+                warnings.append("⚠️ Required collections not yet materialized: " + ", ".join(missing))
             else:
                 checks.append("🟢 Required MongoDB collections present")
         except Exception:
