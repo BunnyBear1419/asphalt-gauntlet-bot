@@ -13,7 +13,7 @@ class ChallengesCog(commands.Cog):
         guild_id, user_id = (str(interaction.guild_id), str(interaction.user.id))
         user_profile = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}'})
         if not user_profile:
-            await interaction.followup.send('❌ Open `/register` first.')
+            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.')
             return
         state = await bot.db.season_state.find_one({'_id': f'guild_{guild_id}'})
         season_number = int(state.get('season_number', 1)) if state else 1
@@ -21,7 +21,7 @@ class ChallengesCog(commands.Cog):
             await interaction.followup.send(f'🔄 You must re-register your Garage for Season {season_number} before challenging.')
             return
         if not has_5_course_defense(user_profile):
-            await interaction.followup.send('❌ You need a locked 5-course defense before challenging. Open `/gauntlet` → **Defense** to finish your defense setup.')
+            await interaction.followup.send('❌ You need a locked 5-course defense before challenging. Open `/dashboard` → **Defense** to finish your defense setup.')
             return
         today = await get_guild_local_date(guild_id)
         challenge_date = user_profile.get('challenge_date')
@@ -55,7 +55,7 @@ class ChallengesCog(commands.Cog):
         guild_id, user_id = (str(interaction.guild_id), str(interaction.user.id))
         active = await claim_active_challenge(guild_id, user_id)
         if not active:
-            await interaction.followup.send('❌ You have no active challenge, or it is already being submitted. Open `/gauntlet` → **Challenges** → **Find Challenge** first.', ephemeral=True)
+            await interaction.followup.send('❌ You have no active challenge, or it is already being submitted. Open `/dashboard` → **Challenges** → **Find Challenge** first.', ephemeral=True)
             return
         laps = [lap1, lap2, lap3, lap4, lap5]
         cars = [car1, car2, car3, car4, car5]
@@ -92,12 +92,12 @@ class ChallengesCog(commands.Cog):
         current_season = await get_current_season_number(guild_id)
         if int(active.get('season_number', 0)) != current_season:
             await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ This challenge belongs to an older season. Open `/gauntlet` → **Challenges** → **Find Challenge** to start a new one.', ephemeral=True)
+            await interaction.followup.send('❌ This challenge belongs to an older season. Open `/dashboard` → **Challenges** → **Find Challenge** to start a new one.', ephemeral=True)
             return
         defense = active.get('defense_courses', [])
         if len(defense) != 5:
             await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ The saved challenge data is incomplete. Please start a new challenge from `/gauntlet` → **Challenges**.', ephemeral=True)
+            await interaction.followup.send('❌ The saved challenge data is incomplete. Please start a new challenge from `/dashboard` → **Challenges**.', ephemeral=True)
             return
         match_data = await process_match_result(guild_id, user_id, str(active['opponent_id']), defense, challenger_times, proof, active.get('defender_proof_url'), interaction.channel_id, settlement_id=f"{active['_id']}:match")
         if not match_data:
@@ -129,11 +129,9 @@ class ChallengesCog(commands.Cog):
         if results:
             await results.send(embed=result_emb, view=MatchResultPostView(match_data['_id']))
         await interaction.followup.send('✅ **Match submitted!** Results and ELO are updated.', ephemeral=True)
-        try:
-            defender_user = bot.get_user(int(active['opponent_id'])) or await bot.fetch_user(int(active['opponent_id']))
-            await defender_user.send(f"🏁 **Gauntlet match complete**\nYour defense vs <@{user_id}> is complete: {match_data['courses_beat']}/5 courses beaten by the challenger.")
-        except Exception:
-            pass
+        dm_delivered = await send_player_dm(guild_id, active['opponent_id'], content=f"🏁 **Gauntlet match complete**\nYour defense vs <@{user_id}> is complete: {match_data['courses_beat']}/5 courses beaten by the challenger.", alert_staff_on_failure=True, failure_context="Match completion notice")
+        if not dm_delivered:
+            await interaction.followup.send("⚠️ The match was settled successfully, but the defender could not be notified by DM. Staff have been alerted; the result is still visible in the match-results channel.", ephemeral=True)
         await dispatch_audit_log(guild_id, '🏁 Match Result Processed', f"Match between <@{user_id}> and <@{active['opponent_id']}>. Challenger won {match_data['courses_beat']}/5 races.", color=3066993)
         await dispatch_automated_announcement(guild_id, match_data['announce_title'], f"🏎️ <@{user_id}> vs <@{active['opponent_id']}> — {('Challenger won' if match_data['challenger_won'] else 'Defense held')} {match_data['courses_beat']}/5.", color=match_data['display_color'])
 

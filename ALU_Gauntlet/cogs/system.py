@@ -16,7 +16,7 @@ class SystemCog(commands.Cog):
             if full_cleanup and full_cleanup.lower() in ('full', 'cleanup', 'true'):
                 cleaned_count = await bot.sync_guild_application_commands(force_fetch=True)
                 if not bot._guild_cleanup_failed:
-                    await bot.db.settings.update_one({'_id': 'global_meta'}, {'$set': {'guild_overrides_cleaned': True}}, upsert=True)
+                    await bot.db.settings.update_one({'_id': 'global_meta'}, {'$set': {'guild_overrides_cleaned': True, 'command_architecture_version': COMMAND_ARCHITECTURE_VERSION}}, upsert=True)
                     description_extra = f'\n**Server overrides cleared and verified:** `{cleaned_count}`'
                 else:
                     description_extra = '\n⚠️ Some server overrides could not be verified; cleanup was not marked complete.'

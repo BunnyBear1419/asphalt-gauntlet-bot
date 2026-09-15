@@ -1,11 +1,12 @@
-import uuid
+import re
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 
 class PlayerCog(commands.Cog):
 
-    @app_commands.command(name='gauntlet', description='Open your ALU Gauntlet player dashboard.')
+    @app_commands.guild_only()
+    @app_commands.command(name='dashboard', description='Open your ALU Gauntlet player dashboard.')
     async def gauntlet_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
             return
@@ -19,14 +20,14 @@ class PlayerCog(commands.Cog):
         season = await get_current_season_number(guild_id)
         p = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}'})
         if not p:
-            msg = '1️⃣ Run `/register` to open the guided registration form'
+            msg = '1️⃣ Open `/dashboard` → **My Gauntlet** → **Register** to open the guided registration form'
         elif not p.get('season_registered') or int(p.get('season_number', 0)) != season:
-            msg = f'1️⃣ Re-register for Season {season}: `/register`'
+            msg = f'1️⃣ Re-register for Season {season}: `/dashboard` → **My Gauntlet** → **Register**'
         elif not p.get('defense_locked'):
-            msg = '1️⃣ Open `/gauntlet` → **Defense** → **Set Defense**\n2️⃣ Complete the guided defense wizard'
+            msg = '1️⃣ Open `/dashboard` → **Defense** → **Set Defense**\n2️⃣ Complete the guided defense wizard'
         else:
-            active = await bot.db.active_challenges.find_one({'_id': f'{guild_id}_{user_id}', 'guild_id': str(guild_id), 'status': 'active'})
-            msg = '1️⃣ Open `/gauntlet` → **Challenges** → **Submit Match**' if active else "✅ You're ready — open `/gauntlet` → **Challenges** → **Find Challenge**"
+            active = await bot.db.active_challenges.find_one({'_id': f'{guild_id}_{user_id}', 'guild_id': str(guild_id), 'status': {'$in': ['active', 'processing']}})
+            msg = '1️⃣ Open `/dashboard` → **Challenges** → **Submit Match**' if active else "✅ You're ready — open `/dashboard` → **Challenges** → **Find Challenge**"
         await interaction.response.send_message(embed=discord.Embed(title='🏁 WHAT NEXT?', description=msg, color=ASPHALT_THEME_COLOR), ephemeral=True)
 
     @app_commands.command(name='profile', description='Inspects driver file card.')
@@ -37,13 +38,41 @@ class PlayerCog(commands.Cog):
         target_user = driver or interaction.user
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(target_user.id)}'})
         if not profile:
-            await interaction.followup.send('❌ Profile card missing. Open `/register` first.')
+            await interaction.followup.send('❌ Profile card missing. Open `/dashboard` → **My Gauntlet** → **Register** first.')
             return
         embed = discord.Embed(title='🏁 ALU GAUNTLET DRIVER DOSSIER CARD', color=ASPHALT_THEME_COLOR)
         embed.set_thumbnail(url=ASPHALT_MEDIA['thumb_profile'])
-        stats_matrix = f"• **League Elo Rating:** `{profile.get('elo', 1000)} ELO`\n• **Performance Group:** `{profile.get('garage_pi', 0):,} PI Value`\n• **Career Victories:** `{profile.get('career_wins', 0)} Wins`\n• **Total Matches:** `{profile.get('career_played', 0)} Played`\n• **Active Win Streak:** `{profile.get('streak', 0)} Streak`"
-        embed.add_field(name='👤 Pilot Credentials', value=f"• **User:** {target_user.mention}\n• **Game ID Node:** `{profile.get('game_id')}`", inline=True)
-        embed.add_field(name='📊 Operational Statistics Ledger', value=stats_matrix, inline=False)
+        matches = await bot.db.matches.find({
+            'guild_id': str(interaction.guild_id),
+            'reverted': {'$ne': True},
+            '$or': [{'challenger_id': str(target_user.id)}, {'opponent_id': str(target_user.id)}],
+        }).sort('timestamp', -1).to_list(length=1000)
+        wins = sum(1 for m in matches if str(m.get('w_id')) == str(target_user.id))
+        losses = sum(1 for m in matches if str(m.get('l_id')) == str(target_user.id))
+        played = wins + losses
+        win_rate = (wins / played * 100) if played else 0.0
+        current_season = await get_current_season_number(str(interaction.guild_id))
+        rank_cursor = bot.db.drivers.find({'guild_id': str(interaction.guild_id), 'season_registered': True, 'season_number': current_season}).sort('elo', -1)
+        ranked = await rank_cursor.to_list(length=5000)
+        rank = next((i + 1 for i, row in enumerate(ranked) if str(row.get('user_id')) == str(target_user.id)), None)
+        lap_rows = await bot.db.lap_times.find({'guild_id': str(interaction.guild_id), 'user_id': str(target_user.id)}).sort('best_ms', 1).to_list(length=100)
+        records = 0
+        for row in lap_rows:
+            record_id = re.sub(r'[^a-z0-9]+', '_', str(row.get('track', '')).lower()).strip('_')
+            global_rec = await bot.db.map_records.find_one({'_id': record_id})
+            if global_rec and str(global_rec.get('user_id')) == str(target_user.id) and int(global_rec.get('best_ms', 10**18)) == int(row.get('best_ms', -1)):
+                records += 1
+        recent = []
+        for m in matches[:5]:
+            result = '🏆 Win' if str(m.get('w_id')) == str(target_user.id) else '❌ Loss'
+            recent.append(f"{result} • `{m.get('courses_beat', 0)}/5` • <t:{int(m.get('timestamp', now_ts()))}:R>")
+        embed.add_field(name='👤 Pilot Credentials', value=f'• **User:** {target_user.mention}\n• **Game ID Node:** `{profile.get("game_id")}`', inline=True)
+        embed.add_field(name='📊 Rating & Rank', value=f"**{int(profile.get('elo', 1000))} ELO**\nRank: **#{rank or '—'}**\n{get_division_for_pi(int(profile.get('garage_pi', 0)))['name']}\nSeason {current_season}", inline=True)
+        embed.add_field(name='📈 Career Performance', value=f"**{wins}-{losses}**\nWin rate: **{win_rate:.1f}%**\nMatches: `{played}`\n🔥 Streak: `{int(profile.get('streak', 0))}`\n🏆 Career wins: `{int(profile.get('career_wins', 0))}`\n🏁 Track records: `{records}`", inline=True)
+        if lap_rows:
+            embed.add_field(name='⚡ Best Saved Laps', value='\n'.join(f"`{r.get('best_lap_time', '?')}` — {r.get('track', 'Unknown')}" for r in lap_rows[:5]), inline=False)
+        if recent:
+            embed.add_field(name='🏁 Recent Matches', value='\n'.join(recent), inline=False)
         if has_5_course_defense(profile):
             courses = profile['defense_locked'].get('courses', [])
             if courses:
@@ -53,7 +82,7 @@ class PlayerCog(commands.Cog):
                 total_rank = get_car_rank_total(courses)
                 def_lines += f'\n📊 **Total Car Performance Rating:** `{total_rank:,}`'
                 embed.add_field(name='🛡️ Deployed Ghost Defense Framework', value=def_lines, inline=False)
-        embed.set_footer(text='System Terminal Sync Matrix v2.0', icon_url=target_user.display_avatar.url)
+        embed.set_footer(text='Profile & Stats • Use /dashboard → Competition → Season History for archived seasons', icon_url=target_user.display_avatar.url)
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name='register', description='Open the guided ALU Gauntlet registration form.')
@@ -61,92 +90,6 @@ class PlayerCog(commands.Cog):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
             return
         await interaction.response.send_modal(RegistrationModal())
-
-    @app_commands.command(name='register_direct', description='[Advanced] Submit registration fields directly.')
-    @app_commands.describe(game_id='Your Asphalt Legends unique Player ID string', garage_pi='Your current Garage PI value, as shown in-game', proof_screenshot='Attachment file proving garage level and ratings', control_type='Your input driving mechanics style')
-    @app_commands.choices(control_type=[app_commands.Choice(name='TouchDrive Auto Pilot', value='touchdrive'), app_commands.Choice(name='Manual Tilt / Tap Controls', value='manual')])
-    async def register_cmd(self, interaction: discord.Interaction, game_id: str, garage_pi: int, proof_screenshot: discord.Attachment, control_type: app_commands.Choice[str]):
-        if not await enforce_channel_constraints(interaction, admin_cmd=False):
-            return
-        if not interaction.response.is_done():
-            await interaction.response.defer(ephemeral=True)
-        guild_id, user_id = (str(interaction.guild_id), str(interaction.user.id))
-        cfg = await bot.db.settings.find_one({'_id': guild_id})
-        if not cfg or not cfg.get('review_channel_id'):
-            await interaction.followup.send('❌ **System Configurations Incomplete:** Ask an administrator to execute `/setup` first.', ephemeral=True)
-            return
-        if garage_pi <= 0:
-            await interaction.followup.send('❌ **Invalid Value:** Garage PI must be a positive number.', ephemeral=True)
-            return
-        if not proof_screenshot.content_type or not proof_screenshot.content_type.startswith('image/'):
-            await interaction.followup.send('❌ **Invalid Proof:** Please attach an image screenshot of your current Garage PI.', ephemeral=True)
-            return
-        state = await bot.db.season_state.find_one({'_id': f'guild_{guild_id}'})
-        season_number = int(state.get('season_number', 1)) if state else 1
-        existing = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}'})
-        if existing and existing.get('season_registered') and (int(existing.get('season_number', 0)) == season_number):
-            await interaction.followup.send('⚠️ **Already Registered:** Your Garage is already registered for the current season. Your career stats are safe; open `/gauntlet` → **My Gauntlet** → **Profile** to view them.', ephemeral=True)
-            return
-        pending_id = f'{guild_id}_{user_id}'
-        submission_id = uuid.uuid4().hex
-        review_chan = bot.get_channel(int(cfg['review_channel_id']))
-        if not review_chan:
-            await interaction.followup.send('❌ Staff review channel could not be found. Ask an administrator to run `/setup`.', ephemeral=True)
-            return
-        is_rereg = bool(existing)
-        previous_pi = existing.get('garage_pi') if existing else None
-        division = get_division_for_pi(garage_pi)['name']
-        emb = discord.Embed(title='🔄 Garage Re-Registration' if is_rereg else '👤 New Driver Registration Application', description=f'Season **{season_number}** Garage verification packet. This is a **re-registration**; lifetime career statistics must be preserved.\n**Staff:** compare the declared Garage PI against the screenshot before approving.' if is_rereg else 'Incoming driver verification packet submitted by user.\n**Staff:** please compare the declared Garage PI against the attached screenshot before approving.', color=ASPHALT_ADMIN_COLOR)
-        emb.add_field(name='Applicant User', value=interaction.user.mention, inline=True)
-        emb.add_field(name='Declared Game ID', value=f'`{game_id}`', inline=True)
-        emb.add_field(name='Declared Garage PI', value=f'`{garage_pi:,} PI`', inline=True)
-        emb.add_field(name='Projected Division', value=division, inline=True)
-        emb.add_field(name='Season', value=f'`{season_number}`', inline=True)
-        if previous_pi is not None:
-            emb.add_field(name='Previous Season PI', value=f'`{int(previous_pi):,} PI`', inline=True)
-        emb.add_field(name='Dynamic Driving Layout', value=f'`{control_type.name}`', inline=False)
-        emb.set_image(url=proof_screenshot.url)
-        claim = await bot.db.pending.update_one(
-            {'_id': pending_id, 'season_number': {'$ne': season_number}},
-            {'$set': {'guild_id': guild_id, 'user_id': user_id, 'game_id': game_id, 'rank': garage_pi, 'control': control_type.value, 'season_number': season_number, 'is_reregistration': is_rereg, 'submitted_at': time.time(), 'proof_url': proof_screenshot.url, 'delivery_status': 'sending', 'submission_id': submission_id}},
-            upsert=True,
-        )
-        if getattr(claim, 'modified_count', 0) != 1 and getattr(claim, 'upserted_id', None) is None:
-            await interaction.followup.send('⚠️ **Application Already Pending:** Your current-season Garage registration is awaiting staff review.', ephemeral=True)
-            return
-        emb.set_footer(text=f'ALU Registration Submission: {pending_id}')
-        try:
-            review_message = await review_chan.send(embed=emb, view=VerificationView(user_id, guild_id, game_id, garage_pi, control_type.value, submission_id))
-            await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number, 'submission_id': submission_id}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(review_message.id), 'delivery_status': 'delivered'}})
-        except Exception:
-            logging.exception('Registration review message delivery failed')
-            found = await find_recent_bot_message(review_chan, f'ALU Registration Submission: {pending_id}', limit=20)
-            if found:
-                await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number, 'submission_id': submission_id}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(found.id), 'delivery_status': 'delivered'}})
-            else:
-                await bot.db.pending.delete_one({'_id': pending_id, 'season_number': season_number, 'submission_id': submission_id})
-                await interaction.followup.send('❌ Staff review message could not be delivered. Your registration was safely rolled back; please try again.', ephemeral=True)
-                return
-        await interaction.followup.send(f'📥 **Season {season_number} Garage Registration Submitted:** Staff can approve your `{garage_pi:,} PI` projected **{division}** placement. Career stats are retained.', ephemeral=True)
-
-    @app_commands.command(name='notifications', description='Turn your Gauntlet reminder DMs on or off.')
-    @app_commands.describe(setting='Choose whether ALU Gauntlet reminder DMs are enabled')
-    @app_commands.choices(setting=[app_commands.Choice(name='On — receive reminder DMs', value="on"), app_commands.Choice(name='Off — stop reminder DMs', value="off")])
-    async def notifications_cmd(self, interaction: discord.Interaction, setting: app_commands.Choice[str]):
-        if not await enforce_channel_constraints(interaction, admin_cmd=False):
-            return
-        guild_id, user_id = (str(interaction.guild_id), str(interaction.user.id))
-        profile = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}', 'guild_id': guild_id})
-        if not profile:
-            await interaction.response.send_message('❌ You need a player profile first. Run `/register` to join the league.', ephemeral=True)
-            return
-        enabled = setting.value == 'on'
-        await bot.db.drivers.update_one({'_id': f'{guild_id}_{user_id}', 'guild_id': guild_id}, {'$set': {'dm_notifications_enabled': enabled}})
-        if enabled:
-            message = '🔔 **Gauntlet reminder DMs are ON.** You can change this anytime from `/gauntlet` → **My Gauntlet** → **Notifications**.'
-        else:
-            message = '🔕 **Gauntlet reminder DMs are OFF.** You will no longer receive automated reminder DMs. Server-wide season announcements are not affected.'
-        await interaction.response.send_message(message, ephemeral=True)
 
     @app_commands.command(name='mystatus', description='Check your current-season driver registration status.')
     async def my_status_cmd(self, interaction: discord.Interaction):
@@ -170,7 +113,7 @@ class PlayerCog(commands.Cog):
             return
         career = profile.get('career_wins', 0) if profile else 0
         played = profile.get('career_played', 0) if profile else 0
-        await interaction.followup.send(f'🔄 **Season {season_number} Re-Registration Required.** Your career record remains safe (`{career}` wins / `{played}` matches). Open `/register` with your current Garage PI to enter this season.', ephemeral=True)
+        await interaction.followup.send(f'🔄 **Season {season_number} Re-Registration Required.** Your career record remains safe (`{career}` wins / `{played}` matches). Open `/dashboard` → **My Gauntlet** → **Register** with your current Garage PI to enter this season.', ephemeral=True)
 
     @app_commands.command(name='delete_me', description='Permanently delete your ALU Gauntlet data from this server.')
     async def delete_me_cmd(self, interaction: discord.Interaction):

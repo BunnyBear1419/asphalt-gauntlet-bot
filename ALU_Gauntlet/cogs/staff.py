@@ -43,6 +43,7 @@ class StaffCog(commands.Cog):
         embed = discord.Embed(title='🛡️ RECENT ADMIN LOG', description='\n\n'.join(messages) if messages else 'No recent audit entries found.', color=ASPHALT_ADMIN_COLOR)
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @app_commands.guild_only()
     @app_commands.command(name='staff', description='[Staff Only] Open the ALU Gauntlet staff control center.')
     async def staff_dashboard_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
@@ -107,6 +108,25 @@ class StaffCog(commands.Cog):
             return
         issues = []
         checks = []
+        try:
+            existing_collections = set(await bot.db.list_collection_names())
+            missing_collections = sorted(set(REQUIRED_COLLECTIONS) - existing_collections)
+            if missing_collections:
+                issues.append('Missing required collections: ' + ', '.join(missing_collections))
+            else:
+                checks.append(f'Required collections verified: {len(REQUIRED_COLLECTIONS)}')
+            index_expectations = {
+                'lap_time_history': 'match_id_1',
+                'system_events': 'guild_id_1_timestamp_-1',
+            }
+            for coll_name, index_name in index_expectations.items():
+                names = set((await bot.db[coll_name].index_information()).keys())
+                if index_name not in names:
+                    issues.append(f'{coll_name} missing index {index_name}')
+                else:
+                    checks.append(f'{coll_name}.{index_name} verified')
+        except Exception as exc:
+            issues.append(f'Schema/index verification failed: {str(exc)[:180]}')
         try:
             drivers = await bot.db.drivers.find({'guild_id': guild_id}).to_list(length=5000)
             checks.append(f'Drivers scanned: {len(drivers)}')
@@ -285,7 +305,7 @@ class StaffCog(commands.Cog):
                     if meta and meta.get('guild_overrides_cleaned'):
                         runtime.append(('Guild Command Overrides', '🟢 Cleared (cached — skipped on future boots)'))
                     else:
-                        runtime.append(('Guild Command Overrides', '🟡 Not yet cleared — will run on next boot, or use `/sync full_cleanup:True`'))
+                        runtime.append(('Guild Command Overrides', '🟡 Not yet cleared — will run on next boot, or use `/staff` → **System → Sync Commands** with full cleanup if needed'))
                 except Exception:
                     runtime.append(('Guild Command Overrides', '🔴 Could not check status'))
             else:
@@ -343,7 +363,7 @@ class StaffCog(commands.Cog):
         embed.add_field(name='⚙️ Tasks & Backups', value='\n'.join(task_lines) + f'\n**Local Backups:** {backup_text}', inline=True)
         embed.add_field(name='🏁 League', value=f'**Current:** {season_text}\n**Queue:** {queue_text}', inline=False)
         embed.add_field(name='🔍 Integrity', value='\n'.join(integrity)[:1024], inline=False)
-        embed.set_footer(text='Read-only • /dbcheck = full audit • /backup = manual backup')
+        embed.set_footer(text='Read-only • `/staff` → **Data → Database Check** = full audit • `/staff` → **Data → Backup** = manual backup')
         await interaction.followup.send(embed=embed, ephemeral=True)
         await audit_admin_action(interaction, 'Diagnostics', 'Ran read-only system, database, task, and backup diagnostics.')
 

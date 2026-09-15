@@ -13,10 +13,10 @@ class DefenseCog(commands.Cog):
             await interaction.response.defer(ephemeral=True)
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/register` first.', ephemeral=True)
+            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
             return
         if has_5_course_defense(profile):
-            await interaction.followup.send('ℹ️ You already have a defense. Use `/gauntlet` → **Defense** → **Change Defense** to change it.', ephemeral=True)
+            await interaction.followup.send('ℹ️ You already have a defense. Use `/dashboard` → **Defense** → **Change Defense** to change it.', ephemeral=True)
             return
         if profile.get('defense_review_pending'):
             await interaction.followup.send('⏳ Your defense submission is already pending staff review. Wait for it to be approved or rejected.', ephemeral=True)
@@ -46,15 +46,15 @@ class DefenseCog(commands.Cog):
         guild_id, user_id = (str(interaction.guild_id), str(interaction.user.id))
         profile = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/register` first.', ephemeral=True)
+            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
             return
         defense = profile.get('defense_locked')
         if not defense or not defense.get('courses'):
-            await interaction.followup.send('ℹ️ Your defense needs to be upgraded to the new 5-course format. Use `/gauntlet` → **Defense** → **Set Defense** to generate new courses.', ephemeral=True)
+            await interaction.followup.send('ℹ️ Your defense needs to be upgraded to the new 5-course format. Use `/dashboard` → **Defense** → **Set Defense** to generate new courses.', ephemeral=True)
             return
         courses = defense.get('courses', [])
         embeds, files = build_course_embeds(courses, '🛡️ Your Locked Ghost Defense (5 Courses)', 'Your currently approved 5-course defense lineup.', ASPHALT_THEME_COLOR)
-        embeds[-1].set_footer(text='Use /changedefense to submit a replacement for staff review (once per day).')
+        embeds[-1].set_footer(text='Use `/dashboard` → **Defense → Change Defense** to submit a replacement for staff review (once per day).')
         await interaction.followup.send(embeds=embeds, files=files, ephemeral=True)
 
     @app_commands.command(name='changedefense', description='🛡️ Re-submit your defense on the same 5 seasonal routes (once per 24 hours).')
@@ -65,10 +65,10 @@ class DefenseCog(commands.Cog):
             await interaction.response.defer(ephemeral=True)
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/register` first.', ephemeral=True)
+            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
             return
         if not has_5_course_defense(profile):
-            await interaction.followup.send("ℹ️ You don't have a valid 5-course defense yet. Use `/gauntlet` → **Defense** → **Set Defense** to set up your first one.", ephemeral=True)
+            await interaction.followup.send("ℹ️ You don't have a valid 5-course defense yet. Use `/dashboard` → **Defense** → **Set Defense** to set up your first one.", ephemeral=True)
             return
         if profile.get('defense_review_pending'):
             await interaction.followup.send('⏳ Your defense change is already pending staff review. Wait for it to be approved or rejected.', ephemeral=True)
@@ -111,14 +111,14 @@ class DefenseCog(commands.Cog):
             await interaction.response.defer(ephemeral=True)
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/register` first.', ephemeral=True)
+            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
             return
         if profile.get('defense_review_pending'):
             await interaction.followup.send('⏳ Your defense submission is already pending staff review. Wait for it to be approved or rejected.', ephemeral=True)
             return
         pending_tracks = profile.get('pending_tracks')
         if not pending_tracks:
-            await interaction.followup.send('❌ No pending courses. Use `/gauntlet` → **Defense** to generate courses first.', ephemeral=True)
+            await interaction.followup.send('❌ No pending courses. Use `/dashboard` → **Defense** to generate courses first.', ephemeral=True)
             return
         is_change = profile.get('pending_is_change', False)
         lap_times = [lap_time_1, lap_time_2, lap_time_3, lap_time_4, lap_time_5]
@@ -189,7 +189,7 @@ class DefenseCog(commands.Cog):
             else:
                 await interaction.followup.send('📥 **Defense Staged:** 5-course lineup sent to staff for audit clearance!')
         else:
-            await interaction.followup.send('❌ Staff review channel is not configured. Ask an administrator to run `/setup`.', ephemeral=True)
+            await interaction.followup.send('❌ Staff review channel is not configured. Ask an administrator to open `/staff` → **Server Setup → Server Setup**.', ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(DefenseCog(bot))

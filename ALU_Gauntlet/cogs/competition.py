@@ -82,7 +82,7 @@ class CompetitionCog(commands.Cog):
         if ref:
             embed.description = f"**Best Approved Lap:** `{ref['best_lap_time']}`\n**Video Reference:** {ref['video_url']}\n**Submitted by:** <@{ref['submitted_by']}>"
         else:
-            embed.description = '*No approved reference video exists for this map yet.* Open `/gauntlet` → **Tracks & Times** → **Add Reference** to submit one.'
+            embed.description = '*No approved reference video exists for this map yet.* Open `/dashboard` → **Tracks & Times** → **Add Reference** to submit one.'
         icon_file, filename = map_icon_file(map_name)
         if icon_file:
             add_map_icon(embed, map_name, filename)

@@ -38,8 +38,8 @@ class HelpCog(commands.Cog):
             description=(
                 'Choose a section below.\n\n'
                 '📘 Overview  •  📜 Rules  •  🎮 Player Help  •  🛠️ Staff Help\n\n'
-                '**Quick commands:** `/gauntlet` • `/register` • `/staff` • `/help`\n\n'
-                '📤 **Submit Match** is inside `/gauntlet` → **Challenges**.'
+                '**Quick access:** `/dashboard` for players • `/staff` for staff\n\n'
+                '📤 **Submit Match** is inside `/dashboard` → **Challenges**.'
             ),
             color=ASPHALT_THEME_COLOR,
         )

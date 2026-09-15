@@ -64,7 +64,7 @@ class AdministrationCog(commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         await bot.db.settings.update_one({'_id': str(interaction.guild_id)}, {'$set': {'timezone': timezone_name.value}}, upsert=True)
-        await interaction.followup.send(f'🌎 **Server timezone updated:** `{timezone_name.name}` (`{timezone_name.value}`)\n\n`/season schedule` will now interpret entered times using this timezone.', ephemeral=True)
+        await interaction.followup.send(f'🌎 **Server timezone updated:** `{timezone_name.name}` (`{timezone_name.value}`)\n\n`/staff` → **Season → Season Schedule** will now interpret entered times using this timezone.', ephemeral=True)
         await audit_admin_action(interaction, 'Timezone', f'Set server timezone to `{timezone_name.value}`.')
 
     @admin_group.command(name='setpi', description="Overrides a driver's PI value.")
@@ -158,7 +158,7 @@ class AdministrationCog(commands.Cog):
             if full_cleanup:
                 cleaned_count = await bot.sync_guild_application_commands(force_fetch=True)
                 if not bot._guild_cleanup_failed:
-                    await bot.db.settings.update_one({'_id': 'global_meta'}, {'$set': {'guild_overrides_cleaned': True}}, upsert=True)
+                    await bot.db.settings.update_one({'_id': 'global_meta'}, {'$set': {'guild_overrides_cleaned': True, 'command_architecture_version': COMMAND_ARCHITECTURE_VERSION}}, upsert=True)
                     description += f'\nAlso cleared and verified stale per-server command overrides on **{cleaned_count}** server(s).'
                 else:
                     description += '\n⚠️ Some per-server command overrides could not be verified; cleanup will retry on the next boot.'
