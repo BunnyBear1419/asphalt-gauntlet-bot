@@ -330,7 +330,10 @@ def test_match_reconciliation_restores_post_settlement_lap_time_writes():
 
 
 def test_v18_setup_roles_are_named_and_image_upload_is_staff_channel_based():
-    source = _source()
+    all_sources = [CORE.read_text(encoding="utf-8")] + [
+        p.read_text(encoding="utf-8") for p in (PACKAGE / "cogs").glob("*.py")
+    ]
+    source = "\n".join(all_sources)
     assert 'label="Staff role name"' in source
     assert 'label="Player role name"' in source
     assert 'ensure_named_server_role' in source
