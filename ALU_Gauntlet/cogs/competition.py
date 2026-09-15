@@ -1,3 +1,4 @@
+import hashlib
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
@@ -122,12 +123,34 @@ class CompetitionCog(commands.Cog):
         if not review_chan:
             await interaction.followup.send('❌ Staff review channel is not configured.', ephemeral=True)
             return
+        fingerprint = hashlib.sha256(f'{guild_id}:{interaction.user.id}:{map_name.lower()}:{ms}:{video_reference.strip()}'.encode()).hexdigest()
+        existing_submission = await bot.db.reference_pending.find_one({'fingerprint': fingerprint, 'guild_id': guild_id})
+        if existing_submission:
+            if existing_submission.get('status') == 'pending' and existing_submission.get('review_message_id'):
+                await interaction.followup.send('⏳ This exact reference submission is already pending staff review.', ephemeral=True)
+                return
+            if existing_submission.get('status') == 'approved':
+                await interaction.followup.send('ℹ️ This exact reference submission has already been approved.', ephemeral=True)
+                return
         submission_id = f'{guild_id}_{interaction.user.id}_{int(time.time() * 1000)}'
-        await bot.db.reference_pending.insert_one({'_id': submission_id, 'guild_id': guild_id, 'user_id': str(interaction.user.id), 'track': map_name, 'lap_time': lap_time, 'ms': ms, 'video_url': video_reference, 'status': 'pending', 'submitted_at': time.time()})
+        submission = {'_id': submission_id, 'guild_id': guild_id, 'user_id': str(interaction.user.id), 'track': map_name, 'lap_time': lap_time, 'ms': ms, 'video_url': video_reference.strip(), 'status': 'pending', 'submitted_at': time.time(), 'fingerprint': fingerprint}
+        try:
+            await bot.db.reference_pending.insert_one(submission)
+        except DuplicateKeyError:
+            existing_submission = await bot.db.reference_pending.find_one({'fingerprint': fingerprint, 'guild_id': guild_id})
+            await interaction.followup.send('⏳ This exact reference submission is already pending staff review.', ephemeral=True)
+            return
         emb = discord.Embed(title='🎥 New Reference Lap Submission', description=f'<@{interaction.user.id}> submitted a potential new reference for **{map_name}**.\n\n**Lap:** `{lap_time}`\n**Video:** {video_reference}', color=ASPHALT_ADMIN_COLOR)
         if current:
             emb.add_field(name='Current Approved Lap', value=f"`{current['best_lap_time']}`", inline=True)
-        await review_chan.send(embed=emb, view=ReferenceReviewView(submission_id))
+        try:
+            message = await review_chan.send(embed=emb, view=ReferenceReviewView(submission_id))
+            await bot.db.reference_pending.update_one({'_id': submission_id, 'status': 'pending'}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(message.id)}})
+        except Exception:
+            await bot.db.reference_pending.delete_one({'_id': submission_id, 'status': 'pending'})
+            logging.exception('Reference review message delivery failed')
+            await interaction.followup.send('❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', ephemeral=True)
+            return
         await interaction.followup.send('📥 Reference submitted to staff for approval. If approved, it replaces the current reference for that map.', ephemeral=True)
 
 async def setup(bot):

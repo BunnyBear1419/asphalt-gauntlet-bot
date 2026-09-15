@@ -109,7 +109,14 @@ class PlayerCog(commands.Cog):
         emb.add_field(name='Dynamic Driving Layout', value=f'`{control_type.name}`', inline=False)
         emb.set_image(url=proof_screenshot.url)
         await bot.db.pending.update_one({'_id': pending_id}, {'$set': {'guild_id': guild_id, 'user_id': user_id, 'game_id': game_id, 'rank': garage_pi, 'control': control_type.value, 'season_number': season_number, 'is_reregistration': is_rereg, 'submitted_at': time.time(), 'proof_url': proof_screenshot.url}}, upsert=True)
-        await review_chan.send(embed=emb, view=VerificationView(user_id, guild_id, game_id, garage_pi, control_type.value))
+        try:
+            review_message = await review_chan.send(embed=emb, view=VerificationView(user_id, guild_id, game_id, garage_pi, control_type.value))
+            await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(review_message.id)}})
+        except Exception:
+            await bot.db.pending.delete_one({'_id': pending_id, 'season_number': season_number})
+            logging.exception('Registration review message delivery failed')
+            await interaction.followup.send('❌ Staff review message could not be delivered. Your registration was safely rolled back; please try again.', ephemeral=True)
+            return
         await interaction.followup.send(f'📥 **Season {season_number} Garage Registration Submitted:** Staff can approve your `{garage_pi:,} PI` projected **{division}** placement. Career stats are retained.', ephemeral=True)
 
     @app_commands.command(name='notifications', description='Turn your Gauntlet reminder DMs on or off.')

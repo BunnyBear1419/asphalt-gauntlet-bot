@@ -153,6 +153,39 @@ class StaffCog(commands.Cog):
                         pass
                     elif not c or not d:
                         issues.append(f"Completed match references missing driver(s): {m.get('_id')}")
+            # Career counters must be at least as large as the completed match history.
+            completed_matches = [m for m in matches if m.get('settlement_status') == 'completed' and not m.get('reverted')]
+            match_counts = {}
+            win_counts = {}
+            for m in completed_matches:
+                for uid in (m.get('challenger_id'), m.get('opponent_id')):
+                    if uid:
+                        match_counts[uid] = match_counts.get(uid, 0) + 1
+                winner = m.get('w_id')
+                if winner:
+                    win_counts[winner] = win_counts.get(winner, 0) + 1
+                if m.get('challenger_elo_after') is not None and m.get('defender_elo_after') is not None:
+                    if m.get('challenger_elo_after') < 100 or m.get('defender_elo_after') < 100:
+                        issues.append(f"Completed match has invalid post-match ELO: {m.get('_id')}")
+            for d in drivers:
+                uid = str(d.get('user_id'))
+                played = int(d.get('career_played', 0) or 0)
+                wins = int(d.get('career_wins', 0) or 0)
+                if played < match_counts.get(uid, 0):
+                    issues.append(f"Career played is below match history for {d.get('_id')}: {played} < {match_counts.get(uid, 0)}")
+                if wins < win_counts.get(uid, 0):
+                    issues.append(f"Career wins are below match history for {d.get('_id')}: {wins} < {win_counts.get(uid, 0)}")
+                if wins > played:
+                    issues.append(f"Career wins exceed career played for {d.get('_id')}: {wins} > {played}")
+                if d.get('defense_review_pending') and not d.get('defense_review_payload'):
+                    issues.append(f"Defense review flag has no payload: {d.get('_id')}")
+            # Universal record integrity: every stored record must point to a real track
+            # and have a positive time.
+            global_records = await bot.db.map_records.find({}).to_list(length=5000)
+            checks.append(f'Universal records scanned: {len(global_records)}')
+            for rec in global_records:
+                if rec.get('track') not in ALU_TRACKS or int(rec.get('best_ms', 0) or 0) <= 0:
+                    issues.append(f"Invalid universal record: {rec.get('_id')}")
             status_line = '✅ DATABASE CONSISTENT' if not issues else f'⚠️ {len(issues)} ISSUE(S) FOUND'
             embed = discord.Embed(title='🗄️ ALU GAUNTLET — DATABASE CHECK', description=status_line, color=ASPHALT_VICTORY_COLOR if not issues else ASPHALT_ADMIN_COLOR, timestamp=datetime.now(timezone.utc))
             embed.add_field(name='Checks', value='\n'.join((f'• {x}' for x in checks)) or '• No records found', inline=False)

@@ -23,7 +23,7 @@ class ChallengesCog(commands.Cog):
         if not has_5_course_defense(user_profile):
             await interaction.followup.send('❌ You need a locked 5-course defense before challenging. Open `/gauntlet` → **Defense** to finish your defense setup.')
             return
-        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        today = await get_guild_local_date(guild_id)
         challenge_date = user_profile.get('challenge_date')
         challenge_count = user_profile.get('challenge_count', 0)
         if challenge_date == today and challenge_count >= 5:
@@ -101,10 +101,19 @@ class ChallengesCog(commands.Cog):
             return
         match_data = await process_match_result(guild_id, user_id, str(active['opponent_id']), defense, challenger_times, proof, active.get('defender_proof_url'), interaction.channel_id, settlement_id=f"{active['_id']}:match")
         if not match_data:
-            await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ Could not process this match.', ephemeral=True)
+            # Do not blindly release an uncertain settlement. A completed/pending
+            # reservation is reconciled by the scheduler; only release when no match
+            # reservation exists for this challenge.
+            reservation = await bot.db.matches.find_one({'_id': f"{active['_id']}:match", 'guild_id': guild_id})
+            if reservation:
+                await reconcile_processing_challenges(guild_id)
+            else:
+                await release_active_challenge(active['_id'])
+            await interaction.followup.send('❌ Could not process this match. If a settlement reservation was created, the bot will reconcile it automatically.', ephemeral=True)
             return
-        await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id']}})
+        result = await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id']}, '$unset': {'processing_at': ''}})
+        if getattr(result, 'modified_count', 0) != 1:
+            logging.warning('Match %s settled but challenge %s could not be finalized immediately; scheduler will reconcile it.', match_data['_id'], active['_id'])
         season = current_season
         for i, c in enumerate(defense):
             x = dict(challenger_times[i])

@@ -1,3 +1,4 @@
+import hashlib
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
@@ -144,6 +145,17 @@ class DefenseCog(commands.Cog):
         cfg = await bot.db.settings.find_one({'_id': str(interaction.guild_id)})
         chan = bot.get_channel(int(cfg['review_channel_id'])) if cfg else None
         if chan:
+            driver_id = f'{str(interaction.guild_id)}_{str(interaction.user.id)}'
+            submitted_at = time.time()
+            submission_id = hashlib.sha256(f"{interaction.guild_id}:{interaction.user.id}:{submitted_at}".encode()).hexdigest()[:24]
+            payload = {'courses': courses, 'proof_url': courses[0]['proof_url'], 'is_change': bool(is_change), 'submitted_at': submitted_at, 'submission_id': submission_id}
+            claim = await bot.db.drivers.update_one(
+                {'_id': driver_id, 'defense_review_pending': {'$ne': True}},
+                {'$set': {'defense_review_pending': True, 'defense_review_payload': payload}}
+            )
+            if getattr(claim, 'modified_count', 0) != 1:
+                await interaction.followup.send('⏳ Your defense submission is already pending staff review. Wait for a decision before submitting another.', ephemeral=True)
+                return
             if is_change:
                 header_emb = discord.Embed(title='🛡️ Gauntlet Defense Change Request', description='A driver has requested to change their locked 5-course defense. Their current defense remains active until the new one is approved.', color=3447003)
             else:
@@ -159,8 +171,14 @@ class DefenseCog(commands.Cog):
                     add_map_icon(course_emb, course['track'], filename)
                 course_emb.set_image(url=course['proof_url'])
                 review_embeds.append(course_emb)
-            await chan.send(embeds=review_embeds, files=icon_files, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), courses, courses[0]['proof_url'], is_change=is_change))
-            await bot.db.drivers.update_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'}, {'$set': {'defense_review_pending': True, 'defense_review_payload': {'courses': courses, 'proof_url': courses[0]['proof_url'], 'is_change': bool(is_change), 'submitted_at': time.time()}}})
+            try:
+                message = await chan.send(embeds=review_embeds, files=icon_files, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), courses, courses[0]['proof_url'], is_change=is_change))
+                await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_pending': True, 'defense_review_payload.submission_id': submission_id}, {'$set': {'defense_review_payload.review_channel_id': int(chan.id), 'defense_review_payload.review_message_id': int(message.id)}})
+            except Exception:
+                await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_payload.submission_id': submission_id}, {'$unset': {'defense_review_pending': '', 'defense_review_payload': ''}})
+                logging.exception('Defense review message delivery failed')
+                await interaction.followup.send('❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', ephemeral=True)
+                return
             if is_change:
                 await interaction.followup.send('📥 **Defense Change Staged:** 5-course lineup sent to staff for audit clearance! Your current defense remains active until the new one is approved.')
             else:
