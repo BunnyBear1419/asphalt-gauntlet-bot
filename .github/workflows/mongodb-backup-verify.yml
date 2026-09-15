@@ -188,6 +188,15 @@ jobs:
           if not collections:
               raise SystemExit("ERROR: Restore completed but no collections were found.")
 
+          required = {
+              "drivers", "pending", "matches", "active_challenges", "season_state",
+              "season_history", "settings", "reference_pending", "lap_times",
+              "lap_time_history", "map_records", "map_references", "system_events",
+          }
+          missing = sorted(required - set(collections))
+          if missing:
+              raise SystemExit("ERROR: Restore is missing required collections: " + ", ".join(missing))
+
           total_documents = 0
           nonempty_collections = 0
 
@@ -201,6 +210,17 @@ jobs:
 
           if total_documents == 0:
               raise SystemExit("ERROR: Restore completed but all collections are empty.")
+
+          # Verify the most important operational indexes survived the restore.
+          index_expectations = {
+              "lap_time_history": {"match_id_1"},
+              "system_events": {"guild_id_1_timestamp_-1"},
+          }
+          for coll, expected_indexes in index_expectations.items():
+              names = set(db[coll].index_information())
+              missing_indexes = expected_indexes - names
+              if missing_indexes:
+                  raise SystemExit(f"ERROR: {coll} is missing expected indexes: {sorted(missing_indexes)}")
 
           print(
               f"Verification passed: {len(collections)} collections, "
