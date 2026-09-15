@@ -35,7 +35,8 @@ from discord import app_commands
 
 from discord.ext import commands, tasks
 
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient
+from pymongo.server_api import ServerApi
 
 from pymongo.errors import DuplicateKeyError
 
@@ -308,12 +309,13 @@ class GauntletBot(commands.Bot):
         self.started_at = time.time()
         self._guild_cleanup_failed = False
         self._guild_cleanup_lock = asyncio.Lock()
+        self._health_message_id = None
 
     async def setup_hook(self):
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
             try:
-                self.mongo_client = AsyncIOMotorClient(mongo_uri)
+                self.mongo_client = AsyncMongoClient(mongo_uri, server_api=ServerApi("1", strict=True, deprecation_errors=True))
                 await self.mongo_client.admin.command('ping')
                 self.db = self.mongo_client.get_database("asphalt_gauntlet")
                 logging.info("🟢 Successfully connected to MongoDB Atlas Cloud Cluster.")
@@ -326,6 +328,8 @@ class GauntletBot(commands.Bot):
                     await self.db.season_history.create_index([("guild_id", 1), ("season_number", -1)])
                     await self.db.reference_pending.create_index([("guild_id", 1), ("status", 1)])
                     await self.db.lap_times.create_index([("guild_id", 1), ("user_id", 1), ("track", 1)])
+                    await self.db.lap_time_history.create_index([("guild_id", 1), ("user_id", 1), ("track", 1), ("timestamp", -1)])
+                    await self.db.lap_time_history.create_index([("match_id", 1)], unique=True, sparse=True)
                     await self.db.system_events.create_index([("guild_id", 1), ("timestamp", -1)])
                     await self.db.reference_pending.create_index([("fingerprint", 1)], unique=True, sparse=True)
                     await self.db.drivers.create_index([("guild_id", 1), ("defense_review_pending", 1)])
@@ -347,6 +351,7 @@ class GauntletBot(commands.Bot):
         self.seasonal_clock_loop.start()
         self.player_reminder_loop.start()
         self.backup_loop.start()
+        self.production_heartbeat_loop.start()
         # Load custom images from DB into ASPHALT_MEDIA
         try:
             media_doc = await self.db.settings.find_one({"_id": "global_media"})
@@ -599,11 +604,22 @@ class GauntletBot(commands.Bot):
         self.seasonal_clock_loop.cancel()
         self.player_reminder_loop.cancel()
         self.backup_loop.cancel()
+        self.production_heartbeat_loop.cancel()
         if self.mongo_client:
-            self.mongo_client.close()
+            await self.mongo_client.close()
         await super().close()
 
 bot = GauntletBot()
+
+async def find_recent_bot_message(channel, marker: str, limit: int = 20):
+    """Find a recent bot-authored message by a deterministic marker after a network timeout."""
+    try:
+        async for message in channel.history(limit=max(1, min(int(limit), 50))):
+            if message.author.id == bot.user.id and marker in (message.content or ""):
+                return message
+    except Exception:
+        logging.exception("Could not reconcile recent bot message delivery")
+    return None
 
 async def send_admin_alert(guild_id: str, title: str, description: str):
     """Best-effort Discord alert to the configured staff/log channel."""
@@ -633,7 +649,7 @@ async def create_database_backup(reason: str = "scheduled"):
     # from backups. It includes both guild-scoped data and intentionally global data.
     collections = [
         "drivers", "pending", "matches", "active_challenges", "season_state",
-        "season_history", "settings", "reference_pending", "lap_times",
+        "season_history", "settings", "reference_pending", "lap_times", "lap_time_history",
         "map_records", "map_references",
     ]
     manifest = {
@@ -720,6 +736,41 @@ async def announce_season_start(guild_id: str, season_number: int, reason: str =
             color=ASPHALT_VICTORY_COLOR,
         )
     )
+
+@tasks.loop(minutes=5)
+async def production_heartbeat_loop():
+    """Optionally publish a bot-level heartbeat to a private ops webhook.
+
+    This is intentionally not tied to any Discord guild or channel because the
+    bot serves multiple independent Discord servers. External CI health checks
+    validate the Discloud process and Discord API separately.
+    """
+    if not bot.user:
+        return
+    webhook_url = os.getenv("HEALTH_WEBHOOK_URL")
+    if not webhook_url:
+        return
+    try:
+        db_ok = False
+        if bot.mongo_client is not None:
+            await bot.mongo_client.admin.command("ping")
+            db_ok = True
+        content = (
+            f"ALU_HEARTBEAT | ready={bot.is_ready()} | db={db_ok} | "
+            f"guilds={len(bot.guilds)} | uptime={int(time.time() - bot.started_at)}"
+        )
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(webhook_url, json={"content": content}) as response:
+                if response.status >= 300:
+                    body = await response.text()
+                    logging.error("Production heartbeat webhook returned HTTP %s: %s", response.status, body[:500])
+    except Exception:
+        logging.exception("Production heartbeat webhook publish failed")
+
+@production_heartbeat_loop.before_loop
+async def before_production_heartbeat():
+    await bot.wait_until_ready()
 
 @tasks.loop(minutes=1)
 async def seasonal_clock_loop_task():
@@ -854,6 +905,7 @@ async def before_seasonal_clock():
 bot.seasonal_clock_loop = seasonal_clock_loop_task
 bot.player_reminder_loop = player_reminder_loop
 bot.backup_loop = backup_loop
+bot.production_heartbeat_loop = production_heartbeat_loop
 
 async def check_admin_privileges(interaction: discord.Interaction) -> bool:
     """Return True for Discord admins, configured admin-role members, or the bot owner."""
@@ -1266,7 +1318,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
 
     if bot.mongo_client:
         try:
-            async with await bot.mongo_client.start_session() as session:
+            async with bot.mongo_client.start_session() as session:
                 async with session.start_transaction():
                     await _atomic_settlement(session)
         except Exception:
@@ -1486,6 +1538,28 @@ class MatchRevertView(discord.ui.View):
             if getattr(r1, "modified_count", 0) != 1 or getattr(r2, "modified_count", 0) != 1:
                 raise RuntimeError("PLAYER_STATE_CHANGED")
 
+            # Restore only lap records that this exact match currently owns.
+            # A later defense/reference change is never overwritten.
+            lap_history = await bot.db.lap_time_history.find({"match_id": self.match_id, "guild_id": str(interaction.guild_id)}, session=session).to_list(length=10)
+            for hist in lap_history:
+                current_lap = await bot.db.lap_times.find_one({
+                    "_id": f"{interaction.guild_id}_{hist['user_id']}_{hist['track']}",
+                    "source_match_id": self.match_id,
+                }, session=session)
+                if not current_lap:
+                    continue
+                previous_record = hist.get("previous_record")
+                if previous_record:
+                    previous_record = dict(previous_record)
+                    previous_record.pop("_id", None)
+                    await bot.db.lap_times.replace_one(
+                        {"_id": f"{interaction.guild_id}_{hist['user_id']}_{hist['track']}"},
+                        {"_id": f"{interaction.guild_id}_{hist['user_id']}_{hist['track']}", **previous_record},
+                        upsert=True, session=session,
+                    )
+                else:
+                    await bot.db.lap_times.delete_one({"_id": current_lap["_id"]}, session=session)
+
             rmatch = await bot.db.matches.update_one(
                 {"_id": self.match_id, "guild_id": str(interaction.guild_id), "reverted": {"$ne": True}},
                 {"$set": {"reverted": True, "reverted_at": time.time(), "reverted_by": str(interaction.user.id)}},
@@ -1496,7 +1570,7 @@ class MatchRevertView(discord.ui.View):
 
         if bot.mongo_client:
             try:
-                async with await bot.mongo_client.start_session() as session:
+                async with bot.mongo_client.start_session() as session:
                     async with session.start_transaction():
                         await _rollback(session)
             except RuntimeError as exc:
@@ -1793,7 +1867,7 @@ class ChallengeDropdown(discord.ui.Select):
         # from creating/overwriting a challenge or consuming extra daily attempts.
         if bot.mongo_client:
             try:
-                async with await bot.mongo_client.start_session() as session:
+                async with bot.mongo_client.start_session() as session:
                     async with session.start_transaction():
                         profile = await bot.db.drivers.find_one({"_id": driver_id, "guild_id": guild_id}, session=session)
                         if not profile:
@@ -3097,7 +3171,7 @@ async def send_admin_dashboard(interaction: discord.Interaction):
     embed.add_field(name="⚔️ Active Matches", value=f"**{active}**", inline=True)
     embed.add_field(name="🎥 Pending References", value=f"**{pending_references}**", inline=True)
     mongo_ok = bool(getattr(bot, "mongo_client", None))
-    scheduler_ok = all(bool(getattr(bot, name, None) and getattr(bot, name).is_running()) for name in ("seasonal_clock_loop", "player_reminder_loop", "backup_loop") if getattr(bot, name, None) is not None)
+    scheduler_ok = all(bool(getattr(bot, name, None) and getattr(bot, name).is_running()) for name in ("seasonal_clock_loop", "player_reminder_loop", "backup_loop", "production_heartbeat_loop") if getattr(bot, name, None) is not None)
     embed.add_field(name="🩺 System", value=("🟢" if mongo_ok else "🔴") + " Database\n" + ("🟢" if scheduler_ok else "🟡") + " Automation", inline=True)
     embed.add_field(name="🚨 Needs Attention", value=(f"🔴 {pending} registration review(s)\n" if pending else "🟢 No pending registrations\n") + (f"🟠 {missing} missing defense(es)\n" if missing else "🟢 No missing defenses\n") + (f"🟠 {pending_references} reference review(s)\n" if pending_references else "🟢 No pending references\n") + "🟢 Use the dashboard sections for the rest of staff tools.", inline=False)
     await interaction.response.send_message(embed=embed, view=StaffDashboardView(), ephemeral=True)
@@ -3197,6 +3271,7 @@ class ConfirmSeasonResetView(discord.ui.View):
             await bot.db.active_challenges.delete_many({"guild_id": gid})
             await bot.db.reference_pending.delete_many({"guild_id": gid})
             await bot.db.lap_times.delete_many({"guild_id": gid})
+            await bot.db.lap_time_history.delete_many({"guild_id": gid})
             await bot.db.map_records.delete_many({"guild_id": gid})
             # Universal records may be stored without guild ownership; remove records
             # whose winning guild is this server as part of a true full reset.
@@ -3229,7 +3304,7 @@ class ConfirmClearHistoryView(discord.ui.View):
         if self.target in ["pending", "all"]: await bot.db.pending.delete_many({"guild_id": self.guild_id})
         if self.target in ["drivers", "all"]: await bot.db.drivers.delete_many({"guild_id": self.guild_id})
         if self.target == "all":
-            for collection in ("active_challenges", "matches", "reference_pending", "lap_times"):
+            for collection in ("active_challenges", "matches", "reference_pending", "lap_times", "lap_time_history"):
                 await getattr(bot.db, collection).delete_many({"guild_id": self.guild_id})
             await bot.db.map_records.delete_many({"guild_id": self.guild_id})
             await bot.db.map_records.delete_many({"source_guild_id": self.guild_id})
@@ -3496,19 +3571,32 @@ class TopLeaderboardView(discord.ui.View):
         embed.set_footer(text="Use the dropdown to switch categories")
         await interaction.followup.send(embed=embed)
 
-async def save_driver_best_time(guild_id: str, user_id: str, course: dict, season_number: int, source: str = "unknown"):
-    """Persist a driver's best known lap. Only verified sources may update universal records."""
+async def save_driver_best_time(guild_id: str, user_id: str, course: dict, season_number: int, source: str = "unknown", match_id: str | None = None):
+    """Persist a driver's best known lap and preserve match provenance for safe reverts."""
     track = course.get("track")
     ms = int(course.get("ms", -1))
     if track not in ALU_TRACKS or ms <= 0:
         return False
     doc_id = f"{guild_id}_{user_id}_{track}"
+    previous = await bot.db.lap_times.find_one({"_id": doc_id}) if match_id else None
     record = {
         "_id": doc_id, "guild_id": str(guild_id), "user_id": str(user_id), "track": track,
         "best_ms": ms, "best_lap_time": course.get("lap_time") or course.get("lap_time_str"),
         "car": course.get("car"), "car_rank": course.get("car_rank"), "proof_url": course.get("proof_url"),
         "season_number": int(season_number), "source": source, "updated_at": time.time(),
     }
+    if match_id:
+        record["source_match_id"] = str(match_id)
+        history_id = hashlib.sha256(f"{match_id}:{guild_id}:{user_id}:{track}".encode()).hexdigest()
+        await bot.db.lap_time_history.update_one(
+            {"_id": history_id},
+            {"$setOnInsert": {
+                "_id": history_id, "guild_id": str(guild_id), "user_id": str(user_id), "track": track,
+                "match_id": str(match_id), "attempt": dict(course), "previous_record": previous,
+                "timestamp": time.time(),
+            }},
+            upsert=True,
+        )
     result = await bot.db.lap_times.update_one(
         {"_id": doc_id, "$or": [{"best_ms": {"$gt": ms}}, {"best_ms": {"$exists": False}}]},
         {"$set": record}, upsert=True
@@ -3521,7 +3609,7 @@ async def save_driver_best_time(guild_id: str, user_id: str, course: dict, seaso
             {"$set": {
                 "_id": global_id, "track": track, "best_ms": ms, "best_lap_time": record["best_lap_time"],
                 "car": record.get("car"), "car_rank": record.get("car_rank"), "guild_id": str(guild_id),
-                "user_id": str(user_id), "proof_url": record.get("proof_url"), "source": source, "updated_at": time.time(),
+                "user_id": str(user_id), "proof_url": record.get("proof_url"), "source": source, "source_guild_id": str(guild_id), "updated_at": time.time(),
             }}, upsert=True
         )
     return changed
@@ -3746,7 +3834,7 @@ async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
 
         # Preserve the competitive history for other players while removing the
         # requesting player's identity from historical match records.
-        match_cursor = bot.db.matches.find({"guild_id": guild_id, "$or": [{"challenger_id": user_id}, {"opponent_id": user_id}]})
+        match_cursor = bot.db.matches.find({"guild_id": guild_id, "$or": [{"challenger_id": user_id}, {"opponent_id": user_id}]}, session=session)
         async for match in match_cursor:
             update = {}
             if str(match.get("challenger_id")) == user_id:
@@ -3758,18 +3846,19 @@ async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
                 counts["matches"] += 1
 
         result = await bot.db.lap_times.delete_many({"guild_id": guild_id, "user_id": user_id}, **kwargs)
+        await bot.db.lap_time_history.delete_many({"guild_id": guild_id, "user_id": user_id}, **kwargs)
         counts["lap_times"] = int(getattr(result, "deleted_count", 0) or 0)
 
         # Rebuild any universal records owned by the deleted player from the remaining
         # verified driver-best records rather than leaving a dangling identity.
-        owned_records = await bot.db.map_records.find({"guild_id": guild_id, "user_id": user_id}).to_list(length=1000)
+        owned_records = await bot.db.map_records.find({"guild_id": guild_id, "user_id": user_id}, session=session).to_list(length=1000)
         for rec in owned_records:
-            candidates = await bot.db.lap_times.find({"track": rec.get("track"), "source": {"$in": ["defense", "verified_reference", "staff_verified_match"]}}).sort("best_ms", 1).limit(1).to_list(length=1)
+            candidates = await bot.db.lap_times.find({"track": rec.get("track"), "source": {"$in": ["defense", "verified_reference", "staff_verified_match"]}, "user_id": {"$ne": user_id}}, session=session).sort("best_ms", 1).limit(1).to_list(length=1)
             if candidates:
                 c = candidates[0]
-                await bot.db.map_records.update_one({"_id": rec["_id"]}, {"$set": {"best_ms": c["best_ms"], "best_lap_time": c.get("best_lap_time"), "car": c.get("car"), "car_rank": c.get("car_rank"), "guild_id": c.get("guild_id"), "user_id": c.get("user_id"), "proof_url": c.get("proof_url"), "source": c.get("source"), "updated_at": time.time()}})
+                await bot.db.map_records.update_one({"_id": rec["_id"]}, {"$set": {"best_ms": c["best_ms"], "best_lap_time": c.get("best_lap_time"), "car": c.get("car"), "car_rank": c.get("car_rank"), "guild_id": c.get("guild_id"), "user_id": c.get("user_id"), "proof_url": c.get("proof_url"), "source": c.get("source"), "source_guild_id": c.get("guild_id"), "updated_at": time.time()}}, **kwargs)
             else:
-                await bot.db.map_records.delete_one({"_id": rec["_id"]})
+                await bot.db.map_records.delete_one({"_id": rec["_id"]}, **kwargs)
                 counts["map_records"] += 1
 
         result = await bot.db.reference_pending.delete_many(
@@ -3779,7 +3868,7 @@ async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
 
         # Remove this player's identity from archived standings while preserving
         # the rest of each season archive.
-        archives = await bot.db.season_history.find({"guild_id": guild_id}).to_list(length=1000)
+        archives = await bot.db.season_history.find({"guild_id": guild_id}, session=session).to_list(length=1000)
         for archive in archives:
             standings = archive.get("standings", [])
             filtered = [row for row in standings if str(row.get("user_id")) != user_id]
@@ -3792,7 +3881,7 @@ async def permanently_delete_player_data(guild_id: str, user_id: str) -> dict:
                 )
 
     if bot.mongo_client:
-        async with await bot.mongo_client.start_session() as session:
+        async with bot.mongo_client.start_session() as session:
             async with session.start_transaction():
                 await erase(session=session)
     else:
@@ -4152,7 +4241,7 @@ async def build_launch_readiness(guild_id: str) -> tuple[bool, list[str], list[s
     else:
         checks.append("🔴 Guild command cleanup is not verified for architecture v5"); ready = False
 
-    for name, label in (("seasonal_clock_loop", "Season scheduler"), ("player_reminder_loop", "Player reminders"), ("backup_loop", "Backup scheduler")):
+    for name, label in (("seasonal_clock_loop", "Season scheduler"), ("player_reminder_loop", "Player reminders"), ("backup_loop", "Backup scheduler"), ("production_heartbeat_loop", "Production heartbeat")):
         task_obj = getattr(bot, name, None)
         try:
             running = bool(task_obj and task_obj.is_running())
