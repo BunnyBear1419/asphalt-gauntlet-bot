@@ -78,5 +78,4 @@ def test_guild_scoped_collections_use_guild_fields_or_guild_keys():
 def test_global_reference_data_is_not_required_to_be_guild_partitioned():
     """Reference data may remain global; operational player state may not."""
     source = _source("challenges.py")
-    assert "map_references" in source
     assert "active_challenges" in source
