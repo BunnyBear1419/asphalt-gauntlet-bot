@@ -118,7 +118,7 @@ class ChallengesCog(commands.Cog):
         for i, c in enumerate(defense):
             x = dict(challenger_times[i])
             x['track'] = c['track']
-            await save_driver_best_time(guild_id, user_id, x, season, source='match_attack')
+            await save_driver_best_time(guild_id, user_id, x, season, source='match_attack', match_id=match_data['_id'])
         cfg = await bot.db.settings.find_one({'_id': guild_id})
         results = bot.get_channel(int(cfg['match_results_channel_id'])) if cfg and cfg.get('match_results_channel_id') else None
         result_emb = discord.Embed(title='🏁 Gauntlet Match Result', description=match_data['outcome_desc'], color=match_data['display_color'])

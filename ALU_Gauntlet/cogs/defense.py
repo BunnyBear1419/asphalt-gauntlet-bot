@@ -161,6 +161,7 @@ class DefenseCog(commands.Cog):
             else:
                 header_emb = discord.Embed(title='🛡️ New Gauntlet Defense Placement Verification', description="**Staff:** please verify each course's lap time and car against its matching screenshot below.", color=3447003)
             header_emb.add_field(name='Driver', value=interaction.user.mention, inline=False)
+            header_emb.set_footer(text=f'ALU Defense Submission: {submission_id}')
             review_embeds = [header_emb]
             icon_files = []
             for i, course in enumerate(courses):
@@ -173,12 +174,16 @@ class DefenseCog(commands.Cog):
                 review_embeds.append(course_emb)
             try:
                 message = await chan.send(embeds=review_embeds, files=icon_files, view=DefenseView(str(interaction.user.id), str(interaction.guild_id), courses, courses[0]['proof_url'], is_change=is_change))
-                await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_pending': True, 'defense_review_payload.submission_id': submission_id}, {'$set': {'defense_review_payload.review_channel_id': int(chan.id), 'defense_review_payload.review_message_id': int(message.id)}})
+                await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_pending': True, 'defense_review_payload.submission_id': submission_id}, {'$set': {'defense_review_payload.review_channel_id': int(chan.id), 'defense_review_payload.review_message_id': int(message.id), 'defense_review_payload.delivery_status': 'delivered'}})
             except Exception:
-                await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_payload.submission_id': submission_id}, {'$unset': {'defense_review_pending': '', 'defense_review_payload': ''}})
                 logging.exception('Defense review message delivery failed')
-                await interaction.followup.send('❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', ephemeral=True)
-                return
+                found = await find_recent_bot_message(chan, f'ALU Defense Submission: {submission_id}', limit=20)
+                if found:
+                    await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_payload.submission_id': submission_id}, {'$set': {'defense_review_payload.review_channel_id': int(chan.id), 'defense_review_payload.review_message_id': int(found.id), 'defense_review_payload.delivery_status': 'delivered'}})
+                else:
+                    await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_payload.submission_id': submission_id}, {'$unset': {'defense_review_pending': '', 'defense_review_payload': ''}})
+                    await interaction.followup.send('❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', ephemeral=True)
+                    return
             if is_change:
                 await interaction.followup.send('📥 **Defense Change Staged:** 5-course lineup sent to staff for audit clearance! Your current defense remains active until the new one is approved.')
             else:

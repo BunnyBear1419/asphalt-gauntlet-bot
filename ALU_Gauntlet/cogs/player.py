@@ -87,10 +87,6 @@ class PlayerCog(commands.Cog):
             await interaction.followup.send('⚠️ **Already Registered:** Your Garage is already registered for the current season. Your career stats are safe; open `/gauntlet` → **My Gauntlet** → **Profile** to view them.', ephemeral=True)
             return
         pending_id = f'{guild_id}_{user_id}'
-        pending_existing = await bot.db.pending.find_one({'_id': pending_id})
-        if pending_existing and int(pending_existing.get('season_number', season_number)) == season_number:
-            await interaction.followup.send('⚠️ **Application Already Pending:** Your current-season Garage registration is awaiting staff review. open `/gauntlet` → **My Gauntlet** → **My Status** to check.', ephemeral=True)
-            return
         review_chan = bot.get_channel(int(cfg['review_channel_id']))
         if not review_chan:
             await interaction.followup.send('❌ Staff review channel could not be found. Ask an administrator to run `/setup`.', ephemeral=True)
@@ -108,15 +104,27 @@ class PlayerCog(commands.Cog):
             emb.add_field(name='Previous Season PI', value=f'`{int(previous_pi):,} PI`', inline=True)
         emb.add_field(name='Dynamic Driving Layout', value=f'`{control_type.name}`', inline=False)
         emb.set_image(url=proof_screenshot.url)
-        await bot.db.pending.update_one({'_id': pending_id}, {'$set': {'guild_id': guild_id, 'user_id': user_id, 'game_id': game_id, 'rank': garage_pi, 'control': control_type.value, 'season_number': season_number, 'is_reregistration': is_rereg, 'submitted_at': time.time(), 'proof_url': proof_screenshot.url}}, upsert=True)
+        claim = await bot.db.pending.update_one(
+            {'_id': pending_id, 'season_number': {'$ne': season_number}},
+            {'$set': {'guild_id': guild_id, 'user_id': user_id, 'game_id': game_id, 'rank': garage_pi, 'control': control_type.value, 'season_number': season_number, 'is_reregistration': is_rereg, 'submitted_at': time.time(), 'proof_url': proof_screenshot.url, 'delivery_status': 'sending'}},
+            upsert=True,
+        )
+        if getattr(claim, 'modified_count', 0) != 1 and getattr(claim, 'upserted_id', None) is None:
+            await interaction.followup.send('⚠️ **Application Already Pending:** Your current-season Garage registration is awaiting staff review.', ephemeral=True)
+            return
+        emb.set_footer(text=f'ALU Registration Submission: {pending_id}')
         try:
             review_message = await review_chan.send(embed=emb, view=VerificationView(user_id, guild_id, game_id, garage_pi, control_type.value))
-            await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(review_message.id)}})
+            await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(review_message.id), 'delivery_status': 'delivered'}})
         except Exception:
-            await bot.db.pending.delete_one({'_id': pending_id, 'season_number': season_number})
             logging.exception('Registration review message delivery failed')
-            await interaction.followup.send('❌ Staff review message could not be delivered. Your registration was safely rolled back; please try again.', ephemeral=True)
-            return
+            found = await find_recent_bot_message(review_chan, f'ALU Registration Submission: {pending_id}', limit=20)
+            if found:
+                await bot.db.pending.update_one({'_id': pending_id, 'season_number': season_number}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(found.id), 'delivery_status': 'delivered'}})
+            else:
+                await bot.db.pending.delete_one({'_id': pending_id, 'season_number': season_number})
+                await interaction.followup.send('❌ Staff review message could not be delivered. Your registration was safely rolled back; please try again.', ephemeral=True)
+                return
         await interaction.followup.send(f'📥 **Season {season_number} Garage Registration Submitted:** Staff can approve your `{garage_pi:,} PI` projected **{division}** placement. Career stats are retained.', ephemeral=True)
 
     @app_commands.command(name='notifications', description='Turn your Gauntlet reminder DMs on or off.')
