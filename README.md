@@ -7,7 +7,7 @@ Production package for the Asphalt Legends Unite Gauntlet League Discord bot.
 - Python 3.12
 - discord.py
 - MongoDB Atlas
-- Motor
+- PyMongo Async
 - Discloud
 - GitHub Actions
 
