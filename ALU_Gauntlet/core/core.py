@@ -336,8 +336,9 @@ class GauntletBot(commands.Bot):
 
         # Execute background state recovery sequence hooks
         await self.recover_season_state()
+        # These are discord.ext.tasks.Loop objects (bound below at module load),
+        # so they can safely be started after database/state recovery.
         self.seasonal_clock_loop.start()
-        self.player_reminder_loop = player_reminder_loop
         self.player_reminder_loop.start()
         self.backup_loop.start()
         # Load custom images from DB into ASPHALT_MEDIA
@@ -655,6 +656,7 @@ async def create_database_backup(reason: str = "scheduled"):
     logging.info("🗄️ Database backup created: %s", folder)
     return folder
 
+@tasks.loop(hours=24)
 async def backup_loop():
     try:
         await create_database_backup("scheduled")
@@ -664,6 +666,7 @@ async def backup_loop():
         for cfg in configs:
             await send_admin_alert(str(cfg.get("_id")), "DATABASE BACKUP FAILED", str(exc))
 
+@backup_loop.before_loop
 async def before_backup_loop():
     await bot.wait_until_ready()
 
@@ -689,6 +692,7 @@ async def announce_season_start(guild_id: str, season_number: int, reason: str =
         )
     )
 
+@tasks.loop(minutes=1)
 async def seasonal_clock_loop_task():
     """Automatically open and close seasons at their configured schedule.
 
@@ -750,6 +754,7 @@ async def seasonal_clock_loop_task():
         except Exception:
             logging.exception("Seasonal clock processing failed for guild %s", guild_id)
 
+@tasks.loop(hours=6)
 async def player_reminder_loop():
     """Lightweight player reminders: missing defense and unfinished active challenges.
 
@@ -808,14 +813,16 @@ async def player_reminder_loop():
     except Exception:
         logging.exception("Player reminder loop failed")
 
+@player_reminder_loop.before_loop
 async def before_player_reminders():
     await bot.wait_until_ready()
 
+@seasonal_clock_loop_task.before_loop
 async def before_seasonal_clock():
     await bot.wait_until_ready()
 
 bot.seasonal_clock_loop = seasonal_clock_loop_task
-
+bot.player_reminder_loop = player_reminder_loop
 bot.backup_loop = backup_loop
 
 async def check_admin_privileges(interaction: discord.Interaction) -> bool:
