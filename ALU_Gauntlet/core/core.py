@@ -4068,7 +4068,7 @@ class TopLeaderboardView(discord.ui.View):
             discord.SelectOption(label="Top 5 Overall", value="elo", emoji="👑", description="Highest ELO ratings"),
         ]
     )
-    async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction, select: discord.ui.Select):
         await interaction.response.defer()
         category = self.values[0]
         guild_id = str(interaction.guild_id)
@@ -4915,7 +4915,7 @@ _TRANSIENT_VIEWS = (
     ConfirmRemoveRacerView, LeaderboardDivisionView, ConfirmDeleteMeView, HelpView, LaunchReadinessView, ConfirmActiveRegistrationResetView,
 )
 
-async def _view_error_handler(interaction: discord.Interaction, error: Exception, item):
+async def _view_error_handler(view, interaction: discord.Interaction, error: Exception, item):
     error_id = make_error_id()
     logging.exception("Component interaction error [%s]", error_id, exc_info=error)
     message = friendly_exception_message(error, error_id)
