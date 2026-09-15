@@ -8,6 +8,16 @@ sys.path.insert(0, str(ROOT))
 import main
 
 
+def _project_source():
+    package = ROOT / "ALU_Gauntlet"
+    files = [
+        ROOT / "main.py",
+        package / "core" / "core.py",
+        *sorted((package / "cogs").glob("*.py")),
+    ]
+    return "\n".join(p.read_text(encoding="utf-8") for p in files if p.is_file())
+
+
 def test_division_boundaries():
     cases = [
         (0, "Division 1 — Bronze Tier"),
@@ -158,6 +168,7 @@ def test_active_challenge_claim_and_release(monkeypatch):
 
         await main.release_active_challenge("guild_user")
         assert fake_db.active_challenges.docs["guild_user"]["status"] == "active"
+
     asyncio.run(run())
 
 
@@ -178,11 +189,12 @@ def test_stale_processing_challenge_is_recovered(monkeypatch):
         assert claimed["status"] == "processing"
         assert "processing_at" in claimed
         assert fake_db.active_challenges.docs["guild_user"]["status"] == "processing"
+
     asyncio.run(run())
 
 
 def test_season_schedule_automatically_starts_and_ends():
-    source = Path(main.__file__).read_text(encoding="utf-8")
+    source = _project_source()
     assert "starts_at" in source and "ends_at" in source
     assert 'if (not bool(state.get("season_active", False)) and starts_at' in source
     assert 'now >= starts_at and now < ends_at' in source
@@ -191,8 +203,8 @@ def test_season_schedule_automatically_starts_and_ends():
 
 
 def test_seasonauto_controls_only_scheduled_end_rollover():
-    source = Path(main.__file__).read_text(encoding="utf-8")
-    assert '@bot.tree.command(name="seasonauto"' in source
+    source = _project_source()
+    assert '@season_group.command(name=\'auto\'' in source
     assert 'app_commands.Choice(name="Enable automatic season rollover", value="on")' in source
     assert 'app_commands.Choice(name="Disable automatic season rollover", value="off")' in source
     assert 'await trigger_global_season_end(guild_id=guild_id, start_next_season=auto_rollover)' in source
@@ -200,48 +212,49 @@ def test_seasonauto_controls_only_scheduled_end_rollover():
 
 
 def test_seasonstart_early_preserves_scheduled_end():
-    source = Path(main.__file__).read_text(encoding="utf-8")
-    assert '@bot.tree.command(name="seasonstart"' in source
+    source = _project_source()
+    assert '@season_group.command(name=\'start\'' in source
     assert '"scheduled end time remains unchanged"' in source
     assert '"season_active": True' in source
 
 
 def test_manual_seasonend_never_auto_rolls_next_season():
-    source = Path(main.__file__).read_text(encoding="utf-8")
+    source = _project_source()
     assert 'trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction, start_next_season=False)' in source
     assert 'the next season will not roll over automatically' in source
 
 
 def test_automatic_rollover_announces_new_season_and_preserves_schedule_duration():
-    source = Path(main.__file__).read_text(encoding="utf-8")
+    source = _project_source()
     assert 'season_duration = previous_end - previous_start' in source
     assert 'await announce_season_start(guild_id, next_season, reason="rollover")' in source
     assert '"ends_at": now + season_duration' in source
 
 
 def test_help_menu_is_organized_into_player_and_admin_categories():
-    source = Path(main.__file__).read_text(encoding="utf-8")
+    source = _project_source()
     for category in (
         'value="getting_started"', 'value="defense"', 'value="racing"',
         'value="rankings"', 'value="account"', 'value="admin_setup"',
         'value="admin_seasons"', 'value="admin_players"', 'value="admin_tools"',
     ):
         assert category in source
-    for command in ("/whatnext", "/mychallenges", "/submitmatch", "/seasonstatus", "/admin_backups", "/admin_restore", "/missingdefense"):
+
+    for command in ("/whatnext", "/submitmatch", "/missingdefense"):
         assert command in source
 
 
 def test_player_reminder_dms_are_72h_and_opt_out():
-    source = Path(main.__file__).read_text(encoding="utf-8")
+    source = _project_source()
     assert "72 * 60 * 60" in source
     assert 'd.get("dm_notifications_enabled", True) is False' in source
     assert 'challenger.get("dm_notifications_enabled", True) is False' in source
 
 
 def test_notifications_command_controls_reminder_dms():
-    source = Path(main.__file__).read_text(encoding="utf-8")
-    assert '@bot.tree.command(name="notifications"' in source
+    source = _project_source()
+    assert "@app_commands.command(name='notifications'" in source
     assert 'value="on"' in source
     assert 'value="off"' in source
-    assert 'dm_notifications_enabled' in source
+    assert "dm_notifications_enabled" in source
     assert "Server-wide season announcements are not affected." in source

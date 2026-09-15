@@ -35,7 +35,7 @@ jobs:
           pip install pytest
 
       - name: Compile
-        run: python -m py_compile main.py
+        run: python -m compileall -q .
 
       - name: Test
         run: pytest -q
