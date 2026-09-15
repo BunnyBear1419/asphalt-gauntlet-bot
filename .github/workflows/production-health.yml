@@ -101,6 +101,36 @@ jobs:
           PY
 
 
+      - name: Check bot heartbeat and MongoDB health signal
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MONGO_URI" ]; then
+            echo "ERROR: MONGO_URI GitHub secret is missing."
+            exit 1
+          fi
+          python -m pip install --quiet pymongo
+          MONGO_URI="$MONGO_URI" python - <<'PY'
+          import os
+          import time
+          from pymongo import MongoClient
+
+          client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000)
+          client.admin.command("ping")
+          hb = client["asphalt_gauntlet"].system_events.find_one({"_id": "production_heartbeat"})
+          if not hb:
+              raise SystemExit("ERROR: No production heartbeat has been recorded yet.")
+          age = time.time() - float(hb.get("timestamp", 0))
+          print(f"Heartbeat age: {age:.0f}s | ready={hb.get('ready')} | db_ok={hb.get('db_ok')} | guilds={hb.get('guild_count')}")
+          if age > 1200:
+              raise SystemExit("ERROR: Production heartbeat is older than 20 minutes.")
+          if not hb.get("ready") or not hb.get("db_ok"):
+              raise SystemExit("ERROR: Latest production heartbeat reports bot or database unhealthy.")
+          print("Production heartbeat health check passed.")
+          client.close()
+          PY
+
       - name: Check production health signals
         run: |
           set -euo pipefail

@@ -1,6 +1,8 @@
 name: MongoDB Restore Test
 
 on:
+  schedule:
+    - cron: "45 8 * * 6"
   workflow_dispatch:
 
 permissions:

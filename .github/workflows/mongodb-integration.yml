@@ -1,0 +1,39 @@
+name: MongoDB Integration Tests
+
+on:
+  schedule:
+    - cron: "15 9 * * 6"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt pytest
+
+      - name: Require integration database secret
+        env:
+          MONGO_TEST_URI: ${{ secrets.MONGO_TEST_URI }}
+        run: |
+          if [ -z "$MONGO_TEST_URI" ]; then
+            echo "ERROR: MONGO_TEST_URI GitHub secret is missing."
+            exit 1
+          fi
+
+      - name: Run MongoDB integration tests
+        env:
+          MONGO_TEST_URI: ${{ secrets.MONGO_TEST_URI }}
+        run: pytest -q tests/test_mongodb_integration.py
