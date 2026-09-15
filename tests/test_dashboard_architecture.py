@@ -152,7 +152,7 @@ def test_launch_readiness_uses_current_command_architecture_version():
 
 def test_component_error_handler_matches_discord_view_signature():
     source = _source()
-    assert 'async def _view_error_handler(interaction: discord.Interaction, error: Exception, item):' in source
+    assert 'async def _view_error_handler(view, interaction: discord.Interaction, error: Exception, item):' in source
 
 
 def test_player_staff_button_replaces_dashboard_in_place():
