@@ -2,6 +2,9 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 
+COMMAND_ARCHITECTURE_VERSION = 11
+command_architecture_version = COMMAND_ARCHITECTURE_VERSION
+
 class SystemCog(commands.Cog):
 
     @commands.command(name='forcesync')
