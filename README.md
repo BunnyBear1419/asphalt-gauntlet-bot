@@ -64,3 +64,15 @@ The bot also has a `/backup` staff command and a scheduled local JSON backup loo
 - Feature branches = changes
 
 Test locally → push to `dev` → GitHub Actions passes → merge to `main` → deploy to Discloud.
+
+## Production hardening
+
+The production build uses PyMongo Async with MongoDB Stable API v1, deterministic review-delivery reconciliation, match-lap provenance for safe reverts, and a live Discord heartbeat for external health monitoring.
+
+### Production health monitoring
+
+This bot serves multiple independent Discord servers, so production health monitoring is **not tied to any guild or Discord channel**. The GitHub Actions health check verifies that Discloud reports the application as running and that the Discord API accepts the bot token.
+
+No `HEALTH_CHANNEL_ID` GitHub secret is required.
+
+Optionally, set `HEALTH_WEBHOOK_URL` in the bot environment to receive bot-level `ALU_HEARTBEAT` notifications in a private operations webhook. This is optional and is not associated with any Discord server.
