@@ -3178,9 +3178,39 @@ class SetupChannelsModal(_GauntletModalBase, title="Staff • Server Setup • C
         chans=[interaction.guild.get_channel(x) for x in ids]
         if any(c is None or not isinstance(c, discord.TextChannel) for c in chans):
             await self.fail(interaction,"❌ One or more channel IDs were not found as text channels."); return
-        await interaction.response.send_modal(SetupRolesModal(chans))
+        labels=("Public command","Staff review","Log","Announcement","Match results")
+        lines="\n".join(f"**{label}:** {chan.mention}" for label,chan in zip(labels,chans))
+        embed=discord.Embed(
+            title="✅ Step 1 of 2 — Channels saved",
+            description=f"{lines}",
+            color=ASPHALT_ADMIN_COLOR,
+        )
+        embed.set_footer(text="Next Step: Roles — press the button below to continue.")
+        await interaction.response.send_message(embed=embed, view=SetupRolesPromptView(interaction.user.id, chans), ephemeral=True)
 
-class SetupRolesModal(_GauntletModalBase, title="Staff • Server Setup • Roles"):
+class SetupRolesPromptView(discord.ui.View):
+    """Shown after the channels modal so staff can open the roles modal on their own click."""
+    def __init__(self, owner_id, channels):
+        super().__init__(timeout=180)
+        self.owner_id=str(owner_id)
+        self.channels=channels
+
+    async def interaction_check(self, interaction):
+        if str(interaction.user.id)!=self.owner_id:
+            await interaction.response.send_message("❌ This staff control belongs to another admin.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="➡️ Next: Roles", style=discord.ButtonStyle.primary)
+    async def next_roles(self, interaction, button):
+        if not await require_staff_interaction(interaction): return
+        await interaction.response.send_modal(SetupRolesModal(self.channels))
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled=True
+
+class SetupRolesModal(_GauntletModalBase, title="Staff • Setup • Roles (2 of 2)"):
     admin=discord.ui.TextInput(label="Staff/Admin role ID", placeholder="123456789012345678", max_length=25)
     player=discord.ui.TextInput(label="Verified player role ID", placeholder="123456789012345678", max_length=25)
     timezone_name=discord.ui.TextInput(label="Timezone label", placeholder="Eastern Time", max_length=40)
