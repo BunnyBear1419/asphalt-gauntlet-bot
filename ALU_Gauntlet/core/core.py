@@ -2929,12 +2929,21 @@ async def handle_pending_staff_image_message(message: discord.Message) -> bool:
     if not await check_admin_privileges_for_message(message):
         return False
     images = [a for a in message.attachments if (a.content_type or "").startswith("image/")]
-    if len(message.attachments) != 1 or len(images) != 1:
-        await message.reply("❌ Please post exactly **one image attachment** for this upload. No URL or extra files are needed.", mention_author=False)
+    typed_url = (message.content or "").strip()
+    source = None
+    if len(message.attachments) == 1 and len(images) == 1:
+        source = images[0]
+    elif not message.attachments and typed_url.lower().startswith(("http://", "https://")):
+        if not await validate_image_url(typed_url):
+            await message.reply("❌ That URL does not appear to point to a valid image. Please post a direct image URL, or upload the image as an attachment instead.", mention_author=False)
+            return True
+        source = _URLImageAttachment(typed_url, f"{session['image_type']}.jpg")
+    if source is None:
+        await message.reply("❌ Please post exactly **one image attachment**, or a single direct image URL (starting with `http://` or `https://`), for this upload.", mention_author=False)
         return True
     try:
         url = await save_custom_image_from_attachment(
-            str(message.guild.id), session["image_type"], session["image_name"], images[0],
+            str(message.guild.id), session["image_type"], session["image_name"], source,
             str(message.author.id), str(message.channel.id),
         )
         pending_staff_image_sessions.pop(key, None)
@@ -3339,9 +3348,10 @@ class AdminImageTypeSelect(discord.ui.Select):
             embed=discord.Embed(
                 title=f"🖼️ Upload {name}",
                 description=(
-                    f"Post **one image attachment** in {staff_channel.mention}.\n\n"
+                    f"In {staff_channel.mention}, post **one image attachment** "
+                    "or **one direct image URL** (starting with `http://` or `https://`).\n\n"
                     "The bot will validate it, save a durable copy, and make it the active image. "
-                    "No URL or DM upload is required.\n\n"
+                    "No DM upload is required.\n\n"
                     "This upload instruction expires in 15 minutes."
                 ),
                 color=ASPHALT_ADMIN_COLOR,
@@ -3847,7 +3857,7 @@ class StaffDashboardView(discord.ui.View):
         if action == "identity_direct":
             await interaction.response.send_modal(IdentityModal()); return
         if action == "setimage_direct":
-            await interaction.response.send_message(embed=discord.Embed(title="🖼️ CUSTOM IMAGES", description="Choose an image slot, then upload the new image through a private DM session.", color=ASPHALT_ADMIN_COLOR), view=AdminImageTypeView(interaction.user.id), ephemeral=True); return
+            await interaction.response.send_message(embed=discord.Embed(title="🖼️ CUSTOM IMAGES", description="Choose an image slot, then post an image or a direct image URL in the staff review channel.", color=ASPHALT_ADMIN_COLOR), view=AdminImageTypeView(interaction.user.id), ephemeral=True); return
         if action == "seasonstatus":
             await invoke_hidden_group_command(interaction, "season", "status"); return
         if action == "seasonstart":
