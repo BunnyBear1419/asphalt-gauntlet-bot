@@ -11,6 +11,9 @@ import asyncio
 import aiohttp
 
 import urllib.parse
+import ipaddress
+import socket
+import hashlib
 
 import json
 
@@ -324,6 +327,9 @@ class GauntletBot(commands.Bot):
                     await self.db.reference_pending.create_index([("guild_id", 1), ("status", 1)])
                     await self.db.lap_times.create_index([("guild_id", 1), ("user_id", 1), ("track", 1)])
                     await self.db.system_events.create_index([("guild_id", 1), ("timestamp", -1)])
+                    await self.db.reference_pending.create_index([("fingerprint", 1)], unique=True, sparse=True)
+                    await self.db.drivers.create_index([("guild_id", 1), ("defense_review_pending", 1)])
+                    await self.db.matches.create_index([("guild_id", 1), ("settlement_status", 1), ("timestamp", -1)])
                     logging.info("🟢 Performance indexes verified.")
                 except Exception:
                     logging.exception("Could not create MongoDB performance indexes")
@@ -352,10 +358,10 @@ class GauntletBot(commands.Bot):
             logging.warning(f"⚠️ Could not load custom images: {e}")
         # Restore registration and defense review buttons after a restart.
         try:
-            pending_regs = await self.db.pending.find({"season_number": {"$exists": True}}).to_list(length=1000)
+            pending_regs = await self.db.pending.find({"season_number": {"$exists": True}}).to_list(length=250)
             for pending in pending_regs:
                 self.add_view(VerificationView(str(pending["user_id"]), str(pending["guild_id"]), str(pending.get("game_id", "Unknown")), int(pending.get("rank", 0)), str(pending.get("control", "touch"))))
-            pending_defs = await self.db.drivers.find({"defense_review_pending": True, "defense_review_payload": {"$exists": True}}).to_list(length=1000)
+            pending_defs = await self.db.drivers.find({"defense_review_pending": True, "defense_review_payload": {"$exists": True}}).to_list(length=250)
             for driver in pending_defs:
                 payload = driver.get("defense_review_payload", {})
                 courses = payload.get("courses", [])
@@ -401,7 +407,8 @@ class GauntletBot(commands.Bot):
         logging.info("🟢 Persistent views registered.")
         # Restore persistent match-result/report buttons after a bot restart.
         try:
-            recent_matches = await self.db.matches.find({"reverted": {"$ne": True}}).sort("timestamp", -1).limit(1000).to_list(length=1000)
+            recent_cutoff = time.time() - (90 * 24 * 60 * 60)
+            recent_matches = await self.db.matches.find({"reverted": {"$ne": True}, "timestamp": {"$gte": recent_cutoff}}).sort("timestamp", -1).limit(250).to_list(length=250)
             for match in recent_matches:
                 self.add_view(MatchResultPostView(match["_id"]))
                 if match.get("reported"):
@@ -413,7 +420,7 @@ class GauntletBot(commands.Bot):
 
         # Restore pending reference-review buttons after a bot restart.
         try:
-            pending_refs = await self.db.reference_pending.find({"status": "pending"}).to_list(length=1000)
+            pending_refs = await self.db.reference_pending.find({"status": "pending"}).to_list(length=250)
             for ref in pending_refs:
                 self.add_view(ReferenceReviewView(ref["_id"]))
             if pending_refs:
@@ -634,9 +641,12 @@ async def create_database_backup(reason: str = "scheduled"):
         "reason": reason,
         "database": "asphalt_gauntlet",
         "collections": collections,
+        "files": {},
     }
     for name in collections:
-        with open(os.path.join(folder, f"{name}.json"), "w", encoding="utf-8") as fh:
+        final_path = os.path.join(folder, f"{name}.json")
+        temp_path = final_path + ".tmp"
+        with open(temp_path, "w", encoding="utf-8") as fh:
             cursor = getattr(bot.db, name).find({})
             first = True
             fh.write("[\n")
@@ -646,10 +656,23 @@ async def create_database_backup(reason: str = "scheduled"):
                 json.dump(doc, fh, ensure_ascii=False, default=str)
                 first = False
             fh.write("\n]\n")
-    with open(os.path.join(folder, "manifest.json"), "w", encoding="utf-8") as fh:
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temp_path, final_path)
+        sha256 = hashlib.sha256()
+        with open(final_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                sha256.update(chunk)
+        manifest["files"][f"{name}.json"] = {"sha256": sha256.hexdigest(), "bytes": os.path.getsize(final_path)}
+    manifest_path = os.path.join(folder, "manifest.json")
+    temp_manifest = manifest_path + ".tmp"
+    with open(temp_manifest, "w", encoding="utf-8") as fh:
         json.dump(manifest, fh, indent=2)
-    # Keep the newest 7 backup folders to avoid filling the host disk.
-    folders = [os.path.join(backup_root, x) for x in os.listdir(backup_root) if os.path.isdir(os.path.join(backup_root, x))]
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(temp_manifest, manifest_path)
+    # Keep the newest 7 timestamped backup folders to avoid filling the host disk.
+    folders = [os.path.join(backup_root, x) for x in os.listdir(backup_root) if os.path.isdir(os.path.join(backup_root, x)) and re.fullmatch(r"\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}", x)]
     for old in sorted(folders, reverse=True)[7:]:
         import shutil
         shutil.rmtree(old, ignore_errors=True)
@@ -662,9 +685,15 @@ async def backup_loop():
         await create_database_backup("scheduled")
     except Exception as exc:
         logging.exception("Scheduled database backup failed")
-        configs = await bot.db.settings.find({"_id": {"$regex": r"^\d+$"}}).to_list(length=1000)
-        for cfg in configs:
-            await send_admin_alert(str(cfg.get("_id")), "DATABASE BACKUP FAILED", str(exc))
+        try:
+            configs = await bot.db.settings.find({"_id": {"$regex": r"^\d+$"}}).to_list(length=1000)
+            for cfg in configs:
+                try:
+                    await send_admin_alert(str(cfg.get("_id")), "DATABASE BACKUP FAILED", str(exc))
+                except Exception:
+                    logging.exception("Could not alert guild %s about backup failure", cfg.get("_id"))
+        except Exception:
+            logging.exception("Could not query guilds for backup failure alerts")
 
 @backup_loop.before_loop
 async def before_backup_loop():
@@ -711,6 +740,7 @@ async def seasonal_clock_loop_task():
     for config in configs:
         guild_id = str(config.get("_id"))
         try:
+            await reconcile_processing_challenges(guild_id)
             state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
             if not state:
                 continue
@@ -786,7 +816,7 @@ async def player_reminder_loop():
                     await user.send(f"🛡️ **ALU Gauntlet reminder**\nYour Season {season} defense is not locked yet. Open `/gauntlet` → **Defense** → **Set Defense**.")
                     await bot.db.drivers.update_one({"_id": d["_id"], "guild_id": guild_id}, {"$set": {"last_defense_reminder": now}})
                 except Exception:
-                    pass
+                    logging.warning("Could not send missing-defense reminder to driver %s in guild %s", d.get("user_id"), guild_id, exc_info=True)
 
             # Remind challengers about active submissions after 24h, at most once every 72h,
             # and only when the player has DM notifications enabled.
@@ -809,7 +839,7 @@ async def player_reminder_loop():
                     await user.send(f"⚔️ **ALU Gauntlet reminder**\nYou have an unfinished match against <@{challenge['opponent_id']}>. Open `/gauntlet` → **Challenges** → **Submit Match** when your 5 race results are ready.")
                     await bot.db.active_challenges.update_one({"_id": challenge["_id"], "guild_id": guild_id}, {"$set": {"last_reminder": now}})
                 except Exception:
-                    pass
+                    logging.warning("Could not send active-challenge reminder to challenger %s in guild %s", challenge.get("challenger_id"), guild_id, exc_info=True)
     except Exception:
         logging.exception("Player reminder loop failed")
 
@@ -964,6 +994,7 @@ async def apply_season_soft_reset(guild_id: str, season_number: int):
                     "previous_season_pi": d.get("garage_pi"),
                     "previous_season_game_id": d.get("game_id"),
                     "previous_season_division": get_division_for_pi(int(d.get("garage_pi", 0))).get("name") if d.get("garage_pi") is not None else None,
+                    "challenge_count": 0,
                 },
                 "$unset": {
                     "garage_pi": "",
@@ -974,6 +1005,7 @@ async def apply_season_soft_reset(guild_id: str, season_number: int):
                     "defense_review_pending": "",
                     "defense_review_payload": "",
                     "last_defense_change": "",
+                    "challenge_date": "",
                 },
             },
         )
@@ -1204,9 +1236,17 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
     # recoverable instead of creating a second ELO award after a process crash.
     reservation = {
         "_id": match_id, "guild_id": guild_id, "challenger_id": challenger_id, "opponent_id": opponent_id,
+        "courses_beat": courses_beat, "challenger_won": challenger_won,
         "challenger_elo_before": old_challenger_elo, "challenger_elo_after": new_challenger_elo,
         "defender_elo_before": old_defender_elo, "defender_elo_after": new_defender_elo,
-        "settlement_status": "pending", "timestamp": time.time()
+        "challenger_delta": new_challenger_elo - old_challenger_elo, "defender_delta": new_defender_elo - old_defender_elo,
+        "w_id": w_id, "l_id": l_id, "new_w_elo": new_w_elo, "new_l_elo": new_l_elo,
+        "old_w_elo": old_w_elo, "old_l_elo": old_l_elo,
+        "challenger_before": challenger_before, "defender_before": defender_before,
+        "outcome_desc": outcome_desc, "display_color": display_color, "announce_title": announce_title,
+        "proof_url": proof_url, "defender_proof_url": defender_proof_url,
+        "defense_courses": defense_courses, "challenger_courses": challenger_times,
+        "reverted": False, "settlement_status": "pending", "timestamp": time.time()
     }
     # Atomic MongoDB transaction: reservation + both driver updates are committed together.
     # This requires a MongoDB deployment that supports transactions (Atlas Free/shared
@@ -1726,7 +1766,7 @@ class ChallengeDropdown(discord.ui.Select):
             await interaction.followup.send("❌ This matchmaking session belongs to another server.", ephemeral=True)
             return
 
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = await get_guild_local_date(guild_id)
         opponent_profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{target_user_id}", "guild_id": guild_id})
         current_season = await get_current_season_number(guild_id)
         opponent_defense = (opponent_profile or {}).get("defense_locked") or {}
@@ -2143,34 +2183,84 @@ PROOF_SESSION_TTL = 15 * 60
 def _proof_session_key(guild_id, user_id, kind):
     return f"{guild_id}:{user_id}:{kind}"
 
+MAX_PROOF_BYTES = 8 * 1024 * 1024
+MAX_REDIRECTS = 3
+
+async def _resolve_public_host(hostname: str) -> bool:
+    """Reject loopback/private/link-local/reserved destinations before HTTP requests."""
+    if not hostname or hostname.lower() in {"localhost", "localhost.localdomain"}:
+        return False
+    try:
+        infos = await asyncio.get_running_loop().run_in_executor(None, lambda: socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM))
+        addresses = {item[4][0] for item in infos if item and item[4]}
+        if not addresses:
+            return False
+        for addr in addresses:
+            ip = ipaddress.ip_address(addr)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+                return False
+        return True
+    except (OSError, ValueError):
+        return False
+
+async def _safe_url(url: str) -> bool:
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme.lower() not in {"https", "http"} or not parsed.hostname:
+            return False
+        return await _resolve_public_host(parsed.hostname)
+    except Exception:
+        return False
+
+async def _safe_request(session, url: str, *, headers=None, read_limit=0, want_image=False):
+    """GET a public URL while validating every redirect and enforcing a byte limit."""
+    current = url
+    for _ in range(MAX_REDIRECTS + 1):
+        if not await _safe_url(current):
+            raise ValueError("URL resolves to a private, local, reserved, or invalid host")
+        async with session.get(current, allow_redirects=False, headers=headers or {}) as resp:
+            if 300 <= resp.status < 400 and resp.headers.get("Location"):
+                current = urllib.parse.urljoin(current, resp.headers["Location"])
+                continue
+            if resp.status not in (200, 206):
+                raise ValueError(f"HTTP {resp.status}")
+            content_type = (resp.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+            if want_image and not content_type.startswith("image/"):
+                raise ValueError("URL did not return an image")
+            if read_limit:
+                content_length = resp.headers.get("Content-Length")
+                if content_length and int(content_length) > read_limit:
+                    raise ValueError("response exceeds size limit")
+                chunks = []
+                total = 0
+                async for chunk in resp.content.iter_chunked(64 * 1024):
+                    total += len(chunk)
+                    if total > read_limit:
+                        raise ValueError("response exceeds size limit")
+                    chunks.append(chunk)
+                return b"".join(chunks), current, content_type
+            return resp, current, content_type
+    raise ValueError("too many redirects")
+
 class _URLImageAttachment:
     def __init__(self, url: str, filename: str = "proof.jpg"):
         self.url=url; self.filename=filename; self.content_type="image/jpeg"
     async def read(self):
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-            async with session.get(self.url, allow_redirects=True) as resp:
-                if resp.status != 200:
-                    raise ValueError(f"image download returned HTTP {resp.status}")
-                data=await resp.read()
-                if len(data) > 8*1024*1024:
-                    raise ValueError("image is larger than 8 MB")
-                return data
+        timeout = aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            data, _, _ = await _safe_request(session, self.url, read_limit=MAX_PROOF_BYTES, want_image=True)
+            return data
 
 async def validate_image_url(url: str) -> bool:
-    """Best-effort proof URL validation without trusting a URL merely because it has HTTPS."""
-    if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+    """Fail-closed validation for externally hosted images with SSRF protection."""
+    if not isinstance(url, str) or len(url) > 2048:
         return False
     try:
         timeout = aiohttp.ClientTimeout(total=10)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url, allow_redirects=True, headers={"Range": "bytes=0-32"}) as resp:
-                if resp.status not in (200, 206):
-                    return False
-                content_type = (resp.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
-                return content_type.startswith("image/")
+            _, _, _ = await _safe_request(session, url, headers={"Range": "bytes=0-4095"}, read_limit=64 * 1024, want_image=True)
+            return True
     except Exception:
-        # Fail closed for hosted URLs. Direct Discord attachments remain the preferred
-        # upload path and do not depend on this network validation.
         logging.warning("Hosted image URL validation failed", exc_info=True)
         return False
 
@@ -3107,9 +3197,13 @@ class ConfirmSeasonResetView(discord.ui.View):
             await bot.db.active_challenges.delete_many({"guild_id": gid})
             await bot.db.reference_pending.delete_many({"guild_id": gid})
             await bot.db.lap_times.delete_many({"guild_id": gid})
+            await bot.db.map_records.delete_many({"guild_id": gid})
+            # Universal records may be stored without guild ownership; remove records
+            # whose winning guild is this server as part of a true full reset.
+            await bot.db.map_records.delete_many({"source_guild_id": gid})
             await bot.db.drivers.update_many(
                 {"guild_id": gid},
-                {"$set": {"season_number": 1, "season_registered": False, "elo": 1000, "streak": 0, "career_wins": 0, "career_played": 0},
+                {"$set": {"season_number": 1, "season_registered": False, "elo": 1000, "streak": 0, "career_wins": 0, "career_played": 0, "challenge_count": 0},
                  "$unset": {"garage_pi": "", "defense_locked": "", "pending_tracks": "", "season_defense_tracks": "", "pending_is_change": "", "defense_review_pending": "", "defense_review_payload": "", "last_defense_change": ""}},
             )
 
@@ -3137,6 +3231,8 @@ class ConfirmClearHistoryView(discord.ui.View):
         if self.target == "all":
             for collection in ("active_challenges", "matches", "reference_pending", "lap_times"):
                 await getattr(bot.db, collection).delete_many({"guild_id": self.guild_id})
+            await bot.db.map_records.delete_many({"guild_id": self.guild_id})
+            await bot.db.map_records.delete_many({"source_guild_id": self.guild_id})
             await bot.db.season_history.delete_many({"guild_id": self.guild_id})
             await bot.db.season_state.delete_one({"_id": f"guild_{self.guild_id}"})
         for x in self.children: x.disabled=True
@@ -3204,6 +3300,14 @@ async def map_autocomplete(interaction: discord.Interaction, current: str) -> li
 async def car_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
     return [app_commands.Choice(name=car, value=car) for car in ALU_CARS if current.lower() in car.lower()][:25]
 
+async def get_guild_local_date(guild_id: str) -> str:
+    cfg = await bot.db.settings.find_one({"_id": str(guild_id)}) or {}
+    tz_name = get_guild_timezone(cfg)
+    try:
+        return datetime.now(ZoneInfo(tz_name)).strftime("%Y-%m-%d")
+    except Exception:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
 async def claim_active_challenge(guild_id: str, user_id: str):
     """Atomically claim an active challenge; recover stale processing locks."""
     active_id = f"{guild_id}_{user_id}"
@@ -3228,7 +3332,7 @@ async def claim_active_challenge(guild_id: str, user_id: str):
         return None
     result = await bot.db.active_challenges.update_one(
         {"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id), "status": "active"},
-        {"$set": {"status": "processing", "processing_at": now}},
+        {"$set": {"status": "processing", "processing_at": now, "match_id": f"{active_id}:match"}},
     )
     if not result or getattr(result, "modified_count", 0) != 1:
         return None
@@ -3422,6 +3526,28 @@ async def save_driver_best_time(guild_id: str, user_id: str, course: dict, seaso
         )
     return changed
 
+async def reconcile_processing_challenges(guild_id: str | None = None):
+    """Reconcile challenges left in processing after a successful match settlement."""
+    query = {"status": "processing"}
+    if guild_id is not None:
+        query["guild_id"] = str(guild_id)
+    rows = await bot.db.active_challenges.find(query).to_list(length=1000)
+    for ch in rows:
+        match_id = ch.get("match_id") or f"{ch.get('_id')}:match"
+        match = await bot.db.matches.find_one({"_id": match_id, "guild_id": str(ch.get("guild_id"))})
+        if match and match.get("settlement_status") == "completed":
+            await bot.db.active_challenges.update_one(
+                {"_id": ch["_id"], "status": "processing"},
+                {"$set": {"status": "completed", "completed_at": time.time(), "match_id": match_id}, "$unset": {"processing_at": ""}},
+            )
+        elif match and match.get("settlement_status") == "pending":
+            # Reservation exists but scoring may have committed before a process crash.
+            p1 = await bot.db.drivers.find_one({"_id": f"{ch.get('guild_id')}_{ch.get('challenger_id')}"})
+            p2 = await bot.db.drivers.find_one({"_id": f"{ch.get('guild_id')}_{ch.get('opponent_id')}"})
+            if p1 and p2 and p1.get("elo") == match.get("challenger_elo_after") and p2.get("elo") == match.get("defender_elo_after"):
+                await bot.db.matches.update_one({"_id": match_id, "settlement_status": "pending"}, {"$set": {"settlement_status": "completed"}})
+                await bot.db.active_challenges.update_one({"_id": ch["_id"], "status": "processing"}, {"$set": {"status": "completed", "completed_at": time.time(), "match_id": match_id}, "$unset": {"processing_at": ""}})
+
 async def get_current_season_number(guild_id: str) -> int:
     state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
     return int(state.get("season_number", 1)) if state else 1
@@ -3497,8 +3623,18 @@ class ReferenceReviewView(discord.ui.View):
             return
         ref_id = re.sub(r"[^a-z0-9]+", "_", sub["track"].lower()).strip("_")
         current = await bot.db.map_references.find_one({"_id": ref_id})
+        if current and int(current.get("best_ms", 10**18)) == int(sub["ms"]) and current.get("video_url") == sub.get("video_url"):
+            # The reference was already written but the queue status update may have
+            # failed. Finalize the pending submission idempotently instead of leaving
+            # it stuck forever.
+            await bot.db.reference_pending.update_one({"_id": self.submission_id, "status": "pending"}, {"$set": {"status": "approved", "approved_by": current.get("approved_by", str(interaction.user.id)), "decided_at": current.get("approved_at", time.time())}})
+            for item in self.children:
+                item.disabled = True
+            await interaction.response.edit_message(embed=discord.Embed(title="✅ Reference Approved", description=f"`{sub['track']}` → **{sub['lap_time']}** is now the approved reference lap.", color=ASPHALT_VICTORY_COLOR), view=self)
+            return
         if current and int(sub["ms"]) >= int(current.get("best_ms", 10**18)):
-            await interaction.response.send_message("❌ This lap is not faster than the current approved reference.", ephemeral=True)
+            await bot.db.reference_pending.update_one({"_id": self.submission_id, "status": "pending"}, {"$set": {"status": "superseded", "decided_at": time.time(), "decided_reason": "A faster or equal approved reference already exists."}})
+            await interaction.response.send_message("❌ This lap is not faster than the current approved reference. The submission was closed as superseded.", ephemeral=True)
             return
         reference_doc = {
             "_id": ref_id, "track": sub["track"], "best_ms": int(sub["ms"]),
@@ -3940,7 +4076,7 @@ async def build_launch_readiness(guild_id: str) -> tuple[bool, list[str], list[s
     else:
         checks.append("🔴 MongoDB is not initialized"); ready = False
 
-    required_collections = ("drivers", "pending", "matches", "active_challenges", "season_history", "reference_pending", "lap_times", "settings", "season_state")
+    required_collections = ("drivers", "pending", "matches", "active_challenges", "season_history", "reference_pending", "lap_times", "map_records", "map_references", "settings", "season_state")
     if bot.db is not None:
         try:
             existing = set(await bot.db.list_collection_names())
@@ -4203,5 +4339,14 @@ async def on_ready():
 
 async def on_error(event_method, *args, **kwargs):
     logging.exception("Unhandled Discord event error: %s", event_method)
-    for cfg in await bot.db.settings.find({}).to_list(length=1000):
-        await send_admin_alert(str(cfg.get("_id")), "BOT EVENT ERROR", f"Event: `{event_method}`")
+    try:
+        if bot.db is None:
+            return
+        configs = await bot.db.settings.find({"_id": {"$regex": r"^\d+$"}}).to_list(length=1000)
+        for cfg in configs:
+            try:
+                await send_admin_alert(str(cfg.get("_id")), "BOT EVENT ERROR", f"Event: `{event_method}`")
+            except Exception:
+                logging.exception("Could not send event-error alert for guild %s", cfg.get("_id"))
+    except Exception:
+        logging.exception("Event error handler could not query guild settings")
