@@ -3777,7 +3777,7 @@ class HelpCategorySelect(discord.ui.Select):
             self._command_field(embed, "Racing", [
                 ("**Challenges → Find Challenge**", "Choose an opponent and start a match."),
                 ("**Challenges → Match Center**", "View your active and recent challenges."),
-                ("**Challenges → Submit Match**", "Submit your completed match results and proof."),
+                ("**Challenges → Submit Match**", "Submit your completed match results and proof. You can also use the hidden shortcut `/submitmatch`."),
             ])
             embed.add_field(name="🏁 Match format", value="5 races per match • fastest valid time wins each race • first to 3 wins the match.", inline=False)
 
@@ -3847,7 +3847,7 @@ class HelpCategorySelect(discord.ui.Select):
             self._command_field(embed, "Players", [
                 ("**Reviews → Registration Reviews**", "Review pending registrations."),
                 ("**Players → Player List**", "List current-season drivers with ELO and division."),
-                ("**Players → Defense Readiness**", "Find current-season drivers without a locked defense."),
+                ("**Players → Defense Readiness**", "Find current-season drivers without a locked defense. You can also use the hidden shortcut `/missingdefense`."),
                 ("**Reviews → Defense Reviews**", "Review defense submissions waiting for approval."),
                 ("**Players → Player Changes → Change PI**", "Change a driver's PI."),
                 ("**Players → Player Changes → Reset Registration**", "Reset active registration while keeping career history."),
