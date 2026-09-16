@@ -6,18 +6,18 @@ BRIDGE = ROOT / "ALU_Gauntlet" / "cogs" / "dashboard_setup_bridge.py"
 MAIN = ROOT / "ALU_Gauntlet" / "main.py"
 
 
-def test_staff_setup_action_routes_to_picker_wizard():
+def test_staff_setup_action_routes_at_dashboard_action_layer():
     source = BRIDGE.read_text(encoding="utf-8")
-    assert "StaffActionSelect" in source
-    assert 'values[0] == "setup_direct"' in source
+    assert "StaffDashboardView" in source
+    assert 'action == "setup_direct"' in source
     assert "launch_setup_wizard(interaction)" in source
-    assert "original_callback(select, interaction)" in source
+    assert "original_run_action(view, interaction, action)" in source
 
 
 def test_legacy_setup_command_is_removed_before_application_sync():
     source = BRIDGE.read_text(encoding="utf-8")
     assert 'bot.tree.remove_command("setup")' in source
-    assert "legacy /setup application command" in source
+    assert "legacy top-level alias" in source
 
 
 def test_bridge_loads_after_existing_cogs():
