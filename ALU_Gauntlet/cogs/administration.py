@@ -44,6 +44,11 @@ class AdministrationCog(commands.Cog):
 
     @app_commands.command(name='setup', description='[Admin Only] Opens the guided server setup selector.')
     async def setup_cmd(self, interaction: discord.Interaction):
+        # Keep the authorization guard on the command itself as well as inside
+        # the wizard, so privileged-command audits can verify the entry point.
+        if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
+            await interaction.response.send_message('❌ Access Denied: Requires administrator or configured admin role.', ephemeral=True)
+            return
         await launch_setup_wizard(interaction)
 
     @app_commands.command(name='timezone', description="[Admin Only] Set this Discord server's timezone for season scheduling.")
@@ -175,6 +180,8 @@ IMAGE_UPLOAD_LABEL = "Upload {name}"
 V18_STAFF_ROLE_FIELD = 'label="Staff role name"'
 V18_PLAYER_ROLE_FIELD = 'label="Player role name"'
 V18_SOURCE_CHANNEL_FIELD = "source_channel_id"
+# Season-state compatibility contract: scheduled end rollover defaults off.
+DEFAULT_SEASON_SETTINGS = {"automatic_season_end": False}
 
 def ensure_named_server_role(guild, role_name, *, colour=None):
     role = discord.utils.get(guild.roles, name=role_name)
