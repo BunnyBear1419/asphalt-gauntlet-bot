@@ -9,7 +9,7 @@ EXTENSIONS = [
     "ALU_Gauntlet.cogs.player", "ALU_Gauntlet.cogs.defense", "ALU_Gauntlet.cogs.challenges",
     "ALU_Gauntlet.cogs.competition", "ALU_Gauntlet.cogs.staff", "ALU_Gauntlet.cogs.season",
     "ALU_Gauntlet.cogs.administration", "ALU_Gauntlet.cogs.help", "ALU_Gauntlet.cogs.system",
-    "ALU_Gauntlet.cogs.operations", "ALU_Gauntlet.cogs.setup_cleanup",
+    "ALU_Gauntlet.cogs.operations",
 ]
 
 async def load_cogs():
