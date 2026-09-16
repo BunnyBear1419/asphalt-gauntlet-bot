@@ -101,6 +101,7 @@ async def _true_async(*args, **kwargs):
 def _cog(monkeypatch, db):
     fake_bot = FakeBot(db)
     monkeypatch.setattr(season, "bot", fake_bot)
+    monkeypatch.setattr(season, "audit_admin_action", _noop_async)
     return season.SeasonCog(fake_bot)
 
 
@@ -136,7 +137,6 @@ def test_early_season_start_preserves_scheduled_end(monkeypatch):
         cog = _cog(monkeypatch, db)
         monkeypatch.setattr(season, "enforce_channel_constraints", _true_async)
         monkeypatch.setattr(season, "announce_season_start", _noop_async)
-        monkeypatch.setattr(season, "audit_admin_action", _noop_async)
         interaction = FakeInteraction()
         await cog.season_start_cmd.callback(cog, interaction)
         state = db.season_state.docs["guild_guild-a"]
@@ -165,7 +165,6 @@ def test_season_state_isolated_between_guilds(monkeypatch):
         cog = _cog(monkeypatch, db)
         monkeypatch.setattr(season, "enforce_channel_constraints", _true_async)
         monkeypatch.setattr(season, "announce_season_start", _noop_async)
-        monkeypatch.setattr(season, "audit_admin_action", _noop_async)
         await cog.season_start_cmd.callback(cog, FakeInteraction("guild-a"))
         assert db.season_state.docs["guild_guild-a"]["season_active"] is True
         assert db.season_state.docs["guild_guild-b"]["season_active"] is False
