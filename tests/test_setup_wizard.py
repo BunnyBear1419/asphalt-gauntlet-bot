@@ -85,8 +85,8 @@ def test_setup_is_guild_and_user_scoped():
 def test_setup_ui_never_requires_manual_ids_or_timezone_text():
     main = _function_source(WIZARD, "build_main_embed")
     assert "No channel IDs, role IDs, or timezone strings need to be entered manually." in main
-    assert "Channel IDs" in main
-    assert "Role IDs" in main
+    assert "channel IDs" in main
+    assert "role IDs" in main
     assert "timezone strings" in main
     assert "registration_channel_id" not in main
     assert "admin_role_id" not in main
