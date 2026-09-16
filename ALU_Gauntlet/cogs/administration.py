@@ -9,6 +9,25 @@ command_architecture_version = COMMAND_ARCHITECTURE_VERSION
 class AdministrationCog(commands.Cog):
     admin_group = app_commands.Group(name="admin", description="[Staff Only] Driver-level admin overrides.")
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Remove stale guild-local /setup overrides so the canonical global wizard is used."""
+        if getattr(bot, "_setup_override_cleanup_done", False):
+            return
+        cleaned = 0
+        for guild in list(getattr(bot, "guilds", [])):
+            try:
+                guild_commands = await bot.tree.fetch_commands(guild=guild)
+                if any(command.name == "setup" for command in guild_commands):
+                    bot.tree.remove_command("setup", guild=guild)
+                    await bot.tree.sync(guild=guild)
+                    cleaned += 1
+            except Exception:
+                logging.exception("Failed to remove stale guild-local /setup command for guild %s", guild.id)
+        bot._setup_override_cleanup_done = True
+        if cleaned:
+            logging.info("Removed stale guild-local /setup overrides from %d guild(s)", cleaned)
+
     @app_commands.command(name='setimage', description='[Admin Only] Update a custom bot image (banner or thumbnail).')
     @app_commands.describe(image_type='Which image to replace', image='Upload the new image file')
     @app_commands.choices(image_type=[app_commands.Choice(name='Help Banner', value='banner_help'), app_commands.Choice(name='Match Banner', value='banner_match'), app_commands.Choice(name='Leaderboard Banner', value='banner_leaderboard'), app_commands.Choice(name='Profile Thumbnail', value='thumb_profile'), app_commands.Choice(name='Diagnostics Thumbnail', value='thumb_diagnostics')])
