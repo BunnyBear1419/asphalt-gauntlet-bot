@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
+from ..core.setup_wizard import launch_setup_wizard
 
 COMMAND_ARCHITECTURE_VERSION = 11
 command_architecture_version = COMMAND_ARCHITECTURE_VERSION
@@ -41,22 +42,9 @@ class AdministrationCog(commands.Cog):
         await dispatch_audit_log(guild_id, '🖼️ Custom Image Updated', f'Admin {interaction.user.mention} updated the **{image_type.name}** image.', color=3066993)
         await audit_admin_action(interaction, 'Set Image', f'Updated `{image_type.value}`.')
 
-    @app_commands.command(name='setup', description='[Admin Only] Configures all league core channels and permission roles.')
-    @app_commands.describe(main_channel='Public room for commands', staff_channel='Private room for staff reviews', log_channel='Private room for logs', announcement_channel='Public awards room', match_results_channel='Public room for match results', admin_role='Staff/admin role (selected by the administrator)', player_role='Player role (selected by the administrator)', timezone_name='Server timezone used for season scheduling')
-    @app_commands.choices(timezone_name=[app_commands.Choice(name=label, value=value) for label, value in TIMEZONE_CHOICES])
-    async def setup_cmd(self, interaction: discord.Interaction, main_channel: discord.TextChannel, staff_channel: discord.TextChannel, log_channel: discord.TextChannel, announcement_channel: discord.TextChannel, match_results_channel: discord.TextChannel, admin_role: discord.Role, player_role: discord.Role, timezone_name: app_commands.Choice[str]=None):
-        if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
-            await interaction.response.send_message('❌ Access Denied: Admin role overrides missing.', ephemeral=True)
-            return
-        await interaction.response.defer(ephemeral=True)
-        await bot.db.settings.update_one({'_id': str(interaction.guild_id)}, {'$set': {'registration_channel_id': str(main_channel.id), 'review_channel_id': str(staff_channel.id), 'log_channel_id': str(log_channel.id), 'announcement_channel_id': str(announcement_channel.id), 'match_results_channel_id': str(match_results_channel.id), 'admin_role_id': str(admin_role.id), 'player_role_id': str(player_role.id), 'timezone': timezone_name.value if timezone_name else 'UTC'}, '$setOnInsert': {"automatic_season_end": False}}, upsert=True)
-        guild_state = await bot.db.season_state.find_one({'_id': f'guild_{interaction.guild_id}'})
-        if not guild_state:
-            legacy_state = await bot.db.season_state.find_one({'_id': 'current_season'})
-            await bot.db.season_state.update_one({'_id': f'guild_{interaction.guild_id}'}, {'$setOnInsert': {'guild_id': str(interaction.guild_id), 'season_number': int(legacy_state.get('season_number', 1)) if legacy_state else 1, 'ends_at': float(legacy_state.get('ends_at', time.time() + 14 * 24 * 60 * 60)) if legacy_state else time.time() + 14 * 24 * 60 * 60}}, upsert=True)
-        await interaction.followup.send(embed=discord.Embed(title='⚙️ Master League Matrix Configuration Restored', description='All channel streams and dynamic role mapping rules saved successfully. Match results will be posted to the designated channel.', color=ASPHALT_THEME_COLOR))
-        await dispatch_audit_log(interaction.guild_id, '⚙️ Master Setup Initialized', f'The bot was initialized perfectly by authority {interaction.user.mention}.', color=ASPHALT_THEME_COLOR)
-        await audit_admin_action(interaction, 'Setup', 'Updated the league channel and role configuration.')
+    @app_commands.command(name='setup', description='[Admin Only] Opens the guided server setup selector.')
+    async def setup_cmd(self, interaction: discord.Interaction):
+        await launch_setup_wizard(interaction)
 
     @app_commands.command(name='timezone', description="[Admin Only] Set this Discord server's timezone for season scheduling.")
     @app_commands.describe(timezone_name='Timezone used when admins enter season start/end times')
