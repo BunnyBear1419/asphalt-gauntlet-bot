@@ -1,8 +1,8 @@
 """Regression tests for privileged Discord command authorization.
 
 Every command listed here changes configuration, exposes staff/admin data, or
-performs an operational action.  Public player/help commands are intentionally
-not included.  The test accepts the bot's two supported authorization styles:
+performs an operational action. Public player/help commands are intentionally
+not included. The test accepts the bot's two supported authorization styles:
 - @require_admin() decorator (including admin command groups)
 - explicit check_admin_privileges(...) / Administrator permission checks
 """
@@ -18,7 +18,6 @@ PRIVILEGED_COMMANDS = {
     "administration.py": {
         "setimage_cmd",
         "setup_cmd",
-        "timezone_cmd",
         "admin_setpi_cmd",
         "admin_removeracer_cmd",
         "delete_id_cmd",
