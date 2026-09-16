@@ -53,6 +53,11 @@ class FakeBot:
         self.db = db
 
 
+class FakeUser:
+    def __init__(self, user_id=12345):
+        self.id = user_id
+
+
 class FakeResponse:
     def __init__(self):
         self.deferred = False
@@ -77,8 +82,9 @@ class FakeFollowup:
 
 
 class FakeInteraction:
-    def __init__(self, guild_id="guild-a"):
+    def __init__(self, guild_id="guild-a", user_id=12345):
         self.guild_id = guild_id
+        self.user = FakeUser(user_id)
         self.response = FakeResponse()
         self.followup = FakeFollowup()
 
