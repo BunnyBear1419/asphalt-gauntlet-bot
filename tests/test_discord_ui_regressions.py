@@ -1,7 +1,6 @@
 from pathlib import Path
 import ast
 
-
 ROOT = Path(__file__).resolve().parents[1]
 FIXES = ROOT / "ALU_Gauntlet" / "core" / "ui_fixes.py"
 MAIN = ROOT / "ALU_Gauntlet" / "main.py"
@@ -56,3 +55,16 @@ def test_leaderboard_bridge_uses_the_select_component_values():
     assert 'getattr(item, "custom_id", None) != "top_leaderboard_select"' in source
     assert 'getattr(_item, "values", [])' in source
     assert "self.values = list" in source
+
+
+def test_cancel_buttons_are_forced_red_and_default_buttons_are_randomized():
+    source = _function_source("_styled_view_add_item")
+    assert '"cancel" in label' in source
+    assert "discord.ButtonStyle.danger" in source
+    assert "item.style == discord.ButtonStyle.secondary" in source
+    assert "random.choice(_RANDOM_BUTTON_STYLES)" in source
+
+
+def test_button_color_policy_is_installed_once():
+    source = _function_source("install_ui_fixes")
+    assert "discord.ui.View.add_item = _styled_view_add_item" in source
