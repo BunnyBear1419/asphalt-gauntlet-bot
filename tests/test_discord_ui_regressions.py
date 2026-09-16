@@ -39,9 +39,16 @@ def test_defense_modal_submission_never_opens_a_second_modal_directly():
     assert "DefenseCarsLauncherView" in source
 
 
-def test_defense_car_modal_is_opened_from_a_button_interaction():
-    source = _function_source("continue_to_cars")
-    assert "interaction.response.send_modal(DefenseCarsModal(self.state))" in source
+def test_car_modal_submission_never_opens_rank_modal_directly():
+    source = _function_source("_defense_cars_submit")
+    assert "interaction.response.send_message" in source
+    assert "interaction.response.send_modal" not in source
+    assert "DefenseRanksLauncherView" in source
+
+
+def test_rank_modal_is_opened_from_a_button_interaction():
+    source = _function_source("continue_to_ranks")
+    assert "interaction.response.send_modal(DefenseRanksModal(self.state))" in source
 
 
 def test_leaderboard_bridge_uses_the_select_component_values():
