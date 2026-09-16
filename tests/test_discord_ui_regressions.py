@@ -12,10 +12,11 @@ def _source():
 
 
 def _function_source(name):
-    tree = ast.parse(_source())
-    for node in tree.body:
+    source = _source()
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
         if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)) and node.name == name:
-            return ast.get_source_segment(_source(), node)
+            return ast.get_source_segment(source, node)
     raise AssertionError(f"missing function: {name}")
 
 
@@ -45,6 +46,6 @@ def test_defense_car_modal_is_opened_from_a_button_interaction():
 
 def test_leaderboard_bridge_uses_the_select_component_values():
     source = _function_source("_patched_top_view_init")
-    assert 'custom_id\", None) != "top_leaderboard_select"' in source
+    assert 'getattr(item, "custom_id", None) != "top_leaderboard_select"' in source
     assert 'getattr(_item, "values", [])' in source
     assert "self.values = list" in source
