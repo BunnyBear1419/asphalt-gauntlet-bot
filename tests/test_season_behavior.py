@@ -84,6 +84,7 @@ class FakeFollowup:
 class FakeInteraction:
     def __init__(self, guild_id="guild-a", user_id=12345):
         self.guild_id = guild_id
+        self.channel_id = 98765
         self.user = FakeUser(user_id)
         self.response = FakeResponse()
         self.followup = FakeFollowup()
