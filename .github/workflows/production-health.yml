@@ -163,7 +163,7 @@ jobs:
           print(json.dumps({
               "content": "🚨 **Production Health Check FAILED**\n"
                          f"Repository: `{os.environ['GITHUB_REPOSITORY']}`\n"
-                         f"Workflow run: {os.environ['RUN_URL']}`"
+                         f"Workflow run: {os.environ['RUN_URL']}"
           }))
           PY
           )
