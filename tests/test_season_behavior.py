@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 from ALU_Gauntlet.cogs import season
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -56,6 +55,7 @@ class FakeBot:
 class FakeUser:
     def __init__(self, user_id=12345):
         self.id = user_id
+        self.mention = f"<@{user_id}>"
 
 
 class FakeResponse:
