@@ -23,8 +23,7 @@ from .core import (
 
 _RANDOM_BUTTON_STYLES = (
     discord.ButtonStyle.primary,
-    discord.ButtonStyle.success,
-    discord.ButtonStyle.danger,
+    discord.ButtonStyle.secondary,
 )
 _ORIGINAL_VIEW_ADD_ITEM = discord.ui.View.add_item
 
@@ -88,17 +87,20 @@ async def _defense_cars_submit(self: DefenseCarsModal, interaction: discord.Inte
 
 
 def _styled_view_add_item(self: discord.ui.View, item: discord.ui.Item):
-    """Apply consistent button colors without overriding intentional styles.
+    """Apply consistent button colors while reserving red/green for actions.
 
-    Discord buttons only expose preset styles rather than arbitrary RGB colors.
-    Buttons explicitly styled by the code are preserved. Buttons left at the
-    default secondary style get a random non-secondary color, while any button
-    whose label contains ``Cancel`` is always red/danger.
+    Discord buttons use preset styles rather than arbitrary RGB colors.
+    Cancel buttons are always red/danger, approve buttons are always green/
+    success, and buttons left at the default secondary style are randomized
+    between blue/primary and gray/secondary. Explicitly styled buttons remain
+    unchanged unless their label is an action we reserve a color for.
     """
     if isinstance(item, discord.ui.Button):
         label = (item.label or "").strip().casefold()
         if "cancel" in label:
             item.style = discord.ButtonStyle.danger
+        elif "approve" in label:
+            item.style = discord.ButtonStyle.success
         elif item.style == discord.ButtonStyle.secondary:
             item.style = random.choice(_RANDOM_BUTTON_STYLES)
     return _ORIGINAL_VIEW_ADD_ITEM(self, item)
