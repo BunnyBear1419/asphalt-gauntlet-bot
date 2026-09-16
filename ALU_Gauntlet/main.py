@@ -1,6 +1,9 @@
 import os
 import asyncio
 from .core.core import bot
+from .core.ui_fixes import install_ui_fixes
+
+install_ui_fixes()
 
 EXTENSIONS = [
     "ALU_Gauntlet.cogs.player", "ALU_Gauntlet.cogs.defense", "ALU_Gauntlet.cogs.challenges",
