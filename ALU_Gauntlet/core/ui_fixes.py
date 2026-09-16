@@ -7,6 +7,8 @@ button interaction between each modal step.
 
 from __future__ import annotations
 
+import random
+
 import discord
 
 from .core import (
@@ -17,6 +19,14 @@ from .core import (
     TopLeaderboardView,
     invoke_hidden_command,
 )
+
+
+_RANDOM_BUTTON_STYLES = (
+    discord.ButtonStyle.primary,
+    discord.ButtonStyle.success,
+    discord.ButtonStyle.danger,
+)
+_ORIGINAL_VIEW_ADD_ITEM = discord.ui.View.add_item
 
 
 class DefenseCarsLauncherView(discord.ui.View):
@@ -77,6 +87,23 @@ async def _defense_cars_submit(self: DefenseCarsModal, interaction: discord.Inte
     )
 
 
+def _styled_view_add_item(self: discord.ui.View, item: discord.ui.Item):
+    """Apply consistent button colors without overriding intentional styles.
+
+    Discord buttons only expose preset styles rather than arbitrary RGB colors.
+    Buttons explicitly styled by the code are preserved. Buttons left at the
+    default secondary style get a random non-secondary color, while any button
+    whose label contains ``Cancel`` is always red/danger.
+    """
+    if isinstance(item, discord.ui.Button):
+        label = (item.label or "").strip().casefold()
+        if "cancel" in label:
+            item.style = discord.ButtonStyle.danger
+        elif item.style == discord.ButtonStyle.secondary:
+            item.style = random.choice(_RANDOM_BUTTON_STYLES)
+    return _ORIGINAL_VIEW_ADD_ITEM(self, item)
+
+
 _ORIGINAL_DASHBOARD_RUN_ACTION = DashboardView.run_action
 _ORIGINAL_TOP_VIEW_INIT = TopLeaderboardView.__init__
 
@@ -118,4 +145,5 @@ def install_ui_fixes() -> None:
     DefenseCarsModal.on_submit = _defense_cars_submit
     DashboardView.run_action = _dashboard_run_action
     TopLeaderboardView.__init__ = _patched_top_view_init
+    discord.ui.View.add_item = _styled_view_add_item
     _INSTALLED = True
