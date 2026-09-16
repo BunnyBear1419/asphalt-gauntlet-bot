@@ -83,9 +83,8 @@ def test_setup_is_guild_and_user_scoped():
 
 
 def test_setup_ui_never_requires_manual_ids_or_timezone_text():
-    source = _source(WIZARD)
     main = _function_source(WIZARD, "build_main_embed")
-    assert "no IDs to enter" in main
+    assert "No channel IDs, role IDs, or timezone strings need to be entered manually." in main
     assert "Channel IDs" in main
     assert "Role IDs" in main
     assert "timezone strings" in main
@@ -95,10 +94,10 @@ def test_setup_ui_never_requires_manual_ids_or_timezone_text():
 
 def test_setup_review_uses_discord_mentions_instead_of_raw_ids():
     source = _function_source(WIZARD, "build_review_embed")
-    assert "<#" in source
-    assert "<@&" in source
+    assert ".mention" in source
     assert "registration_channel_id" in source
     assert "admin_role_id" in source
+    assert "no raw Discord IDs are exposed" in source
     assert "timezone" in source
 
 
@@ -136,8 +135,8 @@ def test_setup_cancel_does_not_write_configuration():
 def test_setup_loads_existing_configuration_without_requiring_manual_reentry():
     source = _function_source(WIZARD, "launch_setup_wizard")
     assert "bot.db.settings.find_one" in source
-    assert "wizard.values" in source
-    assert "setup_config" in source
+    assert "SETUP_FIELDS" in source
+    assert "wizard.values[key] = existing[key]" in source
 
 
 def test_setup_save_initializes_guild_scoped_season_state():
@@ -152,19 +151,9 @@ def test_setup_has_staff_authorization_on_every_interactive_path():
     source = _source(WIZARD)
     assert "require_staff_interaction" in source
     for name in (
-        "channels",
-        "roles",
-        "timezone",
-        "review",
-        "cancel",
-        "_target_changed",
-        "_channel_changed",
-        "_back",
-        "_role_changed",
-        "_select",
-        "_previous",
-        "_next",
-        "save",
+        "channels", "roles", "timezone", "review", "cancel",
+        "_target_changed", "_channel_changed", "_back", "_role_changed",
+        "_select", "_previous", "_next", "save",
     ):
         function = _function_source(WIZARD, name)
         assert "_authorized" in function, f"missing authorization guard in {name}"
@@ -175,7 +164,7 @@ def test_setup_command_is_the_single_configuration_entry_point():
     tree = _tree(ADMIN)
     setup_commands = [
         node for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name == "setup_cmd"
+        if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)) and node.name == "setup_cmd"
     ]
     assert len(setup_commands) == 1
     setup = _function_source(ADMIN, "setup_cmd")
