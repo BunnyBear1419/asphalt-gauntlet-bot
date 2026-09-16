@@ -15,6 +15,9 @@ concurrency:
   group: discloud-production-deploy
   cancel-in-progress: false
 
+env:
+  DISCCLOUD_DEPLOY_ACTION: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
+
 jobs:
   test:
     name: test
@@ -49,15 +52,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
 
-      # The Discloud action itself can surface a transient 429 when an older
-      # application process is still finishing. Keep the action unchanged and
-      # retry the deployment rather than failing immediately.
+      - name: Determine rollback revision
+        id: revision
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          previous="$EVENT_BEFORE"
+          if [ -z "$previous" ] || [ "$previous" = "0000000000000000000000000000000000000000" ]; then
+            previous="$(git rev-parse HEAD^)"
+          fi
+          git cat-file -e "$previous^{commit}"
+          echo "previous_sha=$previous" >> "$GITHUB_OUTPUT"
+          echo "Rollback revision: $previous"
+
+      - name: Record deployment start time
+        id: deployment
+        run: echo "started_at=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      # Discloud can briefly reject overlapping requests with HTTP 429.
+      # Retry transient deployment failures before treating the deployment as
+      # unsuccessful.
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
         continue-on-error: true
-        uses: discloud/deploy-action@v1
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
@@ -71,7 +94,7 @@ jobs:
         id: deploy2
         if: steps.deploy1.outcome == 'failure'
         continue-on-error: true
-        uses: discloud/deploy-action@v1
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
@@ -85,7 +108,7 @@ jobs:
         id: deploy3
         if: steps.deploy2.outcome == 'failure'
         continue-on-error: true
-        uses: discloud/deploy-action@v1
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
@@ -95,4 +118,192 @@ jobs:
         if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure' && steps.deploy3.outcome == 'failure'
         run: |
           echo "All Discloud deployment attempts failed."
+          exit 1
+
+      - name: Post-deployment smoke test
+        id: smoke
+        continue-on-error: true
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          DEPLOY_STARTED_AT: ${{ steps.deployment.outputs.started_at }}
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pymongo
+
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+          from pymongo import MongoClient
+
+          discloud_token = os.environ["DISCLOUD_TOKEN"]
+          app_id = os.environ["DISCLOUD_APP_ID"]
+          discord_token = os.environ["DISCORD_BOT_TOKEN"]
+          mongo_uri = os.environ["MONGO_URI"]
+          started_at = float(os.environ["DEPLOY_STARTED_AT"])
+
+          if not all((discloud_token, app_id, discord_token, mongo_uri)):
+              raise SystemExit("Required deployment smoke-test secret is missing.")
+
+          def get_json(url, headers):
+              request = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  return response.status, json.load(response)
+
+          healthy_states = {"running", "online", "active", "ready"}
+          last_error = "unknown"
+
+          for attempt in range(1, 11):
+              try:
+                  status_code, discloud = get_json(
+                      f"https://api.discloud.app/v2/app/{app_id}/status",
+                      {"api-token": discloud_token, "Accept": "application/json"},
+                  )
+                  values = []
+
+                  def collect(value):
+                      if isinstance(value, dict):
+                          for item in value.values():
+                              collect(item)
+                      elif isinstance(value, list):
+                          for item in value:
+                              collect(item)
+                      elif isinstance(value, str):
+                          values.append(value.strip().lower())
+
+                  collect(discloud)
+                  if status_code != 200 or not healthy_states.intersection(values):
+                      raise RuntimeError(f"Discloud unhealthy: HTTP {status_code}, values={values}")
+
+                  discord_code, discord_user = get_json(
+                      "https://discord.com/api/v10/users/@me",
+                      {"Authorization": f"Bot {discord_token}", "Accept": "application/json"},
+                  )
+                  if discord_code != 200 or not discord_user.get("id"):
+                      raise RuntimeError(f"Discord API unhealthy: HTTP {discord_code}")
+
+                  client = MongoClient(mongo_uri, serverSelectionTimeoutMS=10000)
+                  client.admin.command("ping")
+                  heartbeat = client["asphalt_gauntlet"].system_events.find_one({"_id": "production_heartbeat"})
+                  client.close()
+                  if not heartbeat:
+                      raise RuntimeError("No production heartbeat found")
+
+                  timestamp = float(heartbeat.get("timestamp", 0))
+                  if timestamp < started_at:
+                      raise RuntimeError("Production heartbeat has not advanced since deployment started")
+                  if not heartbeat.get("ready") or not heartbeat.get("db_ok"):
+                      raise RuntimeError("Production heartbeat reports bot/database unhealthy")
+
+                  print(f"Smoke test passed on attempt {attempt}: bot={discord_user.get('username')} heartbeat={timestamp}")
+                  break
+              except Exception as exc:
+                  last_error = str(exc)
+                  print(f"Smoke attempt {attempt}/10 failed: {last_error}")
+                  if attempt == 10:
+                      raise SystemExit(f"Post-deployment smoke test failed: {last_error}")
+                  time.sleep(15)
+          PY
+
+      - name: Roll back to previous known-good revision
+        id: rollback
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.revision.outputs.previous_sha }}
+          fetch-depth: 0
+
+      - name: Deploy rollback to Discloud
+        id: rollback_deploy
+        if: steps.smoke.outcome == 'failure'
+        continue-on-error: true
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          glob: '**'
+          team: false
+
+      - name: Retry rollback deployment
+        if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
+        run: sleep 45
+
+      - name: Deploy rollback retry
+        id: rollback_retry
+        if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
+        continue-on-error: true
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          glob: '**'
+          team: false
+
+      - name: Verify rollback health
+        if: steps.smoke.outcome == 'failure'
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pymongo
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+          from pymongo import MongoClient
+
+          def get_json(url, headers):
+              request = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  return response.status, json.load(response)
+
+          code, status = get_json(
+              f"https://api.discloud.app/v2/app/{os.environ['DISCLOUD_APP_ID']}/status",
+              {"api-token": os.environ['DISCLOUD_TOKEN'], "Accept": "application/json"},
+          )
+          values = []
+
+          def collect(value):
+              if isinstance(value, dict):
+                  for item in value.values():
+                      collect(item)
+              elif isinstance(value, list):
+                  for item in value:
+                      collect(item)
+              elif isinstance(value, str):
+                  values.append(value.strip().lower())
+
+          collect(status)
+          if code != 200 or not {"running", "online", "active", "ready"}.intersection(values):
+              raise SystemExit(f"Rollback Discloud health check failed: HTTP {code}, values={values}")
+
+          discord_code, _ = get_json(
+              "https://discord.com/api/v10/users/@me",
+              {"Authorization": f"Bot {os.environ['DISCORD_BOT_TOKEN']}", "Accept": "application/json"},
+          )
+          if discord_code != 200:
+              raise SystemExit(f"Rollback Discord health check failed: HTTP {discord_code}")
+
+          client = MongoClient(os.environ['MONGO_URI'], serverSelectionTimeoutMS=10000)
+          client.admin.command("ping")
+          hb = client["asphalt_gauntlet"].system_events.find_one({"_id": "production_heartbeat"})
+          client.close()
+          if not hb or not hb.get("ready") or not hb.get("db_ok"):
+              raise SystemExit("Rollback heartbeat verification failed")
+          if time.time() - float(hb.get("timestamp", 0)) > 1200:
+              raise SystemExit("Rollback heartbeat is stale")
+
+          print("Rollback health verification passed.")
+          PY
+
+      - name: Mark deployment failed after successful recovery
+        if: steps.smoke.outcome == 'failure'
+        run: |
+          echo "Deployment smoke test failed. The previous known-good revision was restored and verified."
           exit 1
