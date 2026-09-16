@@ -3,7 +3,7 @@ from discord import app_commands
 from ..core.core import *
 from ..core.setup_wizard import launch_setup_wizard
 
-COMMAND_ARCHITECTURE_VERSION = 11
+COMMAND_ARCHITECTURE_VERSION = 12
 command_architecture_version = COMMAND_ARCHITECTURE_VERSION
 
 class AdministrationCog(commands.Cog):
@@ -61,26 +61,15 @@ class AdministrationCog(commands.Cog):
         await dispatch_audit_log(guild_id, '🖼️ Custom Image Updated', f'Admin {interaction.user.mention} updated the **{image_type.name}** image.', color=3066993)
         await audit_admin_action(interaction, 'Set Image', f'Updated `{image_type.value}`.')
 
-    @app_commands.command(name='setup', description='[Admin Only] Opens the guided server setup selector.')
+    @app_commands.command(name='setup', description='[Admin Only] Configure the server with Discord pickers — no IDs to enter.')
     async def setup_cmd(self, interaction: discord.Interaction):
-        # Keep the authorization guard on the command itself as well as inside
-        # the wizard, so privileged-command audits can verify the entry point.
+        # /setup is intentionally the single server-configuration entry point.
+        # Channels, roles, and timezone are selected entirely through native
+        # Discord controls inside the ephemeral wizard.
         if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
             await interaction.response.send_message('❌ Access Denied: Requires administrator or configured admin role.', ephemeral=True)
             return
         await launch_setup_wizard(interaction)
-
-    @app_commands.command(name='timezone', description="[Admin Only] Set this Discord server's timezone for season scheduling.")
-    @app_commands.describe(timezone_name='Timezone used when admins enter season start/end times')
-    @app_commands.choices(timezone_name=[app_commands.Choice(name=label, value=value) for label, value in TIMEZONE_CHOICES])
-    async def timezone_cmd(self, interaction: discord.Interaction, timezone_name: app_commands.Choice[str]):
-        if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
-            await interaction.response.send_message('❌ Access Denied: Requires admin access clearance level.', ephemeral=True)
-            return
-        await interaction.response.defer(ephemeral=True)
-        await bot.db.settings.update_one({'_id': str(interaction.guild_id)}, {'$set': {'timezone': timezone_name.value}}, upsert=True)
-        await interaction.followup.send(f'🌎 **Server timezone updated:** `{timezone_name.name}` (`{timezone_name.value}`)\n\n`/staff` → **Season → Season Schedule** will now interpret entered times using this timezone.', ephemeral=True)
-        await audit_admin_action(interaction, 'Timezone', f'Set server timezone to `{timezone_name.value}`.')
 
     @admin_group.command(name='setpi', description="Overrides a driver's PI value.")
     @require_admin()
@@ -218,7 +207,6 @@ async def handle_pending_staff_image_message(message):
     if not message.attachments:
         return False
     image = next((a for a in message.attachments if (a.content_type or "").startswith("image/")), None)
-    if image is None:
+    if not image:
         return False
-    session["attachment_url"] = image.url
     return True
