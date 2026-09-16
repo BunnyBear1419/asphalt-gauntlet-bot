@@ -98,3 +98,5 @@ For production monitoring, configure `HEALTH_WEBHOOK_URL`, `DISCORD_ALERT_WEBHOO
 - Custom images can be uploaded by authorized staff by posting one image directly in the configured Staff Review Channel. The bot validates the image and stores a canonical Discord CDN copy in the configured log channel; URL/DM upload is no longer required for custom images.
 - Season Automation **Disable** is a red danger button.
 - Health & Diagnostics is a single canonical staff diagnostic center; duplicate health/diagnostics entry points should not be added.
+
+<!-- Discloud GitHub integration smoke-test marker; no runtime behavior change. -->
