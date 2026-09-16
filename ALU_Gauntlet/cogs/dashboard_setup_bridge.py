@@ -1,45 +1,39 @@
-"""Bridge the staff dashboard's Server Setup action to the canonical picker wizard.
-
-This keeps the dashboard UI in core.py intact while replacing the legacy setup
-modal path at runtime. The old top-level /setup command is also removed from
-the application command tree before the first sync.
-"""
+"""Compatibility bridge for the staff dashboard's canonical Server Setup wizard."""
 from __future__ import annotations
 
 import logging
 
 from discord.ext import commands
 
-from ..core.core import StaffActionSelect, bot
+from ..core.core import StaffDashboardView, bot
 from ..core.setup_wizard import launch_setup_wizard
 
 
 class DashboardSetupBridgeCog(commands.Cog):
-    """Route Staff → Server Setup to the picker-only setup wizard."""
+    """Route Staff → Server Setup directly to the picker-only setup wizard."""
 
     async def cog_load(self) -> None:
-        original_callback = StaffActionSelect.callback
+        original_run_action = StaffDashboardView.run_action
 
-        async def bridged_callback(select, interaction):
-            values = getattr(select, "values", None) or []
-            if values and values[0] == "setup_direct":
+        async def bridged_run_action(view, interaction, action):
+            if action == "setup_direct":
                 await launch_setup_wizard(interaction)
                 return
-            await original_callback(select, interaction)
+            await original_run_action(view, interaction, action)
 
-        StaffActionSelect.callback = bridged_callback
-        self._original_callback = original_callback
+        StaffDashboardView.run_action = bridged_run_action
+        self._original_run_action = original_run_action
 
         # /setup is a legacy top-level alias. Remove it from the local tree so
-        # the normal application-command sync removes it from Discord too.
+        # normal application-command sync removes it from Discord.
         removed = bot.tree.remove_command("setup")
         if removed:
             logging.info("Removed legacy /setup application command; use Staff → Server Setup.")
 
     async def cog_unload(self) -> None:
-        original = getattr(self, "_original_callback", None)
+        original = getattr(self, "_original_run_action", None)
         if original is not None:
-            StaffActionSelect.callback = original
+            StaffDashboardView.run_action = original
 
 
 async def setup(bot_instance):
