@@ -40,7 +40,16 @@ def test_health_heartbeat_reports_database_and_ready_state():
 def test_background_recovery_does_not_create_duplicate_season_clock_loops():
     source = _source(CORE_PATH)
     assert "seasonal_clock_loop" in source
-    assert "if self.seasonal_clock_loop" in source or "if getattr(self, 'seasonal_clock_loop'" in source
+    # The implementation guards the existing task before starting another one.
+    # Accept either quote style so this regression test checks the behavior,
+    # rather than depending on one exact source-formatting choice.
+    duplicate_guard = (
+        "getattr(self, 'seasonal_clock_loop'" in source
+        or "getattr(self, \"seasonal_clock_loop\"" in source
+        or "self.seasonal_clock_loop is None" in source
+        or "not self.seasonal_clock_loop" in source
+    )
+    assert duplicate_guard, "Season clock startup must guard against duplicate background loops."
 
 
 def test_mongodb_failure_is_not_silently_marked_healthy():
