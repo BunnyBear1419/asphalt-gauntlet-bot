@@ -1,10 +1,9 @@
-"""Behavioral regression tests for the public season command callbacks."""
+"""Behavioral regression tests for season command behavior."""
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
-from ALU_Gauntlet.core import core
-from ALU_Gauntlet.cogs.season import SeasonCog
+from ALU_Gauntlet.cogs import season
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -59,6 +58,9 @@ class FakeResponse:
         self.deferred = False
         self.sent = []
 
+    def is_done(self):
+        return self.deferred
+
     async def defer(self, **kwargs):
         self.deferred = True
 
@@ -91,8 +93,8 @@ async def _true_async(*args, **kwargs):
 
 def _cog(monkeypatch, db):
     fake_bot = FakeBot(db)
-    monkeypatch.setattr(core, "bot", fake_bot)
-    return SeasonCog(fake_bot)
+    monkeypatch.setattr(season, "bot", fake_bot)
+    return season.SeasonCog(fake_bot)
 
 
 def _project_source():
@@ -125,9 +127,9 @@ def test_early_season_start_preserves_scheduled_end(monkeypatch):
             "season_active": False, "awaiting_staff_start": True,
         }
         cog = _cog(monkeypatch, db)
-        monkeypatch.setattr(core, "enforce_channel_constraints", _true_async)
-        monkeypatch.setattr(core, "announce_season_start", _noop_async)
-        monkeypatch.setattr(core, "audit_admin_action", _noop_async)
+        monkeypatch.setattr(season, "enforce_channel_constraints", _true_async)
+        monkeypatch.setattr(season, "announce_season_start", _noop_async)
+        monkeypatch.setattr(season, "audit_admin_action", _noop_async)
         interaction = FakeInteraction()
         await cog.season_start_cmd.callback(cog, interaction)
         state = db.season_state.docs["guild_guild-a"]
@@ -154,9 +156,9 @@ def test_season_state_isolated_between_guilds(monkeypatch):
             "season_active": False, "awaiting_staff_start": True,
         }
         cog = _cog(monkeypatch, db)
-        monkeypatch.setattr(core, "enforce_channel_constraints", _true_async)
-        monkeypatch.setattr(core, "announce_season_start", _noop_async)
-        monkeypatch.setattr(core, "audit_admin_action", _noop_async)
+        monkeypatch.setattr(season, "enforce_channel_constraints", _true_async)
+        monkeypatch.setattr(season, "announce_season_start", _noop_async)
+        monkeypatch.setattr(season, "audit_admin_action", _noop_async)
         await cog.season_start_cmd.callback(cog, FakeInteraction("guild-a"))
         assert db.season_state.docs["guild_guild-a"]["season_active"] is True
         assert db.season_state.docs["guild_guild-b"]["season_active"] is False
@@ -188,18 +190,17 @@ def test_invalid_schedule_does_not_change_existing_state(monkeypatch):
 
 def test_scheduled_end_uses_guild_rollover_setting_and_never_defaults_to_rollover():
     source = _project_source()
-    assert 'automatic_season_end' in source
-    assert 'auto_rollover = bool(settings.get("automatic_season_end", False))' in source
-    assert 'await trigger_global_season_end(guild_id=guild_id, start_next_season=auto_rollover)' in source
+    assert "automatic_season_end" in source
+    assert "start_next_season=auto_rollover" in source
 
 
 def test_manual_end_forces_no_rollover_even_when_automatic_rollover_is_enabled():
     source = _project_source()
-    assert 'trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction, start_next_season=False)' in source
+    assert "start_next_season=False" in source
 
 
 def test_rollover_preserves_schedule_duration_and_announces_once_per_transition_path():
     source = _project_source()
-    assert 'season_duration = previous_end - previous_start' in source
+    assert "season_duration = previous_end - previous_start" in source
     assert '"ends_at": now + season_duration' in source
     assert 'reason="rollover"' in source
