@@ -37,6 +37,7 @@ def test_all_cogs_exist():
         "help.py",
         "system.py",
         "operations.py",
+        "dashboard_setup_bridge.py",
     }
     actual = {p.name for p in (PACKAGE / "cogs").glob("*.py") if p.name != "__init__.py"}
     assert actual == expected
