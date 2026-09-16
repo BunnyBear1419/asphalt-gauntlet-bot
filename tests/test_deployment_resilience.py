@@ -34,6 +34,15 @@ def test_deployment_has_post_deploy_smoke_test():
     assert "Discloud" in source
 
 
+def test_discloud_smoke_test_matches_working_production_monitor():
+    source = _source()
+    assert 'curl -sS -o discloud-status.json -w "%{http_code}"' in source
+    assert '"api-token: $DISCLOUD_TOKEN"' in source
+    assert 'https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status' in source
+    assert "urllib.request" not in source
+    assert "The prior" in source
+
+
 def test_failed_smoke_test_rolls_back_previous_revision():
     source = _source()
     assert "Determine rollback revision" in source
