@@ -58,3 +58,5 @@ def test_deployment_is_serialized_to_avoid_discloud_overlap():
     source = _source()
     assert "group: discloud-production-deploy" in source
     assert "cancel-in-progress: false" in source
+
+# CI trigger: run the full GitHub Actions test suite against current main.
