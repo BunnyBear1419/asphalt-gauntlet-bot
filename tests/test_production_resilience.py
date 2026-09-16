@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CORE_PATH = ROOT / "ALU_Gauntlet" / "core" / "core.py"
 MAIN_PATH = ROOT / "ALU_Gauntlet" / "main.py"
 SEASON_PATH = ROOT / "ALU_Gauntlet" / "cogs" / "season.py"
+OPERATIONS_PATH = ROOT / "ALU_Gauntlet" / "cogs" / "operations.py"
 
 
 def _source(path):
@@ -37,26 +38,24 @@ def test_health_heartbeat_reports_database_and_ready_state():
     assert "production_heartbeat" in source
 
 
-def test_background_recovery_does_not_create_duplicate_season_clock_loops():
-    source = _source(CORE_PATH)
-    assert "seasonal_clock_loop" in source
+def test_season_cog_setup_does_not_start_a_second_background_clock():
+    source = _source(SEASON_PATH)
+    assert "season_group" in source
+    setup_start = source.index("async def setup(bot):")
+    setup_block = source[setup_start:]
 
-    # The implementation may keep the task on the bot instance or on the
-    # recovery owner. Accept the supported guard forms without requiring one
-    # particular quote style or source formatting.
-    guard_patterns = (
-        "getattr(self, 'seasonal_clock_loop'",
-        'getattr(self, "seasonal_clock_loop"',
-        "getattr(bot, 'seasonal_clock_loop'",
-        'getattr(bot, "seasonal_clock_loop"',
-        "self.seasonal_clock_loop is None",
-        "bot.seasonal_clock_loop is None",
-        "not self.seasonal_clock_loop",
-        "not bot.seasonal_clock_loop",
-    )
-    assert any(pattern in source for pattern in guard_patterns), (
-        "Season clock startup must guard against duplicate background loops."
-    )
+    # The season cog registers commands only. Background scheduling is owned by
+    # the bot/core lifecycle, so loading or reloading this cog must not create a
+    # second scheduler task by calling create_task() or .start() here.
+    assert "create_task(" not in setup_block
+    assert ".start(" not in setup_block
+
+
+def test_background_task_status_is_exposed_for_operations_monitoring():
+    source = _source(OPERATIONS_PATH)
+    assert "seasonal_clock_loop" in source
+    assert "production_heartbeat_loop" in source
+    assert "Background Tasks" in source
 
 
 def test_mongodb_failure_is_not_silently_marked_healthy():
