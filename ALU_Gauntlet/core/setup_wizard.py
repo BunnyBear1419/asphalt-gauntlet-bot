@@ -31,7 +31,8 @@ ROLE_FIELDS = (("admin_role_id", "Staff / admin role"), ("player_role_id", "Play
 
 
 class SetupWizard:
-    """Guild-scoped state for the interactive server setup wizard."""
+    """Guild-scoped state for the interactive, picker-only server setup wizard."""
+
     def __init__(self, interaction: discord.Interaction):
         self.guild_id = str(interaction.guild_id)
         self.owner_id = interaction.user.id
@@ -56,6 +57,15 @@ class SetupWizard:
         guild = self.guild()
         return guild.get_role(int(value)) if guild and value else None
 
+    def channel_count(self) -> int:
+        return sum(1 for key, _ in CHANNEL_FIELDS if self.channel(key))
+
+    def role_count(self) -> int:
+        return sum(1 for key, _ in ROLE_FIELDS if self.role(key))
+
+    def complete_count(self) -> int:
+        return self.channel_count() + self.role_count() + int(bool(self.values.get("timezone")))
+
 
 async def _authorized(interaction: discord.Interaction, wizard: SetupWizard) -> bool:
     if not wizard.owns(interaction):
@@ -68,6 +78,9 @@ class SetupWizardView(discord.ui.View):
     def __init__(self, wizard: SetupWizard):
         super().__init__(timeout=900)
         self.wizard = wizard
+        self.channels.label = f"Channels ({wizard.channel_count()}/{len(CHANNEL_FIELDS)})"
+        self.roles.label = f"Roles ({wizard.role_count()}/{len(ROLE_FIELDS)})"
+        self.timezone.label = "Timezone ✓" if wizard.values.get("timezone") else "Timezone"
 
     @discord.ui.button(label="Channels", style=discord.ButtonStyle.primary, row=0)
     async def channels(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -90,7 +103,7 @@ class SetupWizardView(discord.ui.View):
             return
         missing = missing_setup_fields(self.wizard)
         if missing:
-            await interaction.response.send_message("❌ Please complete: " + ", ".join(missing) + ".", ephemeral=True)
+            await interaction.response.send_message("❌ Still needed: " + ", ".join(missing) + ".", ephemeral=True)
             return
         await interaction.response.edit_message(embed=build_review_embed(self.wizard), view=SetupReviewView(self.wizard))
 
@@ -101,20 +114,32 @@ class SetupWizardView(discord.ui.View):
 
 
 class SetupChannelsView(discord.ui.View):
-    """Select a channel setting, then choose any text channel in this guild."""
+    """Choose a channel setting, then select the actual Discord channel with a native picker."""
+
     def __init__(self, wizard: SetupWizard):
         super().__init__(timeout=900)
         self.wizard = wizard
         self.target_select = discord.ui.Select(
-            placeholder="Choose which channel setting to configure",
-            options=[discord.SelectOption(label=label, value=key, default=key == wizard.channel_target) for key, label in CHANNEL_FIELDS],
+            placeholder="1. Choose what this channel is for",
+            options=[
+                discord.SelectOption(
+                    label=label,
+                    value=key,
+                    description="Configured" if wizard.channel(key) else "Not configured yet",
+                    default=key == wizard.channel_target,
+                )
+                for key, label in CHANNEL_FIELDS
+            ],
             row=0,
         )
         self.target_select.callback = self._target_changed
         self.add_item(self.target_select)
         self.channel_select = discord.ui.ChannelSelect(
-            placeholder="Select a text channel from this server",
-            channel_types=[discord.ChannelType.text], min_values=1, max_values=1, row=1,
+            placeholder="2. Select a text channel",
+            channel_types=[discord.ChannelType.text],
+            min_values=1,
+            max_values=1,
+            row=1,
         )
         self.channel_select.callback = self._channel_changed
         self.add_item(self.channel_select)
@@ -135,6 +160,16 @@ class SetupChannelsView(discord.ui.View):
         if not isinstance(channel, discord.TextChannel):
             await interaction.response.send_message("❌ Please select a text channel.", ephemeral=True)
             return
+        guild = self.wizard.guild()
+        me = guild.me if guild else None
+        if me:
+            permissions = channel.permissions_for(me)
+            if not permissions.view_channel or not permissions.send_messages:
+                await interaction.response.send_message(
+                    "❌ I can't use that channel. Please choose a channel where the bot can **View Channel** and **Send Messages**.",
+                    ephemeral=True,
+                )
+                return
         self.wizard.values[self.wizard.channel_target] = str(channel.id)
         await interaction.response.edit_message(embed=build_channels_embed(self.wizard), view=SetupChannelsView(self.wizard))
 
@@ -144,18 +179,32 @@ class SetupChannelsView(discord.ui.View):
 
 
 class SetupRolesView(discord.ui.View):
-    """Select a role setting, then choose any normal role in this guild."""
+    """Choose a role setting, then select the actual server role with a native picker."""
+
     def __init__(self, wizard: SetupWizard):
         super().__init__(timeout=900)
         self.wizard = wizard
         self.target_select = discord.ui.Select(
-            placeholder="Choose which role setting to configure",
-            options=[discord.SelectOption(label=label, value=key, default=key == wizard.role_target) for key, label in ROLE_FIELDS],
+            placeholder="1. Choose what this role is for",
+            options=[
+                discord.SelectOption(
+                    label=label,
+                    value=key,
+                    description="Configured" if wizard.role(key) else "Not configured yet",
+                    default=key == wizard.role_target,
+                )
+                for key, label in ROLE_FIELDS
+            ],
             row=0,
         )
         self.target_select.callback = self._target_changed
         self.add_item(self.target_select)
-        self.role_select = discord.ui.RoleSelect(placeholder="Select a role from this server", min_values=1, max_values=1, row=1)
+        self.role_select = discord.ui.RoleSelect(
+            placeholder="2. Select a server role",
+            min_values=1,
+            max_values=1,
+            row=1,
+        )
         self.role_select.callback = self._role_changed
         self.add_item(self.role_select)
         back = discord.ui.Button(label="Back", style=discord.ButtonStyle.secondary, row=2)
@@ -173,7 +222,10 @@ class SetupRolesView(discord.ui.View):
             return
         role = self.role_select.values[0] if self.role_select.values else None
         if role is None or role.is_default() or role.managed:
-            await interaction.response.send_message("❌ Please select a normal server role, not @everyone or a managed role.", ephemeral=True)
+            await interaction.response.send_message(
+                "❌ Please select a normal server role, not @everyone or a managed role.",
+                ephemeral=True,
+            )
             return
         self.wizard.values[self.wizard.role_target] = str(role.id)
         await interaction.response.edit_message(embed=build_roles_embed(self.wizard), view=SetupRolesView(self.wizard))
@@ -184,27 +236,38 @@ class SetupRolesView(discord.ui.View):
 
 
 class TimezoneWizardView(discord.ui.View):
-    """Paged timezone selector because Discord select menus allow at most 25 options."""
+    """Paged native dropdown because Discord select menus allow at most 25 options."""
+
     def __init__(self, wizard: SetupWizard, page: int):
         super().__init__(timeout=900)
         self.wizard = wizard
-        self.page = page
-        chunk = TIMEZONE_CHOICES[page * 25:(page + 1) * 25]
+        self.page = max(0, min(page, max(0, (len(TIMEZONE_CHOICES) - 1) // 25)))
+        chunk = TIMEZONE_CHOICES[self.page * 25:(self.page + 1) * 25]
         self.timezone_select = discord.ui.Select(
             placeholder="Select the server timezone",
-            options=[discord.SelectOption(label=label[:100], value=value, default=value == wizard.values.get("timezone")) for label, value in chunk],
-            min_values=1, max_values=1, row=0,
+            options=[
+                discord.SelectOption(
+                    label=label[:100],
+                    value=value,
+                    description="Current server timezone" if value == wizard.values.get("timezone") else None,
+                    default=value == wizard.values.get("timezone"),
+                )
+                for label, value in chunk
+            ],
+            min_values=1,
+            max_values=1,
+            row=0,
         )
         self.timezone_select.callback = self._select
         self.add_item(self.timezone_select)
         back = discord.ui.Button(label="Back", style=discord.ButtonStyle.secondary, row=1)
         back.callback = self._back
         self.add_item(back)
-        if page > 0:
+        if self.page > 0:
             previous = discord.ui.Button(label="Previous", style=discord.ButtonStyle.secondary, row=1)
             previous.callback = self._previous
             self.add_item(previous)
-        if (page + 1) * 25 < len(TIMEZONE_CHOICES):
+        if (self.page + 1) * 25 < len(TIMEZONE_CHOICES):
             next_button = discord.ui.Button(label="Next", style=discord.ButtonStyle.secondary, row=1)
             next_button.callback = self._next
             self.add_item(next_button)
@@ -241,7 +304,7 @@ class SetupReviewView(discord.ui.View):
             return
         missing = missing_setup_fields(self.wizard)
         if missing:
-            await interaction.response.send_message("❌ Setup is incomplete: " + ", ".join(missing), ephemeral=True)
+            await interaction.response.send_message("❌ Setup is incomplete: " + ", ".join(missing) + ".", ephemeral=True)
             return
         await interaction.response.defer()
         guild_id = self.wizard.guild_id
@@ -263,10 +326,14 @@ class SetupReviewView(discord.ui.View):
                 upsert=True,
             )
         await dispatch_audit_log(guild_id, "⚙️ Master Setup Initialized", f"Interactive server setup completed by authority {interaction.user.mention}.", color=ASPHALT_THEME_COLOR)
-        await audit_admin_action(interaction, "Setup", "Updated the league channel, role, and timezone configuration using the setup wizard.")
+        await audit_admin_action(interaction, "Setup", "Updated the league channel, role, and timezone configuration using the picker-based setup wizard.")
         await interaction.edit_original_response(
             content="",
-            embed=discord.Embed(title="✅ Server Setup Saved", description="All selected channels, roles, and timezone settings were saved for this Discord server.", color=ASPHALT_THEME_COLOR),
+            embed=discord.Embed(
+                title="✅ Server Setup Saved",
+                description="All selected channels, roles, and timezone settings were saved for this Discord server.",
+                color=ASPHALT_THEME_COLOR,
+            ),
             view=None,
         )
 
@@ -283,20 +350,35 @@ class SetupReviewView(discord.ui.View):
 
 def missing_setup_fields(wizard: SetupWizard) -> list[str]:
     labels = {
-        "registration_channel_id": "main channel", "review_channel_id": "staff review channel",
-        "log_channel_id": "log channel", "announcement_channel_id": "announcement channel",
-        "match_results_channel_id": "match-results channel", "admin_role_id": "admin role",
-        "player_role_id": "player role", "timezone": "timezone",
+        "registration_channel_id": "main channel",
+        "review_channel_id": "staff review channel",
+        "log_channel_id": "log channel",
+        "announcement_channel_id": "announcement channel",
+        "match_results_channel_id": "match-results channel",
+        "admin_role_id": "admin role",
+        "player_role_id": "player role",
+        "timezone": "timezone",
     }
     return [label for key, label in labels.items() if not wizard.values.get(key)]
 
 
+def _status(value: Any) -> str:
+    return "✅ Configured" if value else "⬜ Not configured"
+
+
 def build_main_embed(wizard: SetupWizard) -> discord.Embed:
-    return discord.Embed(
-        title="⚙️ Server Setup",
-        description="Choose a section below. **Channels** and **Roles** expose native Discord pickers, while **Timezone** uses a paged selector. Nothing is saved until **Review & Save**.",
-        color=ASPHALT_THEME_COLOR,
+    complete = wizard.complete_count()
+    total = len(SETUP_FIELDS)
+    description = (
+        "Set up the Gauntlet using **Discord's native pickers**.\n"
+        "No channel IDs, role IDs, or timezone strings need to be entered manually.\n\n"
+        f"**Progress:** {complete}/{total} configured\n\n"
+        f"📺 **Channels:** {wizard.channel_count()}/{len(CHANNEL_FIELDS)}\n"
+        f"🎭 **Roles:** {wizard.role_count()}/{len(ROLE_FIELDS)}\n"
+        f"🌎 **Timezone:** {_status(wizard.values.get('timezone'))}\n\n"
+        "Nothing is saved until you choose **Review & Save**."
     )
+    return discord.Embed(title="⚙️ Server Setup", description=description, color=ASPHALT_THEME_COLOR)
 
 
 def build_channels_embed(wizard: SetupWizard) -> discord.Embed:
@@ -305,7 +387,14 @@ def build_channels_embed(wizard: SetupWizard) -> discord.Embed:
         channel = wizard.channel(key)
         marker = " ← editing" if key == wizard.channel_target else ""
         lines.append(f"**{label}:** {channel.mention if channel else 'Not selected'}{marker}")
-    return discord.Embed(title="📺 Setup · Channels", description="Choose a setting, then select its channel.\n\n" + "\n".join(lines), color=ASPHALT_THEME_COLOR)
+    return discord.Embed(
+        title="📺 Setup · Channels",
+        description=(
+            "Use the first dropdown to choose the channel's purpose, then use Discord's native channel picker.\n\n"
+            + "\n".join(lines)
+        ),
+        color=ASPHALT_THEME_COLOR,
+    )
 
 
 def build_roles_embed(wizard: SetupWizard) -> discord.Embed:
@@ -314,45 +403,82 @@ def build_roles_embed(wizard: SetupWizard) -> discord.Embed:
         role = wizard.role(key)
         marker = " ← editing" if key == wizard.role_target else ""
         lines.append(f"**{label}:** {role.mention if role else 'Not selected'}{marker}")
-    return discord.Embed(title="🎭 Setup · Roles", description="Choose a setting, then select its role.\n\n" + "\n".join(lines), color=ASPHALT_THEME_COLOR)
+    return discord.Embed(
+        title="🎭 Setup · Roles",
+        description=(
+            "Use the first dropdown to choose the role's purpose, then use Discord's native role picker.\n\n"
+            + "\n".join(lines)
+        ),
+        color=ASPHALT_THEME_COLOR,
+    )
 
 
 def build_timezone_embed(wizard: SetupWizard, page: int) -> discord.Embed:
     total_pages = max(1, (len(TIMEZONE_CHOICES) + 24) // 25)
-    current = wizard.values.get("timezone", "UTC")
-    label = next((name for name, value in TIMEZONE_CHOICES if value == current), current)
-    return discord.Embed(title="🌎 Setup · Timezone", description=f"**Current:** `{label}` (`{current}`)\n\nSelect a timezone below. Page **{page + 1}/{total_pages}**.", color=ASPHALT_THEME_COLOR)
+    current = wizard.values.get("timezone")
+    label = next((name for name, value in TIMEZONE_CHOICES if value == current), None)
+    current_text = label if label else "Not selected"
+    return discord.Embed(
+        title="🌎 Setup · Timezone",
+        description=(
+            f"**Current:** {current_text}\n\n"
+            f"Select the server timezone from the native dropdown below. Page **{page + 1}/{total_pages}**."
+        ),
+        color=ASPHALT_THEME_COLOR,
+    )
 
 
 def build_review_embed(wizard: SetupWizard) -> discord.Embed:
     def channel(key: str) -> str:
         value = wizard.channel(key)
         return value.mention if value else "Not selected"
+
     def role(key: str) -> str:
         value = wizard.role(key)
         return value.mention if value else "Not selected"
-    timezone = wizard.values.get("timezone", "UTC")
-    timezone_label = next((name for name, value in TIMEZONE_CHOICES if value == timezone), timezone)
+
+    timezone = wizard.values.get("timezone")
+    timezone_label = next((name for name, value in TIMEZONE_CHOICES if value == timezone), "Not selected")
     return discord.Embed(
         title="🔎 Review Server Setup",
-        description=f"**Channels**\n• Main: {channel('registration_channel_id')}\n• Staff: {channel('review_channel_id')}\n• Logs: {channel('log_channel_id')}\n• Announcements: {channel('announcement_channel_id')}\n• Match results: {channel('match_results_channel_id')}\n\n**Roles**\n• Admin/staff: {role('admin_role_id')}\n• Player: {role('player_role_id')}\n\n**Timezone**\n• {timezone_label} (`{timezone}`)",
+        description=(
+            "Everything below is shown by name/mention; no raw Discord IDs are exposed.\n\n"
+            f"**Channels**\n"
+            f"• Main: {channel('registration_channel_id')}\n"
+            f"• Staff: {channel('review_channel_id')}\n"
+            f"• Logs: {channel('log_channel_id')}\n"
+            f"• Announcements: {channel('announcement_channel_id')}\n"
+            f"• Match results: {channel('match_results_channel_id')}\n\n"
+            f"**Roles**\n"
+            f"• Admin/staff: {role('admin_role_id')}\n"
+            f"• Player: {role('player_role_id')}\n\n"
+            f"**Timezone**\n"
+            f"• {timezone_label}\n\n"
+            "Select **Save Setup** to apply these settings."
+        ),
         color=ASPHALT_THEME_COLOR,
     )
 
 
 async def launch_setup_wizard(interaction: discord.Interaction) -> bool:
-    """Authorize and launch the guild-isolated setup selector panel."""
+    """Authorize and launch the guild-isolated picker-based setup panel."""
     if not interaction.guild:
         await interaction.response.send_message("❌ Server setup can only be used inside a Discord server.", ephemeral=True)
         return False
     if not interaction.user.guild_permissions.administrator and not await check_admin_privileges(interaction):
         await interaction.response.send_message("❌ Access Denied: Administrator or configured admin role required.", ephemeral=True)
         return False
+
     wizard = SetupWizard(interaction)
     existing = await bot.db.settings.find_one({"_id": wizard.guild_id})
     if existing:
         for key in SETUP_FIELDS:
             if existing.get(key) is not None:
                 wizard.values[key] = existing[key]
-    await interaction.response.send_message(embed=build_main_embed(wizard), view=SetupWizardView(wizard), ephemeral=True)
+
+    await interaction.response.send_message(
+        embed=build_main_embed(wizard),
+        view=SetupWizardView(wizard),
+        ephemeral=True,
+    )
     return True
