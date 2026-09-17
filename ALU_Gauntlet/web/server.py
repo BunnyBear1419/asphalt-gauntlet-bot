@@ -10,6 +10,7 @@ from aiohttp import web
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
 from .defenses import DefenseService
+from .matches import MatchService
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -25,6 +26,7 @@ class WebControlCenter:
         self.auth = DiscordOAuth(bot)
         self.players = PlayerService(bot)
         self.defenses = DefenseService(bot)
+        self.matches = MatchService(bot)
         self.app = web.Application()
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
@@ -34,6 +36,7 @@ class WebControlCenter:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/defenses", self.defenses_page)
+        self.app.router.add_get("/matches", self.matches_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
@@ -44,6 +47,8 @@ class WebControlCenter:
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
         self.app.router.add_get("/api/defenses", self.defense_list)
         self.app.router.add_get("/api/defenses/{user_id}", self.defense_detail)
+        self.app.router.add_get("/api/matches", self.match_list)
+        self.app.router.add_get("/api/matches/{match_id}", self.match_detail)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
     async def require_staff(self, request: web.Request) -> Any:
@@ -79,6 +84,10 @@ class WebControlCenter:
     async def defenses_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_staff(request)
         return web.FileResponse(WEB_DIR / "defenses.html")
+
+    async def matches_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_staff(request)
+        return web.FileResponse(WEB_DIR / "matches.html")
 
     async def login(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
@@ -170,6 +179,22 @@ class WebControlCenter:
         if defense is None:
             raise web.HTTPNotFound(text="Defense record not found.")
         return web.json_response({"defense": defense})
+
+    async def match_list(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_access(request)
+        try:
+            limit = int(request.query.get("limit", "100"))
+        except ValueError:
+            raise web.HTTPBadRequest(text="limit must be an integer.")
+        matches = await self.matches.list_matches(guild_id, limit=limit)
+        return web.json_response({"matches": matches})
+
+    async def match_detail(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_access(request)
+        match = await self.matches.get_match(guild_id, request.match_info["match_id"])
+        if match is None:
+            raise web.HTTPNotFound(text="Match not found.")
+        return web.json_response({"match": match})
 
     async def start(self) -> None:
         if self.runner is not None:
