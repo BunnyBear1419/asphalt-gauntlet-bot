@@ -27,9 +27,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Capture previous revision
-        id: revision
+      - name: Capture deployment timestamp and previous revision
+        id: deployment
         run: |
+          echo "started_at=$(date +%s)" >> "$GITHUB_OUTPUT"
           echo "previous_sha=$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to Discloud (attempt 1)
@@ -175,7 +176,6 @@ jobs:
               ok=false
             fi
 
-            # Validate the actual public website, not just the Discloud process.
             website_http=$(curl -sS -L -o website-health.json -w "%{http_code}" \
               --connect-timeout 10 --max-time 20 \
               -H "Accept: application/json" \
@@ -215,7 +215,7 @@ jobs:
         if: steps.smoke.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ steps.revision.outputs.previous_sha }}
+          ref: ${{ steps.deployment.outputs.previous_sha }}
           fetch-depth: 0
 
       - name: Deploy rollback to Discloud
