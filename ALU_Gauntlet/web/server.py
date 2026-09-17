@@ -212,7 +212,7 @@ class WebControlCenter:
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         allowed = {key for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone"}
-        clean = {key: str(payload[key]) for key in allowed if payload.get(key)}
+        clean = {key: str(payload[key]).strip() for key in allowed if payload.get(key)}
         if clean.get("timezone") not in {None, *(value for _, value in TIMEZONE_LABELS)}:
             raise web.HTTPBadRequest(text="Invalid timezone.")
         if not clean:
@@ -220,12 +220,22 @@ class WebControlCenter:
         guild = next(g for g in self.bot.guilds if str(g.id) == guild_id)
         for key in SETUP_CHANNELS:
             value = clean.get(key[0])
-            if value and guild.get_channel(int(value)) is None:
-                raise web.HTTPBadRequest(text=f"Invalid channel for {key[1]}.")
+            if value:
+                try:
+                    valid = guild.get_channel(int(value))
+                except (TypeError, ValueError):
+                    valid = None
+                if valid is None:
+                    raise web.HTTPBadRequest(text=f"Invalid channel for {key[1]}.")
         for key in SETUP_ROLES:
             value = clean.get(key[0])
-            if value and guild.get_role(int(value)) is None:
-                raise web.HTTPBadRequest(text=f"Invalid role for {key[1]}.")
+            if value:
+                try:
+                    valid = guild.get_role(int(value))
+                except (TypeError, ValueError):
+                    valid = None
+                if valid is None:
+                    raise web.HTTPBadRequest(text=f"Invalid role for {key[1]}.")
         await self.bot.db.settings.update_one({"_id": guild_id}, {"$set": clean}, upsert=True)
         await self._audit(guild_id, user.user_id, "Web setup updated")
         return web.json_response({"ok": True, "settings": clean})
