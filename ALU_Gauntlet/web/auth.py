@@ -33,16 +33,9 @@ class DiscordOAuth:
 
     def __init__(self, bot: Any) -> None:
         self.bot = bot
-        # Keep the secret from configuration, but derive the OAuth application
-        # ID from the authenticated bot when available. A Discord bot user's ID
-        # is the application ID, so this prevents a stale/mismatched client-ID
-        # secret from producing an invalid OAuth2 redirect request.
         self.configured_client_id = os.getenv("DISCORD_CLIENT_ID", "").strip()
         self.client_secret = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
         configured_public_url = os.getenv("WEB_PUBLIC_URL", "").strip().rstrip("/")
-        # Discloud's production site must never fall back to localhost. Keep an
-        # explicitly configured URL for local/dev deployments, but use the
-        # known production URL when the runtime environment omitted the setting.
         self.public_url = configured_public_url or PRODUCTION_PUBLIC_URL
         self.allowed_staff_ids = {
             value.strip()
@@ -71,16 +64,13 @@ class DiscordOAuth:
 
     def login_url(self, state: str) -> str:
         from urllib.parse import urlencode
-
-        params = urlencode(
-            {
-                "client_id": self.client_id,
-                "redirect_uri": self.redirect_uri,
-                "response_type": "code",
-                "scope": "identify guilds",
-                "state": state,
-            }
-        )
+        params = urlencode({
+            "client_id": self.client_id,
+            "redirect_uri": self.redirect_uri,
+            "response_type": "code",
+            "scope": "identify guilds",
+            "state": state,
+        })
         return f"https://discord.com/oauth2/authorize?{params}"
 
     async def create_state(self) -> str:
@@ -105,11 +95,7 @@ class DiscordOAuth:
             "redirect_uri": self.redirect_uri,
         }
         async with ClientSession() as session:
-            async with session.post(
-                f"{DISCORD_API}/oauth2/token",
-                data=payload,
-                timeout=15,
-            ) as response:
+            async with session.post(f"{DISCORD_API}/oauth2/token", data=payload, timeout=15) as response:
                 if response.status != 200:
                     raise web.HTTPBadGateway(text="Discord OAuth token exchange failed.")
                 return await response.json()
@@ -124,9 +110,12 @@ class DiscordOAuth:
 
     async def _configured_staff_role_ids(self, guild_ids: set[str]) -> dict[str, str]:
         """Return guild -> configured Staff/admin role ID from persisted setup."""
-        if not guild_ids or not getattr(self.bot, "db", None):
+        db = getattr(self.bot, "db", None)
+        # PyMongo AsyncDatabase deliberately does not support truth-value testing.
+        # Compare it to None explicitly instead of evaluating it with `not`/bool().
+        if not guild_ids or db is None:
             return {}
-        rows = await self.bot.db.settings.find({"_id": {"$in": list(guild_ids)}}).to_list(length=len(guild_ids))
+        rows = await db.settings.find({"_id": {"$in": list(guild_ids)}}).to_list(length=len(guild_ids))
         result: dict[str, str] = {}
         for row in rows:
             guild_id = str(row.get("_id", ""))
