@@ -7,21 +7,20 @@ from typing import Any
 
 from aiohttp import web
 
+from .auth import DiscordOAuth, SESSION_COOKIE
+
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
 
 
 class WebControlCenter:
-    """Read-only Phase 1 web control center.
-
-    Mutating controls are intentionally added only after authentication and
-    permission checks are wired to the existing Gauntlet service layer.
-    """
+    """Staff-only web control center with Discord OAuth2 authentication."""
 
     def __init__(self, bot: Any, host: str = "127.0.0.1", port: int = 8080) -> None:
         self.bot = bot
         self.host = host
         self.port = port
+        self.auth = DiscordOAuth(bot)
         self.app = web.Application()
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
@@ -29,13 +28,86 @@ class WebControlCenter:
 
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
+        self.app.router.add_get("/login", self.login)
+        self.app.router.add_get("/auth/callback", self.callback)
+        self.app.router.add_get("/logout", self.logout)
+        self.app.router.add_get("/api/me", self.me)
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
+    async def require_staff(self, request: web.Request) -> Any:
+        if not self.auth.configured:
+            raise web.HTTPServiceUnavailable(
+                text="Web authentication is not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET."
+            )
+        user = await self.auth.get_session(request)
+        if user is None:
+            raise web.HTTPFound("/login")
+        if not user.staff:
+            raise web.HTTPForbidden(text="Staff access is required.")
+        return user
+
     async def index(self, request: web.Request) -> web.StreamResponse:
+        await self.require_staff(request)
         return web.FileResponse(WEB_DIR / "index.html")
 
+    async def login(self, request: web.Request) -> web.StreamResponse:
+        if not self.auth.configured:
+            return web.Response(
+                status=503,
+                text="Web authentication is not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET.",
+                content_type="text/plain",
+            )
+        user = await self.auth.get_session(request)
+        if user and user.staff:
+            raise web.HTTPFound("/")
+        state = await self.auth.create_state()
+        raise web.HTTPFound(self.auth.login_url(state))
+
+    async def callback(self, request: web.Request) -> web.StreamResponse:
+        if not self.auth.configured:
+            raise web.HTTPServiceUnavailable(text="Web authentication is not configured.")
+        state = request.query.get("state", "")
+        code = request.query.get("code", "")
+        if not state or not await self.auth.consume_state(state):
+            raise web.HTTPBadRequest(text="Invalid or expired OAuth state.")
+        if not code:
+            error = request.query.get("error", "Authorization was cancelled.")
+            raise web.HTTPUnauthorized(text=error)
+
+        tokens = await self.auth.exchange_code(code)
+        access_token = tokens.get("access_token")
+        if not access_token:
+            raise web.HTTPBadGateway(text="Discord did not return an access token.")
+        user = await self.auth.build_user(access_token)
+        if not user.staff:
+            log.warning("Rejected non-staff web login for Discord user %s", user.user_id)
+            raise web.HTTPForbidden(text="Your Discord account does not have staff access.")
+
+        session = await self.auth.create_session(user)
+        response = web.HTTPFound("/")
+        self.auth.set_session_cookie(response, session)
+        return response
+
+    async def logout(self, request: web.Request) -> web.StreamResponse:
+        await self.auth.destroy_session(request)
+        response = web.HTTPFound("/login")
+        response.del_cookie(SESSION_COOKIE, path="/")
+        return response
+
+    async def me(self, request: web.Request) -> web.Response:
+        user = await self.require_staff(request)
+        return web.json_response(
+            {
+                "id": user.user_id,
+                "username": user.username,
+                "global_name": user.global_name,
+                "staff": user.staff,
+            }
+        )
+
     async def status(self, request: web.Request) -> web.Response:
+        await self.require_staff(request)
         ready = bool(getattr(self.bot, "is_ready", lambda: False)())
         guilds = list(getattr(self.bot, "guilds", []) or [])
         latency = getattr(self.bot, "latency", None)
@@ -49,6 +121,7 @@ class WebControlCenter:
                 "control_center": {
                     "phase": 1,
                     "mutations_enabled": False,
+                    "simulator_enabled": False,
                 },
             }
         )
