@@ -18,18 +18,20 @@ async def load_cogs():
         await bot.load_extension(extension)
 
 async def runner():
-    await load_cogs()
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:
         raise RuntimeError("DISCORD_BOT_TOKEN is required in production")
 
-    host = os.getenv("WEB_HOST", "0.0.0.0")
+    host = "0.0.0.0"
     # Discloud TYPE=site routes public traffic to port 8080.
-    # Keep the service pinned to 8080 so the public site proxy can reach it.
     port = 8080
     web_control_center = WebControlCenter(bot, host=host, port=port)
+
+    # Start HTTP first so Discloud can reach /health immediately while the
+    # Discord extensions and gateway are initializing.
     await web_control_center.start()
     try:
+        await load_cogs()
         await bot.start(token)
     finally:
         await web_control_center.stop()
