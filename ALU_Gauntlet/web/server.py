@@ -38,6 +38,7 @@ class WebControlCenter:
         self.app.router.add_get("/defenses", self.defenses_page)
         self.app.router.add_get("/matches", self.matches_page)
         self.app.router.add_get("/seasons", self.seasons_page)
+        self.app.router.add_get("/analytics", self.analytics_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
@@ -52,6 +53,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/matches/{match_id}", self.match_detail)
         self.app.router.add_get("/api/seasons", self.season_list)
         self.app.router.add_get("/api/seasons/{season_number}", self.season_detail)
+        self.app.router.add_get("/api/analytics", self.analytics)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
     async def require_staff(self, request: web.Request) -> Any:
@@ -95,6 +97,10 @@ class WebControlCenter:
     async def seasons_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_staff(request)
         return web.FileResponse(WEB_DIR / "seasons.html")
+
+    async def analytics_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_staff(request)
+        return web.FileResponse(WEB_DIR / "analytics.html")
 
     async def login(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
@@ -223,6 +229,22 @@ class WebControlCenter:
             raise web.HTTPNotFound(text="Season archive not found.")
         return web.json_response({"season": self._public_archive(archive, include_standings=True)})
 
+    async def analytics(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_access(request)
+        players = await self.bot.db.drivers.count_documents({"guild_id": guild_id})
+        registered = await self.bot.db.drivers.count_documents({"guild_id": guild_id, "season_registered": True})
+        locked = await self.bot.db.drivers.count_documents({"guild_id": guild_id, "defense": {"$exists": True}})
+        matches = await self.bot.db.matches.count_documents({"guild_id": guild_id})
+        completed = await self.bot.db.matches.count_documents({"guild_id": guild_id, "status": "completed"})
+        history_cursor = self.bot.db.season_history.find({"guild_id": guild_id}).sort("season_number", -1).limit(25)
+        history = await history_cursor.to_list(length=25)
+        season_stats = []
+        for row in history:
+            standings = row.get("standings", [])
+            elos = [int(item.get("elo", 1000) or 1000) for item in standings]
+            season_stats.append({"season_number": int(row.get("season_number", 0) or 0), "player_count": int(row.get("player_count", len(standings)) or 0), "average_elo": round(sum(elos) / len(elos), 1) if elos else None, "closed_at": row.get("closed_at")})
+        return web.json_response({"players": players, "registered": registered, "defenses": locked, "matches": matches, "completed_matches": completed, "seasons": season_stats})
+
     @staticmethod
     def _public_season_state(guild_id: str, state: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -245,12 +267,7 @@ class WebControlCenter:
         }
         if include_standings:
             result["standings"] = [
-                {
-                    "rank": item.get("rank"),
-                    "user_id": str(item.get("user_id", "")),
-                    "elo": int(item.get("elo", 1000) or 1000),
-                    "division": str(item.get("division", "Unranked")),
-                }
+                {"rank": item.get("rank"), "user_id": str(item.get("user_id", "")), "elo": int(item.get("elo", 1000) or 1000), "division": str(item.get("division", "Unranked"))}
                 for item in row.get("standings", [])[:100]
             ]
         return result
