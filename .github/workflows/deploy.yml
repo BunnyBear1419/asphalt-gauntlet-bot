@@ -108,35 +108,22 @@ jobs:
             exit 0
           fi
 
-          echo "No existing ALU-Gauntlet site application was found. Creating it for subdomain $subdomain."
-          create_http=$(curl -sS -o create-response.json -w "%{http_code}" \
-            -X POST \
-            -H "api-token: $DISCLOUD_TOKEN" \
-            -H "Accept: application/json" \
-            -F "idSub=$subdomain" \
-            -F "file=@discloud-deploy.zip;type=application/zip" \
-            "https://api.discloud.app/v2/upload" || true)
-          echo "Discloud create/upload HTTP status: $create_http"
-          cat create-response.json
-          if [ "$create_http" != "200" ]; then
-            echo "Discloud site creation failed."
-            exit 1
-          fi
-
-          python <<'PY'
-          import json, os
-          data=json.load(open('create-response.json', encoding='utf-8'))
-          if data.get('status') != 'ok':
-              raise SystemExit('Discloud create response returned an error')
-          app=data.get('app')
-          if not isinstance(app, dict) or not app.get('id'):
-              raise SystemExit('Discloud create response did not contain app.id')
-          app_id=str(app['id'])
-          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
-              out.write(f'app_id={app_id}\n')
-              out.write('created=true\n')
-          print(f'Created Discloud site application: {app_id}')
-          PY
+          echo "No existing ALU-Gauntlet site application was found. Creating it from discloud.config."
+          npm install --no-save discloud.app
+          DISCLOUD_TOKEN="$DISCLOUD_TOKEN" node --input-type=module <<'NODE'
+          import { discloud } from 'discloud.app';
+          import { appendFileSync } from 'node:fs';
+          await discloud.login(process.env.DISCLOUD_TOKEN);
+          const result = await discloud.apps.create({ file: 'discloud-deploy.zip' });
+          const app = result?.app ?? result?.data?.app ?? result?.data ?? result;
+          if (!app || !app.id) {
+            console.error('Discloud SDK create response did not contain an app ID.');
+            console.error(JSON.stringify(result));
+            process.exit(1);
+          }
+          appendFileSync(process.env.GITHUB_OUTPUT, `app_id=${app.id}\ncreated=true\n`);
+          console.log(`Created Discloud site application: ${app.id}`);
+          NODE
 
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
