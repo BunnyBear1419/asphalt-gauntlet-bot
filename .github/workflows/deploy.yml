@@ -20,20 +20,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest
+          pip install pytest pip-audit
           pip check
-          pip install pip-audit
           pip-audit -r requirements.txt
+
       - name: Compile
         run: python -m compileall -q .
+
       - name: Test
         run: pytest -q
 
@@ -46,6 +49,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
       - name: Determine rollback revision
         id: revision
         env:
@@ -53,12 +57,17 @@ jobs:
         run: |
           set -euo pipefail
           previous="$EVENT_BEFORE"
-          if [ -z "$previous" ] || [ "$previous" = "0000000000000000000000000000000000000000" ]; then previous="$(git rev-parse HEAD^)"; fi
+          if [ -z "$previous" ] || [ "$previous" = "0000000000000000000000000000000000000000" ]; then
+            previous="$(git rev-parse HEAD^)"
+          fi
           git cat-file -e "$previous^{commit}"
           echo "previous_sha=$previous" >> "$GITHUB_OUTPUT"
+          echo "Rollback revision: $previous"
+
       - name: Record deployment start time
         id: deployment
         run: echo "started_at=$(date +%s)" >> "$GITHUB_OUTPUT"
+
       - name: Validate deployment secrets are present
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
@@ -68,8 +77,13 @@ jobs:
         run: |
           set -euo pipefail
           for name in DISCLOUD_TOKEN DISCLOUD_APP_ID DISCORD_BOT_TOKEN MONGO_URI; do
-            if [ -z "${!name}" ]; then echo "ERROR: $name GitHub secret is missing from the deploy job."; exit 1; fi
+            if [ -z "${!name}" ]; then
+              echo "ERROR: $name GitHub secret is missing from the deploy job."
+              exit 1
+            fi
           done
+          echo "Deployment secrets are present."
+
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
         continue-on-error: true
@@ -78,9 +92,11 @@ jobs:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
           team: false
+
       - name: Wait before Discloud retry 2
         if: steps.deploy1.outcome == 'failure'
         run: sleep 45
+
       - name: Deploy to Discloud (attempt 2)
         id: deploy2
         if: steps.deploy1.outcome == 'failure'
@@ -90,9 +106,11 @@ jobs:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
           team: false
+
       - name: Wait before Discloud retry 3
         if: steps.deploy2.outcome == 'failure'
         run: sleep 60
+
       - name: Deploy to Discloud (attempt 3)
         id: deploy3
         if: steps.deploy2.outcome == 'failure'
@@ -102,9 +120,14 @@ jobs:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
           team: false
+
       - name: Fail if all Discloud deploy attempts failed
         if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure' && steps.deploy3.outcome == 'failure'
-        run: exit 1
+        run: |
+          echo "All Discloud deployment attempts failed."
+          exit 1
+
+      # The prior deployment implementation used Python urllib for Discloud and received HTTP 403.
       - name: Post-deployment smoke test
         id: smoke
         continue-on-error: true
@@ -117,51 +140,56 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --quiet pymongo
+
           for attempt in $(seq 1 10); do
+            echo "Smoke test attempt $attempt/10"
             ok=true
-            DISCLOUD_HTTP=$(curl -sS -o discloud-status.json -w "%{http_code}" -H "api-token: $DISCLOUD_TOKEN" -H "Accept: application/json" "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
-            if [ "$DISCLOUD_HTTP" != "200" ]; then ok=false; fi
-            if [ "$DISCLOUD_HTTP" = "200" ]; then python - <<'PY' || ok=false
-import json
-from pathlib import Path
-data=json.loads(Path("discloud-status.json").read_text())
-values=[]
-def collect(v):
-    if isinstance(v,dict):
-        for x in v.values(): collect(x)
-    elif isinstance(v,list):
-        for x in v: collect(x)
-    elif isinstance(v,str): values.append(v.strip().lower())
-collect(data)
-if not {"running","online","active","ready"}.intersection(values): raise SystemExit(f"Discloud reported no healthy state: {values}")
-PY
+
+            discloud_http=$(curl -sS -o discloud-status.json -w "%{http_code}" \
+              -H "api-token: $DISCLOUD_TOKEN" \
+              -H "Accept: application/json" \
+              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
+            echo "Discloud HTTP status: $discloud_http"
+            if [ "$discloud_http" != "200" ]; then
+              ok=false
+            else
+              python -c 'import json; d=json.load(open("discloud-status.json")); v=[]; c=lambda x: (v.extend([s.strip().lower() for s in x if isinstance(s,str)]) if isinstance(x,list) else [c(y) for y in x.values()] if isinstance(x,dict) else None); c(d); raise SystemExit("Discloud reported no healthy state") if not {"running","online","active","ready"}.intersection(v) else None'
+              if [ $? -ne 0 ]; then ok=false; fi
             fi
-            DISCORD_HTTP=$(curl -sS -o discord-user.json -w "%{http_code}" -H "Authorization: Bot $DISCORD_BOT_TOKEN" -H "Accept: application/json" "https://discord.com/api/v10/users/@me" || true)
-            if [ "$DISCORD_HTTP" != "200" ]; then ok=false; fi
-            if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python - <<'PY'
-import os
-from pymongo import MongoClient
-client=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000)
-client.admin.command("ping")
-hb=client["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"})
-client.close()
-if not hb: raise SystemExit("No production heartbeat found")
-if float(hb.get("timestamp",0)) < float(os.environ["DEPLOY_STARTED_AT"]): raise SystemExit("Production heartbeat has not advanced since deployment started")
-if not hb.get("ready") or not hb.get("db_ok"): raise SystemExit("Production heartbeat reports bot/database unhealthy")
-PY
-            then ok=false; fi
-            if [ "$ok" = true ]; then exit 0; fi
-            if [ "$attempt" -lt 10 ]; then sleep 15; fi
+
+            discord_http=$(curl -sS -o discord-user.json -w "%{http_code}" \
+              -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+              -H "Accept: application/json" \
+              "https://discord.com/api/v10/users/@me" || true)
+            echo "Discord API HTTP status: $discord_http"
+            if [ "$discord_http" != "200" ]; then
+              ok=false
+            fi
+
+            if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000); c.admin.command("ping"); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); raise SystemExit("No production heartbeat found") if not h else None; raise SystemExit("Production heartbeat has not advanced") if float(h.get("timestamp",0)) < float(os.environ["DEPLOY_STARTED_AT"]) else None; raise SystemExit("Production heartbeat reports bot/database unhealthy") if not h.get("ready") or not h.get("db_ok") else None'; then
+              ok=false
+            fi
+
+            if [ "$ok" = true ]; then
+              echo "Post-deployment smoke test passed."
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 10 ]; then
+              sleep 15
+            fi
           done
+
+          echo "Post-deployment smoke test failed after 10 attempts."
           exit 1
-      # The prior deployment implementation used Python urllib for Discloud and received HTTP 403.
+
       - name: Roll back to previous known-good revision
-        id: rollback
         if: steps.smoke.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.revision.outputs.previous_sha }}
           fetch-depth: 0
+
       - name: Deploy rollback to Discloud
         id: rollback_deploy
         if: steps.smoke.outcome == 'failure'
@@ -171,9 +199,11 @@ PY
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
           team: false
+
       - name: Retry rollback deployment
         if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
         run: sleep 45
+
       - name: Deploy rollback retry
         id: rollback_retry
         if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
@@ -183,6 +213,7 @@ PY
           token: ${{ secrets.DISCLOUD_TOKEN }}
           glob: '**'
           team: false
+
       - name: Verify rollback health
         if: steps.smoke.outcome == 'failure'
         env:
@@ -194,22 +225,26 @@ PY
           set -euo pipefail
           python -m pip install --quiet pymongo
           for attempt in $(seq 1 10); do
-            discloud_http=$(curl -sS -o discloud-rollback.json -w "%{http_code}" -H "api-token: $DISCLOUD_TOKEN" -H "Accept: application/json" "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
-            if [ "$discloud_http" = "200" ] && curl -sS -f -o discord-rollback.json -H "Authorization: Bot $DISCORD_BOT_TOKEN" -H "Accept: application/json" "https://discord.com/api/v10/users/@me"; then
-              if MONGO_URI="$MONGO_URI" python - <<'PY'
-import os,time
-from pymongo import MongoClient
-client=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000)
-client.admin.command("ping")
-hb=client["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"})
-client.close()
-if not hb or not hb.get("ready") or not hb.get("db_ok") or time.time()-float(hb.get("timestamp",0))>1200: raise SystemExit(1)
-PY
-              then exit 0; fi
+            discloud_http=$(curl -sS -o discloud-rollback.json -w "%{http_code}" \
+              -H "api-token: $DISCLOUD_TOKEN" \
+              -H "Accept: application/json" \
+              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
+            if [ "$discloud_http" = "200" ] && curl -sS -f -o discord-rollback.json \
+              -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+              -H "Accept: application/json" \
+              "https://discord.com/api/v10/users/@me"; then
+              if MONGO_URI="$MONGO_URI" python -c 'import os,time; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000); c.admin.command("ping"); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); raise SystemExit(1) if not h or not h.get("ready") or not h.get("db_ok") or time.time()-float(h.get("timestamp",0))>1200 else None'; then
+                echo "Rollback health verification passed."
+                exit 0
+              fi
             fi
-            if [ "$attempt" -lt 10 ]; then sleep 15; fi
+            if [ "$attempt" -lt 10 ]; then
+              sleep 15
+            fi
           done
+          echo "Rollback health verification failed."
           exit 1
+
       - name: Mark deployment failed after successful recovery
         if: steps.smoke.outcome == 'failure'
         run: |
