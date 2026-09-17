@@ -90,6 +90,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: ${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -104,6 +105,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: ${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -118,6 +120,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: ${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -197,6 +200,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: ${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -211,6 +215,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: ${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
