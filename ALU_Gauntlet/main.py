@@ -1,8 +1,15 @@
 import os
 import asyncio
+from dotenv import load_dotenv
 from .core.core import bot
 from .core.ui_fixes import install_ui_fixes
 from .web import WebControlCenter
+
+# Discloud deploys runtime secrets through .env. Load them explicitly so the
+# web OAuth settings are available even when the platform does not export the
+# env file into the process environment automatically. Existing environment
+# variables remain authoritative because load_dotenv() does not override them.
+load_dotenv()
 
 install_ui_fixes()
 
