@@ -91,8 +91,24 @@ class DiscordOAuth:
         guild_ids: set[str] = {str(guild.get("id")) for guild in guilds if guild.get("id")}
         for guild in guilds:
             try:
+                gid = str(guild["id"])
                 if int(guild.get("permissions", 0)) & ADMINISTRATOR:
-                    admin_guild_ids.add(str(guild["id"]))
+                    admin_guild_ids.add(gid)
+                    continue
+                # Match the Discord bot's configured staff role when the bot can
+                # resolve the member. This keeps web permissions aligned with Discord.
+                discord_guild = self.bot.get_guild(int(gid))
+                member = discord_guild.get_member(int(user_id)) if discord_guild else None
+                if member is None and discord_guild:
+                    try:
+                        member = await discord_guild.fetch_member(int(user_id))
+                    except Exception:
+                        member = None
+                if member is not None and getattr(self.bot, "db", None) is not None:
+                    settings = await self.bot.db.settings.find_one({"_id": gid}) or {}
+                    role_id = str(settings.get("admin_role_id", "")).strip()
+                    if role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])):
+                        admin_guild_ids.add(gid)
             except (TypeError, ValueError, KeyError):
                 continue
         staff = user_id in self.allowed_staff_ids or bool(admin_guild_ids)
