@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Analytics • ALU Gauntlet</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><main class="shell">
+<header class="hero"><div><p class="eyebrow">ASPHALT LEGENDS UNITE</p><h1>Analytics</h1><p class="muted">Read-only participation, match, defense, and season statistics.</p></div><div class="hero-actions"><a class="button-link" href="/">← Control Center</a></div></header>
+<section class="panel"><div class="toolbar"><label class="sr-only" for="guild">Discord server</label><select id="guild"><option value="">Loading servers…</option></select></div><div id="message" class="muted">Choose a server to load analytics.</div></section>
+<section class="grid cards" id="stats" hidden>
+<article class="card"><span>Players</span><strong id="players">—</strong></article><article class="card"><span>Registered</span><strong id="registered">—</strong></article><article class="card"><span>Defenses</span><strong id="defenses">—</strong></article><article class="card"><span>Matches</span><strong id="matches">—</strong></article><article class="card"><span>Completed Matches</span><strong id="completed">—</strong></article>
+</section>
+<section class="panel" id="season-panel" hidden><div class="section-heading"><div><p class="eyebrow">HISTORY</p><h2>Season trends</h2></div></div><div class="table-wrap"><table><thead><tr><th>Season</th><th>Players</th><th>Average ELO</th><th>Closed</th></tr></thead><tbody id="season-rows"></tbody></table></div></section>
+<footer>Read-only • Analytics do not change Gauntlet data • Simulator disabled</footer></main><script src="/static/analytics.js"></script></body></html>
