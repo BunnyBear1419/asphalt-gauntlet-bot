@@ -23,7 +23,7 @@ async def staff_client(control):
     # staff-only routes can be reached. Tests use a fake session, so provide
     # non-secret dummy credentials to mark OAuth as configured without making
     # any external Discord requests.
-    control.auth.client_id = "test-client-id"
+    control.auth.configured_client_id = "test-client-id"
     control.auth.client_secret = "test-client-secret"
     user = WebUser(
         user_id="123",
