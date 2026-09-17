@@ -14,7 +14,13 @@
         <h1>Gauntlet Control Center</h1>
         <p class="muted">A single staff control center for your Gauntlet bot.</p>
       </div>
-      <div id="system-pill" class="pill">Checking bot…</div>
+      <div class="hero-actions">
+        <div id="system-pill" class="pill">Checking bot…</div>
+        <div id="user-menu" class="user-menu" hidden>
+          <span id="user-name">Staff</span>
+          <a href="/logout">Log out</a>
+        </div>
+      </div>
     </header>
 
     <section class="grid cards" aria-label="System status">
@@ -41,7 +47,7 @@
       </div>
     </section>
 
-    <footer>ALU Gauntlet • Web Control Center</footer>
+    <footer>ALU Gauntlet • Staff Control Center • Simulator disabled</footer>
   </main>
   <script src="/static/app.js"></script>
 </body>
