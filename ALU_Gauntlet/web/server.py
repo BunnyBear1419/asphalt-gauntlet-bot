@@ -20,7 +20,7 @@ class WebControlCenter:
         self.players=PlayerService(bot); self.defenses=DefenseService(bot); self.matches=MatchService(bot); self.maps=MapService(bot); self.launchcheck=LaunchCheckService(bot); self.logs=LogService(bot)
         self.app=web.Application(); self.runner=None; self.site=None; self._configure_routes()
     def _configure_routes(self):
-        routes={"/":self.index,"/health":self.health,"/players":self.players_page,"/defenses":self.defenses_page,"/matches":self.matches_page,"/seasons":self.seasons_page,"/analytics":self.analytics_page,"/maps":self.maps_page,"/setup":self.setup_page,"/launchcheck":self.launchcheck_page,"/logs":self.logs_page,"/login":self.login,"/auth/callback":self.callback,"/logout":self.logout,"/api/me":self.me,"/api/status":self.status,"/api/guilds":self.guilds,"/api/players":self.player_list,"/api/players/{user_id}":self.player_detail,"/api/defenses":self.defense_list,"/api/defenses/{user_id}":self.defense_detail,"/api/matches":self.match_list,"/api/matches/{match_id}":self.match_detail,"/api/seasons":self.season_list,"/api/seasons/{season_number}":self.season_detail,"/api/analytics":self.analytics,"/api/maps":self.map_list,"/api/maps/{track}":self.map_detail,"/api/setup":self.setup,"/api/launchcheck":self.launchcheck_api,"/api/logs":self.logs_api}
+        routes={"/":self.index,"/health":self.health,"/players":self.players_page,"/defenses":self.defenses_page,"/matches":self.matches_page,"/seasons":self.seasons_page,"/analytics":self.analytics_page,"/maps":self.maps_page,"/setup":self.setup_page,"/launchcheck":self.launchcheck_page,"/logs":self.logs_page,"/login":self.login,"/auth/callback":self.callback,"/auth/debug":self.auth_debug,"/logout":self.logout,"/api/me":self.me,"/api/status":self.status,"/api/guilds":self.guilds,"/api/players":self.player_list,"/api/players/{user_id}":self.player_detail,"/api/defenses":self.defense_list,"/api/defenses/{user_id}":self.defense_detail,"/api/matches":self.match_list,"/api/matches/{match_id}":self.match_detail,"/api/seasons":self.season_list,"/api/seasons/{season_number}":self.season_detail,"/api/analytics":self.analytics,"/api/maps":self.map_list,"/api/maps/{track}":self.map_detail,"/api/setup":self.setup,"/api/launchcheck":self.launchcheck_api,"/api/logs":self.logs_api}
         for path,handler in routes.items(): self.app.router.add_get(path,handler)
         self.app.router.add_static("/static/",WEB_DIR,show_index=False)
     async def health(self,r):
@@ -54,6 +54,16 @@ class WebControlCenter:
         user=await self.auth.get_session(r)
         if user and user.staff: raise web.HTTPFound("/")
         state=await self.auth.create_state(); raise web.HTTPFound(self.auth.login_url(state))
+    async def auth_debug(self,r):
+        """Expose only non-secret OAuth identifiers for production troubleshooting."""
+        return web.json_response({
+            "configured": self.auth.configured,
+            "client_id": self.auth.client_id,
+            "configured_client_id": self.auth.configured_client_id,
+            "bot_user_id": str(getattr(getattr(self.bot, "user", None), "id", "") or ""),
+            "public_url": self.auth.public_url,
+            "redirect_uri": self.auth.redirect_uri,
+        })
     async def callback(self,r):
         if not self.auth.configured: raise web.HTTPServiceUnavailable(text="Web authentication is not configured.")
         state=r.query.get("state",""); code=r.query.get("code","")
@@ -139,7 +149,7 @@ class WebControlCenter:
         _,gid,_=await self.require_guild_access(r)
         try: limit=int(r.query.get("limit","200"))
         except ValueError: raise web.HTTPBadRequest(text="limit must be an integer.")
-        return web.json_response({"logs":await self.logs.list_logs(gid,limit=limit)})
+        return web.json_response({"logs":await self.logs.list_logs(r,limit=limit)})
     @staticmethod
     def _public_season_state(gid,state,config): return {"guild_id":gid,"season_number":int(state.get("season_number",1) or 1),"season_active":bool(state.get("season_active",False)),"awaiting_staff_start":bool(state.get("awaiting_staff_start",False)),"starts_at":state.get("starts_at"),"ends_at":state.get("ends_at"),"started_at":state.get("started_at"),"automatic_rollover":bool(config.get("automatic_season_end",False))}
     @staticmethod
