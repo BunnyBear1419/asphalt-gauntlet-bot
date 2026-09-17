@@ -69,3 +69,6 @@ async def test_dashboard_is_served():
         assert "Launch Check" in body
     finally:
         await client.close()
+
+
+# CI trigger marker: rerun launch-readiness verification on this branch.
