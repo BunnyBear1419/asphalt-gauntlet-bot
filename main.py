@@ -1,5 +1,5 @@
 """Discloud entrypoint; the canonical runner lives in ALU_Gauntlet.main."""
-import asynci
+import asyncio
 from ALU_Gauntlet.main import runner
 
 if __name__ == "__main__":
