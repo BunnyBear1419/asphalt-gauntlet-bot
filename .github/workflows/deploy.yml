@@ -31,6 +31,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate production deployment secrets
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          test -n "$DISCLOUD_TOKEN" || { echo "DISCLOUD_TOKEN is not configured."; exit 1; }
+          test -n "$DISCORD_BOT_TOKEN" || { echo "DISCORD_BOT_TOKEN is not configured."; exit 1; }
+          test -n "$MONGO_URI" || { echo "MONGO_URI is not configured."; exit 1; }
+          echo "Required production deployment secrets are configured."
+
       - name: Determine rollback revision
         id: revision
         run: |
@@ -127,6 +139,10 @@ jobs:
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: ${{ steps.provision.outputs.app_id }}
+          env: |
+            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+            MONGO_URI=${{ secrets.MONGO_URI }}
+          env_file: .env
           glob: '**'
           team: false
 
@@ -138,6 +154,10 @@ jobs:
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: ${{ steps.provision.outputs.app_id }}
+          env: |
+            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+            MONGO_URI=${{ secrets.MONGO_URI }}
+          env_file: .env
           glob: '**'
           team: false
 
@@ -236,6 +256,10 @@ jobs:
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: ${{ steps.provision.outputs.app_id }}
+          env: |
+            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+            MONGO_URI=${{ secrets.MONGO_URI }}
+          env_file: .env
           glob: '**'
           team: false
 
@@ -247,6 +271,10 @@ jobs:
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: ${{ steps.provision.outputs.app_id }}
+          env: |
+            DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
+            MONGO_URI=${{ secrets.MONGO_URI }}
+          env_file: .env
           glob: '**'
           team: false
 
