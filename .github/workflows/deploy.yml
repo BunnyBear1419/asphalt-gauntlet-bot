@@ -69,65 +69,59 @@ jobs:
           fi
           echo "Configured Discloud subdomain: $subdomain"
 
-          apps_http=$(curl -sS -o apps.json -w "%{http_code}" \
-            -H "api-token: $DISCLOUD_TOKEN" \
-            -H "Accept: application/json" \
-            "https://api.discloud.app/v2/app/all" || true)
-          echo "Discloud app-list HTTP status: $apps_http"
-
-          if [ "$apps_http" != "200" ]; then
-            cat apps.json || true
-            echo "Unable to list existing Discloud applications."
-            exit 1
-          fi
-
-          existing_id=$(python - <<'PY'
-          import json
-          data=json.load(open('apps.json', encoding='utf-8'))
-          apps=data.get('apps', [])
-          if isinstance(apps, dict):
-              apps=list(apps.values())
-          for app in apps:
-              if not isinstance(app, dict):
-                  continue
-              if app.get('name') != 'ALU-Gauntlet':
-                  continue
-              if app.get('mainFile') != 'main.py':
-                  continue
-              if int(app.get('ram', 0) or 0) < 512:
-                  continue
-              print(app.get('id', ''))
-              break
-          PY
-          )
-
-          if [ -n "$existing_id" ]; then
-            echo "Found existing ALU-Gauntlet site application: $existing_id"
-            echo "app_id=$existing_id" >> "$GITHUB_OUTPUT"
-            echo "created=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "No existing ALU-Gauntlet site application was found. Creating it from discloud.config."
           npm install --no-save discloud.app
-          DISCLOUD_TOKEN="$DISCLOUD_TOKEN" node --input-type=module <<'NODE'
+          DISCLOUD_TOKEN="$DISCLOUD_TOKEN" SUBDOMAIN="$subdomain" node --input-type=module <<'NODE'
           import { discloud } from 'discloud.app';
           import { appendFileSync } from 'node:fs';
+
           await discloud.login(process.env.DISCLOUD_TOKEN);
-          const result = await discloud.apps.create({ file: 'discloud-deploy.zip' });
-          const app = result?.app ?? result?.data?.app ?? result?.data ?? result;
-          if (!app || !app.id) {
-            console.error('Discloud SDK create response did not contain an app ID.');
-            console.error(JSON.stringify(result));
+          const apps = await discloud.apps.fetch('all');
+          const subdomain = process.env.SUBDOMAIN.toLowerCase();
+          const entries = [...apps.entries()];
+
+          const normalize = (value) => String(value ?? '').trim().toLowerCase();
+          const exact = entries.find(([id, app]) =>
+            normalize(app.name) === 'alu-gauntlet' &&
+            normalize(app.mainFile) === 'main.py' &&
+            Number(app.ram) >= 512
+          );
+
+          const siteCandidates = entries.filter(([id, app]) =>
+            normalize(app.mainFile) === 'main.py' && Number(app.ram) >= 512 &&
+            (normalize(app.type) === 'site' || Number(app.type) === 1)
+          );
+
+          let selected = exact ?? (siteCandidates.length === 1 ? siteCandidates[0] : null);
+
+          if (!selected) {
+            let subdomainInfo = null;
+            try {
+              subdomainInfo = await discloud.subdomains.fetch(subdomain);
+            } catch (error) {
+              console.log(`Subdomain lookup did not resolve: ${error.message}`);
+            }
+
+            console.log(`Discloud subdomain ${subdomain}: ${subdomainInfo ? `status=${subdomainInfo.status}` : 'not returned'}`);
+            console.log('Visible app candidates:');
+            for (const [id, app] of entries) {
+              console.log(JSON.stringify({ id, name: app.name, mainFile: app.mainFile, ram: app.ram, type: app.type, online: app.online }));
+            }
+
+            if (siteCandidates.length > 1) {
+              console.error('Multiple site applications match main.py and 512MB; refusing to guess which app owns the production subdomain.');
+            } else {
+              console.error(`Could not resolve the existing Discloud app for ${subdomain}.`);
+            }
             process.exit(1);
           }
-          appendFileSync(process.env.GITHUB_OUTPUT, `app_id=${app.id}\ncreated=true\n`);
-          console.log(`Created Discloud site application: ${app.id}`);
+
+          const [appId, app] = selected;
+          appendFileSync(process.env.GITHUB_OUTPUT, `app_id=${appId}\ncreated=false\n`);
+          console.log(`Resolved existing Discloud app ${appId}: ${app.name} (${app.mainFile}, ${app.ram}MB, type=${app.type})`);
           NODE
 
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
-        if: steps.provision.outputs.created == 'false'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -138,7 +132,7 @@ jobs:
 
       - name: Deploy to Discloud (attempt 2)
         id: deploy2
-        if: steps.provision.outputs.created == 'false' && steps.deploy1.outcome != 'success'
+        if: steps.deploy1.outcome != 'success'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -150,16 +144,10 @@ jobs:
       - name: Determine deployment result
         id: deploy_status
         env:
-          CREATED: ${{ steps.provision.outputs.created }}
           DEPLOY1_OUTCOME: ${{ steps.deploy1.outcome }}
           DEPLOY2_OUTCOME: ${{ steps.deploy2.outcome }}
         run: |
           set -euo pipefail
-          if [ "$CREATED" = "true" ]; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-            echo "Discloud site was created successfully."
-            exit 0
-          fi
           echo "attempt 1: $DEPLOY1_OUTCOME"
           echo "attempt 2: $DEPLOY2_OUTCOME"
           if [ "$DEPLOY1_OUTCOME" = "success" ] || [ "$DEPLOY2_OUTCOME" = "success" ]; then
@@ -234,7 +222,7 @@ jobs:
           exit 1
 
       - name: Roll back to previous known-good revision
-        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false'
+        if: steps.smoke.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.revision.outputs.previous_sha }}
@@ -242,7 +230,7 @@ jobs:
 
       - name: Deploy rollback to Discloud
         id: rollback_deploy
-        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false'
+        if: steps.smoke.outcome == 'failure'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -253,7 +241,7 @@ jobs:
 
       - name: Retry rollback deployment
         id: rollback_retry
-        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false' && steps.rollback_deploy.outcome != 'success'
+        if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome != 'success'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -264,7 +252,7 @@ jobs:
 
       - name: Verify rollback health
         id: rollback_health
-        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false'
+        if: steps.smoke.outcome == 'failure'
         continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
@@ -303,13 +291,13 @@ jobs:
           exit 1
 
       - name: Mark deployment failed after successful recovery
-        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false' && steps.rollback_health.outcome == 'success'
+        if: steps.smoke.outcome == 'failure' && steps.rollback_health.outcome == 'success'
         run: |
           echo "The deployment failed its smoke test and was successfully rolled back."
           exit 1
 
       - name: Mark deployment failed after unsuccessful recovery
-        if: steps.smoke.outcome == 'failure' && (steps.provision.outputs.created == 'true' || steps.rollback_health.outcome != 'success')
+        if: steps.smoke.outcome == 'failure' && steps.rollback_health.outcome != 'success'
         run: |
           echo "The deployment failed its smoke test and rollback recovery could not be verified."
           exit 1
