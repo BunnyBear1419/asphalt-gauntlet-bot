@@ -25,6 +25,7 @@ class WebUser:
     avatar: str | None
     staff: bool
     admin_guild_ids: frozenset[str]
+    guild_ids: frozenset[str]
 
 
 class DiscordOAuth:
@@ -87,6 +88,7 @@ class DiscordOAuth:
         guilds = await self.discord_get("/users/@me/guilds", access_token)
         user_id = str(profile["id"])
         admin_guild_ids: set[str] = set()
+        guild_ids: set[str] = {str(guild.get("id")) for guild in guilds if guild.get("id")}
         for guild in guilds:
             try:
                 if int(guild.get("permissions", 0)) & ADMINISTRATOR:
@@ -94,7 +96,7 @@ class DiscordOAuth:
             except (TypeError, ValueError, KeyError):
                 continue
         staff = user_id in self.allowed_staff_ids or bool(admin_guild_ids)
-        return WebUser(user_id=user_id, username=str(profile.get("username", "Unknown")), global_name=profile.get("global_name"), avatar=profile.get("avatar"), staff=staff, admin_guild_ids=frozenset(admin_guild_ids))
+        return WebUser(user_id=user_id, username=str(profile.get("username", "Unknown")), global_name=profile.get("global_name"), avatar=profile.get("avatar"), staff=staff, admin_guild_ids=frozenset(admin_guild_ids), guild_ids=frozenset(guild_ids))
 
     async def create_session(self, user: WebUser) -> str:
         token = secrets.token_urlsafe(32)
