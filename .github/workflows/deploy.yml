@@ -36,11 +36,17 @@ jobs:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          WEB_PUBLIC_URL: ${{ secrets.WEB_PUBLIC_URL }}
         run: |
           set -euo pipefail
           test -n "$DISCLOUD_TOKEN" || { echo "DISCLOUD_TOKEN is not configured."; exit 1; }
           test -n "$DISCORD_BOT_TOKEN" || { echo "DISCORD_BOT_TOKEN is not configured."; exit 1; }
           test -n "$MONGO_URI" || { echo "MONGO_URI is not configured."; exit 1; }
+          test -n "$DISCORD_CLIENT_ID" || { echo "DISCORD_CLIENT_ID is not configured."; exit 1; }
+          test -n "$DISCORD_CLIENT_SECRET" || { echo "DISCORD_CLIENT_SECRET is not configured."; exit 1; }
+          test -n "$WEB_PUBLIC_URL" || { echo "WEB_PUBLIC_URL is not configured."; exit 1; }
           echo "Required production deployment secrets are configured."
 
       - name: Determine rollback revision
@@ -73,60 +79,34 @@ jobs:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
         run: |
           set -euo pipefail
-
           subdomain=$(awk -F= '$1 == "ID" {print $2; exit}' discloud.config | tr -d '[:space:]')
           if [ -z "$subdomain" ]; then
             echo "discloud.config does not define a site ID/subdomain."
             exit 1
           fi
           echo "Configured Discloud subdomain: $subdomain"
-
           npm install --no-save discloud.app
           DISCLOUD_TOKEN="$DISCLOUD_TOKEN" SUBDOMAIN="$subdomain" node --input-type=module <<'NODE'
           import { discloud } from 'discloud.app';
           import { appendFileSync } from 'node:fs';
-
           await discloud.login(process.env.DISCLOUD_TOKEN);
           const apps = await discloud.apps.fetch('all');
           const subdomain = process.env.SUBDOMAIN.toLowerCase();
           const entries = [...apps.entries()];
-
           const normalize = (value) => String(value ?? '').trim().toLowerCase();
-          const exact = entries.find(([id, app]) =>
-            normalize(app.name) === 'alu-gauntlet' &&
-            normalize(app.mainFile) === 'main.py' &&
-            Number(app.ram) >= 512
-          );
-
-          const siteCandidates = entries.filter(([id, app]) =>
-            normalize(app.mainFile) === 'main.py' && Number(app.ram) >= 512 &&
-            (normalize(app.type) === 'site' || Number(app.type) === 1)
-          );
-
+          const exact = entries.find(([id, app]) => normalize(app.name) === 'alu-gauntlet' && normalize(app.mainFile) === 'main.py' && Number(app.ram) >= 512);
+          const siteCandidates = entries.filter(([id, app]) => normalize(app.mainFile) === 'main.py' && Number(app.ram) >= 512 && (normalize(app.type) === 'site' || Number(app.type) === 1));
           let selected = exact ?? (siteCandidates.length === 1 ? siteCandidates[0] : null);
-
           if (!selected) {
             let subdomainInfo = null;
-            try {
-              subdomainInfo = await discloud.subdomains.fetch(subdomain);
-            } catch (error) {
-              console.log(`Subdomain lookup did not resolve: ${error.message}`);
-            }
-
+            try { subdomainInfo = await discloud.subdomains.fetch(subdomain); } catch (error) { console.log(`Subdomain lookup did not resolve: ${error.message}`); }
             console.log(`Discloud subdomain ${subdomain}: ${subdomainInfo ? `status=${subdomainInfo.status}` : 'not returned'}`);
             console.log('Visible app candidates:');
-            for (const [id, app] of entries) {
-              console.log(JSON.stringify({ id, name: app.name, mainFile: app.mainFile, ram: app.ram, type: app.type, online: app.online }));
-            }
-
-            if (siteCandidates.length > 1) {
-              console.error('Multiple site applications match main.py and 512MB; refusing to guess which app owns the production subdomain.');
-            } else {
-              console.error(`Could not resolve the existing Discloud app for ${subdomain}.`);
-            }
+            for (const [id, app] of entries) console.log(JSON.stringify({ id, name: app.name, mainFile: app.mainFile, ram: app.ram, type: app.type, online: app.online }));
+            if (siteCandidates.length > 1) console.error('Multiple site applications match main.py and 512MB; refusing to guess which app owns the production subdomain.');
+            else console.error(`Could not resolve the existing Discloud app for ${subdomain}.`);
             process.exit(1);
           }
-
           const [appId, app] = selected;
           appendFileSync(process.env.GITHUB_OUTPUT, `app_id=${appId}\ncreated=false\n`);
           console.log(`Resolved existing Discloud app ${appId}: ${app.name} (${app.mainFile}, ${app.ram}MB, type=${app.type})`);
@@ -142,6 +122,9 @@ jobs:
           env: |
             DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
             MONGO_URI=${{ secrets.MONGO_URI }}
+            DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
+            DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}
+            WEB_PUBLIC_URL=${{ secrets.WEB_PUBLIC_URL }}
           env_file: .env
           glob: '**'
           team: false
@@ -157,6 +140,9 @@ jobs:
           env: |
             DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
             MONGO_URI=${{ secrets.MONGO_URI }}
+            DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
+            DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}
+            WEB_PUBLIC_URL=${{ secrets.WEB_PUBLIC_URL }}
           env_file: .env
           glob: '**'
           team: false
@@ -170,11 +156,7 @@ jobs:
           set -euo pipefail
           echo "attempt 1: $DEPLOY1_OUTCOME"
           echo "attempt 2: $DEPLOY2_OUTCOME"
-          if [ "$DEPLOY1_OUTCOME" = "success" ] || [ "$DEPLOY2_OUTCOME" = "success" ]; then
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-          fi
+          if [ "$DEPLOY1_OUTCOME" = "success" ] || [ "$DEPLOY2_OUTCOME" = "success" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
 
       - name: Fail if Discloud deployment failed
         if: steps.deploy_status.outputs.ok != 'true'
@@ -195,21 +177,12 @@ jobs:
           for attempt in $(seq 1 10); do
             echo "Smoke test attempt $attempt/10"
             ok=true
-
-            discloud_http=$(curl -sS -o discloud-status.json -w "%{http_code}" \
-              -H "api-token: $DISCLOUD_TOKEN" \
-              -H "Accept: application/json" \
-              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
+            discloud_http=$(curl -sS -o discloud-status.json -w "%{http_code}" -H "api-token: $DISCLOUD_TOKEN" -H "Accept: application/json" "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
             echo "Discloud HTTP status: $discloud_http"
             if [ "$discloud_http" != "200" ]; then ok=false; fi
-
-            discord_http=$(curl -sS -o discord-user.json -w "%{http_code}" \
-              -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
-              -H "Accept: application/json" \
-              "https://discord.com/api/v10/users/@me" || true)
+            discord_http=$(curl -sS -o discord-user.json -w "%{http_code}" -H "Authorization: Bot $DISCORD_BOT_TOKEN" -H "Accept: application/json" "https://discord.com/api/v10/users/@me" || true)
             echo "Discord API HTTP status: $discord_http"
             if [ "$discord_http" != "200" ]; then ok=false; fi
-
             if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python - <<'PY'
           import os, sys
           from pymongo import MongoClient
@@ -224,18 +197,10 @@ jobs:
           if not heartbeat.get('ready') or not heartbeat.get('db_ok'): sys.exit('Production heartbeat reports bot/database unhealthy')
           PY
             then ok=false; fi
-
-            website_http=$(curl -sS -L -o website-health.json -w "%{http_code}" \
-              --connect-timeout 10 --max-time 20 \
-              -H "Accept: application/json" \
-              "https://asph.discloud.app/health" || true)
+            website_http=$(curl -sS -L -o website-health.json -w "%{http_code}" --connect-timeout 10 --max-time 20 -H "Accept: application/json" "https://asph.discloud.app/health" || true)
             echo "Public website health HTTP status: $website_http"
             if [ "$website_http" != "200" ]; then ok=false; fi
-
-            if [ "$ok" = true ]; then
-              echo "Post-deployment smoke test passed."
-              exit 0
-            fi
+            if [ "$ok" = true ]; then echo "Post-deployment smoke test passed."; exit 0; fi
             if [ "$attempt" -lt 10 ]; then sleep 15; fi
           done
           echo "Post-deployment smoke test failed after 10 attempts."
@@ -259,6 +224,9 @@ jobs:
           env: |
             DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
             MONGO_URI=${{ secrets.MONGO_URI }}
+            DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
+            DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}
+            WEB_PUBLIC_URL=${{ secrets.WEB_PUBLIC_URL }}
           env_file: .env
           glob: '**'
           team: false
@@ -274,6 +242,9 @@ jobs:
           env: |
             DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }}
             MONGO_URI=${{ secrets.MONGO_URI }}
+            DISCORD_CLIENT_ID=${{ secrets.DISCORD_CLIENT_ID }}
+            DISCORD_CLIENT_SECRET=${{ secrets.DISCORD_CLIENT_SECRET }}
+            WEB_PUBLIC_URL=${{ secrets.WEB_PUBLIC_URL }}
           env_file: .env
           glob: '**'
           team: false
@@ -288,10 +259,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 10); do
-            status=$(curl -sS -o rollback-status.json -w "%{http_code}" \
-              -H "api-token: $DISCLOUD_TOKEN" \
-              -H "Accept: application/json" \
-              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
+            status=$(curl -sS -o rollback-status.json -w "%{http_code}" -H "api-token: $DISCLOUD_TOKEN" -H "Accept: application/json" "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
             echo "Rollback status HTTP: $status"
             if [ "$status" = "200" ]; then
               if python - <<'PY'
