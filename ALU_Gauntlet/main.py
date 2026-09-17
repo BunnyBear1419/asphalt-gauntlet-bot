@@ -23,7 +23,7 @@ async def runner():
     if not token:
         raise RuntimeError("DISCORD_BOT_TOKEN is required in production")
 
-    host = os.getenv("WEB_HOST", "127.0.0.1")
+    host = os.getenv("WEB_HOST", "0.0.0.0")
     port = int(os.getenv("WEB_PORT", "8080"))
     web_control_center = WebControlCenter(bot, host=host, port=port)
     await web_control_center.start()
