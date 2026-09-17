@@ -5,6 +5,10 @@ on:
     branches: [feature/web-control-center]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -43,46 +47,34 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import os
           import zipfile
           from pathlib import Path
           excludes = {'.git', '.github', '__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', '.venv', 'venv'}
-          root = Path('.')
-          with zipfile.ZipFile('discloud-deploy.zip', 'w', zipfile.ZIP_DEFLATED) as z:
-              for path in root.rglob('*'):
-                  if not path.is_file():
+          with zipfile.ZipFile('discloud-deploy.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+              for path in Path('.').rglob('*'):
+                  if not path.is_file() or path.name == 'discloud-deploy.zip':
                       continue
                   if any(part in excludes for part in path.parts):
                       continue
-                  if path.name == 'discloud-deploy.zip':
-                      continue
-                  z.write(path, path.as_posix())
+                  archive.write(path, path.as_posix())
           PY
 
-      - name: Create Discloud site when it does not exist
+      - name: Resolve Discloud site app
         id: provision
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          SITE_APP_ID: ${{ vars.DISCLOUD_SITE_APP_ID }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          status=$(curl -sS -o existing-app.json -w "%{http_code}" \
-            -H "api-token: $DISCLOUD_TOKEN" \
-            -H "Accept: application/json" \
-            "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}" || true)
-          echo "Existing app lookup HTTP status: $status"
-          if [ "$status" = "200" ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Discloud application already exists; commit deployment will be used."
+          if [ -n "$SITE_APP_ID" ]; then
+            echo "Using persisted Discloud site app ID."
+            echo "app_id=$SITE_APP_ID" >> "$GITHUB_OUTPUT"
+            echo "created=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ "$status" != "404" ]; then
-            echo "Unexpected Discloud app lookup status: $status"
-            cat existing-app.json || true
-            exit 1
-          fi
 
-          echo "No existing app found. Creating the site from discloud.config."
+          echo "No persisted site app ID found; creating the site from discloud.config."
           create_http=$(curl -sS -o create-response.json -w "%{http_code}" \
             -X POST \
             -H "api-token: $DISCLOUD_TOKEN" \
@@ -95,55 +87,56 @@ jobs:
             echo "Discloud site creation failed."
             exit 1
           fi
-          python - <<'PY'
-          import json
-          import sys
+
+          python - <<'PY' "$GITHUB_OUTPUT" > created-app-id.txt
+          import json, sys
           data=json.load(open('create-response.json', encoding='utf-8'))
-          app=data.get('app') or data.get('apps')
-          if not app:
-              sys.exit('Discloud create response did not contain an app object')
-          app_id=app.get('id') if isinstance(app, dict) else None
-          if not app_id:
-              sys.exit('Discloud create response did not contain an app id')
-          print(f'Created Discloud application: {app_id}')
-          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
-              out.write(f"created_app_id={app_id}\n")
-              out.write("exists=false\n")
+          app=data.get('app')
+          if not isinstance(app, dict) or not app.get('id'):
+              raise SystemExit('Discloud create response did not contain app.id')
+          print(app['id'])
+          print(f"app_id={app['id']}", file=open(sys.argv[1], 'a', encoding='utf-8'))
+          print('created=true', file=open(sys.argv[1], 'a', encoding='utf-8'))
           PY
+          created_id=$(cat created-app-id.txt)
+          echo "Created Discloud site app: $created_id"
+
+          gh variable set DISCLOUD_SITE_APP_ID --repo "$GITHUB_REPOSITORY" --body "$created_id"
+          echo "Discloud site app ID persisted to repository variables."
 
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
-        if: steps.provision.outputs.exists == 'true'
+        if: steps.provision.outputs.created == 'false'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: ${{ steps.provision.outputs.app_id }}
           glob: '**'
           team: false
 
       - name: Deploy to Discloud (attempt 2)
         id: deploy2
-        if: steps.provision.outputs.exists == 'true' && steps.deploy1.outcome != 'success'
+        if: steps.provision.outputs.created == 'false' && steps.deploy1.outcome != 'success'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: ${{ steps.provision.outputs.app_id }}
           glob: '**'
           team: false
 
       - name: Determine deployment result
         id: deploy_status
         env:
-          EXISTS: ${{ steps.provision.outputs.exists }}
+          CREATED: ${{ steps.provision.outputs.created }}
           DEPLOY1_OUTCOME: ${{ steps.deploy1.outcome }}
           DEPLOY2_OUTCOME: ${{ steps.deploy2.outcome }}
         run: |
           set -euo pipefail
-          if [ "$EXISTS" = "false" ]; then
+          if [ "$CREATED" = "true" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
-            echo "Discloud application was created successfully."
+            echo "Discloud site was created successfully."
             exit 0
           fi
           echo "attempt 1: $DEPLOY1_OUTCOME"
@@ -163,7 +156,7 @@ jobs:
         continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCLOUD_APP_ID: ${{ steps.provision.outputs.app_id }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
           DEPLOY_STARTED_AT: ${{ steps.revision.outputs.started_at }}
@@ -173,12 +166,21 @@ jobs:
           for attempt in $(seq 1 10); do
             echo "Smoke test attempt $attempt/10"
             ok=true
-            discloud_http=$(curl -sS -o discloud-status.json -w "%{http_code}" -H "api-token: $DISCLOUD_TOKEN" -H "Accept: application/json" "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
+
+            discloud_http=$(curl -sS -o discloud-status.json -w "%{http_code}" \
+              -H "api-token: $DISCLOUD_TOKEN" \
+              -H "Accept: application/json" \
+              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
             echo "Discloud HTTP status: $discloud_http"
             if [ "$discloud_http" != "200" ]; then ok=false; fi
-            discord_http=$(curl -sS -o discord-user.json -w "%{http_code}" -H "Authorization: Bot $DISCORD_BOT_TOKEN" -H "Accept: application/json" "https://discord.com/api/v10/users/@me" || true)
+
+            discord_http=$(curl -sS -o discord-user.json -w "%{http_code}" \
+              -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+              -H "Accept: application/json" \
+              "https://discord.com/api/v10/users/@me" || true)
             echo "Discord API HTTP status: $discord_http"
             if [ "$discord_http" != "200" ]; then ok=false; fi
+
             if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python - <<'PY'
           import os, sys
           from pymongo import MongoClient
@@ -193,34 +195,100 @@ jobs:
           if not heartbeat.get('ready') or not heartbeat.get('db_ok'): sys.exit('Production heartbeat reports bot/database unhealthy')
           PY
             then ok=false; fi
-            website_http=$(curl -sS -L -o website-health.json -w "%{http_code}" --connect-timeout 10 --max-time 20 -H "Accept: application/json" "https://asph.discloud.app/health" || true)
+
+            website_http=$(curl -sS -L -o website-health.json -w "%{http_code}" \
+              --connect-timeout 10 --max-time 20 \
+              -H "Accept: application/json" \
+              "https://asph.discloud.app/health" || true)
             echo "Public website health HTTP status: $website_http"
             if [ "$website_http" != "200" ]; then ok=false; fi
-            if [ "$ok" = true ]; then echo "Post-deployment smoke test passed."; exit 0; fi
+
+            if [ "$ok" = true ]; then
+              echo "Post-deployment smoke test passed."
+              exit 0
+            fi
             if [ "$attempt" -lt 10 ]; then sleep 15; fi
           done
           echo "Post-deployment smoke test failed after 10 attempts."
           exit 1
 
       - name: Roll back to previous known-good revision
-        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.exists == 'true'
+        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.revision.outputs.previous_sha }}
           fetch-depth: 0
 
       - name: Deploy rollback to Discloud
-        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.exists == 'true'
+        id: rollback_deploy
+        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: ${{ steps.provision.outputs.app_id }}
           glob: '**'
           team: false
 
-      - name: Mark deployment failed
-        if: steps.smoke.outcome == 'failure'
+      - name: Retry rollback deployment
+        id: rollback_retry
+        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false' && steps.rollback_deploy.outcome != 'success'
+        continue-on-error: true
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: ${{ steps.provision.outputs.app_id }}
+          glob: '**'
+          team: false
+
+      - name: Verify rollback health
+        id: rollback_health
+        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false'
+        continue-on-error: true
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCLOUD_APP_ID: ${{ steps.provision.outputs.app_id }}
         run: |
-          echo "The deployment failed its smoke test."
+          set -euo pipefail
+          for attempt in $(seq 1 10); do
+            status=$(curl -sS -o rollback-status.json -w "%{http_code}" \
+              -H "api-token: $DISCLOUD_TOKEN" \
+              -H "Accept: application/json" \
+              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
+            echo "Rollback status HTTP: $status"
+            if [ "$status" = "200" ]; then
+              if python - <<'PY'
+          import json
+          data=json.load(open('rollback-status.json', encoding='utf-8'))
+          values=[]
+          def walk(v):
+              if isinstance(v,str): values.append(v.strip().lower())
+              elif isinstance(v,list):
+                  for x in v: walk(x)
+              elif isinstance(v,dict):
+                  for x in v.values(): walk(x)
+          walk(data)
+          print('Rollback status values:', sorted(set(values)))
+          raise SystemExit(0 if {'running','online','active','ready'}.intersection(values) else 1)
+          PY
+              then
+                echo "The prior known-good revision was restored and verified."
+                exit 0
+              fi
+            fi
+            if [ "$attempt" -lt 10 ]; then sleep 15; fi
+          done
+          echo "Rollback verification failed."
+          exit 1
+
+      - name: Mark deployment failed after successful recovery
+        if: steps.smoke.outcome == 'failure' && steps.provision.outputs.created == 'false' && steps.rollback_health.outcome == 'success'
+        run: |
+          echo "The deployment failed its smoke test and was successfully rolled back."
+          exit 1
+
+      - name: Mark deployment failed after unsuccessful recovery
+        if: steps.smoke.outcome == 'failure' && (steps.provision.outputs.created == 'true' || steps.rollback_health.outcome != 'success')
+        run: |
+          echo "The deployment failed its smoke test and rollback recovery could not be verified."
           exit 1
