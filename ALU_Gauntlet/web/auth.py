@@ -40,11 +40,10 @@ class DiscordOAuth:
         self.configured_client_id = os.getenv("DISCORD_CLIENT_ID", "").strip()
         self.client_secret = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
         configured_public_url = os.getenv("WEB_PUBLIC_URL", "").strip().rstrip("/")
-        self.public_url = (
-            PRODUCTION_PUBLIC_URL
-            if configured_public_url.endswith("discloud.app")
-            else (configured_public_url or "http://127.0.0.1:8080")
-        )
+        # Discloud's production site must never fall back to localhost. Keep an
+        # explicitly configured URL for local/dev deployments, but use the
+        # known production URL when the runtime environment omitted the setting.
+        self.public_url = configured_public_url or PRODUCTION_PUBLIC_URL
         self.allowed_staff_ids = {
             value.strip()
             for value in os.getenv("WEB_STAFF_USER_IDS", "").split(",")
@@ -155,7 +154,6 @@ class DiscordOAuth:
             except (TypeError, ValueError):
                 permissions = 0
 
-            # Discord's OAuth guild object exposes the member's role IDs here.
             member_roles = {str(role_id) for role_id in (guild.get("roles") or [])}
             staff_role_id = configured_roles.get(guild_id)
             if permissions & ADMINISTRATOR or (staff_role_id and staff_role_id in member_roles):
@@ -163,7 +161,6 @@ class DiscordOAuth:
 
         staff = global_staff or bool(admin_guild_ids)
         if global_staff:
-            # Global staff is intentionally unrestricted across bot-connected guilds.
             admin_guild_ids = {str(getattr(guild, "id", "")) for guild in getattr(self.bot, "guilds", [])}
 
         return WebUser(
