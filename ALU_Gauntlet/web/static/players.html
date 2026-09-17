@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Players • ALU Gauntlet Control Center</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">MANAGEMENT</p>
+        <h1>Players</h1>
+        <p class="muted">Read-only view of registered Gauntlet drivers.</p>
+      </div>
+      <div class="hero-actions">
+        <a class="button-link" href="/">← Control Center</a>
+        <a class="button-link" href="/logout">Log out</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">PLAYER DIRECTORY</p><h2>Drivers</h2></div>
+        <span id="player-count" class="muted">Loading…</span>
+      </div>
+      <div class="toolbar">
+        <label>
+          <span class="sr-only">Discord server</span>
+          <select id="guild-select" aria-label="Discord server"></select>
+        </label>
+        <label class="search">
+          <span class="sr-only">Search players</span>
+          <input id="player-search" type="search" placeholder="Search game ID or Discord user ID…" autocomplete="off">
+        </label>
+      </div>
+      <div id="players-state" class="muted">Loading players…</div>
+      <div id="players-table-wrap" class="table-wrap" hidden>
+        <table>
+          <thead><tr><th>Game ID</th><th>ELO</th><th>PI</th><th>Season</th><th>Defense</th><th>Career</th></tr></thead>
+          <tbody id="players-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>ALU Gauntlet • Players • Read-only</footer>
+  </main>
+  <script src="/static/players.js"></script>
+</body>
+</html>
