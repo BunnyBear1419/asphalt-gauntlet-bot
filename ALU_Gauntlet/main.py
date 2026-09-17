@@ -24,7 +24,10 @@ async def runner():
         raise RuntimeError("DISCORD_BOT_TOKEN is required in production")
 
     host = os.getenv("WEB_HOST", "0.0.0.0")
-    port = int(os.getenv("WEB_PORT", "8080"))
+    # Prefer the platform-provided PORT when present, then the explicit web port.
+    # This keeps local/Docker behavior on 8080 while allowing hosted site proxies
+    # to route to the port assigned by the platform.
+    port = int(os.getenv("PORT") or os.getenv("WEB_PORT", "8080"))
     web_control_center = WebControlCenter(bot, host=host, port=port)
     await web_control_center.start()
     try:
