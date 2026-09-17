@@ -61,33 +61,47 @@ jobs:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
         run: |
           set -euo pipefail
-          SITE_APP_ID=$(awk -F= '$1 == "ID" {print $2; exit}' discloud.config)
-          if [ -z "$SITE_APP_ID" ]; then
-            echo "discloud.config does not contain an ID."
-            exit 1
-          fi
-          echo "Discloud site ID from config: $SITE_APP_ID"
 
-          status=$(curl -sS -o existing-app.json -w "%{http_code}" \
+          apps_http=$(curl -sS -o apps.json -w "%{http_code}" \
             -H "api-token: $DISCLOUD_TOKEN" \
             -H "Accept: application/json" \
-            "https://api.discloud.app/v2/app/${SITE_APP_ID}" || true)
-          echo "Existing site lookup HTTP status: $status"
+            "https://api.discloud.app/v2/app/all" || true)
+          echo "Discloud app-list HTTP status: $apps_http"
 
-          if [ "$status" = "200" ]; then
-            echo "app_id=$SITE_APP_ID" >> "$GITHUB_OUTPUT"
+          if [ "$apps_http" != "200" ]; then
+            cat apps.json || true
+            echo "Unable to list existing Discloud applications."
+            exit 1
+          fi
+
+          existing_id=$(python - <<'PY'
+          import json
+          data=json.load(open('apps.json', encoding='utf-8'))
+          apps=data.get('apps', [])
+          if isinstance(apps, dict):
+              apps=list(apps.values())
+          for app in apps:
+              if not isinstance(app, dict):
+                  continue
+              if app.get('name') != 'ALU-Gauntlet':
+                  continue
+              if app.get('mainFile') != 'main.py':
+                  continue
+              if int(app.get('ram', 0) or 0) < 512:
+                  continue
+              print(app.get('id', ''))
+              break
+          PY
+          )
+
+          if [ -n "$existing_id" ]; then
+            echo "Found existing ALU-Gauntlet site application: $existing_id"
+            echo "app_id=$existing_id" >> "$GITHUB_OUTPUT"
             echo "created=false" >> "$GITHUB_OUTPUT"
-            echo "Discloud site already exists; commit deployment will be used."
             exit 0
           fi
 
-          if [ "$status" != "404" ]; then
-            cat existing-app.json || true
-            echo "Unexpected Discloud app lookup status: $status"
-            exit 1
-          fi
-
-          echo "No Discloud site exists yet. Creating it from discloud.config."
+          echo "No existing ALU-Gauntlet site application was found. Creating it from discloud.config."
           create_http=$(curl -sS -o create-response.json -w "%{http_code}" \
             -X POST \
             -H "api-token: $DISCLOUD_TOKEN" \
@@ -101,19 +115,19 @@ jobs:
             exit 1
           fi
 
-          python - "$SITE_APP_ID" <<'PY'
-          import json, sys
-          expected=sys.argv[1]
+          python <<'PY'
+          import json, os
           data=json.load(open('create-response.json', encoding='utf-8'))
+          if data.get('status') != 'ok':
+              raise SystemExit('Discloud create response returned an error')
           app=data.get('app')
           if not isinstance(app, dict) or not app.get('id'):
               raise SystemExit('Discloud create response did not contain app.id')
-          if str(app['id']) != expected:
-              raise SystemExit(f"Discloud created app {app['id']!r}, expected configured site ID {expected!r}")
-          with open(__import__('os').environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
-              out.write(f'app_id={app["id"]}\n')
+          app_id=str(app['id'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write(f'app_id={app_id}\n')
               out.write('created=true\n')
-          print(f"Created Discloud site app: {app['id']}")
+          print(f'Created Discloud site application: {app_id}')
           PY
 
       - name: Deploy to Discloud (attempt 1)
