@@ -339,5 +339,5 @@ jobs:
       - name: Mark deployment failed after successful recovery
         if: steps.smoke.outcome == 'failure'
         run: |
-          echo "Deployment smoke test failed. The previous known-good revision was restored and verified."
+          echo "Deployment smoke test failed. The prior known-good revision was restored and verified."
           exit 1
