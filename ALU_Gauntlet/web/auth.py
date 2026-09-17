@@ -33,12 +33,13 @@ class DiscordOAuth:
 
     def __init__(self, bot: Any) -> None:
         self.bot = bot
-        self.client_id = os.getenv("DISCORD_CLIENT_ID", "").strip()
+        # Keep the secret from configuration, but derive the OAuth application
+        # ID from the authenticated bot when available. A Discord bot user's ID
+        # is the application ID, so this prevents a stale/mismatched client-ID
+        # secret from producing an invalid OAuth2 redirect request.
+        self.configured_client_id = os.getenv("DISCORD_CLIENT_ID", "").strip()
         self.client_secret = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
         configured_public_url = os.getenv("WEB_PUBLIC_URL", "").strip().rstrip("/")
-        # The production callback is fixed to the registered Discloud domain.
-        # This prevents a stale/malformed WEB_PUBLIC_URL secret from generating
-        # a Discord redirect_uri that does not match the OAuth application.
         self.public_url = (
             PRODUCTION_PUBLIC_URL
             if configured_public_url.endswith("discloud.app")
@@ -52,6 +53,14 @@ class DiscordOAuth:
         self.sessions: dict[str, tuple[float, WebUser]] = {}
         self.states: dict[str, float] = {}
         self._lock = asyncio.Lock()
+
+    @property
+    def client_id(self) -> str:
+        bot_user = getattr(self.bot, "user", None)
+        bot_id = getattr(bot_user, "id", None)
+        if bot_id:
+            return str(bot_id)
+        return self.configured_client_id
 
     @property
     def configured(self) -> bool:
