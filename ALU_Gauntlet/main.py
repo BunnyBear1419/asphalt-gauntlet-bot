@@ -2,6 +2,7 @@ import os
 import asyncio
 from .core.core import bot
 from .core.ui_fixes import install_ui_fixes
+from .web.server import WebControlCenter
 
 install_ui_fixes()
 
@@ -21,7 +22,14 @@ async def runner():
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:
         raise RuntimeError("DISCORD_BOT_TOKEN is required in production")
-    await bot.start(token)
+    host = os.getenv("WEB_HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", os.getenv("WEB_PORT", "8080")))
+    web_center = WebControlCenter(bot, host=host, port=port)
+    await web_center.start()
+    try:
+        await bot.start(token)
+    finally:
+        await web_center.stop()
 
 if __name__ == "__main__":
     asyncio.run(runner())
