@@ -10,16 +10,17 @@ from .defenses import DefenseService
 from .matches import MatchService
 from .maps import MapService
 from .launchcheck import LaunchCheckService
+from .logs import LogService
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
 
 class WebControlCenter:
     def __init__(self, bot: Any, host: str = "127.0.0.1", port: int = 8080):
         self.bot=bot; self.host=host; self.port=port; self.auth=DiscordOAuth(bot)
-        self.players=PlayerService(bot); self.defenses=DefenseService(bot); self.matches=MatchService(bot); self.maps=MapService(bot); self.launchcheck=LaunchCheckService(bot)
+        self.players=PlayerService(bot); self.defenses=DefenseService(bot); self.matches=MatchService(bot); self.maps=MapService(bot); self.launchcheck=LaunchCheckService(bot); self.logs=LogService(bot)
         self.app=web.Application(); self.runner=None; self.site=None; self._configure_routes()
     def _configure_routes(self):
-        routes={"/":self.index,"/players":self.players_page,"/defenses":self.defenses_page,"/matches":self.matches_page,"/seasons":self.seasons_page,"/analytics":self.analytics_page,"/maps":self.maps_page,"/setup":self.setup_page,"/launchcheck":self.launchcheck_page,"/login":self.login,"/auth/callback":self.callback,"/logout":self.logout,"/api/me":self.me,"/api/status":self.status,"/api/guilds":self.guilds,"/api/players":self.player_list,"/api/players/{user_id}":self.player_detail,"/api/defenses":self.defense_list,"/api/defenses/{user_id}":self.defense_detail,"/api/matches":self.match_list,"/api/matches/{match_id}":self.match_detail,"/api/seasons":self.season_list,"/api/seasons/{season_number}":self.season_detail,"/api/analytics":self.analytics,"/api/maps":self.map_list,"/api/maps/{track}":self.map_detail,"/api/setup":self.setup,"/api/launchcheck":self.launchcheck_api}
+        routes={"/":self.index,"/players":self.players_page,"/defenses":self.defenses_page,"/matches":self.matches_page,"/seasons":self.seasons_page,"/analytics":self.analytics_page,"/maps":self.maps_page,"/setup":self.setup_page,"/launchcheck":self.launchcheck_page,"/logs":self.logs_page,"/login":self.login,"/auth/callback":self.callback,"/logout":self.logout,"/api/me":self.me,"/api/status":self.status,"/api/guilds":self.guilds,"/api/players":self.player_list,"/api/players/{user_id}":self.player_detail,"/api/defenses":self.defense_list,"/api/defenses/{user_id}":self.defense_detail,"/api/matches":self.match_list,"/api/matches/{match_id}":self.match_detail,"/api/seasons":self.season_list,"/api/seasons/{season_number}":self.season_detail,"/api/analytics":self.analytics,"/api/maps":self.map_list,"/api/maps/{track}":self.map_detail,"/api/setup":self.setup,"/api/launchcheck":self.launchcheck_api,"/api/logs":self.logs_api}
         for path,handler in routes.items(): self.app.router.add_get(path,handler)
         self.app.router.add_static("/static/",WEB_DIR,show_index=False)
     async def require_staff(self,request):
@@ -45,6 +46,7 @@ class WebControlCenter:
     async def maps_page(self,r): return await self._page(r,"maps.html")
     async def setup_page(self,r): return await self._page(r,"setup.html")
     async def launchcheck_page(self,r): return await self._page(r,"launchcheck.html")
+    async def logs_page(self,r): return await self._page(r,"logs.html")
     async def login(self,r):
         if not self.auth.configured: return web.Response(status=503,text="Web authentication is not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET.")
         user=await self.auth.get_session(r)
@@ -131,6 +133,11 @@ class WebControlCenter:
     async def launchcheck_api(self,r):
         _,gid,_=await self.require_guild_access(r)
         return web.json_response(await self.launchcheck.run(gid))
+    async def logs_api(self,r):
+        _,gid,_=await self.require_guild_access(r)
+        try: limit=int(r.query.get("limit","200"))
+        except ValueError: raise web.HTTPBadRequest(text="limit must be an integer.")
+        return web.json_response({"logs":await self.logs.list_logs(gid,limit=limit)})
     @staticmethod
     def _public_season_state(gid,state,config): return {"guild_id":gid,"season_number":int(state.get("season_number",1) or 1),"season_active":bool(state.get("season_active",False)),"awaiting_staff_start":bool(state.get("awaiting_staff_start",False)),"starts_at":state.get("starts_at"),"ends_at":state.get("ends_at"),"started_at":state.get("started_at"),"automatic_rollover":bool(config.get("automatic_season_end",False))}
     @staticmethod
