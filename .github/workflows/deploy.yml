@@ -5,10 +5,6 @@ on:
     branches: [feature/web-control-center]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  actions: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -63,18 +59,35 @@ jobs:
         id: provision
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          SITE_APP_ID: ${{ vars.DISCLOUD_SITE_APP_ID }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if [ -n "$SITE_APP_ID" ]; then
-            echo "Using persisted Discloud site app ID."
+          SITE_APP_ID=$(awk -F= '$1 == "ID" {print $2; exit}' discloud.config)
+          if [ -z "$SITE_APP_ID" ]; then
+            echo "discloud.config does not contain an ID."
+            exit 1
+          fi
+          echo "Discloud site ID from config: $SITE_APP_ID"
+
+          status=$(curl -sS -o existing-app.json -w "%{http_code}" \
+            -H "api-token: $DISCLOUD_TOKEN" \
+            -H "Accept: application/json" \
+            "https://api.discloud.app/v2/app/${SITE_APP_ID}" || true)
+          echo "Existing site lookup HTTP status: $status"
+
+          if [ "$status" = "200" ]; then
             echo "app_id=$SITE_APP_ID" >> "$GITHUB_OUTPUT"
             echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "Discloud site already exists; commit deployment will be used."
             exit 0
           fi
 
-          echo "No persisted site app ID found; creating the site from discloud.config."
+          if [ "$status" != "404" ]; then
+            cat existing-app.json || true
+            echo "Unexpected Discloud app lookup status: $status"
+            exit 1
+          fi
+
+          echo "No Discloud site exists yet. Creating it from discloud.config."
           create_http=$(curl -sS -o create-response.json -w "%{http_code}" \
             -X POST \
             -H "api-token: $DISCLOUD_TOKEN" \
@@ -88,21 +101,20 @@ jobs:
             exit 1
           fi
 
-          python - <<'PY' "$GITHUB_OUTPUT" > created-app-id.txt
+          python - "$SITE_APP_ID" <<'PY'
           import json, sys
+          expected=sys.argv[1]
           data=json.load(open('create-response.json', encoding='utf-8'))
           app=data.get('app')
           if not isinstance(app, dict) or not app.get('id'):
               raise SystemExit('Discloud create response did not contain app.id')
-          print(app['id'])
-          print(f"app_id={app['id']}", file=open(sys.argv[1], 'a', encoding='utf-8'))
-          print('created=true', file=open(sys.argv[1], 'a', encoding='utf-8'))
+          if str(app['id']) != expected:
+              raise SystemExit(f"Discloud created app {app['id']!r}, expected configured site ID {expected!r}")
+          with open(__import__('os').environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              out.write(f'app_id={app["id"]}\n')
+              out.write('created=true\n')
+          print(f"Created Discloud site app: {app['id']}")
           PY
-          created_id=$(cat created-app-id.txt)
-          echo "Created Discloud site app: $created_id"
-
-          gh variable set DISCLOUD_SITE_APP_ID --repo "$GITHUB_REPOSITORY" --body "$created_id"
-          echo "Discloud site app ID persisted to repository variables."
 
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
