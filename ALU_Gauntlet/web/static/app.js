@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[char]));
 let selectedGuild = "";
+let guildNames = new Map();
 
 async function api(url) {
   const response = await fetch(url, { cache: "no-store" });
@@ -38,9 +39,10 @@ function renderEvents(items) {
 
 async function loadGuilds() {
   const data = await api("/api/guilds");
+  guildNames = new Map(data.guilds.map((g) => [g.id, g.name]));
   const select = $("guild-select");
   select.innerHTML = data.guilds.length ? data.guilds.map((g) => `<option value="${escapeHtml(g.id)}">${escapeHtml(g.name)}</option>`).join("") : '<option value="">No accessible servers</option>';
-  if (!selectedGuild || !data.guilds.some((g) => g.id === selectedGuild)) selectedGuild = data.guilds[0]?.id || "";
+  if (!selectedGuild || !guildNames.has(selectedGuild)) selectedGuild = data.guilds[0]?.id || "";
   select.value = selectedGuild;
 }
 
@@ -48,42 +50,48 @@ async function refreshOverview() {
   if (!selectedGuild) return;
   $("refresh-status").textContent = "Refreshing…";
   try {
-    const [overview, status] = await Promise.all([api(`/api/analytics?guild_id=${encodeURIComponent(selectedGuild)}`), api(`/api/status`)]);
-    const setup = await api(`/api/setup?guild_id=${encodeURIComponent(selectedGuild)}`);
-    const seasons = await api(`/api/seasons?guild_id=${encodeURIComponent(selectedGuild)}`);
-    const matches = await api(`/api/matches?guild_id=${encodeURIComponent(selectedGuild)}&limit=5`);
-    const logs = await api(`/api/logs?guild_id=${encodeURIComponent(selectedGuild)}&limit=5`);
-    const guilds = await api("/api/guilds");
-    const guild = guilds.guilds.find((g) => g.id === selectedGuild);
-    $("server-name").textContent = guild?.name || "Selected server";
-    $("players").textContent = analyticsNumber(status, overview.players);
-    $("registered").textContent = `${overview.registered ?? 0} registered this season`;
-    $("defenses").textContent = overview.defenses ?? 0;
-    $("pending").textContent = "Review from Defenses";
-    $("matches").textContent = overview.matches ?? 0;
-    $("completed").textContent = `${overview.completed_matches ?? 0} completed`;
+    const gid = encodeURIComponent(selectedGuild);
+    const [analytics, status, setup, seasons, matches, logs, defenses, launch] = await Promise.all([
+      api(`/api/analytics?guild_id=${gid}`),
+      api("/api/status"),
+      api(`/api/setup?guild_id=${gid}`),
+      api(`/api/seasons?guild_id=${gid}`),
+      api(`/api/matches?guild_id=${gid}&limit=5`),
+      api(`/api/logs?guild_id=${gid}&limit=5`),
+      api(`/api/defenses?guild_id=${gid}&status=pending`),
+      api(`/api/launchcheck?guild_id=${gid}`),
+    ]);
     const current = seasons.current || {};
+    const missing = ["registration_channel_id","review_channel_id","log_channel_id","admin_role_id","player_role_id","timezone"].filter((key) => !setup.setup?.[key]);
+    const pendingCount = (defenses.defenses || []).length;
+    const launchReady = launch.summary === "READY";
+    const online = !!status.bot.online;
+
+    $("server-name").textContent = guildNames.get(selectedGuild) || "Selected server";
+    $("players").textContent = analytics.players ?? "—";
+    $("registered").textContent = `${analytics.registered ?? 0} registered this season`;
+    $("defenses").textContent = analytics.defenses ?? 0;
+    $("pending").textContent = `${pendingCount} pending review`;
+    $("matches").textContent = analytics.matches ?? 0;
+    $("completed").textContent = `${analytics.completed_matches ?? 0} completed`;
     $("season").textContent = `#${current.season_number ?? 1}`;
     $("season-state").textContent = current.season_active ? "Active" : current.awaiting_staff_start ? "Awaiting staff start" : "Inactive";
-    const online = !!status.bot.online;
     $("system-pill").textContent = online ? "● Bot online" : "● Bot offline";
-    const setupKeys = ["registration_channel_id","review_channel_id","log_channel_id","admin_role_id","player_role_id","timezone"];
-    const missing = setupKeys.filter((key) => !setup.setup?.[key]);
     $("setup-status").textContent = missing.length ? `${missing.length} required setting${missing.length === 1 ? "" : "s"} missing` : "Complete";
     $("rollover-status").textContent = current.automatic_rollover ? "Enabled" : "Manual";
-    $("health-card").innerHTML = `<b>${online ? "Bot connected" : "Bot offline"}</b><small>Latency: ${status.bot.latency_ms == null ? "—" : escapeHtml(status.bot.latency_ms + " ms")} • ${escapeHtml(status.bot.guild_count)} Discord server${status.bot.guild_count === 1 ? "" : "s"} connected</small>`;
+    $("health-card").className = `status-box ${launchReady ? "status-good" : "status-attention"}`;
+    $("health-card").innerHTML = `<b>${escapeHtml(launch.summary)}</b><small>${escapeHtml(launch.errors)} error${launch.errors === 1 ? "" : "s"} • ${escapeHtml(launch.warnings)} warning${launch.warnings === 1 ? "" : "s"} • ${escapeHtml(status.bot.latency_ms == null ? "Latency unavailable" : status.bot.latency_ms + " ms")}</small>`;
     renderMatches(matches.matches || []);
     renderEvents(logs.logs || []);
     $("refresh-status").textContent = `Updated ${new Date().toLocaleTimeString()}`;
   } catch (error) {
     if (error.message !== "Unauthorized") {
       $("refresh-status").textContent = "Unable to refresh overview";
+      $("health-card").className = "status-box status-attention";
       $("health-card").innerHTML = "<b>Overview unavailable</b><small>Check the bot connection, database and server access.</small>";
     }
   }
 }
-
-function analyticsNumber(status, fallback) { return fallback ?? "—"; }
 
 $("guild-select").addEventListener("change", (event) => { selectedGuild = event.target.value; refreshOverview(); });
 
