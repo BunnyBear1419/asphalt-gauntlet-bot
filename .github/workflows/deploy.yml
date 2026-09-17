@@ -62,6 +62,13 @@ jobs:
         run: |
           set -euo pipefail
 
+          subdomain=$(awk -F= '$1 == "ID" {print $2; exit}' discloud.config | tr -d '[:space:]')
+          if [ -z "$subdomain" ]; then
+            echo "discloud.config does not define a site ID/subdomain."
+            exit 1
+          fi
+          echo "Configured Discloud subdomain: $subdomain"
+
           apps_http=$(curl -sS -o apps.json -w "%{http_code}" \
             -H "api-token: $DISCLOUD_TOKEN" \
             -H "Accept: application/json" \
@@ -101,11 +108,12 @@ jobs:
             exit 0
           fi
 
-          echo "No existing ALU-Gauntlet site application was found. Creating it from discloud.config."
+          echo "No existing ALU-Gauntlet site application was found. Creating it for subdomain $subdomain."
           create_http=$(curl -sS -o create-response.json -w "%{http_code}" \
             -X POST \
             -H "api-token: $DISCLOUD_TOKEN" \
             -H "Accept: application/json" \
+            -F "idSub=$subdomain" \
             -F "file=@discloud-deploy.zip;type=application/zip" \
             "https://api.discloud.app/v2/upload" || true)
           echo "Discloud create/upload HTTP status: $create_http"
