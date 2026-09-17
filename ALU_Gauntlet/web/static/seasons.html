@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seasons • ALU Gauntlet Control Center</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">ASPHALT LEGENDS UNITE</p>
+        <h1>Seasons</h1>
+        <p class="muted">View the current season timeline, automation state, and archived seasons.</p>
+      </div>
+      <div class="hero-actions"><a class="button-link" href="/">← Control Center</a></div>
+    </header>
+    <section class="panel"><div class="toolbar"><label class="sr-only" for="guild">Discord server</label><select id="guild"><option value="">Loading servers…</option></select></div><div id="message" class="muted">Choose a server to load season data.</div></section>
+    <section id="current-panel" class="panel" hidden><div class="section-heading"><div><p class="eyebrow">CURRENT</p><h2 id="current-title">Season</h2></div><span id="current-status" class="status-pill">—</span></div><div class="stats-grid"><div class="stat-card"><span>Scheduled start</span><strong id="start">—</strong></div><div class="stat-card"><span>Scheduled end</span><strong id="end">—</strong></div><div class="stat-card"><span>Automatic rollover</span><strong id="rollover">—</strong></div><div class="stat-card"><span>Started</span><strong id="started">—</strong></div></div><p class="muted">Season controls remain in Discord under <strong>/staff → Season</strong>. This web module is read-only.</p></section>
+    <section id="history-panel" class="panel" hidden><div class="section-heading"><div><p class="eyebrow">ARCHIVE</p><h2>Season history</h2></div></div><div class="table-wrap"><table><thead><tr><th>Season</th><th>Drivers</th><th>Closed</th><th></th></tr></thead><tbody id="history-rows"></tbody></table></div></section>
+    <section id="detail-panel" class="panel" hidden><div class="section-heading"><div><p class="eyebrow">ARCHIVED STANDINGS</p><h2 id="detail-title">Season</h2></div><button id="close-detail" class="button-link" type="button">Close</button></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Driver</th><th>ELO</th><th>Division</th></tr></thead><tbody id="detail-rows"></tbody></table></div></section>
+    <footer>Read-only • Season controls remain in Discord • Simulator disabled</footer>
+  </main>
+  <script src="/static/seasons.js"></script>
+</body>
+</html>
