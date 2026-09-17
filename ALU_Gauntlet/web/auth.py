@@ -15,6 +15,7 @@ ADMINISTRATOR = 1 << 3
 SESSION_COOKIE = "alu_web_session"
 SESSION_TTL = 8 * 60 * 60
 STATE_TTL = 10 * 60
+PRODUCTION_PUBLIC_URL = "https://asph.discloud.app"
 
 
 @dataclass(slots=True)
@@ -35,7 +36,7 @@ class DiscordOAuth:
         self.bot = bot
         self.client_id = os.getenv("DISCORD_CLIENT_ID", "").strip()
         self.client_secret = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
-        self.public_url = os.getenv("WEB_PUBLIC_URL", "http://127.0.0.1:8080").rstrip("/")
+        self.public_url = os.getenv("WEB_PUBLIC_URL", PRODUCTION_PUBLIC_URL).rstrip("/")
         self.allowed_staff_ids = {value.strip() for value in os.getenv("WEB_STAFF_USER_IDS", "").split(",") if value.strip()}
         self.sessions: dict[str, tuple[float, WebUser]] = {}
         self.states: dict[str, float] = {}
