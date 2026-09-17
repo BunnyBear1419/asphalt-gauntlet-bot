@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Matches • ALU Gauntlet</title><link rel="stylesheet" href="/static/app.css">
+</head>
+<body><main class="shell">
+  <header class="hero"><div><p class="eyebrow">ALU GAUNTLET</p><h1>Matches</h1><p class="muted">Read-only challenge and match history.</p></div><div class="hero-actions"><a class="button-link" href="/">← Control Center</a><a class="button-link" href="/logout">Log out</a></div></header>
+  <section class="panel">
+    <div class="section-heading"><div><p class="eyebrow">MATCH HISTORY</p><h2>Recent matches</h2></div><span id="count" class="muted">Loading…</span></div>
+    <div class="toolbar"><label class="sr-only" for="guild">Server</label><select id="guild"></select><label class="sr-only" for="search">Search</label><input id="search" class="search" placeholder="Search player ID…"></div>
+    <div class="table-wrap"><table><thead><tr><th>Match</th><th>Challenger</th><th>Defender</th><th>Season</th><th>Score</th><th>Result</th></tr></thead><tbody id="matches"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>
+  </section><footer>ALU Gauntlet • Matches • Read-only • Simulator disabled</footer>
+<script src="/static/matches.js"></script></main></body></html>
