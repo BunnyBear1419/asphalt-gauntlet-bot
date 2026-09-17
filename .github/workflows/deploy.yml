@@ -124,13 +124,30 @@ jobs:
           glob: '**'
           team: false
 
-      - name: Fail if all Discloud deploy attempts failed
-        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure' && steps.deploy3.outcome == 'failure'
+      - name: Determine deployment result
+        id: deploy_status
+        if: always()
+        env:
+          DEPLOY1_OUTCOME: ${{ steps.deploy1.outcome }}
+          DEPLOY2_OUTCOME: ${{ steps.deploy2.outcome }}
+          DEPLOY3_OUTCOME: ${{ steps.deploy3.outcome }}
         run: |
-          echo "All Discloud deployment attempts failed."
-          exit 1
+          set -euo pipefail
+          echo "attempt 1: $DEPLOY1_OUTCOME"
+          echo "attempt 2: $DEPLOY2_OUTCOME"
+          echo "attempt 3: $DEPLOY3_OUTCOME"
+          if [ "$DEPLOY1_OUTCOME" = "success" ] || [ "$DEPLOY2_OUTCOME" = "success" ] || [ "$DEPLOY3_OUTCOME" = "success" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+            echo "At least one Discloud deployment attempt succeeded."
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "All Discloud deployment attempts failed."
+          fi
 
-      # The prior deployment implementation used Python urllib for Discloud and received HTTP 403.
+      - name: Fail if all Discloud deploy attempts failed
+        if: steps.deploy_status.outputs.ok != 'true'
+        run: exit 1
+
       - name: Post-deployment smoke test
         id: smoke
         continue-on-error: true
@@ -156,8 +173,19 @@ jobs:
             if [ "$discloud_http" != "200" ]; then
               ok=false
             else
-              python -c 'import json; d=json.load(open("discloud-status.json")); v=[]; c=lambda x: (v.extend([s.strip().lower() for s in x if isinstance(s,str)]) if isinstance(x,list) else [c(y) for y in x.values()] if isinstance(x,dict) else None); c(d); raise SystemExit("Discloud reported no healthy state") if not {"running","online","active","ready"}.intersection(v) else None'
-              if [ $? -ne 0 ]; then ok=false; fi
+              if ! python -c 'import json,sys; d=json.load(open("discloud-status.json"));
+vals=[]
+def walk(x):
+    if isinstance(x, str): vals.append(x.strip().lower())
+    elif isinstance(x, list):
+        for y in x: walk(y)
+    elif isinstance(x, dict):
+        for y in x.values(): walk(y)
+walk(d)
+print("Discloud status values:", sorted(set(vals)))
+if not {"running","online","active","ready"}.intersection(vals): sys.exit("Discloud reported no healthy state")'; then
+                ok=false
+              fi
             fi
 
             discord_http=$(curl -sS -o discord-user.json -w "%{http_code}" \
@@ -169,7 +197,16 @@ jobs:
               ok=false
             fi
 
-            if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000); c.admin.command("ping"); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); raise SystemExit("No production heartbeat found") if not h else None; raise SystemExit("Production heartbeat has not advanced") if float(h.get("timestamp",0)) < float(os.environ["DEPLOY_STARTED_AT"]) else None; raise SystemExit("Production heartbeat reports bot/database unhealthy") if not h.get("ready") or not h.get("db_ok") else None'; then
+            if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python -c 'import os,sys; from pymongo import MongoClient
+c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000)
+try:
+    c.admin.command("ping")
+    h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"})
+finally:
+    c.close()
+if not h: sys.exit("No production heartbeat found")
+if float(h.get("timestamp",0)) < float(os.environ["DEPLOY_STARTED_AT"]): sys.exit("Production heartbeat has not advanced")
+if not h.get("ready") or not h.get("db_ok"): sys.exit("Production heartbeat reports bot/database unhealthy")'; then
               ok=false
             fi
 
@@ -238,7 +275,14 @@ jobs:
               -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
               -H "Accept: application/json" \
               "https://discord.com/api/v10/users/@me"; then
-              if MONGO_URI="$MONGO_URI" python -c 'import os,time; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000); c.admin.command("ping"); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); raise SystemExit(1) if not h or not h.get("ready") or not h.get("db_ok") or time.time()-float(h.get("timestamp",0))>1200 else None'; then
+              if MONGO_URI="$MONGO_URI" python -c 'import os,sys,time; from pymongo import MongoClient
+c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000)
+try:
+    c.admin.command("ping")
+    h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"})
+finally:
+    c.close()
+if not h or not h.get("ready") or not h.get("db_ok") or time.time()-float(h.get("timestamp",0))>1200: sys.exit(1)'; then
                 echo "Rollback health verification passed."
                 exit 0
               fi
