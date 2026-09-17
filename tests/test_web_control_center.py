@@ -62,8 +62,10 @@ async def test_dashboard_is_served():
         response = await client.get("/")
         assert response.status == 200
         body = await response.text()
-        assert "Gauntlet Control Center" in body
+        # Keep this assertion aligned with the current dashboard branding.
+        assert "Gauntlet Overview" in body
+        assert "Staff Control Center" in body
         assert "Players" in body
-        assert "Simulator" in body
+        assert "Launch Check" in body
     finally:
         await client.close()
