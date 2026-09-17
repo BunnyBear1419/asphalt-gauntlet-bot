@@ -1,17 +1,23 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ALU Gauntlet Control Center</title><link rel="stylesheet" href="/static/app.css"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ALU Gauntlet • Overview</title><link rel="stylesheet" href="/static/app.css"></head>
 <body><main class="shell">
-<header class="hero"><div><p class="eyebrow">ASPHALT LEGENDS UNITE</p><h1>Gauntlet Control Center</h1><p class="muted">A single staff control center for your Gauntlet bot.</p></div><div class="hero-actions"><div id="system-pill" class="pill">Checking bot…</div><div id="user-menu" class="user-menu" hidden><span id="user-name">Staff</span><a href="/logout">Log out</a></div></div></header>
-<section class="grid cards" aria-label="System status"><article class="card"><span>Bot</span><strong id="bot-status">—</strong></article><article class="card"><span>Latency</span><strong id="latency">—</strong></article><article class="card"><span>Discord Servers</span><strong id="guilds">—</strong></article><article class="card"><span>Control Mode</span><strong>Read-only</strong></article></section>
-<section class="panel"><div class="section-heading"><div><p class="eyebrow">MANAGEMENT</p><h2>Gauntlet modules</h2></div><span class="muted">Phase 1 foundation</span></div><div class="grid modules">
-<a class="module" href="/players"><span>👥</span><b>Players</b><small>Profiles and player management</small></a>
-<a class="module" href="/defenses"><span>🛡️</span><b>Defenses</b><small>Review and manage defenses</small></a>
+<header class="hero"><div><p class="eyebrow">ASPHALT LEGENDS UNITE</p><h1>Gauntlet Overview</h1><p class="muted">Your staff command center at a glance — live status, season state, workload and recent activity.</p></div><div class="hero-actions"><div id="system-pill" class="pill">Checking bot…</div><div class="user-menu" id="user-menu" hidden><span id="user-name">Staff</span><a href="/logout">Log out</a></div></div></header>
+<section class="panel overview-bar"><div><p class="eyebrow">SERVER</p><h2 id="server-name">Loading…</h2></div><select id="guild-select" aria-label="Discord server"></select><span id="refresh-status" class="muted">Refreshing automatically</span></section>
+<section class="grid cards" aria-label="Gauntlet summary"><article class="card"><span>Players</span><strong id="players">—</strong><small id="registered">— registered this season</small></article><article class="card"><span>Defenses</span><strong id="defenses">—</strong><small id="pending">— pending review</small></article><article class="card"><span>Matches</span><strong id="matches">—</strong><small id="completed">— completed</small></article><article class="card"><span>Season</span><strong id="season">—</strong><small id="season-state">—</small></article></section>
+<section class="grid overview-columns">
+<article class="panel"><div class="section-heading"><div><p class="eyebrow">HEALTH</p><h2>Server readiness</h2></div><a class="pill" href="/launchcheck">Open Launch Check</a></div><div id="health-card" class="status-box">Loading…</div><div class="status-list"><div><span>Server setup</span><b id="setup-status">—</b></div><div><span>Automatic rollover</span><b id="rollover-status">—</b></div><div><span>Control mode</span><b>Read-only</b></div></div></article>
+<article class="panel"><div class="section-heading"><div><p class="eyebrow">RECENT</p><h2>Recent matches</h2></div><a class="pill" href="/matches">View all</a></div><div id="recent-matches" class="activity">Loading…</div></article>
+</section>
+<section class="panel"><div class="section-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Recent system events</h2></div><a class="pill" href="/logs">Open Logs & Audit</a></div><div id="recent-events" class="activity">Loading…</div></section>
+<section class="panel"><div class="section-heading"><div><p class="eyebrow">MANAGEMENT</p><h2>Gauntlet modules</h2><p class="muted">Everything staff needs, without simulator clutter.</p></div></div><div class="grid modules">
+<a class="module" href="/players"><span>👥</span><b>Players</b><small>Profiles, ELO and season participation</small></a>
+<a class="module" href="/defenses"><span>🛡️</span><b>Defenses</b><small>Defense status and review workload</small></a>
 <a class="module" href="/matches"><span>⚔️</span><b>Matches</b><small>Challenges and match history</small></a>
-<a class="module" href="/seasons"><span>🏆</span><b>Seasons</b><small>Current season and history</small></a>
-<a class="module" href="/analytics"><span>📊</span><b>Analytics</b><small>Gauntlet statistics and history</small></a>
-<a class="module" href="/maps"><span>🗺️</span><b>Maps & Times</b><small>Maps and reference times</small></a>
+<a class="module" href="/seasons"><span>🏆</span><b>Seasons</b><small>Current season and archived history</small></a>
+<a class="module" href="/analytics"><span>📊</span><b>Analytics</b><small>Participation and historical statistics</small></a>
+<a class="module" href="/maps"><span>🗺️</span><b>Maps & Times</b><small>Maps, records and reference times</small></a>
 <a class="module" href="/setup"><span>⚙️</span><b>Server Setup</b><small>Channels, roles and timezone</small></a>
-<a class="module" href="/launchcheck"><span>🔍</span><b>Launch Check</b><small>Readiness and health checks</small></a>
+<a class="module" href="/launchcheck"><span>🔍</span><b>Launch Check</b><small>Production readiness and health checks</small></a>
 <a class="module" href="/logs"><span>📜</span><b>Logs & Audit</b><small>Administrative and system activity</small></a>
-</div></section><footer>ALU Gauntlet • Staff Control Center • Simulator disabled</footer></main><script src="/static/app.js"></script></body></html>
+</div></section><footer>ALU Gauntlet • Staff Control Center • Read-only • Simulator disabled</footer></main><script src="/static/app.js"></script></body></html>
