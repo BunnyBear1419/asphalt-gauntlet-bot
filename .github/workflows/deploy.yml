@@ -173,17 +173,31 @@ jobs:
             if [ "$discloud_http" != "200" ]; then
               ok=false
             else
-              if ! python -c 'import json,sys; d=json.load(open("discloud-status.json"));
-vals=[]
-def walk(x):
-    if isinstance(x, str): vals.append(x.strip().lower())
-    elif isinstance(x, list):
-        for y in x: walk(y)
-    elif isinstance(x, dict):
-        for y in x.values(): walk(y)
-walk(d)
-print("Discloud status values:", sorted(set(vals)))
-if not {"running","online","active","ready"}.intersection(vals): sys.exit("Discloud reported no healthy state")'; then
+              if ! python - <<'PY'
+          import json
+          import sys
+
+          with open("discloud-status.json", encoding="utf-8") as f:
+              data = json.load(f)
+
+          values = []
+
+          def walk(value):
+              if isinstance(value, str):
+                  values.append(value.strip().lower())
+              elif isinstance(value, list):
+                  for item in value:
+                      walk(item)
+              elif isinstance(value, dict):
+                  for item in value.values():
+                      walk(item)
+
+          walk(data)
+          print("Discloud status values:", sorted(set(values)))
+          if not {"running", "online", "active", "ready"}.intersection(values):
+              sys.exit("Discloud reported no healthy state")
+          PY
+              then
                 ok=false
               fi
             fi
@@ -197,16 +211,28 @@ if not {"running","online","active","ready"}.intersection(vals): sys.exit("Discl
               ok=false
             fi
 
-            if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python -c 'import os,sys; from pymongo import MongoClient
-c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000)
-try:
-    c.admin.command("ping")
-    h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"})
-finally:
-    c.close()
-if not h: sys.exit("No production heartbeat found")
-if float(h.get("timestamp",0)) < float(os.environ["DEPLOY_STARTED_AT"]): sys.exit("Production heartbeat has not advanced")
-if not h.get("ready") or not h.get("db_ok"): sys.exit("Production heartbeat reports bot/database unhealthy")'; then
+            if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python - <<'PY'
+          import os
+          import sys
+          from pymongo import MongoClient
+
+          client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000)
+          try:
+              client.admin.command("ping")
+              heartbeat = client["asphalt_gauntlet"].system_events.find_one(
+                  {"_id": "production_heartbeat"}
+              )
+          finally:
+              client.close()
+
+          if not heartbeat:
+              sys.exit("No production heartbeat found")
+          if float(heartbeat.get("timestamp", 0)) < float(os.environ["DEPLOY_STARTED_AT"]):
+              sys.exit("Production heartbeat has not advanced")
+          if not heartbeat.get("ready") or not heartbeat.get("db_ok"):
+              sys.exit("Production heartbeat reports bot/database unhealthy")
+          PY
+            then
               ok=false
             fi
 
@@ -275,14 +301,30 @@ if not h.get("ready") or not h.get("db_ok"): sys.exit("Production heartbeat repo
               -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
               -H "Accept: application/json" \
               "https://discord.com/api/v10/users/@me"; then
-              if MONGO_URI="$MONGO_URI" python -c 'import os,sys,time; from pymongo import MongoClient
-c=MongoClient(os.environ["MONGO_URI"],serverSelectionTimeoutMS=10000)
-try:
-    c.admin.command("ping")
-    h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"})
-finally:
-    c.close()
-if not h or not h.get("ready") or not h.get("db_ok") or time.time()-float(h.get("timestamp",0))>1200: sys.exit(1)'; then
+              if MONGO_URI="$MONGO_URI" python - <<'PY'
+          import os
+          import sys
+          import time
+          from pymongo import MongoClient
+
+          client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000)
+          try:
+              client.admin.command("ping")
+              heartbeat = client["asphalt_gauntlet"].system_events.find_one(
+                  {"_id": "production_heartbeat"}
+              )
+          finally:
+              client.close()
+
+          if (
+              not heartbeat
+              or not heartbeat.get("ready")
+              or not heartbeat.get("db_ok")
+              or time.time() - float(heartbeat.get("timestamp", 0)) > 1200
+          ):
+              sys.exit(1)
+          PY
+              then
                 echo "Rollback health verification passed."
                 exit 0
               fi
