@@ -51,6 +51,8 @@ class WebControlCenter:
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/players", self.players_page)
+        self.app.router.add_get("/setup", self.setup_page)
+        self.app.router.add_get("/player", self.player_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
@@ -107,6 +109,14 @@ class WebControlCenter:
     async def players_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
         return web.FileResponse(WEB_DIR / "players.html")
+
+    async def setup_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_admin(request)
+        return web.FileResponse(WEB_DIR / "setup.html")
+
+    async def player_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return web.FileResponse(WEB_DIR / "player.html")
 
     async def login(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
