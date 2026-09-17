@@ -3,7 +3,7 @@ name: CI and Deploy
 on:
   push:
     branches:
-      - main
+      - feature/web-control-center
   workflow_dispatch:
 
 permissions:
@@ -86,7 +86,6 @@ jobs:
           done
           echo "Deployment secrets are present. Secret values are never printed."
 
-      # Retry transient Discloud deployment failures, including temporary 429s.
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
         continue-on-error: true
@@ -130,9 +129,6 @@ jobs:
           echo "All Discloud deployment attempts failed."
           exit 1
 
-      # Use the exact curl/header pattern from production-health.yml. The prior
-      # implementation used Python urllib for Discloud and received HTTP 403
-      # while the production monitor using curl remained healthy.
       - name: Post-deployment smoke test
         id: smoke
         continue-on-error: true
