@@ -5,7 +5,7 @@ import asyncio
 import os
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from aiohttp import ClientSession, web
@@ -24,6 +24,7 @@ class WebUser:
     global_name: str | None
     avatar: str | None
     staff: bool
+    admin_guild_ids: set[str] = field(default_factory=set)
 
 
 class DiscordOAuth:
@@ -104,20 +105,48 @@ class DiscordOAuth:
                     raise web.HTTPBadGateway(text="Discord OAuth API request failed.")
                 return await response.json()
 
+    async def _configured_staff_role_ids(self, guild_ids: set[str]) -> dict[str, str]:
+        """Return guild -> configured Staff/admin role ID from persisted setup."""
+        if not guild_ids or not getattr(self.bot, "db", None):
+            return {}
+        rows = await self.bot.db.settings.find({"_id": {"$in": list(guild_ids)}}).to_list(length=len(guild_ids))
+        result: dict[str, str] = {}
+        for row in rows:
+            guild_id = str(row.get("_id", ""))
+            role_id = row.get("admin_role_id")
+            if role_id:
+                result[guild_id] = str(role_id)
+        return result
+
     async def build_user(self, access_token: str) -> WebUser:
         profile = await self.discord_get("/users/@me", access_token)
         guilds = await self.discord_get("/users/@me/guilds", access_token)
         user_id = str(profile["id"])
 
-        staff = user_id in self.allowed_staff_ids
-        if not staff:
-            for guild in guilds:
-                try:
-                    if int(guild.get("permissions", 0)) & ADMINISTRATOR:
-                        staff = True
-                        break
-                except (TypeError, ValueError):
-                    continue
+        global_staff = user_id in self.allowed_staff_ids
+        guild_ids = {str(guild.get("id")) for guild in guilds if guild.get("id")}
+        configured_roles = await self._configured_staff_role_ids(guild_ids)
+        admin_guild_ids: set[str] = set()
+
+        for guild in guilds:
+            guild_id = str(guild.get("id", ""))
+            if not guild_id:
+                continue
+            try:
+                permissions = int(guild.get("permissions", 0))
+            except (TypeError, ValueError):
+                permissions = 0
+
+            # Discord's OAuth guild object exposes the member's role IDs here.
+            member_roles = {str(role_id) for role_id in (guild.get("roles") or [])}
+            staff_role_id = configured_roles.get(guild_id)
+            if permissions & ADMINISTRATOR or (staff_role_id and staff_role_id in member_roles):
+                admin_guild_ids.add(guild_id)
+
+        staff = global_staff or bool(admin_guild_ids)
+        if global_staff:
+            # Global staff is intentionally unrestricted across bot-connected guilds.
+            admin_guild_ids = {str(getattr(guild, "id", "")) for guild in getattr(self.bot, "guilds", [])}
 
         return WebUser(
             user_id=user_id,
@@ -125,6 +154,7 @@ class DiscordOAuth:
             global_name=profile.get("global_name"),
             avatar=profile.get("avatar"),
             staff=staff,
+            admin_guild_ids=admin_guild_ids,
         )
 
     async def create_session(self, user: WebUser) -> str:
