@@ -180,6 +180,22 @@ jobs:
           PY
             fi
 
+            WEB_HTTP=$(curl -sS -o web-health.json -w "%{http_code}" "https://asph.discloud.app/healthz" || true)
+            echo "Web health HTTP status: $WEB_HTTP"
+            if [ "$WEB_HTTP" != "200" ]; then
+              echo "Web control-center health endpoint failed."
+              ok=false
+            else
+              python - <<'PY' || ok=false
+          import json
+          from pathlib import Path
+          data=json.loads(Path("web-health.json").read_text())
+          if not data.get("ok"):
+              raise SystemExit(f"Web health reports unhealthy: {data}")
+          print("Web control-center health check passed.")
+          PY
+            fi
+
             DISCORD_HTTP=$(curl -sS -o discord-user.json -w "%{http_code}" \
               -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
               -H "Accept: application/json" \
