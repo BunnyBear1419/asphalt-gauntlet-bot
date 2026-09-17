@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Defenses • ALU Gauntlet Control Center</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">ASPHALT LEGENDS UNITE</p>
+        <h1>Defenses</h1>
+        <p class="muted">View locked five-course defenses and staff review requests.</p>
+      </div>
+      <div class="hero-actions"><a class="button-link" href="/">← Control Center</a></div>
+    </header>
+    <section class="panel">
+      <div class="toolbar">
+        <label class="sr-only" for="guild">Discord server</label>
+        <select id="guild"><option value="">Loading servers…</option></select>
+        <label class="sr-only" for="status">Defense status</label>
+        <select id="status">
+          <option value="all">All defenses</option>
+          <option value="pending">Pending review</option>
+          <option value="locked">Locked defenses</option>
+          <option value="none">No defense</option>
+        </select>
+        <input id="search" class="search" type="search" placeholder="Filter by game ID or Discord ID">
+      </div>
+      <div id="message" class="muted">Choose a server to load defenses.</div>
+      <div class="table-wrap" id="table-wrap" hidden>
+        <table>
+          <thead><tr><th>Player</th><th>Status</th><th>Courses</th><th>Review</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+    <footer>Read-only • Defense approvals remain in Discord • Simulator disabled</footer>
+  </main>
+  <script src="/static/defenses.js"></script>
+</body>
+</html>
