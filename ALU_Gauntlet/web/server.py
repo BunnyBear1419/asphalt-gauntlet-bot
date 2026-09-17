@@ -56,6 +56,7 @@ class WebControlCenter:
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
+        self.app.router.add_get("/healthz", self.healthz)
         self.app.router.add_get("/api/me", self.me)
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_get("/api/guilds", self.guilds)
@@ -117,6 +118,18 @@ class WebControlCenter:
     async def player_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return web.FileResponse(WEB_DIR / "player.html")
+
+    async def healthz(self, request: web.Request) -> web.Response:
+        ready = bool(getattr(self.bot, "is_ready", lambda: False)())
+        db = getattr(self.bot, "db", None)
+        db_ok = False
+        if db is not None:
+            try:
+                await db.command("ping")
+                db_ok = True
+            except Exception:
+                db_ok = False
+        return web.json_response({"ok": ready and db_ok, "bot_ready": ready, "db_ok": db_ok})
 
     async def login(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
