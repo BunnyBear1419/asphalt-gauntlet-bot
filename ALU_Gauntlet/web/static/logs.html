@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Logs & Audit • ALU Gauntlet</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><main class="shell">
+<header class="hero"><div><p class="eyebrow">ALU GAUNTLET</p><h1>Logs & Audit</h1><p class="muted">Read-only administrative and system activity for the selected Discord server.</p></div><div class="hero-actions"><a class="pill" href="/">← Control Center</a><a class="pill" href="/logout">Log out</a></div></header>
+<section class="panel"><div class="section-heading"><div><p class="eyebrow">SERVER</p><h2>Activity</h2></div><select id="guild-select" aria-label="Discord server"></select></div>
+<div class="grid cards" style="margin-top:18px"><article class="card"><span>Events</span><strong id="event-count">—</strong></article><article class="card"><span>Administrative</span><strong id="admin-count">—</strong></article><article class="card"><span>System</span><strong id="system-count">—</strong></article><article class="card"><span>Mode</span><strong>Read-only</strong></article></div>
+<div id="logs-status" class="muted" style="margin-top:18px">Loading…</div><div class="panel" style="margin-top:18px; padding:0; overflow:auto"><table><thead><tr><th>Time</th><th>Type</th><th>Action</th><th>Details</th></tr></thead><tbody id="logs-body"></tbody></table></div></section>
+<footer>ALU Gauntlet • Read-only audit view • Simulator disabled</footer></main><script src="/static/logs.js"></script></body></html>
