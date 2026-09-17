@@ -17,22 +17,27 @@ jobs:
       - run: python -m pip install pip-audit
       - run: pip check
       - run: pip-audit -r requirements.txt
-      - run: python -m compileall -q ALU_Gauntlet main.py
+      - run: python -m compileall -q .
       - run: pytest -q
 
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    concurrency:
+      group: discloud-production-deploy
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Capture deployment timestamp and previous revision
-        id: deployment
+      - name: Determine rollback revision
+        id: revision
         run: |
+          set -euo pipefail
           echo "started_at=$(date +%s)" >> "$GITHUB_OUTPUT"
           echo "previous_sha=$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
+          echo "Rollback revision: $(git rev-parse HEAD^)"
 
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
@@ -97,7 +102,7 @@ jobs:
           DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
-          DEPLOY_STARTED_AT: ${{ steps.deployment.outputs.started_at }}
+          DEPLOY_STARTED_AT: ${{ steps.revision.outputs.started_at }}
         run: |
           set -euo pipefail
           python -m pip install --quiet pymongo
@@ -201,7 +206,7 @@ jobs:
         if: steps.smoke.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ steps.deployment.outputs.previous_sha }}
+          ref: ${{ steps.revision.outputs.previous_sha }}
           fetch-depth: 0
 
       - name: Deploy rollback to Discloud
@@ -226,8 +231,10 @@ jobs:
           glob: '**'
           team: false
 
-      - name: Verify rollback deployment
+      - name: Verify rollback health
+        id: rollback_health
         if: steps.smoke.outcome == 'failure'
+        continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
@@ -259,7 +266,19 @@ jobs:
                 exit 0
               fi
             fi
-            sleep 15
+            if [ "$attempt" -lt 10 ]; then sleep 15; fi
           done
           echo "Rollback verification failed."
+          exit 1
+
+      - name: Mark deployment failed after successful recovery
+        if: steps.smoke.outcome == 'failure' && steps.rollback_health.outcome == 'success'
+        run: |
+          echo "The deployment failed its smoke test and was successfully rolled back."
+          exit 1
+
+      - name: Mark deployment failed after unsuccessful recovery
+        if: steps.smoke.outcome == 'failure' && steps.rollback_health.outcome != 'success'
+        run: |
+          echo "The deployment failed its smoke test and rollback recovery could not be verified."
           exit 1
