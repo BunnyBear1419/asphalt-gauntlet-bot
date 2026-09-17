@@ -37,6 +37,7 @@ class WebControlCenter:
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/defenses", self.defenses_page)
         self.app.router.add_get("/matches", self.matches_page)
+        self.app.router.add_get("/seasons", self.seasons_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
@@ -49,6 +50,8 @@ class WebControlCenter:
         self.app.router.add_get("/api/defenses/{user_id}", self.defense_detail)
         self.app.router.add_get("/api/matches", self.match_list)
         self.app.router.add_get("/api/matches/{match_id}", self.match_detail)
+        self.app.router.add_get("/api/seasons", self.season_list)
+        self.app.router.add_get("/api/seasons/{season_number}", self.season_detail)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
     async def require_staff(self, request: web.Request) -> Any:
@@ -88,6 +91,10 @@ class WebControlCenter:
     async def matches_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_staff(request)
         return web.FileResponse(WEB_DIR / "matches.html")
+
+    async def seasons_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_staff(request)
+        return web.FileResponse(WEB_DIR / "seasons.html")
 
     async def login(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
@@ -195,6 +202,58 @@ class WebControlCenter:
         if match is None:
             raise web.HTTPNotFound(text="Match not found.")
         return web.json_response({"match": match})
+
+    async def season_list(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_access(request)
+        state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+        config = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        current = self._public_season_state(guild_id, state, config)
+        cursor = self.bot.db.season_history.find({"guild_id": guild_id}).sort("season_number", -1).limit(25)
+        history = await cursor.to_list(length=25)
+        return web.json_response({"current": current, "history": [self._public_archive(row) for row in history]})
+
+    async def season_detail(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_access(request)
+        try:
+            season_number = int(request.match_info["season_number"])
+        except ValueError:
+            raise web.HTTPBadRequest(text="season_number must be an integer.")
+        archive = await self.bot.db.season_history.find_one({"_id": f"{guild_id}_{season_number}", "guild_id": guild_id})
+        if archive is None:
+            raise web.HTTPNotFound(text="Season archive not found.")
+        return web.json_response({"season": self._public_archive(archive, include_standings=True)})
+
+    @staticmethod
+    def _public_season_state(guild_id: str, state: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "guild_id": guild_id,
+            "season_number": int(state.get("season_number", 1) or 1),
+            "season_active": bool(state.get("season_active", False)),
+            "awaiting_staff_start": bool(state.get("awaiting_staff_start", False)),
+            "starts_at": state.get("starts_at"),
+            "ends_at": state.get("ends_at"),
+            "started_at": state.get("started_at"),
+            "automatic_rollover": bool(config.get("automatic_season_end", False)),
+        }
+
+    @staticmethod
+    def _public_archive(row: dict[str, Any], include_standings: bool = False) -> dict[str, Any]:
+        result = {
+            "season_number": int(row.get("season_number", 0) or 0),
+            "player_count": int(row.get("player_count", len(row.get("standings", []))) or 0),
+            "closed_at": row.get("closed_at"),
+        }
+        if include_standings:
+            result["standings"] = [
+                {
+                    "rank": item.get("rank"),
+                    "user_id": str(item.get("user_id", "")),
+                    "elo": int(item.get("elo", 1000) or 1000),
+                    "division": str(item.get("division", "Unranked")),
+                }
+                for item in row.get("standings", [])[:100]
+            ]
+        return result
 
     async def start(self) -> None:
         if self.runner is not None:
