@@ -1,113 +1,166 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ALU Gauntlet • Control Center</title><link rel="stylesheet" href="/static/app.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ALU Gauntlet • Race Control</title>
+<link rel="stylesheet" href="/static/app.css">
 </head>
-<body class="dashboard-page">
-<main class="site-shell">
-<header class="topbar alu-topbar">
-  <a class="alu-brand" href="/" aria-label="ALU Gauntlet home">
-    <span class="brand-asphalt">ASPHALT</span><span class="brand-legends">LEGENDS</span><span class="brand-unite">UNITE</span>
+<body class="alu-dashboard">
+<div class="app-frame">
+
+<aside class="sidebar">
+  <a class="sidebar-brand" href="/" aria-label="ALU Gauntlet">
+    <span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong>
   </a>
-  <nav class="main-nav" aria-label="Primary navigation">
-    <a class="active" href="/">⌂ <span>Home</span></a>
-    <a href="#dashboard">▣ <span>Dashboard</span></a>
-    <a href="/player">▰ <span>Garage</span></a>
-    <a href="#gauntlet">🏆 <span>Gauntlet</span></a>
-    <a href="#leaderboard">▥ <span>Leaderboard</span></a>
-    <a href="#seasons">▦ <span>Seasons</span></a>
-    <a href="#help">? <span>Help</span></a>
+  <nav class="side-nav" aria-label="Dashboard">
+    <a class="selected" href="/"><i>⌂</i>Home</a>
+    <a href="/player"><i>♙</i>Profile</a>
+    <a href="/player"><i>▰</i>Garage</a>
+    <a href="/player#gauntlet"><i>🏆</i>Gauntlet</a>
+    <a href="/player#matches"><i>⚑</i>Matches</a>
+    <a href="#leaderboard"><i>▥</i>Leaderboard</a>
+    <a href="#seasons"><i>▦</i>Seasons</a>
+    <a href="#teams"><i>♟</i>Teams</a>
+    <a href="/player"><i>✉</i>Messages</a>
+    <a href="/setup" id="side-settings"><i>⚙</i>Settings</a>
   </nav>
-  <div class="profile-menu">
-    <div id="system-pill" class="pill">Checking bot…</div>
-    <div id="user-menu" class="user-menu" hidden><span id="user-name">Driver</span><a href="/logout">Log out</a></div>
+  <div class="sidebar-promo">
+    <div class="promo-art"></div>
+    <strong>DRIVE<br>YOUR LEGEND</strong>
+    <span>ASPHALT<br><b>LEGENDS</b><em>UNITE</em></span>
+  </div>
+</aside>
+
+<div class="workspace">
+<header class="top-nav">
+  <a class="mobile-brand" href="/">ALU <b>GAUNTLET</b></a>
+  <nav>
+    <a class="active" href="/">Home</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="/player">Garage</a>
+    <a href="#gauntlet">Gauntlet</a>
+    <a href="#leaderboard">Leaderboard</a>
+    <a href="#seasons">Seasons</a>
+    <a href="#teams">Teams</a>
+    <a href="#help">Help</a>
+  </nav>
+  <div class="top-profile">
+    <div class="status-dot"></div>
+    <div class="top-avatar">🏎</div>
+    <div><strong id="user-name">Player</strong><small>Player</small></div>
+    <span>⌄</span>
   </div>
 </header>
 
-<section class="alu-hero">
-  <div class="hero-copy">
-    <p class="eyebrow">ALU GAUNTLET • Race Operations</p>
-    <h1>Race. Compete.<br><em>Unite.</em></h1>
-    <p class="hero-subtitle">Your connected Asphalt Legends Unite competition hub — Discord, players and MongoDB working from one shared state.</p>
-    <div class="hero-buttons">
-      <a class="button button-primary" href="/player">Open My Garage <span>→</span></a>
-      <a class="button button-ghost" id="staff-link" href="/setup" hidden>Staff Control Center</a>
-    </div>
+<main>
+<section class="hero-banner">
+  <div class="hero-logo"><span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong></div>
+  <div class="hero-message">
+    <strong>RACE. COMPETE. UNITE.</strong>
+    <small>THE ULTIMATE RACING EXPERIENCE</small>
   </div>
-  <div class="hero-art" aria-hidden="true"><div class="hero-race-copy"><span>LIVE RACE OPERATIONS</span><strong>GAUNTLET</strong><small>WEB • DISCORD • LIVE DATA</small></div>
-    <div class="speed-line line-a"></div><div class="speed-line line-b"></div><div class="speed-line line-c"></div>
-    <div class="hero-car hero-car-main"></div><div class="hero-car hero-car-back"></div>
-    <span class="hero-glow"></span>
+  <div class="hero-shine"></div>
+</section>
+
+<section id="dashboard" class="dashboard-grid">
+  <div class="main-column">
+    <article class="welcome-panel">
+      <div class="player-avatar">🏎️</div>
+      <div class="welcome-copy">
+        <span class="section-kicker">GAUNTLET CHALLENGER</span>
+        <h1>Welcome back, <span id="welcome-name">Player</span>!</h1>
+        <p>Keep racing. Your next match could be the one!</p>
+      </div>
+      <div class="welcome-car"></div>
+    </article>
+
+    <article id="seasons" class="season-panel">
+      <div class="season-badge">S<span id="season-number">4</span></div>
+      <div><span>SEASON <b id="season-number-text">4</b></span><strong id="season-status">● Active ●</strong><small id="season-dates">Live season data</small><a href="/player">View Season →</a></div>
+    </article>
+
+    <section id="gauntlet" class="feature-row">
+      <a class="feature feature-magenta" href="/player">
+        <div class="feature-picture fp-one"></div><div class="feature-body"><i>🏆</i><h2>Gauntlet</h2><p>Register • Find Opponent<br>Submit Result • View History</p><b>→</b></div>
+      </a>
+      <a class="feature feature-blue" href="/player">
+        <div class="feature-picture fp-two"></div><div class="feature-body"><i>🚘</i><h2>My Garage</h2><p>View Cars • Upgrade<br>Manage Loadouts</p><b>→</b></div>
+      </a>
+      <a class="feature feature-gold" href="#leaderboard">
+        <div class="feature-picture fp-three"></div><div class="feature-body"><i>🏆</i><h2>Competition</h2><p>Standings • Leaderboard<br>Rules • Rewards</p><b>→</b></div>
+      </a>
+      <a class="feature feature-green" href="/player">
+        <div class="feature-picture fp-four"></div><div class="feature-body"><i>⚙</i><h2>Profile & Settings</h2><p>Update Profile • Preferences<br>Notifications • Servers</p><b>→</b></div>
+      </a>
+    </section>
+
+    <section class="lower-grid">
+      <article class="glass-panel garage-card">
+        <div class="panel-heading"><div><span>MY GARAGE</span><h2>Featured Car</h2></div><a href="/player">View All →</a></div>
+        <div class="car-showcase">
+          <div class="showcase-car"></div>
+          <div class="car-info"><small>TOP CAR</small><strong>Gauntlet Racer</strong><b id="garage-pi">GARAGE PI —</b></div>
+        </div>
+        <a class="wide-action" href="/player">View Full Garage →</a>
+      </article>
+
+      <article class="glass-panel matches-card" id="matches">
+        <div class="panel-heading"><div><span>RECENT MATCHES</span><h2>Race History</h2></div><a href="/player">View All →</a></div>
+        <div class="match-table" id="recent-matches">
+          <div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>
+          <p class="empty-state">Sign in to load your recent matches.</p>
+        </div>
+      </article>
+
+      <article class="glass-panel leaderboard-card" id="leaderboard">
+        <div class="panel-heading"><div><span>LEADERBOARD</span><h2>Top 5</h2></div><a href="#leaderboard">View All →</a></div>
+        <div class="leaderboard-list" id="leaderboard-list"><p class="empty-state">Loading live drivers…</p></div>
+      </article>
+    </section>
   </div>
+
+  <aside class="right-column">
+    <article class="glass-panel profile-card">
+      <div class="panel-heading"><div><span>YOUR PROFILE</span><h2>Driver</h2></div></div>
+      <div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">Player</strong><small>Discord <b class="online">● Online</b></small></div></div>
+      <div class="profile-stats">
+        <div><span>ELO</span><strong id="profile-elo">—</strong></div>
+        <div><span>GARAGE PI</span><strong id="profile-pi">—</strong></div>
+      </div>
+      <div class="record-stats"><span>🏆 <b id="wins">—</b> Wins</span><span>✕ <b id="losses">—</b> Losses</span><span>🔥 <b id="streak">—</b> Streak</span></div>
+    </article>
+
+    <article class="glass-panel quick-actions">
+      <div class="panel-heading"><div><span>QUICK ACTIONS</span><h2>Race Controls</h2></div></div>
+      <a class="qa qa-purple" href="/player">🏁 <b>Register for Season</b></a>
+      <a class="qa qa-blue" href="/player">👥 <b>Find Opponent</b></a>
+      <a class="qa qa-green" href="/player">✓ <b>Submit Match Result</b></a>
+      <a class="qa qa-gold" href="#leaderboard">▥ <b>View Leaderboard</b></a>
+    </article>
+
+    <article class="glass-panel activity-card" id="teams">
+      <div class="panel-heading"><div><span>SERVER SELECTION</span><h2 id="server-name">Main Server</h2></div><a href="/setup">View All →</a></div>
+      <p class="server-sub">Asphalt Legends Unite</p>
+      <div class="activity-list">
+        <div><i>✓</i><p><b>Match result submitted</b><small>Shared with Discord & MongoDB</small></p></div>
+        <div><i>▦</i><p><b>Season state is live</b><small>Channels and roles stay synchronized</small></p></div>
+        <div><i>◈</i><p><b>Welcome to the Gauntlet!</b><small>Good luck in your next race.</small></p></div>
+      </div>
+    </article>
+  </aside>
 </section>
 
-<section id="dashboard" class="stats-strip">
-  <article class="stat-card"><span>Bot</span><strong id="bot-status">—</strong><small>Discord connection</small></article>
-  <article class="stat-card"><span>Latency</span><strong id="latency">—</strong><small>Live response</small></article>
-  <article class="stat-card"><span>Discord Servers</span><strong id="guilds">—</strong><small>Connected guilds</small></article>
-  <article class="stat-card"><span>Data Sync</span><strong>LIVE</strong><small>MongoDB shared state</small></article>
+<section class="bottom-banner" id="help">
+  <div class="bottom-logo">ASPHALT <b>LEGENDS</b> <strong>UNITE</strong></div>
+  <div><b>FASTER. BOLDER. TOGETHER.</b><span>Run the Gauntlet with your community.</span></div>
+  <a href="/player">JOIN THE GAUNTLET →</a>
 </section>
-
-<section class="welcome-grid">
-  <article class="welcome-card">
-    <div class="avatar-orb">🏎️</div>
-    <div><p class="eyebrow">DRIVER DASHBOARD</p><h2>Welcome back, <span id="welcome-name">Driver</span>.</h2><p class="muted">Keep racing. Your player controls stay available even when you also have staff permissions.</p></div>
-    <a class="round-arrow" href="/player">→</a>
-  </article>
-  <article class="season-card" id="seasons">
-    <div class="season-badge">ALU</div><div><span class="season-kicker">CURRENT SEASON</span><h3>Gauntlet Season</h3><p>Season data is read from the live bot database.</p></div>
-    <a href="/player">View season →</a>
-  </article>
-</section>
-
-<section id="gauntlet" class="section-block">
-  <div class="section-title"><div><p class="eyebrow">RACE CENTER</p><h2>Everything you need to compete</h2></div><span class="muted">Player controls</span></div>
-  <div class="feature-grid feature-grid-modern">
-    <a class="feature-card feature-pink" href="/player"><div class="feature-art car-art car-purple"></div><div class="feature-content"><span>🏆</span><h3>Gauntlet</h3><p>Register, check status, submit results and manage your race profile.</p><b>Open race center →</b></div></a>
-    <a class="feature-card feature-blue" href="/player"><div class="feature-art car-art car-blue"></div><div class="feature-content"><span>🏎️</span><h3>My Garage</h3><p>View your ELO, Garage PI, season information, defense and preferences.</p><b>Open garage →</b></div></a>
-    <a class="feature-card feature-gold" href="#leaderboard"><div class="feature-art car-art car-gold"></div><div class="feature-content"><span>🏅</span><h3>Competition</h3><p>Leaderboard and competition modules connect to the same backend.</p><b>View competition →</b></div></a>
-    <a class="feature-card feature-cyan" href="/player"><div class="feature-art car-art car-cyan"></div><div class="feature-content"><span>⚙️</span><h3>Profile & Settings</h3><p>Manage your personal preferences without exposing raw Discord IDs.</p><b>Manage profile →</b></div></a>
-  </div>
-</section>
-
-<section class="content-grid">
-  <article class="panel garage-panel">
-    <div class="section-title"><div><p class="eyebrow">MY GARAGE</p><h2>Driver profile</h2></div><a href="/player">Open →</a></div>
-    <div class="garage-visual"><div class="garage-car"></div><div class="garage-copy"><span>CONNECTED PROFILE</span><strong>Live player data</strong><p>Your Discord player record, ELO, PI, season and defense state are shared with the bot.</p></div></div>
-  </article>
-  <article class="panel" id="leaderboard">
-    <div class="section-title"><div><p class="eyebrow">COMPETITION</p><h2>Leaderboard</h2></div><span class="muted">Live backend</span></div>
-    <div class="leaderboard-list">
-      <div><span class="rank">01</span><span class="driver-dot"></span><strong>Top driver</strong><span class="live-value">Live</span></div>
-      <div><span class="rank">02</span><span class="driver-dot"></span><strong>Second driver</strong><span class="live-value">Live</span></div>
-      <div><span class="rank">03</span><span class="driver-dot"></span><strong>Third driver</strong><span class="live-value">Live</span></div>
-      <p class="muted tiny">Leaderboard rows will populate from the shared player service when the competition endpoint is enabled.</p>
-    </div>
-  </article>
-</section>
-
-<section class="panel staff-panel" id="staff-panel" hidden>
-  <div class="section-title"><div><p class="eyebrow">STAFF / RACE OPERATIONS</p><h2>Server control</h2></div><span class="muted">Staff-only controls</span></div>
-  <div class="staff-grid">
-    <a class="staff-card" href="/players"><span>👥</span><b>Players</b><small>Profiles, ELO, PI and defense status</small></a>
-    <a class="staff-card" href="/setup"><span>⚙️</span><b>Server Setup</b><small>Channels, roles and timezone dropdowns</small></a>
-    <div class="staff-card disabled"><span>🛡️</span><b>Defenses</b><small>Shared-backend review tools</small></div>
-    <div class="staff-card disabled"><span>⚔️</span><b>Matches</b><small>Connected match center</small></div>
-    <div class="staff-card disabled"><span>🏆</span><b>Seasons</b><small>Season controls and history</small></div>
-    <div class="staff-card disabled"><span>📊</span><b>Analytics</b><small>Gauntlet statistics and history</small></div>
-  </div>
-</section>
-
-<section id="help" class="help-banner">
-  <div><p class="eyebrow">NEED A HAND?</p><h2>Built for racers and staff.</h2><p class="muted">Use the Discord <strong>/help</strong>, <strong>/dashboard</strong> and <strong>/staff</strong> commands for the same organized experience.</p></div>
-  <div class="help-mark">?</div>
-</section>
-
-<footer><strong>ALU GAUNTLET</strong> • Web ↔ MongoDB ↔ Discord • Community competition control center</footer>
 </main>
+
+<footer>ALU GAUNTLET • WEB ↔ MONGODB ↔ DISCORD • RACE OPERATIONS CONTROL CENTER</footer>
+</div>
+</div>
 <script src="/static/app.js"></script>
-<script>
-document.addEventListener("DOMContentLoaded",()=>{const name=document.querySelector("#user-name");const welcome=document.querySelector("#welcome-name");if(name&&welcome){const obs=new MutationObserver(()=>welcome.textContent=name.textContent);obs.observe(name,{childList:true});}});
-</script>
-</body></html>
+</body>
+</html>
