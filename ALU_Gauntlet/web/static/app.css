@@ -347,3 +347,53 @@ html,body{width:100%;min-width:0}
 .car-showcase>.showcase-car{z-index:1}
 
 
+
+
+/* Uploaded dashboard reference artwork: use the supplied reference composition in the same visual spots. */
+.hero-banner{
+  display:block!important;
+  height:217px;
+  background:url('/assets/home-reference.svg') center/100% 100% no-repeat!important;
+}
+.hero-banner>.hero-art{display:none!important}
+
+.welcome-panel:after{
+  width:100%!important;
+  background:
+    linear-gradient(90deg,#020817f2 0%,#06152fba 28%,#06152f25 54%,#06152f08 100%),
+    url('/assets/home-reference.svg') center/158.025% 752.941% no-repeat!important;
+  background-position:37.41% 33.67%!important;
+  opacity:1!important;
+}
+.feature-picture{
+  background-image:url('/assets/home-reference.svg')!important;
+  background-repeat:no-repeat!important;
+  background-color:#040a16!important;
+  opacity:1!important;
+  transform:none!important;
+}
+.feature-picture>.art-img{display:none!important}
+.feature-picture:before{display:none!important}
+.feature-picture:after{
+  background:linear-gradient(180deg,#050a1400 0%,#040a1610 38%,#040a16f2 70%,#040a16ff 100%)!important;
+}
+.fp-one{background-size:593.05% 1402.74%!important;background-position:16.52% 47%!important}
+.fp-two{background-size:714.42% 1402.74%!important;background-position:36.71% 47%!important}
+.fp-three{background-size:676.65% 1402.74%!important;background-position:54.55% 47%!important}
+.fp-four{background-size:673.68% 1402.74%!important;background-position:73.01% 47%!important}
+
+.car-showcase{
+  background:
+    linear-gradient(180deg,#03081700,#03081766),
+    url('/assets/home-reference.svg') center/593.05% 948.15% no-repeat!important;
+  background-position:17.93% 71.62%!important;
+}
+.car-showcase>.art-img{display:none!important}
+.showcase-car{display:none!important}
+
+.bottom-banner{
+  background:
+    linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),
+    url('/assets/home-reference.svg') center/158.025% 1150.562% no-repeat!important;
+  background-position:37.41% 97.22%!important;
+}
