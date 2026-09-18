@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from aiohttp import ClientSession, web
+from aiohttp import ClientError, ClientSession, web
 
 DISCORD_API = "https://discord.com/api/v10"
 ADMINISTRATOR = 1 << 3
