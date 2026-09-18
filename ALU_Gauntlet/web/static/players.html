@@ -3,12 +3,18 @@
 <body class="alu-dashboard">
 <header class="top-nav">
 <a class="top-brand" href="/" aria-label="Asphalt Legends Unite"><span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong></a>
-<nav aria-label="Primary navigation"><a href="/"><i>⌂</i><span>Home</span></a><a href="/"><i>♙</i><span>Dashboard</span></a><a href="/player"><i>▣</i><span>Garage</span></a><a href="/#gauntlet"><i>♜</i><span>Gauntlet</span></a><a class="active" href="/players"><i>♟</i><span>Players</span></a><a href="/#leaderboard"><i>▥</i><span>Leaderboard</span></a><a href="/#seasons"><i>▦</i><span>Seasons</span></a><a href="/#help"><i>?</i><span>Help</span></a></nav>
+<nav aria-label="Primary navigation">
+    <a href="/"><i>⌂</i><span>Home</span></a>
+    <a href="/player"><i>▣</i><span>Garage</span></a>
+    <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
+    <a href="/#leaderboard"><i>▥</i><span>Competition</span></a>
+    <a href="/players" class="active"><i>♟</i><span>Players</span></a>
+    <a href="/setup"><i>⚙</i><span>Setup</span></a>
+    <a href="/#help"><i>?</i><span>Help</span></a>
+  </nav>
 <div class="top-profile"><a class="auth-link" href="/logout">Sign Out</a></div><div class="top-profile"><div class="top-avatar">🛠</div><div><strong id="user-name">Staff</strong><small>Staff Control</small></div><span class="chevron">⌄</span></div>
 </header>
-<div class="app-frame"><aside class="sidebar"><nav class="side-nav" aria-label="Staff navigation">
-<a href="/"><i>⌂</i><span>Home</span></a><a href="/player"><i>♙</i><span>Player Dashboard</span></a><a class="selected" href="/players"><i>♟</i><span>Players</span></a><a href="/#leaderboard"><i>▥</i><span>Leaderboard</span></a><a href="/#seasons"><i>▦</i><span>Seasons</span></a><a href="/setup"><i>⚙</i><span>Settings</span></a><a href="/#help"><i>?</i><span>Help</span></a></nav><div class="sidebar-promo" aria-label="Drive your legend"></div></aside>
-<div class="workspace"><main><section class="hero-banner"><div class="hero-road"></div></section>
+<div class="app-frame"><div class="workspace"><main><section class="hero-banner"><div class="hero-road"></div></section>
 <section class="dashboard-grid"><div class="main-column">
 <div class="intro-row"><article class="welcome-panel"><div class="player-avatar">🛠️</div><div class="welcome-copy"><h1>Player Control Center</h1><div class="welcome-title">♛ &nbsp;STAFF MANAGEMENT</div><p>Search and review live driver records shared with Discord.</p></div><div class="welcome-car"></div></article>
 <article class="season-panel"><div class="season-badge">P</div><div><span>PLAYER DIRECTORY</span><strong>● LIVE ●</strong><small>MongoDB-backed driver records</small><a href="/player">Open Player View →</a></div></article></div>
