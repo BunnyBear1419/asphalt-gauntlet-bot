@@ -98,3 +98,16 @@ def test_web_login_and_logout_are_exposed():
     for name in ("index.html","player.html","players.html","setup.html"):
         html=(STATIC/name).read_text(encoding="utf-8")
         assert 'href="/logout"' in html
+
+def test_web_defense_center_uses_shared_driver_state():
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    html=(STATIC/"player.html").read_text(encoding="utf-8")
+    js=(STATIC/"player.js").read_text(encoding="utf-8")
+    assert 'add_get("/api/player/defense"' in server
+    assert 'add_post("/api/player/defense"' in server
+    assert 'defense_review_pending' in server
+    assert 'season_defense_tracks' in server
+    assert 'id="defense"' in html
+    assert 'Defense Center' in html
+    assert '/api/player/defense?guild_id=' in js
+    assert 'action:"change"' in js
