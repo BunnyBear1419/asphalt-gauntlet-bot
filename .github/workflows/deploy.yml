@@ -225,12 +225,16 @@ jobs:
               ok=false
             fi
 
+            # Discloud can report the app as healthy before the new process
+            # has written its first production heartbeat. Keep polling instead of
+            # treating that normal startup window as a failed deployment.
             if [ "$ok" = true ]; then
               echo "Post-deployment smoke test passed."
               exit 0
             fi
 
             if [ "$attempt" -lt 10 ]; then
+              echo "Production is still starting; waiting 15 seconds before the next health check."
               sleep 15
             fi
           done
