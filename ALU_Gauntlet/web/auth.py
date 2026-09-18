@@ -152,11 +152,16 @@ class DiscordOAuth:
             self.sessions[token] = (expiry, user)
         db = getattr(self.bot, "db", None)
         if db is not None:
-            await db.web_sessions.update_one(
-                {"_id": self._session_key(token)},
-                {"$set": {"expires_at": expiry, "user": self._serialize_user(user), "created_at": time.time(), "last_seen": time.time()}},
-                upsert=True,
-            )
+            try:
+                await db.web_sessions.update_one(
+                    {"_id": self._session_key(token)},
+                    {"$set": {"expires_at": expiry, "user": self._serialize_user(user), "created_at": time.time(), "last_seen": time.time()}},
+                    upsert=True,
+                )
+            except Exception:
+                # Authentication must remain available even if the optional
+                # durable session store is temporarily unavailable.
+                pass
         return token
 
     async def get_session(self, request: web.Request) -> WebUser | None:
@@ -174,14 +179,19 @@ class DiscordOAuth:
         db = getattr(self.bot, "db", None)
         if db is None:
             return None
-        record = await db.web_sessions.find_one({"_id": self._session_key(token)})
-        if not record or float(record.get("expires_at", 0)) <= now:
-            if record:
-                await db.web_sessions.delete_one({"_id": self._session_key(token)})
+        try:
+            record = await db.web_sessions.find_one({"_id": self._session_key(token)})
+            if not record or float(record.get("expires_at", 0)) <= now:
+                if record:
+                    await db.web_sessions.delete_one({"_id": self._session_key(token)})
+                return None
+            user = self._deserialize_user(record.get("user") or {})
+            new_expiry = now + SESSION_TTL
+            await db.web_sessions.update_one({"_id": self._session_key(token)}, {"$set": {"expires_at": new_expiry, "last_seen": now}})
+        except Exception:
+            # A broken/temporarily unavailable durable session must not turn
+            # every authenticated page request into HTTP 500.
             return None
-        user = self._deserialize_user(record.get("user") or {})
-        new_expiry = now + SESSION_TTL
-        await db.web_sessions.update_one({"_id": self._session_key(token)}, {"$set": {"expires_at": new_expiry, "last_seen": now}})
         async with self._lock:
             self.sessions[token] = (new_expiry, user)
         return user
