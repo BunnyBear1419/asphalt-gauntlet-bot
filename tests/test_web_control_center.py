@@ -81,3 +81,20 @@ def test_web_registration_is_member_scoped_not_staff_only():
     source=server[start:end]
     assert 'require_guild_member(request)' in source
     assert 'require_admin(request)' not in source
+
+
+def test_web_auth_persists_sessions_across_process_restarts():
+    source=(WEB/"auth.py").read_text(encoding="utf-8")
+    assert "web_sessions" in source
+    assert "SESSION_TTL = 30 * 24 * 60 * 60" in source
+    assert "self._session_key(token)" in source
+    assert "set_session_cookie" in source
+
+
+def test_web_login_and_logout_are_exposed():
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    for marker in ('add_get("/login", self.login)','add_get("/logout", self.logout)','/auth/callback'):
+        assert marker in server
+    for name in ("index.html","player.html","players.html","setup.html"):
+        html=(STATIC/name).read_text(encoding="utf-8")
+        assert 'href="/logout"' in html
