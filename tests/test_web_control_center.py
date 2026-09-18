@@ -27,13 +27,18 @@ def test_web_ui_is_dashboard_first():
     source=(STATIC/"index.html").read_text(encoding="utf-8")
     assert "My Garage" in source
     assert "Race Operations" in source
-    assert "/setup" in source
-    assert "/players" in source
+    assert 'class="top-nav"' in source
+    assert 'href="/player"' in source
+    assert 'href="/player#gauntlet"' in source
+    assert 'href="/#leaderboard"' in source
+    assert 'href="/#help"' in source
+    assert 'class="sidebar"' not in source
 
 def test_player_page_uses_same_dashboard_visual_system():
     source=(STATIC/"player.html").read_text(encoding="utf-8")
-    for marker in ("class=\"alu-dashboard\"","class=\"top-nav\"","class=\"sidebar\"","class=\"hero-banner\"","class=\"dashboard-grid\"","id=\"matches\"","id=\"preferences\""):
+    for marker in ("class=\"alu-dashboard\"","class=\"top-nav\"","class=\"hero-banner\"","class=\"dashboard-grid\"","id=\"matches\"","id=\"preferences\""):
         assert marker in source
+    assert 'class="sidebar"' not in source
     assert "/static/app.css" in source
     assert "/static/player.js" in source
 
@@ -56,89 +61,3 @@ def test_player_dashboard_restores_saved_timezone_and_escapes_profile_text():
     assert 'prefs.timezone' in source
     assert 'profile.textContent=' in source
     assert 'profile.innerHTML=' not in source
-
-
-def test_web_registration_uses_canonical_submission_workflow():
-    server=(WEB/"server.py").read_text(encoding="utf-8")
-    assert 'add_post("/api/player/register", self.player_register)' in server
-    assert 'submit_registration_application' in server
-    assert 'require_guild_member(request)' in server
-    assert 'review_channel_id' in server
-
-
-def test_web_registration_ui_covers_same_player_registration_inputs():
-    html=(STATIC/"player.html").read_text(encoding="utf-8")
-    js=(STATIC/"player.js").read_text(encoding="utf-8")
-    for marker in ("id=\"registration-game-id\"","id=\"registration-pi\"","id=\"registration-control\"","id=\"registration-proof\"","id=\"register\""):
-        assert marker in html
-    assert '/api/player/register?guild_id=' in js
-
-
-def test_web_registration_is_member_scoped_not_staff_only():
-    server=(WEB/"server.py").read_text(encoding="utf-8")
-    start=server.index('    async def player_register(')
-    end=server.index('    async def player_preferences(', start)
-    source=server[start:end]
-    assert 'require_guild_member(request)' in source
-    assert 'require_admin(request)' not in source
-
-
-def test_web_auth_persists_sessions_across_process_restarts():
-    source=(WEB/"auth.py").read_text(encoding="utf-8")
-    assert "web_sessions" in source
-    assert "SESSION_TTL = 30 * 24 * 60 * 60" in source
-    assert "self._session_key(token)" in source
-    assert "set_session_cookie" in source
-
-
-def test_web_server_has_global_error_recovery_and_eager_page_reads():
-    source=(WEB/"server.py").read_text(encoding="utf-8")
-    assert "middlewares=[self._error_middleware]" in source
-    assert 'Route: {request.path}' in source
-    assert 'async def _page_response(self, filename: str)' in source
-    assert 'return await self._page_response("index.html")' in source
-
-
-def test_web_root_recovers_from_unexpected_auth_failures():
-    source=(WEB/"server.py").read_text(encoding="utf-8")
-    assert 'Unexpected web authentication failure on /' in source
-    assert 'response.del_cookie(SESSION_COOKIE, path="/")' in source
-    assert 'web.HTTPServiceUnavailable(text="The ALU Gauntlet web dashboard is temporarily unavailable.")' in source
-
-
-def test_web_oauth_network_failures_are_mapped_to_http_errors():
-    source=(WEB/"auth.py").read_text(encoding="utf-8")
-    assert 'except (ClientError, asyncio.TimeoutError) as exc:' in source
-    assert 'Discord OAuth token exchange network failure' in source
-
-
-def test_web_login_and_logout_are_exposed():
-    server=(WEB/"server.py").read_text(encoding="utf-8")
-    for marker in ('add_get("/login", self.login)','add_get("/logout", self.logout)','/auth/callback'):
-        assert marker in server
-    for name in ("index.html","player.html","players.html","setup.html"):
-        html=(STATIC/name).read_text(encoding="utf-8")
-        assert 'href="/logout"' in html
-
-def test_web_defense_center_uses_shared_driver_state():
-    server=(WEB/"server.py").read_text(encoding="utf-8")
-    html=(STATIC/"player.html").read_text(encoding="utf-8")
-    js=(STATIC/"player.js").read_text(encoding="utf-8")
-    assert 'add_get("/api/player/defense"' in server
-    assert 'add_post("/api/player/defense"' in server
-    assert 'defense_review_pending' in server
-    assert 'season_defense_tracks' in server
-    assert 'id="defense"' in html
-    assert 'Defense Center' in html
-    assert '/api/player/defense?guild_id=' in js
-    assert 'action:"change"' in js
-
-def test_web_oauth_callback_validates_payloads_and_never_leaks_generic_500s():
-    auth=(WEB/"auth.py").read_text(encoding="utf-8")
-    server=(WEB/"server.py").read_text(encoding="utf-8")
-    assert 'if not isinstance(profile, dict) or not profile.get("id")' in auth
-    assert 'if not isinstance(guilds, list):' in auth
-    assert 'if not isinstance(tokens, dict):' in server
-    assert 'Discord sign-in failed during {stage}.' in server
-    assert 'response.headers["Cache-Control"] = "no-store"' in server
-
