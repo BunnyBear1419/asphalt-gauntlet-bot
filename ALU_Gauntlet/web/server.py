@@ -9,6 +9,7 @@ from aiohttp import web
 
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
+from ..core.core import submit_registration_application
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -62,6 +63,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
         self.app.router.add_put("/api/player/preferences", self.player_preferences)
+        self.app.router.add_post("/api/player/register", self.player_register)
         self.app.router.add_get("/api/setup/options", self.setup_options)
         self.app.router.add_get("/api/setup/settings", self.setup_settings)
         self.app.router.add_put("/api/setup/settings", self.save_setup_settings)
@@ -194,6 +196,86 @@ class WebControlCenter:
             "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
             "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications")},
         })
+
+    async def player_register(self, request: web.Request) -> web.Response:
+        """Submit a web registration through the same canonical Discord workflow."""
+        user, guild_id, guild = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        game_id = str(payload.get("game_id", "")).strip()
+        proof_url = str(payload.get("proof_url", "")).strip()
+        control_raw = str(payload.get("control", "")).strip().casefold()
+        if not game_id or len(game_id) > 100:
+            raise web.HTTPBadRequest(text="Game ID is required and must be 100 characters or fewer.")
+        try:
+            garage_pi = int(payload.get("garage_pi"))
+        except (TypeError, ValueError):
+            raise web.HTTPBadRequest(text="Garage PI must be a positive whole number.")
+        if garage_pi <= 0:
+            raise web.HTTPBadRequest(text="Garage PI must be a positive whole number.")
+        if not proof_url.lower().startswith(("http://", "https://")):
+            raise web.HTTPBadRequest(text="Proof must be a direct image URL beginning with http:// or https://.")
+        if "touch" in control_raw:
+            control_value, control_name = "touchdrive", "TouchDrive Auto Pilot"
+        elif "manual" in control_raw or "tilt" in control_raw or "tap" in control_raw:
+            control_value, control_name = "manual", "Manual Tilt / Tap Controls"
+        else:
+            raise web.HTTPBadRequest(text="Controls must be TouchDrive or Manual.")
+
+        cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        registration_channel_id = cfg.get("registration_channel_id")
+        if not registration_channel_id:
+            raise web.HTTPServiceUnavailable(text="Registration is not configured for this server.")
+
+        class _WebUser:
+            def __init__(self, user):
+                self.id = int(user.user_id)
+                self.mention = f"<@{self.id}>"
+
+        class _WebResponse:
+            def __init__(self, owner):
+                self.owner = owner
+                self.done = False
+            def is_done(self):
+                return self.done
+            async def send_message(self, content=None, **kwargs):
+                self.done = True
+                self.owner.message = str(content or "")
+
+        class _WebFollowup:
+            def __init__(self, owner):
+                self.owner = owner
+            async def send(self, content=None, **kwargs):
+                self.owner.message = str(content or "")
+
+        class _WebInteraction:
+            def __init__(self):
+                self.guild_id = int(guild_id)
+                self.channel_id = int(registration_channel_id)
+                self.user = _WebUser(user)
+                self.message = ""
+                self.response = _WebResponse(self)
+                self.followup = _WebFollowup(self)
+
+        class _ControlType:
+            name = control_name
+            value = control_value
+
+        class _Proof:
+            content_type = "image/*"
+            url = proof_url
+
+        interaction = _WebInteraction()
+        await submit_registration_application(interaction, game_id, garage_pi, _Proof(), _ControlType())
+        if interaction.message.startswith(("❌", "⚠️", "⏳")):
+            if interaction.message.startswith("⏳"):
+                raise web.HTTPConflict(text=interaction.message)
+            if interaction.message.startswith("⚠️"):
+                raise web.HTTPConflict(text=interaction.message)
+            raise web.HTTPBadRequest(text=interaction.message)
+        return web.json_response({"ok": True, "message": interaction.message})
 
     async def player_preferences(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
