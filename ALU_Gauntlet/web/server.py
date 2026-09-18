@@ -255,7 +255,7 @@ class WebControlCenter:
         return web.json_response({"ok": True, "settings": clean})
 
     async def season(self, request: web.Request) -> web.Response:
-        _, guild_id, _ = await self.require_admin(request)
+        _, guild_id, _ = await self.require_guild_member(request)
         state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
         return web.json_response({"season": state})
 
