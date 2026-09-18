@@ -91,6 +91,19 @@ def test_web_auth_persists_sessions_across_process_restarts():
     assert "set_session_cookie" in source
 
 
+def test_web_root_recovers_from_unexpected_auth_failures():
+    source=(WEB/"server.py").read_text(encoding="utf-8")
+    assert 'Unexpected web authentication failure on /' in source
+    assert 'response.del_cookie(SESSION_COOKIE, path="/")' in source
+    assert 'web.HTTPServiceUnavailable(text="The ALU Gauntlet web dashboard is temporarily unavailable.")' in source
+
+
+def test_web_oauth_network_failures_are_mapped_to_http_errors():
+    source=(WEB/"auth.py").read_text(encoding="utf-8")
+    assert 'except (ClientError, asyncio.TimeoutError) as exc:' in source
+    assert 'web.HTTPBadGateway(text="Discord OAuth is temporarily unavailable. Please try again.")' in source
+
+
 def test_web_login_and_logout_are_exposed():
     server=(WEB/"server.py").read_text(encoding="utf-8")
     for marker in ('add_get("/login", self.login)','add_get("/logout", self.logout)','/auth/callback'):
