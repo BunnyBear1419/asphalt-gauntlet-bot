@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import os
 import secrets
 import time
@@ -13,7 +15,7 @@ from aiohttp import ClientSession, web
 DISCORD_API = "https://discord.com/api/v10"
 ADMINISTRATOR = 1 << 3
 SESSION_COOKIE = "alu_web_session"
-SESSION_TTL = 8 * 60 * 60
+SESSION_TTL = 30 * 24 * 60 * 60
 STATE_TTL = 10 * 60
 PRODUCTION_PUBLIC_URL = "https://asph.discloud.app"
 
@@ -30,7 +32,7 @@ class WebUser:
 
 
 class DiscordOAuth:
-    """Small in-memory OAuth/session store for the single bot process."""
+    """Discord OAuth with persistent Mongo-backed web sessions."""
 
     def __init__(self, bot: Any) -> None:
         self.bot = bot
@@ -38,7 +40,7 @@ class DiscordOAuth:
         self.client_secret = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
         self.public_url = os.getenv("WEB_PUBLIC_URL", PRODUCTION_PUBLIC_URL).rstrip("/")
         self.allowed_staff_ids = {value.strip() for value in os.getenv("WEB_STAFF_USER_IDS", "").split(",") if value.strip()}
-        self.sessions: dict[str, tuple[float, WebUser]] = {}
+        # MongoDB is the durable session store; the in-memory map is retained only\n        # as a fast cache for the current process.\n        self.sessions: dict[str, tuple[float, WebUser]] = {}
         self.states: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
@@ -115,31 +117,83 @@ class DiscordOAuth:
         staff = user_id in self.allowed_staff_ids or bool(admin_guild_ids)
         return WebUser(user_id=user_id, username=str(profile.get("username", "Unknown")), global_name=profile.get("global_name"), avatar=profile.get("avatar"), staff=staff, admin_guild_ids=frozenset(admin_guild_ids), guild_ids=frozenset(guild_ids))
 
+    @staticmethod
+    def _session_key(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _serialize_user(user: WebUser) -> dict[str, Any]:
+        return {
+            "user_id": user.user_id,
+            "username": user.username,
+            "global_name": user.global_name,
+            "avatar": user.avatar,
+            "staff": user.staff,
+            "admin_guild_ids": list(user.admin_guild_ids),
+            "guild_ids": list(user.guild_ids),
+        }
+
+    @staticmethod
+    def _deserialize_user(data: dict[str, Any]) -> WebUser:
+        return WebUser(
+            user_id=str(data.get("user_id", "")),
+            username=str(data.get("username", "Unknown")),
+            global_name=data.get("global_name"),
+            avatar=data.get("avatar"),
+            staff=bool(data.get("staff")),
+            admin_guild_ids=frozenset(str(x) for x in data.get("admin_guild_ids", [])),
+            guild_ids=frozenset(str(x) for x in data.get("guild_ids", [])),
+        )
+
     async def create_session(self, user: WebUser) -> str:
         token = secrets.token_urlsafe(32)
+        expiry = time.time() + SESSION_TTL
         async with self._lock:
-            self.sessions[token] = (time.time() + SESSION_TTL, user)
+            self.sessions[token] = (expiry, user)
+        db = getattr(self.bot, "db", None)
+        if db is not None:
+            await db.web_sessions.update_one(
+                {"_id": self._session_key(token)},
+                {"$set": {"expires_at": expiry, "user": self._serialize_user(user), "created_at": time.time(), "last_seen": time.time()}},
+                upsert=True,
+            )
         return token
 
     async def get_session(self, request: web.Request) -> WebUser | None:
         token = request.cookies.get(SESSION_COOKIE)
         if not token:
             return None
+        now = time.time()
         async with self._lock:
             entry = self.sessions.get(token)
-            if not entry:
-                return None
-            expiry, user = entry
-            if expiry <= time.time():
+            if entry:
+                expiry, user = entry
+                if expiry > now:
+                    return user
                 self.sessions.pop(token, None)
-                return None
-            return user
+        db = getattr(self.bot, "db", None)
+        if db is None:
+            return None
+        record = await db.web_sessions.find_one({"_id": self._session_key(token)})
+        if not record or float(record.get("expires_at", 0)) <= now:
+            if record:
+                await db.web_sessions.delete_one({"_id": self._session_key(token)})
+            return None
+        user = self._deserialize_user(record.get("user") or {})
+        new_expiry = now + SESSION_TTL
+        await db.web_sessions.update_one({"_id": self._session_key(token)}, {"$set": {"expires_at": new_expiry, "last_seen": now}})
+        async with self._lock:
+            self.sessions[token] = (new_expiry, user)
+        return user
 
     async def destroy_session(self, request: web.Request) -> None:
         token = request.cookies.get(SESSION_COOKIE)
         if token:
             async with self._lock:
                 self.sessions.pop(token, None)
+            db = getattr(self.bot, "db", None)
+            if db is not None:
+                await db.web_sessions.delete_one({"_id": self._session_key(token)})
 
     def set_session_cookie(self, response: web.StreamResponse, token: str) -> None:
         response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, secure=self.public_url.startswith("https://"), samesite="Lax", path="/")
