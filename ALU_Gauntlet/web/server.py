@@ -68,6 +68,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/season", self.season)
         self.app.router.add_put("/api/season", self.save_season)
         self.app.router.add_get("/api/players", self.player_list)
+        self.app.router.add_get("/api/leaderboard", self.leaderboard)
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
@@ -272,6 +273,15 @@ class WebControlCenter:
 
     async def _audit(self, guild_id: str, user_id: str, action: str) -> None:
         await self.bot.db.system_events.insert_one({"guild_id": guild_id, "source": "web", "user_id": user_id, "action": action})
+
+    async def leaderboard(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_member(request)
+        try:
+            limit = max(1, min(25, int(request.query.get("limit", "10"))))
+        except ValueError:
+            raise web.HTTPBadRequest(text="limit must be an integer.")
+        rows = await self.players.list_players(guild_id, limit=limit)
+        return web.json_response({"players": rows})
 
     async def player_list(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
