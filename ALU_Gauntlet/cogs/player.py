@@ -3,6 +3,20 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 
+async def send_dashboard(interaction: discord.Interaction):
+    """Send the canonical player dashboard without removing player access for staff."""
+    guild_id = str(interaction.guild_id)
+    user_id = str(interaction.user.id)
+    view = DashboardView(guild_id, user_id, False)
+    embed = discord.Embed(
+        title='🏁 ALU GAUNTLET • PLAYER DASHBOARD',
+        description='Race. Compete. Unite.\n\nUse the controls below to manage your driver profile, defense, challenges, rankings, and season activity.',
+        color=ASPHALT_THEME_COLOR,
+    )
+    embed.set_footer(text='Player controls • Staff players retain full player access')
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
 # Player dashboard access is intentionally independent of staff permissions:
 # staff/admin players keep the full player dashboard and gain /staff separately.
 class PlayerCog(commands.Cog):
