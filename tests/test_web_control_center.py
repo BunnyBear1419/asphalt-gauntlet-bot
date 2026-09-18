@@ -91,6 +91,14 @@ def test_web_auth_persists_sessions_across_process_restarts():
     assert "set_session_cookie" in source
 
 
+def test_web_server_has_global_error_recovery_and_eager_page_reads():
+    source=(WEB/"server.py").read_text(encoding="utf-8")
+    assert "middlewares=[self._error_middleware]" in source
+    assert 'Route: {request.path}' in source
+    assert 'async def _page_response(self, filename: str)' in source
+    assert 'return await self._page_response("index.html")' in source
+
+
 def test_web_root_recovers_from_unexpected_auth_failures():
     source=(WEB/"server.py").read_text(encoding="utf-8")
     assert 'Unexpected web authentication failure on /' in source
