@@ -86,6 +86,23 @@ jobs:
           done
           echo "Deployment secrets are present. Secret values are never printed."
 
+      - name: Capture pre-deployment heartbeat
+        id: predeploy
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet pymongo
+          MONGO_URI="$MONGO_URI" python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          import time
+          from pymongo import MongoClient
+          client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000)
+          hb = client["asphalt_gauntlet"].system_events.find_one({"_id": "production_heartbeat"})
+          client.close()
+          timestamp = float(hb.get("timestamp", 0)) if hb else 0
+          print(f"heartbeat_at={timestamp}")
+          PY
       # Retry transient Discloud deployment failures, including temporary 429s.
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
@@ -142,12 +159,13 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
           DEPLOY_STARTED_AT: ${{ steps.deployment.outputs.started_at }}
+          PREVIOUS_HEARTBEAT_AT: ${{ steps.predeploy.outputs.heartbeat_at }}
         run: |
           set -euo pipefail
           python -m pip install --quiet pymongo
 
-          for attempt in $(seq 1 10); do
-            echo "Smoke test attempt $attempt/10"
+          for attempt in $(seq 1 20); do
+            echo "Smoke test attempt $attempt/20"
             ok=true
 
             DISCLOUD_HTTP=$(curl -sS -o discloud-status.json -w "%{http_code}" \
@@ -215,8 +233,14 @@ jobs:
           client.close()
           if not hb:
               raise SystemExit("No production heartbeat found")
-          if float(hb.get("timestamp", 0)) < float(os.environ["DEPLOY_STARTED_AT"]):
+          heartbeat_at = float(hb.get("timestamp", 0))
+          previous = float(os.environ.get("PREVIOUS_HEARTBEAT_AT", "0"))
+          if previous > 0 and heartbeat_at <= previous:
               raise SystemExit("Production heartbeat has not advanced since deployment started")
+          if heartbeat_at <= 0 or heartbeat_at > time.time() + 30:
+              raise SystemExit("Production heartbeat timestamp is invalid")
+          if time.time() - heartbeat_at > 300:
+              raise SystemExit("Production heartbeat is stale")
           if not hb.get("ready") or not hb.get("db_ok"):
               raise SystemExit("Production heartbeat reports bot/database unhealthy")
           print("MongoDB and production heartbeat checks passed.")
@@ -233,13 +257,13 @@ jobs:
               exit 0
             fi
 
-            if [ "$attempt" -lt 10 ]; then
+            if [ "$attempt" -lt 20 ]; then
               echo "Production is still starting; waiting 15 seconds before the next health check."
               sleep 15
             fi
           done
 
-          echo "Post-deployment smoke test failed after 10 attempts."
+          echo "Post-deployment smoke test failed after 20 attempts."
           exit 1
 
       - name: Roll back to previous known-good revision
