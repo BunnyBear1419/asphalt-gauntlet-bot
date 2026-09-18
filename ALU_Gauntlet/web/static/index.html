@@ -1,6 +1,113 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ALU Gauntlet Control Center</title><link rel="stylesheet" href="/static/app.css"></head><body><main class="shell">
-<header class="hero"><div><p class="eyebrow">ASPHALT LEGENDS UNITE</p><h1>Gauntlet Control Center</h1><p class="muted">One connected dashboard for players, staff and the Discord bot.</p><p><a class="button" href="/player">Open My Garage</a> <a class="button" id="staff-link" href="/setup" hidden>Staff Setup</a></p></div><div class="hero-actions"><div id="system-pill" class="pill">Checking bot…</div><div id="user-menu" class="user-menu" hidden><span id="user-name">Driver</span><a href="/logout">Log out</a></div></div></header>
-<section class="grid cards"><article class="card"><span>Bot</span><strong id="bot-status">—</strong></article><article class="card"><span>Latency</span><strong id="latency">—</strong></article><article class="card"><span>Discord Servers</span><strong id="guilds">—</strong></article><article class="card"><span>Sync</span><strong>MongoDB live</strong></article></section>
-<section class="panel"><div class="section-heading"><div><p class="eyebrow">DRIVER</p><h2>My Gauntlet</h2></div><span class="muted">Player controls</span></div><div class="grid modules"><a class="module" href="/player"><span>🏎️</span><b>My Garage</b><small>Profile, ELO, PI, season status and preferences</small></a><a class="module" href="/player"><span>🛡️</span><b>Defense</b><small>View your deployed defense status</small></a><a class="module" href="/player"><span>⚙️</span><b>Preferences</b><small>Personal web and timezone settings</small></a></div></section>
-<section class="panel" id="staff-panel" hidden><div class="section-heading"><div><p class="eyebrow">STAFF</p><h2>Race Operations</h2></div><span class="muted">Server administration</span></div><div class="grid modules"><a class="module" href="/players"><span>👥</span><b>Players</b><small>Profiles, ELO, PI and defense status</small></a><a class="module" href="/setup"><span>⚙️</span><b>Server Setup</b><small>Channels, roles and timezone dropdowns</small></a><button class="module" disabled><span>🛡️</span><b>Defenses</b><small>Connected review tools coming from shared backend</small></button><button class="module" disabled><span>⚔️</span><b>Matches</b><small>Connected match center</small></button><button class="module" disabled><span>🏆</span><b>Seasons</b><small>Season controls and history</small></button><button class="module" disabled><span>📊</span><b>Analytics</b><small>Gauntlet statistics and history</small></button><button class="module" disabled><span>🗺️</span><b>Maps & Times</b><small>Maps and reference times</small></button><button class="module" disabled><span>🔍</span><b>Launch Check</b><small>Production readiness and health</small></button></div></section>
-<footer>ALU Gauntlet • Web ↔ MongoDB ↔ Discord • No raw IDs required in normal UI</footer></main><script src="/static/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ALU Gauntlet • Control Center</title><link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="dashboard-page">
+<main class="site-shell">
+<header class="topbar alu-topbar">
+  <a class="alu-brand" href="/" aria-label="ALU Gauntlet home">
+    <span class="brand-asphalt">ASPHALT</span><span class="brand-legends">LEGENDS</span><span class="brand-unite">UNITE</span>
+  </a>
+  <nav class="main-nav" aria-label="Primary navigation">
+    <a class="active" href="/">⌂ <span>Home</span></a>
+    <a href="#dashboard">▣ <span>Dashboard</span></a>
+    <a href="/player">▰ <span>Garage</span></a>
+    <a href="#gauntlet">🏆 <span>Gauntlet</span></a>
+    <a href="#leaderboard">▥ <span>Leaderboard</span></a>
+    <a href="#seasons">▦ <span>Seasons</span></a>
+    <a href="#help">? <span>Help</span></a>
+  </nav>
+  <div class="profile-menu">
+    <div id="system-pill" class="pill">Checking bot…</div>
+    <div id="user-menu" class="user-menu" hidden><span id="user-name">Driver</span><a href="/logout">Log out</a></div>
+  </div>
+</header>
+
+<section class="alu-hero">
+  <div class="hero-copy">
+    <p class="eyebrow">ALU GAUNTLET • RACE OPERATIONS</p>
+    <h1>Race. Compete.<br><em>Unite.</em></h1>
+    <p class="hero-subtitle">Your connected Asphalt Legends Unite competition hub — Discord, players and MongoDB working from one shared state.</p>
+    <div class="hero-buttons">
+      <a class="button button-primary" href="/player">Open My Garage <span>→</span></a>
+      <a class="button button-ghost" id="staff-link" href="/setup" hidden>Staff Control Center</a>
+    </div>
+  </div>
+  <div class="hero-art" aria-hidden="true">
+    <div class="speed-line line-a"></div><div class="speed-line line-b"></div><div class="speed-line line-c"></div>
+    <div class="hero-car hero-car-main"></div><div class="hero-car hero-car-back"></div>
+    <span class="hero-glow"></span>
+  </div>
+</section>
+
+<section id="dashboard" class="stats-strip">
+  <article class="stat-card"><span>Bot</span><strong id="bot-status">—</strong><small>Discord connection</small></article>
+  <article class="stat-card"><span>Latency</span><strong id="latency">—</strong><small>Live response</small></article>
+  <article class="stat-card"><span>Discord Servers</span><strong id="guilds">—</strong><small>Connected guilds</small></article>
+  <article class="stat-card"><span>Data Sync</span><strong>LIVE</strong><small>MongoDB shared state</small></article>
+</section>
+
+<section class="welcome-grid">
+  <article class="welcome-card">
+    <div class="avatar-orb">🏎️</div>
+    <div><p class="eyebrow">DRIVER DASHBOARD</p><h2>Welcome back, <span id="welcome-name">Driver</span>.</h2><p class="muted">Keep racing. Your player controls stay available even when you also have staff permissions.</p></div>
+    <a class="round-arrow" href="/player">→</a>
+  </article>
+  <article class="season-card" id="seasons">
+    <div class="season-badge">ALU</div><div><span class="season-kicker">CURRENT SEASON</span><h3>Gauntlet Season</h3><p>Season data is read from the live bot database.</p></div>
+    <a href="/player">View season →</a>
+  </article>
+</section>
+
+<section id="gauntlet" class="section-block">
+  <div class="section-title"><div><p class="eyebrow">RACE CENTER</p><h2>Everything you need to compete</h2></div><span class="muted">Player controls</span></div>
+  <div class="feature-grid">
+    <a class="feature-card feature-pink" href="/player"><div class="feature-art car-art car-purple"></div><div class="feature-content"><span>🏆</span><h3>Gauntlet</h3><p>Register, check status, submit results and manage your race profile.</p><b>Open race center →</b></div></a>
+    <a class="feature-card feature-blue" href="/player"><div class="feature-art car-art car-blue"></div><div class="feature-content"><span>🏎️</span><h3>My Garage</h3><p>View your ELO, Garage PI, season information, defense and preferences.</p><b>Open garage →</b></div></a>
+    <a class="feature-card feature-gold" href="#leaderboard"><div class="feature-art car-art car-gold"></div><div class="feature-content"><span>🏅</span><h3>Competition</h3><p>Leaderboard and competition modules connect to the same backend.</p><b>View competition →</b></div></a>
+    <a class="feature-card feature-cyan" href="/player"><div class="feature-art car-art car-cyan"></div><div class="feature-content"><span>⚙️</span><h3>Profile & Settings</h3><p>Manage your personal preferences without exposing raw Discord IDs.</p><b>Manage profile →</b></div></a>
+  </div>
+</section>
+
+<section class="content-grid">
+  <article class="panel garage-panel">
+    <div class="section-title"><div><p class="eyebrow">MY GARAGE</p><h2>Driver profile</h2></div><a href="/player">Open →</a></div>
+    <div class="garage-visual"><div class="garage-car"></div><div class="garage-copy"><span>CONNECTED PROFILE</span><strong>Live player data</strong><p>Your Discord player record, ELO, PI, season and defense state are shared with the bot.</p></div></div>
+  </article>
+  <article class="panel" id="leaderboard">
+    <div class="section-title"><div><p class="eyebrow">COMPETITION</p><h2>Leaderboard</h2></div><span class="muted">Live backend</span></div>
+    <div class="leaderboard-list">
+      <div><span class="rank">01</span><span class="driver-dot"></span><strong>Top driver</strong><span class="live-value">Live</span></div>
+      <div><span class="rank">02</span><span class="driver-dot"></span><strong>Second driver</strong><span class="live-value">Live</span></div>
+      <div><span class="rank">03</span><span class="driver-dot"></span><strong>Third driver</strong><span class="live-value">Live</span></div>
+      <p class="muted tiny">Leaderboard rows will populate from the shared player service when the competition endpoint is enabled.</p>
+    </div>
+  </article>
+</section>
+
+<section class="panel staff-panel" id="staff-panel" hidden>
+  <div class="section-title"><div><p class="eyebrow">STAFF / RACE OPERATIONS</p><h2>Server control</h2></div><span class="muted">Staff-only controls</span></div>
+  <div class="staff-grid">
+    <a class="staff-card" href="/players"><span>👥</span><b>Players</b><small>Profiles, ELO, PI and defense status</small></a>
+    <a class="staff-card" href="/setup"><span>⚙️</span><b>Server Setup</b><small>Channels, roles and timezone dropdowns</small></a>
+    <div class="staff-card disabled"><span>🛡️</span><b>Defenses</b><small>Shared-backend review tools</small></div>
+    <div class="staff-card disabled"><span>⚔️</span><b>Matches</b><small>Connected match center</small></div>
+    <div class="staff-card disabled"><span>🏆</span><b>Seasons</b><small>Season controls and history</small></div>
+    <div class="staff-card disabled"><span>📊</span><b>Analytics</b><small>Gauntlet statistics and history</small></div>
+  </div>
+</section>
+
+<section id="help" class="help-banner">
+  <div><p class="eyebrow">NEED A HAND?</p><h2>Built for racers and staff.</h2><p class="muted">Use the Discord <strong>/help</strong>, <strong>/dashboard</strong> and <strong>/staff</strong> commands for the same organized experience.</p></div>
+  <div class="help-mark">?</div>
+</section>
+
+<footer><strong>ALU GAUNTLET</strong> • Web ↔ MongoDB ↔ Discord • Community competition control center</footer>
+</main>
+<script src="/static/app.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{const name=document.querySelector("#user-name");const welcome=document.querySelector("#welcome-name");if(name&&welcome){const obs=new MutationObserver(()=>welcome.textContent=name.textContent);obs.observe(name,{childList:true});}});
+</script>
+</body></html>
