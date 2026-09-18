@@ -147,3 +147,42 @@ html,body{width:100%;min-width:0}
   background-color:#06152f;
   opacity:.78;
 }
+
+
+/* Final Welcome banner: make the uploaded racing artwork fill the entire card,
+   matching the compact cinematic reference layout while keeping all artwork visible. */
+.welcome-panel{
+  position:relative;
+  height:137px;
+  overflow:hidden;
+  background:#06152f;
+}
+.welcome-panel:after{
+  width:100%;
+  right:0;
+  top:0;
+  bottom:0;
+  background:
+    linear-gradient(90deg,#020817e8 0%,#06152fb8 30%,#06152f35 58%,#06152f12 100%),
+    url('/static/welcome-fixed.jpg') center center/100% 100% no-repeat;
+  opacity:1;
+  z-index:0;
+}
+.welcome-panel .player-avatar,
+.welcome-panel .welcome-copy{
+  position:relative;
+  z-index:2;
+}
+.welcome-copy{
+  max-width:58%;
+  margin-left:19px;
+}
+.welcome-car{display:none!important}
+@media(max-width:560px){
+  .welcome-panel:after{
+    background:
+      linear-gradient(90deg,#020817e8 0%,#06152f99 55%,#06152f33 100%),
+      url('/static/welcome-fixed.jpg') center center/100% 100% no-repeat;
+  }
+  .welcome-copy{max-width:70%}
+}
