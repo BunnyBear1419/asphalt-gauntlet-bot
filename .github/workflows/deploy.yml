@@ -235,6 +235,15 @@ jobs:
               ok=false
             fi
 
+            # Verify an invalid/stale browser session cannot turn the homepage
+            # into aiohttp's generic HTTP 500 page.
+            STALE_HOME_HTTP=$(curl -sS -o web-home-stale.html -w "%{http_code}"               -H "Cookie: alu_web_session=invalid-production-smoke-session"               "https://asph.discloud.app/" || true)
+            echo "Web homepage with stale session HTTP status: $STALE_HOME_HTTP"
+            if [ "$STALE_HOME_HTTP" != "302" ] && [ "$STALE_HOME_HTTP" != "303" ]; then
+              echo "Web homepage stale-session recovery failed."
+              ok=false
+            fi
+
             DISCORD_HTTP=$(curl -sS -o discord-user.json -w "%{http_code}" \
               -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
               -H "Accept: application/json" \
