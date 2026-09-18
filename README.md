@@ -41,15 +41,34 @@ python tests/test_final.py
 
 ## Discloud
 
-The root `discloud.config` points to `main.py` and Python 3.12.
+The production application is intentionally **Discloud-first**: the existing `asph` service hosts both the Discord bot and the web control center, so a local PC is not required to stay online.
 
-For GitHub deployment, connect the repository in Discloud and add these production environment variables in the Discloud environment-variable section:
+The root `discloud.config` points to `main.py`, uses Python 3.12, 512 MB RAM, `TYPE=site`, and automatic restart. The web server reads Discloud's `PORT` and defaults to 8080.
+
+### Deploy without GitHub Actions
+
+Discloud supports direct GitHub Integration deployment. Connect the GitHub account that owns this repository in the Discloud Dashboard, grant access to this repository, then use **Upload → GitHub** to deploy the `main` branch to the existing `asph` app. This avoids depending on GitHub Actions for production deployment.
+
+Production environment variables:
 
 - `DISCORD_BOT_TOKEN`
 - `MONGO_URI`
-- `BACKUP_DIR=./backups`
+- `DISCORD_CLIENT_ID`
+- `DISCORD_CLIENT_SECRET`
+- `WEB_PUBLIC_URL=https://asph.discloud.app`
+- `WEB_STAFF_USER_IDS` (optional)
+- `BACKUP_DIR=./backups` (optional)
 
-Do not put real secrets in GitHub.
+Optional monitoring variables:
+
+- `HEALTH_WEBHOOK_URL`
+- `DISCORD_ALERT_WEBHOOK`
+
+Discord OAuth redirect URI:
+
+- `https://asph.discloud.app/auth/callback`
+
+Do not put real secrets in GitHub. See `DISCloud_DEPLOYMENT.md` for the complete production deployment and verification procedure.
 
 ## MongoDB
 
