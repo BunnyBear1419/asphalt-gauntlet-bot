@@ -56,3 +56,28 @@ def test_player_dashboard_restores_saved_timezone_and_escapes_profile_text():
     assert 'prefs.timezone' in source
     assert 'profile.textContent=' in source
     assert 'profile.innerHTML=' not in source
+
+
+def test_web_registration_uses_canonical_submission_workflow():
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    assert 'add_post("/api/player/register", self.player_register)' in server
+    assert 'submit_registration_application' in server
+    assert 'require_guild_member(request)' in server
+    assert 'review_channel_id' in server
+
+
+def test_web_registration_ui_covers_same_player_registration_inputs():
+    html=(STATIC/"player.html").read_text(encoding="utf-8")
+    js=(STATIC/"player.js").read_text(encoding="utf-8")
+    for marker in ("id=\"registration-game-id\"","id=\"registration-pi\"","id=\"registration-control\"","id=\"registration-proof\"","id=\"register\""):
+        assert marker in html
+    assert '/api/player/register?guild_id=' in js
+
+
+def test_web_registration_is_member_scoped_not_staff_only():
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    start=server.index('    async def player_register(')
+    end=server.index('    async def player_preferences(', start)
+    source=server[start:end]
+    assert 'require_guild_member(request)' in source
+    assert 'require_admin(request)' not in source
