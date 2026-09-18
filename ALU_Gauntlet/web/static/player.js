@@ -12,7 +12,7 @@ async function profile(){
   const sel=$("#guild"); if(!sel||!sel.value)return;
   const id=encodeURIComponent(sel.value);
   try{
-    const d=await api("/api/player/me?guild_id="+id),p=d.player||{};
+    const d=await api("/api/player/me?guild_id="+id),p=d.player||{},prefs=d.preferences||{};
     const elo=p.elo??"—";
     const pi=Number(p.garage_pi||0).toLocaleString();
     const season=p.season_number??"Not registered";
@@ -26,8 +26,12 @@ async function profile(){
     setText("defense",defense); setText("wins",wins); setText("losses",losses); setText("streak",streak);
     setText("profile-name",p.username||"Driver"); setText("user-name",p.username||"Driver"); setText("welcome-name",p.username||"Driver");
     setText("season-status",p.season_number?"● Active ●":"● Not Registered ●");
+    const tz=$("#timezone");
+    if(tz && prefs.timezone)tz.value=prefs.timezone;
     const profile=$("#profile");
-    if(profile)profile.innerHTML=p.game_id?"<b>"+p.game_id+"</b> • "+wins+" career wins • "+(p.career_played||0)+" matches":"No registered driver profile yet.";
+    if(profile){
+      profile.textContent=p.game_id?`${p.game_id} • ${wins} career wins • ${p.career_played||0} matches`:"No registered driver profile yet.";
+    }
   }catch(e){
     const profile=$("#profile"); if(profile)profile.textContent=e.message;
   }
