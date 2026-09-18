@@ -310,3 +310,28 @@ html,body{width:100%;min-width:0}
   .feature{height:185px}.garage-card,.matches-card,.leaderboard-card{height:250px}
   .bottom-banner{height:auto;min-height:95px;flex-wrap:wrap;padding:12px 16px}
 }
+
+
+/* Final card-art treatment: keep the car scene in the upper artwork area and
+   push the baked-in title/copy below the visible image region. All labels stay
+   as real, clickable HTML text. */
+.feature-picture{
+  background-size:auto 175%!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  background-color:#040a16!important;
+}
+.feature-picture:after{
+  background:
+    linear-gradient(180deg,#050a1400 0%,#040a1610 38%,#040a16f2 70%,#040a16ff 100%)!important;
+}
+.feature-body{
+  z-index:4!important;
+}
+
+/* Apply the same clean-art treatment to the footer/promo banner. */
+.bottom-banner{
+  background:
+    linear-gradient(90deg,#080b24f4 0%,#080b2420 48%,#080b24ee 100%),
+    url('/static/assets/promo-banner.jpg') center top/auto 260% no-repeat!important;
+}
