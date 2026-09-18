@@ -206,3 +206,19 @@ html,body{width:100%;min-width:0}
   position:relative;
   z-index:3;
 }
+
+
+/* Footer artwork cleanup: show only the racing scene from promo-banner.jpg.
+   Footer copy and JOIN button are rendered by HTML, so baked-in artwork text is hidden. */
+.bottom-banner{
+  background:
+    linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),
+    url('/static/assets/promo-banner.jpg') 36% center/232% 100% no-repeat;
+}
+.bottom-banner:after{
+  background:linear-gradient(100deg,#ff00d400 35%,#ff00d422 75%,#ff00d400);
+}
+.bottom-logo,.bottom-banner>div:nth-child(2),.bottom-banner>a{
+  position:relative;
+  z-index:2;
+}
