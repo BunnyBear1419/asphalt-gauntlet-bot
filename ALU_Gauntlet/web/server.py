@@ -46,10 +46,46 @@ class WebControlCenter:
         self.port = port
         self.auth = DiscordOAuth(bot)
         self.players = PlayerService(bot)
-        self.app = web.Application()
+        self.app = web.Application(middlewares=[self._error_middleware])
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
         self._configure_routes()
+
+    @web.middleware
+    async def _error_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
+        try:
+            return await handler(request)
+        except web.HTTPException:
+            raise
+        except Exception:
+            # Never expose aiohttp's generic "Server got itself in trouble"
+            # page. Log the full traceback server-side and return a controlled
+            # response that identifies the failing route.
+            log.exception("Unhandled web exception on %s %s", request.method, request.path_qs)
+            if request.path.startswith("/api/"):
+                return web.json_response(
+                    {"ok": False, "error": "The ALU Gauntlet web service hit an unexpected error.", "path": request.path},
+                    status=503,
+                )
+            return web.Response(
+                text=(
+                    "ALU Gauntlet web service temporarily unavailable. "
+                    f"Route: {request.path}"
+                ),
+                status=503,
+                content_type="text/plain",
+            )
+
+    async def _page_response(self, filename: str) -> web.Response:
+        path = WEB_DIR / filename
+        try:
+            body = path.read_text(encoding="utf-8")
+        except Exception as exc:
+            log.exception("Unable to read web page %s", path)
+            raise web.HTTPServiceUnavailable(
+                text=f"Web page '{filename}' is temporarily unavailable."
+            ) from exc
+        return web.Response(text=body, content_type="text/html")
 
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
@@ -124,22 +160,22 @@ class WebControlCenter:
             response.del_cookie(SESSION_COOKIE, path="/")
             return response
         try:
-            return web.FileResponse(WEB_DIR / "index.html")
+            return await self._page_response("index.html")
         except Exception:
             log.exception("Unable to serve the web dashboard")
             raise web.HTTPServiceUnavailable(text="The ALU Gauntlet web dashboard is temporarily unavailable.")
 
     async def players_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
-        return web.FileResponse(WEB_DIR / "players.html")
+        return await self._page_response("players.html")
 
     async def setup_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
-        return web.FileResponse(WEB_DIR / "setup.html")
+        return await self._page_response("setup.html")
 
     async def player_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return web.FileResponse(WEB_DIR / "player.html")
+        return await self._page_response("player.html")
 
     async def healthz(self, request: web.Request) -> web.Response:
         ready = bool(getattr(self.bot, "is_ready", lambda: False)())
@@ -151,7 +187,18 @@ class WebControlCenter:
                 db_ok = True
             except Exception:
                 db_ok = False
-        return web.json_response({"ok": ready and db_ok, "bot_ready": ready, "db_ok": db_ok})
+        page_files = {
+            name: (WEB_DIR / name).is_file()
+            for name in ("index.html", "player.html", "players.html", "setup.html", "app.css", "app.js")
+        }
+        web_files_ok = all(page_files.values())
+        return web.json_response({
+            "ok": ready and db_ok and web_files_ok,
+            "bot_ready": ready,
+            "db_ok": db_ok,
+            "web_files_ok": web_files_ok,
+            "web_files": page_files,
+        })
 
     async def login(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
