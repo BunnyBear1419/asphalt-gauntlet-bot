@@ -72,19 +72,25 @@ class DiscordOAuth:
 
     async def exchange_code(self, code: str) -> dict[str, Any]:
         payload = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "authorization_code", "code": code, "redirect_uri": self.redirect_uri}
-        async with ClientSession() as session:
-            async with session.post(f"{DISCORD_API}/oauth2/token", data=payload, timeout=15) as response:
-                if response.status != 200:
-                    raise web.HTTPBadGateway(text="Discord OAuth token exchange failed.")
-                return await response.json()
+        try:
+            async with ClientSession() as session:
+                async with session.post(f"{DISCORD_API}/oauth2/token", data=payload, timeout=15) as response:
+                    if response.status != 200:
+                        raise web.HTTPBadGateway(text="Discord OAuth token exchange failed.")
+                    return await response.json()
+        except (ClientError, asyncio.TimeoutError) as exc:
+            raise web.HTTPBadGateway(text="Discord OAuth is temporarily unavailable. Please try again.") from exc
 
     async def discord_get(self, path: str, access_token: str) -> Any:
         headers = {"Authorization": f"Bearer {access_token}"}
-        async with ClientSession() as session:
-            async with session.get(f"{DISCORD_API}{path}", headers=headers, timeout=15) as response:
-                if response.status != 200:
-                    raise web.HTTPBadGateway(text="Discord OAuth API request failed.")
-                return await response.json()
+        try:
+            async with ClientSession() as session:
+                async with session.get(f"{DISCORD_API}{path}", headers=headers, timeout=15) as response:
+                    if response.status != 200:
+                        raise web.HTTPBadGateway(text="Discord OAuth API request failed.")
+                    return await response.json()
+        except (ClientError, asyncio.TimeoutError) as exc:
+            raise web.HTTPBadGateway(text="Discord OAuth is temporarily unavailable. Please try again.") from exc
 
     async def build_user(self, access_token: str) -> WebUser:
         profile = await self.discord_get("/users/@me", access_token)
@@ -205,7 +211,12 @@ class DiscordOAuth:
                 self.sessions.pop(token, None)
             db = getattr(self.bot, "db", None)
             if db is not None:
-                await db.web_sessions.delete_one({"_id": self._session_key(token)})
+                try:
+                    await db.web_sessions.delete_one({"_id": self._session_key(token)})
+                except Exception:
+                    # Logout must still clear the browser cookie if Mongo is
+                    # temporarily unavailable.
+                    pass
 
     def set_session_cookie(self, response: web.StreamResponse, token: str) -> None:
         response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, secure=self.public_url.startswith("https://"), samesite="Lax", path="/")
