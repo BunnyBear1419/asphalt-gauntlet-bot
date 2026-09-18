@@ -76,7 +76,20 @@ class DiscordOAuth:
             async with ClientSession() as session:
                 async with session.post(f"{DISCORD_API}/oauth2/token", data=payload, timeout=15) as response:
                     if response.status != 200:
-                        raise web.HTTPServiceUnavailable(text=f"Discord OAuth token exchange failed (HTTP {response.status}).")
+                        try:
+                            error_payload = await response.json(content_type=None)
+                        except Exception:
+                            error_payload = {}
+                        error_code = str(error_payload.get("error", "")).strip() if isinstance(error_payload, dict) else ""
+                        error_desc = str(error_payload.get("error_description", "")).strip() if isinstance(error_payload, dict) else ""
+                        detail = f" {error_code}: {error_desc}".strip() if error_code or error_desc else ""
+                        log_message = f"Discord OAuth token exchange failed: HTTP {response.status}{detail}"
+                        # Keep the detailed Discord response in server logs; never expose
+                        # client secrets or authorization codes to the browser.
+                        print(log_message)
+                        raise web.HTTPServiceUnavailable(
+                            text=f"Discord OAuth token exchange failed (HTTP {response.status}).{detail}"
+                        )
                     return await response.json()
         except (ClientError, asyncio.TimeoutError) as exc:
             raise web.HTTPBadGateway(text="Discord OAuth is temporarily unavailable. Please try again.") from exc
