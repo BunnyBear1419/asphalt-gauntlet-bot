@@ -141,7 +141,10 @@ class WebControlCenter:
         if user:
             raise web.HTTPFound("/")
         state = await self.auth.create_state()
-        raise web.HTTPFound(self.auth.login_url(state))
+        return web.Response(
+            text=f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign In • ALU Gauntlet</title><link rel="stylesheet" href="/static/app.css"></head><body class="alu-dashboard"><main style="min-height:100vh;display:grid;place-items:center;padding:32px"><section class="glass-panel" style="max-width:620px;width:100%;padding:42px;text-align:center"><div class="bottom-logo">ASPHALT <b>LEGENDS</b> <strong>UNITE</strong></div><h1>Sign In to ALU Gauntlet</h1><p class="server-sub">Use your Discord account to access your player profile, registration, matches and staff controls. Your secure web session will be remembered for up to 30 days and refreshed while you use the site.</p><a class="qa qa-purple" href="{self.auth.login_url(state)}">Continue with Discord →</a></section></main></body></html>""",
+            content_type="text/html",
+        )
 
     async def callback(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
