@@ -109,7 +109,7 @@ def test_web_root_recovers_from_unexpected_auth_failures():
 def test_web_oauth_network_failures_are_mapped_to_http_errors():
     source=(WEB/"auth.py").read_text(encoding="utf-8")
     assert 'except (ClientError, asyncio.TimeoutError) as exc:' in source
-    assert 'web.HTTPBadGateway(text="Discord OAuth is temporarily unavailable. Please try again.")' in source
+    assert 'Discord OAuth token exchange network failure' in source
 
 
 def test_web_login_and_logout_are_exposed():
@@ -139,6 +139,6 @@ def test_web_oauth_callback_validates_payloads_and_never_leaks_generic_500s():
     assert 'if not isinstance(profile, dict) or not profile.get("id")' in auth
     assert 'if not isinstance(guilds, list):' in auth
     assert 'if not isinstance(tokens, dict):' in server
-    assert 'Discord sign-in could not be completed. Please try again.' in server
+    assert 'Discord sign-in failed during {stage}.' in server
     assert 'response.headers["Cache-Control"] = "no-store"' in server
 
