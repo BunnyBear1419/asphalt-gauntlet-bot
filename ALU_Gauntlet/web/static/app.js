@@ -21,10 +21,10 @@ async function loadDashboard(){
   const own=(board.players||[]).find(p=>String(p.user_id)===String(me.id)||String(p.user_id)===String(me.user_id));
   if(own){
    const set=(s,v)=>{const x=$(s);if(x)x.textContent=v};
-   set("#profile-elo",(own.elo??1000).toLocaleString());set("#profile-pi",Number(own.garage_pi||0).toLocaleString());set("#garage-pi","GARAGE PI "+Number(own.garage_pi||0).toLocaleString());set("#wins",own.career_wins??0);set("#losses",Math.max(0,(own.career_played??0)-(own.career_wins??0)));set("#streak",own.streak??0);
+   set("#profile-elo",(own.elo??1000).toLocaleString());set("#profile-pi",Number(own.garage_pi||0).toLocaleString());set("#garage-pi",Number(own.garage_pi||0).toLocaleString());set("#wins",own.career_wins??0);set("#losses",Math.max(0,(own.career_played??0)-(own.career_wins??0)));set("#streak",own.streak??0);
   } else {
    const p=await api("/api/player/me?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
-   if(p&&p.player){const d=p.player;const set=(s,v)=>{const x=$(s);if(x)x.textContent=v};set("#profile-elo",(d.elo??1000).toLocaleString());set("#profile-pi",Number(d.garage_pi||0).toLocaleString());set("#garage-pi","GARAGE PI "+Number(d.garage_pi||0).toLocaleString());set("#wins",d.career_wins??0);set("#losses",Math.max(0,(d.career_played??0)-(d.career_wins??0)));set("#streak",d.streak??0)}
+   if(p&&p.player){const d=p.player;const set=(s,v)=>{const x=$(s);if(x)x.textContent=v};set("#profile-elo",(d.elo??1000).toLocaleString());set("#profile-pi",Number(d.garage_pi||0).toLocaleString());set("#garage-pi",Number(d.garage_pi||0).toLocaleString());set("#wins",d.career_wins??0);set("#losses",Math.max(0,(d.career_played??0)-(d.career_wins??0)));set("#streak",d.streak??0)}
   }
   const season=await api("/api/season?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
   if(season&&season.season){
