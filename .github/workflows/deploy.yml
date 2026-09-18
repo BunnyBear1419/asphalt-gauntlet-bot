@@ -214,6 +214,27 @@ jobs:
           PY
             fi
 
+            LOGIN_HTTP=$(curl -sS -o web-login.html -w "%{http_code}" "https://asph.discloud.app/login" || true)
+            echo "Web login HTTP status: $LOGIN_HTTP"
+            if [ "$LOGIN_HTTP" != "200" ]; then
+              echo "Web login page failed."
+              ok=false
+            fi
+
+            HOME_HTTP=$(curl -sS -o web-home.html -w "%{http_code}" "https://asph.discloud.app/" || true)
+            echo "Web homepage HTTP status: $HOME_HTTP"
+            if [ "$HOME_HTTP" != "302" ] && [ "$HOME_HTTP" != "303" ]; then
+              echo "Web homepage did not redirect unauthenticated users to login."
+              ok=false
+            fi
+
+            STATIC_HTTP=$(curl -sS -o web-css.css -w "%{http_code}" "https://asph.discloud.app/static/app.css" || true)
+            echo "Web static CSS HTTP status: $STATIC_HTTP"
+            if [ "$STATIC_HTTP" != "200" ]; then
+              echo "Web static CSS failed."
+              ok=false
+            fi
+
             DISCORD_HTTP=$(curl -sS -o discord-user.json -w "%{http_code}" \
               -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
               -H "Accept: application/json" \
