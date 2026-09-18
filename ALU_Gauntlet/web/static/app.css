@@ -112,3 +112,23 @@ html,body{width:100%;min-width:0}
 .welcome-panel:after{background:linear-gradient(90deg,#06152f00,#06152f22),url('/static/assets/welcome.jpg') center/cover no-repeat}
 @media(max-width:1280px){.dashboard-grid{grid-template-columns:minmax(0,1fr) 320px;padding-left:0;padding-right:0}}
 @media(max-width:1050px){.dashboard-grid{grid-template-columns:1fr;padding-left:0;padding-right:0}}
+
+
+/* Keep the full Welcome reference image visible instead of cropping it. */
+.welcome-panel:after{
+  width:52%;
+  right:0;
+  background-size:100% 100%;
+  background-position:center center;
+  background-repeat:no-repeat;
+  opacity:.68;
+}
+.welcome-copy{max-width:46%;z-index:2}
+@media(max-width:1050px){
+  .welcome-panel:after{width:50%}
+  .welcome-copy{max-width:52%}
+}
+@media(max-width:560px){
+  .welcome-panel:after{width:100%;opacity:.24;background-size:100% 100%}
+  .welcome-copy{max-width:100%}
+}
