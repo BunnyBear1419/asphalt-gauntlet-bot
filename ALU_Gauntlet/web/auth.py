@@ -112,7 +112,9 @@ class DiscordOAuth:
                     role_id = str(settings.get("admin_role_id", "")).strip()
                     if role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])):
                         admin_guild_ids.add(gid)
-            except (TypeError, ValueError, KeyError):
+            except Exception:
+                # A single unavailable Discord/Mongo guild lookup must not abort
+                # the entire OAuth login for the user.
                 continue
         staff = user_id in self.allowed_staff_ids or bool(admin_guild_ids)
         return WebUser(user_id=user_id, username=str(profile.get("username", "Unknown")), global_name=profile.get("global_name"), avatar=profile.get("avatar"), staff=staff, admin_guild_ids=frozenset(admin_guild_ids), guild_ids=frozenset(guild_ids))
