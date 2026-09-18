@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import logging
+import random
+import time
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +11,7 @@ from aiohttp import web
 
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
-from ..core.core import submit_registration_application
+from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -62,6 +64,8 @@ class WebControlCenter:
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
+        self.app.router.add_get("/api/player/defense", self.player_defense)
+        self.app.router.add_post("/api/player/defense", self.player_defense_action)
         self.app.router.add_put("/api/player/preferences", self.player_preferences)
         self.app.router.add_post("/api/player/register", self.player_register)
         self.app.router.add_get("/api/setup/options", self.setup_options)
@@ -199,6 +203,58 @@ class WebControlCenter:
             "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
             "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications")},
         })
+
+    async def player_defense(self, request: web.Request) -> web.Response:
+        """Return the player's current/pending five-course defense state."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        profile = await self.players.get_player(guild_id, user.user_id) or {}
+        locked = profile.get("defense_locked") or {}
+        pending = profile.get("defense_review_payload") or {}
+        tracks = profile.get("pending_tracks") or profile.get("season_defense_tracks") or []
+        courses = locked.get("courses") or []
+        return web.json_response({
+            "locked": courses,
+            "pending": pending.get("courses") or [],
+            "pending_review": bool(profile.get("defense_review_pending")),
+            "pending_is_change": bool(profile.get("pending_is_change") or pending.get("is_change")),
+            "tracks": tracks,
+            "cooldown_remaining": max(0, int(86400 - (time.time() - float(profile.get("last_defense_change", 0))))) if profile.get("last_defense_change") else 0,
+        })
+
+    async def player_defense_action(self, request: web.Request) -> web.Response:
+        """Generate or stage a five-course defense using the same driver records as Discord."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        action = str(payload.get("action", "generate")).strip().casefold()
+        driver_id = f"{guild_id}_{user.user_id}"
+        profile = await self.bot.db.drivers.find_one({"_id": driver_id})
+        if not profile:
+            raise web.HTTPConflict(text="Register your driver for the current season before setting a defense.")
+        if profile.get("defense_review_pending"):
+            raise web.HTTPConflict(text="Your defense submission is already pending staff review.")
+        existing = profile.get("defense_locked") or {}
+        if action == "change":
+            if not has_5_course_defense(profile):
+                raise web.HTTPConflict(text="You do not have a valid five-course defense yet. Create your first defense instead.")
+            last_change = profile.get("last_defense_change")
+            if last_change and time.time() - float(last_change) < 86400:
+                remaining = int(86400 - (time.time() - float(last_change)))
+                raise web.HTTPConflict(text=f"Defense changes are on cooldown for another {remaining // 3600}h {(remaining % 3600) // 60}m.")
+            tracks = [c.get("track") for c in existing.get("courses", []) if c.get("track")]
+            if len(tracks) != 5:
+                tracks = profile.get("season_defense_tracks") or []
+        else:
+            tracks = profile.get("season_defense_tracks") or []
+        if len(tracks) != 5:
+            tracks = random.sample(ALU_TRACKS, 5)
+        await self.bot.db.drivers.update_one(
+            {"_id": driver_id},
+            {"$set": {"season_defense_tracks": tracks, "pending_tracks": tracks, "pending_is_change": action == "change"}}
+        )
+        return web.json_response({"ok": True, "action": action, "tracks": tracks, "message": "Five defense courses generated. Enter your results and proof, then submit for staff review."})
 
     async def player_register(self, request: web.Request) -> web.Response:
         """Submit a web registration through the same canonical Discord workflow."""
