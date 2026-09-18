@@ -1,1 +1,141 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Garage • ALU Gauntlet</title><link rel="stylesheet" href="/static/app.css"></head><body><main class="site-shell"><header class="topbar alu-topbar"><a class="alu-brand" href="/"><span class="brand-asphalt">ASPHALT</span><span class="brand-legends">LEGENDS</span><span class="brand-unite">UNITE</span></a><nav class="main-nav"><a href="/">⌂ <span>Home</span></a><a class="active" href="/player">▰ <span>Garage</span></a><a href="/#gauntlet">🏆 <span>Gauntlet</span></a><a href="/#leaderboard">▥ <span>Leaderboard</span></a><a href="/#seasons">▦ <span>Seasons</span></a><a href="/#help">? <span>Help</span></a></nav><div class="profile-menu"><div id="system-pill" class="pill">Checking bot…</div><div id="user-menu" class="user-menu" hidden><span id="user-name">Driver</span><a href="/logout">Log out</a></div></div></header><section class="page-hero"><p class="eyebrow">DRIVER CONTROL</p><h1>My Garage</h1><p class="muted">Your profile and preferences are read from the same database as Discord.</p></section><section class="grid cards"><article class="card"><span>ELO</span><strong id="elo">—</strong></article><article class="card"><span>Garage PI</span><strong id="pi">—</strong></article><article class="card"><span>Season</span><strong id="season">—</strong></article><article class="card"><span>Defense</span><strong id="defense">—</strong></article></section><section class="panel"><div class="toolbar"><select id="guild"></select></div><div id="profile" class="muted">Loading…</div><hr><h2>Preferences</h2><div class="toolbar"><select id="timezone"><option value="UTC">UTC</option><option value="America/New_York">Eastern Time</option><option value="America/Chicago">Central Time</option><option value="America/Denver">Mountain Time</option><option value="America/Los_Angeles">Pacific Time</option><option value="Europe/London">UK / Ireland</option><option value="Europe/Berlin">Central Europe</option><option value="Asia/Kolkata">India</option><option value="Asia/Shanghai">China / Singapore</option><option value="Asia/Tokyo">Japan</option><option value="Australia/Sydney">Australian Eastern</option><option value="Pacific/Auckland">New Zealand</option></select><button class="button button-primary" id="save">Save preferences</button></div></section><script src="/static/player.js"></script></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Garage • ALU Gauntlet</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="alu-dashboard">
+<header class="top-nav">
+  <a class="top-brand" href="/" aria-label="Asphalt Legends Unite"><span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong></a>
+  <nav aria-label="Primary navigation">
+    <a href="/"><i>⌂</i><span>Home</span></a>
+    <a class="active" href="/player"><i>♙</i><span>Dashboard</span></a>
+    <a class="active" href="/player"><i>▣</i><span>Garage</span></a>
+    <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
+    <a href="/#leaderboard"><i>▥</i><span>Leaderboard</span></a>
+    <a href="/#seasons"><i>▦</i><span>Seasons</span></a>
+    <a href="/#help"><i>?</i><span>Help</span></a>
+  </nav>
+  <div class="top-profile"><div class="top-avatar">🏎</div><div><strong id="user-name">Driver</strong><small>Player</small></div><span class="chevron">⌄</span></div>
+</header>
+<div class="app-frame">
+<aside class="sidebar">
+  <nav class="side-nav" aria-label="Driver navigation">
+    <a href="/"><i>⌂</i><span>Home</span></a>
+    <a class="selected" href="/player"><i>♙</i><span>Profile</span></a>
+    <a class="selected" href="/player"><i>▣</i><span>Garage</span></a>
+    <a href="#gauntlet"><i>♜</i><span>Gauntlet</span></a>
+    <a href="#matches"><i>⚑</i><span>Matches</span></a>
+    <a href="/#leaderboard"><i>▥</i><span>Leaderboard</span></a>
+    <a href="/#seasons"><i>▦</i><span>Seasons</span></a>
+    <a href="/#help"><i>?</i><span>Help</span></a>
+    <a href="/setup"><i>⚙</i><span>Settings</span></a>
+  </nav>
+  <div class="sidebar-promo" aria-label="Drive your legend"></div>
+</aside>
+<div class="workspace">
+<main>
+<section class="hero-banner">
+  <div class="hero-road"></div>
+</section>
+
+<section class="dashboard-grid">
+  <div class="main-column">
+    <div class="intro-row">
+      <article class="welcome-panel">
+        <div class="player-avatar">🏎️</div>
+        <div class="welcome-copy">
+          <h1>My Garage, <span id="welcome-name">Driver</span>!</h1>
+          <div class="welcome-title">♛ &nbsp;DRIVER CONTROL CENTER</div>
+          <p>Your profile, garage, preferences and Gauntlet activity live here.</p>
+        </div>
+        <div class="welcome-car"></div>
+      </article>
+      <article class="season-panel">
+        <div class="season-badge">S<span id="season-number">—</span></div>
+        <div><span>SEASON <b id="season-number-text">—</b></span><strong id="season-status">● Live ●</strong><small>Current Gauntlet season</small><a href="/#seasons">View Season →</a></div>
+      </article>
+    </div>
+
+    <section id="gauntlet" class="feature-row">
+      <a class="feature feature-magenta" href="#matches"><div class="feature-picture fp-one"></div><div class="feature-body"><i>⚑</i><h2>Gauntlet</h2><p>Register &nbsp;•&nbsp; Find Opponent<br>Submit Result &nbsp;•&nbsp; View History</p><b>→</b></div></a>
+      <a class="feature feature-blue" href="#garage"><div class="feature-picture fp-two"></div><div class="feature-body"><i>▣</i><h2>My Garage</h2><p>View Cars &nbsp;•&nbsp; Manage Loadouts<br>Driver statistics &amp; preferences</p><b>→</b></div></a>
+      <a class="feature feature-gold" href="/#leaderboard"><div class="feature-picture fp-three"></div><div class="feature-body"><i>♜</i><h2>Competition</h2><p>Standings &nbsp;•&nbsp; Leaderboard<br>Rules &nbsp;•&nbsp; Rewards</p><b>→</b></div></a>
+      <a class="feature feature-green" href="#preferences"><div class="feature-picture fp-four"></div><div class="feature-body"><i>⚙</i><h2>Preferences</h2><p>Timezone &nbsp;•&nbsp; Server<br>Keep your driver settings synced</p><b>→</b></div></a>
+    </section>
+
+    <section class="lower-grid" id="garage">
+      <article class="glass-panel garage-card">
+        <div class="panel-heading"><h2>My Garage</h2><a href="#garage">Driver Stats →</a></div>
+        <div class="car-showcase"><div class="showcase-car"></div></div>
+        <div class="garage-meta"><div><small>Driver ID</small><strong id="profile">Loading…</strong></div><b id="pi">—</b></div>
+        <div class="garage-dots">● ● ● ●</div>
+        <a class="wide-action" href="#preferences">Manage Preferences →</a>
+      </article>
+
+      <article class="glass-panel matches-card" id="matches">
+        <div class="panel-heading"><h2>Recent Matches</h2><a href="#matches">View All →</a></div>
+        <div class="match-table">
+          <div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>
+          <p class="empty-state">Recent match history will appear here when match records are available.</p>
+        </div>
+      </article>
+
+      <article class="glass-panel leaderboard-card">
+        <div class="panel-heading"><h2>Driver Profile <small>LIVE</small></h2></div>
+        <div class="leaderboard-list">
+          <div class="leader-row"><span class="leader-rank">E</span><div class="driver-mini"><span class="driver-dot">🏎</span><span>ELO</span></div><strong class="leader-elo" id="elo">—</strong></div>
+          <div class="leader-row"><span class="leader-rank">P</span><div class="driver-mini"><span class="driver-dot">▣</span><span>Garage PI</span></div><strong class="leader-elo" id="profile-pi">—</strong></div>
+          <div class="leader-row"><span class="leader-rank">S</span><div class="driver-mini"><span class="driver-dot">♛</span><span>Season</span></div><strong class="leader-elo" id="season">—</strong></div>
+          <div class="leader-row"><span class="leader-rank">D</span><div class="driver-mini"><span class="driver-dot">⚔</span><span>Defense</span></div><strong class="leader-elo" id="defense">—</strong></div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <aside class="right-column">
+    <article class="glass-panel profile-card">
+      <div class="panel-heading"><h2>Your Profile</h2></div>
+      <div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">Driver</strong><small>▣ Discord &nbsp; <b class="online">● Online</b></small></div></div>
+      <div class="profile-stats"><div><span>ELO</span><strong id="right-elo">—</strong></div><div><span>GARAGE PI</span><strong id="right-pi">—</strong></div></div>
+      <div class="record-stats"><span>♜ <b id="wins">—</b> Wins</span><span>✕ <b id="losses">—</b> Losses</span><span>🔥 <b id="streak">—</b> Streak</span></div>
+    </article>
+
+    <article class="glass-panel quick-actions">
+      <div class="panel-heading"><h2>Quick Actions</h2></div>
+      <a class="qa qa-purple" href="#matches">⚑ &nbsp; Match Center</a>
+      <a class="qa qa-blue" href="#gauntlet">♟ &nbsp; Find Opponent</a>
+      <a class="qa qa-green" href="#preferences">✓ &nbsp; Preferences</a>
+      <a class="qa qa-gold" href="/#leaderboard">▥ &nbsp; View Leaderboard</a>
+    </article>
+
+    <article class="glass-panel activity-card" id="preferences">
+      <div class="panel-heading"><h2>◎ &nbsp; Driver Settings</h2></div>
+      <div class="server-select"><select id="guild" aria-label="Server selection"></select><span>⌄</span></div>
+      <p class="server-sub">Choose the Discord server for your driver profile.</p>
+      <div class="activity-list">
+        <div><i>◷</i><p><b>Timezone</b><small>Used by Discord and web controls.</small></p><select id="timezone" aria-label="Timezone"><option value="UTC">UTC</option><option value="America/New_York">Eastern Time</option><option value="America/Chicago">Central Time</option><option value="America/Denver">Mountain Time</option><option value="America/Los_Angeles">Pacific Time</option><option value="Europe/London">UK / Ireland</option><option value="Europe/Berlin">Central Europe</option><option value="Asia/Kolkata">India</option><option value="Asia/Shanghai">China / Singapore</option><option value="Asia/Tokyo">Japan</option><option value="Australia/Sydney">Australian Eastern</option><option value="Pacific/Auckland">New Zealand</option></select></div>
+        <div><i>✓</i><p><b>Save settings</b><small>Keep your driver preferences synchronized.</small></p><button class="qa qa-green" id="save" type="button">Save</button></div>
+      </div>
+    </article>
+  </aside>
+</section>
+
+<section class="bottom-banner" id="help">
+  <div class="bottom-logo">ASPHALT <b>LEGENDS</b> <strong>UNITE</strong></div>
+  <div><b>RACE. COMPETE. UNITE.</b><span>Keep your driver ready for the next Gauntlet match.</span></div>
+  <a href="/#gauntlet">RETURN TO GAUNTLET →</a>
+</section>
+</main>
+<footer>ALU GAUNTLET • Web ↔ MongoDB ↔ Discord • <span>Driver Control Center</span></footer>
+</div>
+</div>
+<script>
+const setText=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value};
+const oldProfile=window.fetch;
+</script>
+<script src="/static/player.js"></script>
+</body>
+</html>
