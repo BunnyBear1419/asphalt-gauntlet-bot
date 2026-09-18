@@ -233,13 +233,16 @@ class WebControlCenter:
         except web.HTTPException:
             raise
         except Exception as exc:
-            # OAuth failures must never fall through to aiohttp's generic 500.
-            # Keep the traceback in server logs while giving the browser a
-            # deterministic response that tells us the failing stage.
+            # Do not return HTTP 502 from the application: some reverse proxies
+            # replace 502 responses with their own generic error page. Return a
+            # normal application response so the actual failure remains visible.
             log.exception("Discord OAuth callback failed")
-            raise web.HTTPBadGateway(
-                text="Discord sign-in could not be completed. Please try again."
-            ) from exc
+            return web.Response(
+                status=503,
+                text="Discord sign-in could not be completed. Please try again. Check the server logs for the OAuth failure.",
+                content_type="text/plain",
+                headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+            )
         response = web.HTTPFound("/")
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
