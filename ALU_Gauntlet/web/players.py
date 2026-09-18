@@ -1,6 +1,7 @@
 """Mongo-backed player read service for the web control center."""
 from __future__ import annotations
 from typing import Any
+import re
 class PlayerService:
     def __init__(self, bot: Any) -> None: self.bot = bot
     async def get_player(self, guild_id: str, user_id: str):
@@ -10,7 +11,7 @@ class PlayerService:
     async def list_players(self,guild_id:str,search:str="",limit:int=50):
         q={"guild_id":str(guild_id)}
         if search.strip():
-            t=search.strip(); q["$or"]=[{"game_id":{"$regex":t,"$options":"i"}},{"user_id":{"$regex":t,"$options":"i"}},{"username":{"$regex":t,"$options":"i"}}]
+            t=re.escape(search.strip()); q["$or"]=[{"game_id":{"$regex":t,"$options":"i"}},{"user_id":{"$regex":t,"$options":"i"}},{"username":{"$regex":t,"$options":"i"}}]
         rows=await self.bot.db.drivers.find(q).sort("elo",-1).to_list(length=max(1,min(100,int(limit))))
         return [self._safe(dict(x),True) for x in rows]
     @staticmethod
