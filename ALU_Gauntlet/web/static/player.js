@@ -5,7 +5,8 @@ async function load(){
   const g=await api("/api/guilds");
   const sel=$("#guild");
   if(!sel) return;
-  sel.innerHTML=g.guilds.map(x=>"<option value='"+x.id+"'>"+x.name+"</option>").join("");
+  sel.textContent="";
+  g.guilds.forEach(x=>{const option=document.createElement("option");option.value=x.id;option.textContent=x.name;sel.append(option)});
   await profile();
 }
 async function profile(){
@@ -48,7 +49,6 @@ if(save)save.addEventListener("click",async()=>{
     setTimeout(()=>save.textContent="Save",1600);
   }catch(e){alert(e.message)}
 });
-load().catch(e=>{const profile=$("#profile");if(profile)profile.textContent=e.message});
 const register=$("#register");
 if(register)register.addEventListener("click",async()=>{
   const status=$("#registration-status");
@@ -75,7 +75,6 @@ async function loadDefense(){
       courses.forEach((c,i)=>{
         const row=document.createElement("div");
         row.className="defense-course";
-        row.innerHTML="";
         const icon=document.createElement("i"); icon.textContent=String(i+1);
         const textEl=document.createElement("p");
         const b=document.createElement("b"); b.textContent=c.track||"Course";
@@ -96,7 +95,7 @@ async function generateDefense(action){
   if(button)button.disabled=true;
   if(msg)msg.textContent="Generating five defense courses…";
   try{
-    const d=await api("/api/player/defense?guild_id="+encodeURIComponent(sel.value),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action})});
+    const d=await api("/api/player/defense?guild_id="+encodeURIComponent(sel.value),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(action==="change"?{action:"change"}:{action:"generate"})});
     if(msg)msg.textContent=d.message||"Defense courses generated.";
     await loadDefense();
   }catch(e){if(msg)msg.textContent=e.message||"Defense action failed."}
@@ -107,3 +106,5 @@ const defenseChange=$("#defense-change"); if(defenseChange)defenseChange.addEven
 const originalLoad=load;
 load=async()=>{await originalLoad();await loadDefense()};
 if(guild)guild.addEventListener("change",loadDefense);
+
+load().catch(e=>{const profile=$("#profile");if(profile)profile.textContent=e.message});
