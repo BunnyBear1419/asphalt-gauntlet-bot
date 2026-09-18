@@ -124,6 +124,7 @@ class WebControlCenter:
             "garage-4k-final.svg",
             "competition-4k-final.svg",
             "profile-settings-4k-final.svg",
+            "home-reference.svg",
         }
         filename = request.match_info.get("filename", "")
         if filename not in allowed:
