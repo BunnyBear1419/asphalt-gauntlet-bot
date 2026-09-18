@@ -50,3 +50,45 @@
   .top-avatar{width:32px;height:32px;font-size:16px}.top-profile strong{font-size:12px}.top-profile small{font-size:8px}
   .app-frame{padding-top:70px}
 }
+
+
+/* Full-width ALU reference composition */
+html,body{width:100%;min-width:0}
+.app-frame{padding-top:80px}
+.dashboard-grid{width:100%;max-width:none;grid-template-columns:minmax(0,1fr) 380px;gap:14px;padding:8px 8px 0}
+.main-column,.right-column{min-width:0;width:100%}
+.intro-row{grid-template-columns:minmax(0,1fr) 275px}
+.feature-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.feature{width:100%}
+.lower-grid{grid-template-columns:minmax(280px,1fr) minmax(360px,1.15fr) minmax(360px,1.15fr);gap:14px}
+.bottom-banner{margin:13px 8px 0;height:90px}
+.welcome-panel{isolation:isolate}
+.welcome-panel:after{width:46%;opacity:.62;background-position:center}
+.welcome-copy{max-width:48%;position:relative}
+.welcome-car{right:20px;width:290px;opacity:.38}
+.quick-actions{height:auto;min-height:235px;padding-bottom:8px}
+.profile-card{height:auto;min-height:201px}
+.activity-card{height:auto;min-height:249px}
+@media(max-width:1280px){
+ .dashboard-grid{grid-template-columns:minmax(0,1fr) 320px;padding-left:8px;padding-right:8px}
+ .feature-row{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .lower-grid{grid-template-columns:1fr 1.15fr 1.15fr}
+}
+@media(max-width:1050px){
+ .dashboard-grid{grid-template-columns:1fr}
+ .right-column{display:grid;grid-template-columns:1fr 1fr}
+ .intro-row{grid-template-columns:minmax(0,1fr) 230px}
+ .lower-grid{grid-template-columns:1fr 1.2fr}
+ .leaderboard-card{grid-column:span 2}
+}
+@media(max-width:760px){
+ .feature-row,.lower-grid{grid-template-columns:1fr 1fr}
+ .welcome-copy{max-width:54%}
+}
+@media(max-width:560px){
+ .feature-row,.lower-grid,.right-column{grid-template-columns:1fr}
+ .leaderboard-card{grid-column:auto}
+ .intro-row{grid-template-columns:1fr}
+ .welcome-copy{max-width:100%}
+ .welcome-panel:after{width:100%;opacity:.25}
+}
