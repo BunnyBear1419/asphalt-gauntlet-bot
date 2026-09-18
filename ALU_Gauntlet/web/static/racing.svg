@@ -1,1 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600"><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#080b12"/><stop offset=".55" stop-color="#101a2b"/><stop offset="1" stop-color="#05070b"/></linearGradient><linearGradient id="n"><stop stop-color="#42ddff"/><stop offset="1" stop-color="#8b6cff"/></linearGradient></defs><rect width="1600" height="600" fill="url(#g)"/><path d="M0 470L1600 300V600H0Z" fill="#07090e"/><path d="M0 510L1600 330" stroke="url(#n)" stroke-width="5"/><g transform="translate(700 255)"><path d="M-390 150Q-330 80-180 70L-80-5Q40-60 190 0L330 70Q390 85 430 150L400 190H-410Z" fill="#141c2b" stroke="#5fdcff" stroke-width="4"/><path d="M-100 70L-30 0L140 5L215 70Z" fill="#0a111c" stroke="#89e9ff" stroke-width="3"/><circle cx="-270" cy="185" r="52" fill="#05070b" stroke="#8b6cff" stroke-width="10"/><circle cx="300" cy="185" r="52" fill="#05070b" stroke="#8b6cff" stroke-width="10"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" role="img" aria-label="Stylized neon racing scene">
+<defs>
+ <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#02040a"/><stop offset=".58" stop-color="#091326"/><stop offset="1" stop-color="#11142b"/></linearGradient>
+ <linearGradient id="road" x2="0" y2="1"><stop stop-color="#101b2e"/><stop offset="1" stop-color="#03050a"/></linearGradient>
+ <linearGradient id="pink" x2="1"><stop stop-color="#ff1acb"/><stop offset="1" stop-color="#773cff"/></linearGradient>
+ <linearGradient id="cyan" x2="1"><stop stop-color="#31e5ff"/><stop offset="1" stop-color="#526cff"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="soft"><feGaussianBlur stdDeviation="24"/></filter>
+</defs>
+<rect width="1600" height="700" fill="url(#sky)"/>
+<circle cx="1240" cy="160" r="150" fill="#663cff" opacity=".12" filter="url(#soft)"/>
+<circle cx="940" cy="300" r="190" fill="#19dfff" opacity=".08" filter="url(#soft)"/>
+<path d="M0 430L1600 300V700H0Z" fill="url(#road)"/>
+<path d="M0 515L1600 345" stroke="#263858" stroke-width="3"/>
+<path d="M0 590L1600 390" stroke="url(#cyan)" stroke-width="5" opacity=".65" filter="url(#glow)"/>
+<path d="M650 700L860 360L940 360L1210 700Z" fill="#080c16"/>
+<path d="M790 700L885 365L913 365L1010 700" stroke="#243451" stroke-width="4"/>
+<g opacity=".55" filter="url(#glow)">
+ <path d="M50 390L520 330" stroke="#ff19c9" stroke-width="4"/>
+ <path d="M1070 265L1560 215" stroke="#35e4ff" stroke-width="4"/>
+ <path d="M120 455L430 420" stroke="#35e4ff" stroke-width="2"/>
+</g>
+<g transform="translate(870 370) skewX(-8)">
+ <path d="M-350 125Q-300 55-175 40L-80-28Q55-80 190-12L285 42Q370 58 420 125L390 168H-375Z" fill="#121c2e" stroke="url(#pink)" stroke-width="5"/>
+ <path d="M-70 42L5-20L145-15L210 42Z" fill="#06101d" stroke="#52dcff" stroke-width="4"/>
+ <path d="M-315 128H365" stroke="#ff2bce" stroke-width="8" opacity=".7" filter="url(#glow)"/>
+ <circle cx="-255" cy="164" r="49" fill="#020308" stroke="#5669ff" stroke-width="12"/>
+ <circle cx="285" cy="164" r="49" fill="#020308" stroke="#5669ff" stroke-width="12"/>
+ <path d="M-330 106L-250 80M330 106L250 80" stroke="#35e4ff" stroke-width="7" filter="url(#glow)"/>
+</g>
+<g transform="translate(1180 405) scale(.55) skewX(-8)" opacity=".72">
+ <path d="M-350 125Q-300 55-175 40L-80-28Q55-80 190-12L285 42Q370 58 420 125L390 168H-375Z" fill="#15213a" stroke="url(#cyan)" stroke-width="6"/>
+ <path d="M-70 42L5-20L145-15L210 42Z" fill="#06101d" stroke="#55e4ff" stroke-width="4"/>
+ <circle cx="-255" cy="164" r="49" fill="#020308" stroke="#35e4ff" stroke-width="12"/>
+ <circle cx="285" cy="164" r="49" fill="#020308" stroke="#35e4ff" stroke-width="12"/>
+</g>
+<g fill="#fff" opacity=".8">
+ <circle cx="220" cy="110" r="1.5"/><circle cx="380" cy="170" r="1"/><circle cx="570" cy="90" r="1.4"/><circle cx="1320" cy="80" r="1.3"/><circle cx="1450" cy="145" r="1"/>
+</g>
+<path d="M0 680H1600" stroke="url(#pink)" stroke-width="3" opacity=".7"/>
+</svg>
