@@ -92,7 +92,10 @@ class DiscordOAuth:
                         )
                     return await response.json()
         except (ClientError, asyncio.TimeoutError) as exc:
-            raise web.HTTPBadGateway(text="Discord OAuth is temporarily unavailable. Please try again.") from exc
+            print(f"Discord OAuth token exchange network failure: {type(exc).__name__}: {exc}")
+            raise web.HTTPServiceUnavailable(
+                text="Discord OAuth token exchange could not reach Discord. Check the Discloud outbound connection."
+            ) from exc
 
     async def discord_get(self, path: str, access_token: str) -> Any:
         headers = {"Authorization": f"Bearer {access_token}"}
@@ -103,7 +106,10 @@ class DiscordOAuth:
                         raise web.HTTPServiceUnavailable(text=f"Discord OAuth API request failed (HTTP {response.status}).")
                     return await response.json()
         except (ClientError, asyncio.TimeoutError) as exc:
-            raise web.HTTPBadGateway(text="Discord OAuth is temporarily unavailable. Please try again.") from exc
+            print(f"Discord OAuth API network failure for {path}: {type(exc).__name__}: {exc}")
+            raise web.HTTPServiceUnavailable(
+                text=f"Discord OAuth API request could not reach Discord ({path})."
+            ) from exc
 
     async def build_user(self, access_token: str) -> WebUser:
         profile = await self.discord_get("/users/@me", access_token)
