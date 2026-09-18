@@ -48,3 +48,11 @@ def test_player_api_exposes_saved_preferences():
     source=(WEB/"server.py").read_text(encoding="utf-8")
     assert '"preferences"' in source
     assert '"timezone"' in source
+
+
+def test_player_dashboard_restores_saved_timezone_and_escapes_profile_text():
+    source=(STATIC/"player.js").read_text(encoding="utf-8")
+    assert 'prefs=d.preferences||{}' in source
+    assert 'prefs.timezone' in source
+    assert 'profile.textContent=' in source
+    assert 'profile.innerHTML=' not in source
