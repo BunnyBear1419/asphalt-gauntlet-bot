@@ -335,3 +335,13 @@ html,body{width:100%;min-width:0}
     linear-gradient(90deg,#080b24f4 0%,#080b2420 48%,#080b24ee 100%),
     url('/assets/competition-4k-final.svg') center top/auto 260% no-repeat!important;
 }
+
+/* Explicit artwork layer: visible <img> fallback for production/static deployments. */
+.art-img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;pointer-events:none;user-select:none}
+.hero-banner>.hero-art{position:absolute;inset:0;width:100%;height:100%;z-index:0;object-fit:cover;object-position:center}
+.hero-banner>.hero-road{z-index:2}
+.feature-picture>.art-img{position:absolute;inset:0;z-index:0}
+.feature-picture:after{z-index:1}
+.feature-body{z-index:2}
+.car-showcase>.art-img{position:absolute;inset:0;z-index:0}
+.car-showcase>.showcase-car{z-index:1}
