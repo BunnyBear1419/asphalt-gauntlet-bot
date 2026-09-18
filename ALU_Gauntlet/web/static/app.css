@@ -132,3 +132,18 @@ html,body{width:100%;min-width:0}
   .welcome-panel:after{width:100%;opacity:.24;background-size:100% 100%}
   .welcome-copy{max-width:100%}
 }
+
+
+/* Welcome artwork: contain the uploaded reference crop so none of its edges are clipped. */
+.welcome-panel:after{
+  width:52%;
+  right:0;
+  top:0;
+  bottom:0;
+  background-image:url('/static/assets/welcome.jpg');
+  background-repeat:no-repeat;
+  background-position:center center;
+  background-size:contain;
+  background-color:#06152f;
+  opacity:.78;
+}
