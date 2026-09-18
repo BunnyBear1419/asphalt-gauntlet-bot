@@ -112,7 +112,33 @@ class WebControlCenter:
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
+        # Serve dashboard artwork through a dedicated uncached route. This avoids proxy/browser caching and MIME/path handling differences on production hosts.
+        self.app.router.add_get("/assets/{filename}", self.asset)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
+
+    async def asset(self, request: web.Request) -> web.Response:
+        """Serve approved dashboard artwork with an explicit SVG MIME type."""
+        allowed = {
+            "hero-4k-final.svg",
+            "gauntlet-4k-final.svg",
+            "garage-4k-final.svg",
+            "competition-4k-final.svg",
+            "profile-settings-4k-final.svg",
+        }
+        filename = request.match_info.get("filename", "")
+        if filename not in allowed:
+            raise web.HTTPNotFound(text="Asset not found.")
+        path = WEB_DIR / "assets" / filename
+        if not path.is_file():
+            raise web.HTTPNotFound(text="Asset not found.")
+        return web.FileResponse(
+            path,
+            headers={
+                "Content-Type": "image/svg+xml; charset=utf-8",
+                "Cache-Control": "no-store, max-age=0",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     async def require_user(self, request: web.Request) -> Any:
         if not self.auth.configured:
