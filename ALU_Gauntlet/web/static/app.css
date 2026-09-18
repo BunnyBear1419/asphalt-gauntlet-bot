@@ -222,3 +222,91 @@ html,body{width:100%;min-width:0}
   position:relative;
   z-index:2;
 }
+
+
+/* Reference layout #3 — desktop composition */
+.top-nav{height:70px}
+.top-brand{height:70px;width:250px;padding-left:54px}
+.top-brand span{font-size:16px}.top-brand b{font-size:7px}.top-brand strong{font-size:43px}
+.top-nav nav a{height:70px;min-width:150px;font-size:15px}
+.top-profile{height:56px;margin:7px 0 0 12px;width:245px}
+.top-user-area{height:70px;display:flex;align-items:center;margin-left:auto;padding-right:14px;gap:10px}
+.top-user-area .auth-link{height:44px;min-width:126px;display:grid;place-items:center;border:1px solid #25466f;background:#071533;text-decoration:none;font-size:13px}
+.top-user-area .top-profile{margin:0}
+.app-frame{padding-top:70px}
+
+/* #3 has no separate oversized hero strip; the Welcome/Season row is the hero. */
+.hero-banner{display:none!important}
+
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px;padding:28px 16px 0}
+.intro-row{height:160px;grid-template-columns:minmax(0,1fr) 390px;gap:0}
+.welcome-panel,.season-panel{height:160px}
+.welcome-panel{padding:20px 14px}
+.player-avatar{width:96px;height:96px}
+.welcome-copy{margin-left:22px;max-width:48%}
+.welcome-copy h1{font-size:25px;margin-bottom:9px}
+.welcome-title{font-size:14px;margin-bottom:10px}
+.welcome-copy p{font-size:13px}
+.welcome-panel:after{
+  width:100%;
+  background:
+    linear-gradient(90deg,#020817f2 0%,#06152fba 28%,#06152f25 54%,#06152f08 100%),
+    url('/static/welcome-fixed.jpg') center center/cover no-repeat;
+  opacity:1;
+}
+.season-panel{padding:18px 22px;gap:18px}
+.season-badge{width:64px;height:64px;font-size:28px}
+.season-panel span{font-size:16px}.season-panel strong{font-size:12px}.season-panel small{font-size:11px}.season-panel a{font-size:11px}
+
+.feature-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
+.feature{height:210px}
+.feature-picture{background-size:cover!important;background-position:center!important}
+.feature-body{left:24px;right:20px;bottom:18px}
+.feature-body i{font-size:25px}.feature-body h2{font-size:23px;margin-bottom:5px}.feature-body p{font-size:13px;line-height:1.35}
+.feature-body>b{width:43px;height:43px;font-size:24px}
+
+.lower-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.12fr) minmax(0,1.12fr);gap:14px;margin-top:18px}
+.garage-card,.matches-card,.leaderboard-card{height:250px}
+.panel-heading{height:44px;padding:0 18px}.panel-heading h2{font-size:16px}
+.car-showcase{height:130px;margin:0 16px}
+.wide-action{margin:0 16px;padding:8px;font-size:11px}
+.match-table>div:first-child,.match-row{grid-template-columns:42px 1fr 70px 88px}
+.match-table>div:first-child{height:31px}.match-row{height:35px;font-size:11px}
+.leader-row{height:35px;font-size:11px}
+.quick-actions{min-height:250px}.qa{height:34px;margin:5px 14px;font-size:11px}
+.profile-card{min-height:205px}.activity-card{min-height:250px}
+
+.bottom-banner{
+  height:58px;
+  margin:18px 0 0;
+  padding:0 28px;
+}
+.bottom-logo strong{font-size:26px}
+.bottom-banner>div:nth-child(2) b{font-size:15px}
+.bottom-banner>div:nth-child(2) span{font-size:9px}
+.bottom-banner>a{padding:8px 16px;font-size:9px}
+
+@media(max-width:1100px){
+  .top-brand{width:180px;padding-left:30px}
+  .top-nav nav a{min-width:105px}
+  .dashboard-grid{grid-template-columns:minmax(0,1fr) 320px}
+  .intro-row{grid-template-columns:minmax(0,1fr) 320px}
+}
+@media(max-width:900px){
+  .top-user-area{padding-right:7px}.top-user-area .auth-link{display:none}
+  .top-profile{width:155px}
+  .dashboard-grid{grid-template-columns:1fr}
+  .right-column{display:grid;grid-template-columns:1fr 1fr}
+  .intro-row{grid-template-columns:minmax(0,1fr) 300px}
+}
+@media(max-width:700px){
+  .top-nav{height:64px}.app-frame{padding-top:64px}
+  .top-brand{height:64px;width:140px;padding-left:16px}.top-brand strong{font-size:33px}
+  .top-nav nav a{height:64px;min-width:70px}.top-nav nav a span{display:none}
+  .top-profile{width:52px;height:44px}.top-profile>div:nth-child(2),.top-profile .chevron{display:none}
+  .dashboard-grid{padding:12px 8px 0}
+  .intro-row,.right-column,.feature-row,.lower-grid{grid-template-columns:1fr}
+  .intro-row{height:auto}.welcome-panel{height:150px}.season-panel{height:125px}
+  .feature{height:185px}.garage-card,.matches-card,.leaderboard-card{height:250px}
+  .bottom-banner{height:auto;min-height:95px;flex-wrap:wrap;padding:12px 16px}
+}
