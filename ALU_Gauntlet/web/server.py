@@ -221,25 +221,25 @@ class WebControlCenter:
             raise web.HTTPBadRequest(text="Invalid or expired OAuth state.")
         if not code:
             raise web.HTTPUnauthorized(text=request.query.get("error", "Authorization was cancelled."))
+        stage = "token exchange"
         try:
             tokens = await self.auth.exchange_code(code)
             if not isinstance(tokens, dict):
-                raise web.HTTPBadGateway(text="Discord returned an invalid OAuth token response.")
+                raise web.HTTPServiceUnavailable(text="Discord returned an invalid OAuth token response.")
             access_token = tokens.get("access_token")
             if not access_token:
-                raise web.HTTPBadGateway(text="Discord did not return an access token.")
+                raise web.HTTPServiceUnavailable(text="Discord did not return an access token.")
+            stage = "Discord account lookup"
             user = await self.auth.build_user(access_token)
+            stage = "web session creation"
             session = await self.auth.create_session(user)
         except web.HTTPException:
             raise
         except Exception as exc:
-            # Do not return HTTP 502 from the application: some reverse proxies
-            # replace 502 responses with their own generic error page. Return a
-            # normal application response so the actual failure remains visible.
-            log.exception("Discord OAuth callback failed")
+            log.exception("Discord OAuth callback failed during %s", stage)
             return web.Response(
                 status=503,
-                text="Discord sign-in could not be completed. Please try again. Check the server logs for the OAuth failure.",
+                text=f"Discord sign-in failed during {stage}. {type(exc).__name__}: {exc}",
                 content_type="text/plain",
                 headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
             )
