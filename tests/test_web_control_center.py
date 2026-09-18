@@ -132,3 +132,13 @@ def test_web_defense_center_uses_shared_driver_state():
     assert 'Defense Center' in html
     assert '/api/player/defense?guild_id=' in js
     assert 'action:"change"' in js
+
+def test_web_oauth_callback_validates_payloads_and_never_leaks_generic_500s():
+    auth=(WEB/"auth.py").read_text(encoding="utf-8")
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    assert 'if not isinstance(profile, dict) or not profile.get("id")' in auth
+    assert 'if not isinstance(guilds, list):' in auth
+    assert 'if not isinstance(tokens, dict):' in server
+    assert 'Discord sign-in could not be completed. Please try again.' in server
+    assert 'response.headers["Cache-Control"] = "no-store"' in server
+
