@@ -92,3 +92,23 @@ html,body{width:100%;min-width:0}
  .welcome-copy{max-width:100%}
  .welcome-panel:after{width:100%;opacity:.25}
 }
+
+
+/* Final full-width cleanup: one image layer per card, no synthetic car overlays. */
+.dashboard-grid{width:100%;max-width:none;grid-template-columns:minmax(0,1fr) 380px;gap:14px;padding:8px 0 0}
+.main-column{width:100%;min-width:0}
+.right-column{width:100%;min-width:0}
+.lower-grid{width:100%;grid-template-columns:minmax(280px,1fr) minmax(360px,1.15fr) minmax(360px,1.15fr);gap:14px}
+.bottom-banner{width:100%;margin:13px 0 0}
+.welcome-car,.showcase-car{display:none}
+.feature-picture{background:none!important;opacity:1;transform:none}
+.feature-picture:before{display:none}
+.feature-picture:after{background:linear-gradient(180deg,#050a1400 5%,#040a16d9 100%)}
+.fp-one{background:url('/static/assets/gauntlet.jpg') center/cover no-repeat!important}
+.fp-two{background:url('/static/assets/garage.jpg') center/cover no-repeat!important}
+.fp-three{background:url('/static/assets/competition.jpg') center/cover no-repeat!important}
+.fp-four{background:url('/static/assets/profile-settings.jpg') center/cover no-repeat!important}
+.car-showcase{background:linear-gradient(180deg,#03081700,#03081766),url('/static/assets/garage-car.jpg') center/cover no-repeat}
+.welcome-panel:after{background:linear-gradient(90deg,#06152f00,#06152f22),url('/static/assets/welcome.jpg') center/cover no-repeat}
+@media(max-width:1280px){.dashboard-grid{grid-template-columns:minmax(0,1fr) 320px;padding-left:0;padding-right:0}}
+@media(max-width:1050px){.dashboard-grid{grid-template-columns:1fr;padding-left:0;padding-right:0}}
