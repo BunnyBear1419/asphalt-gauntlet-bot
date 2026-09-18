@@ -3,6 +3,8 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 
+# Player dashboard access is intentionally independent of staff permissions:
+# staff/admin players keep the full player dashboard and gain /staff separately.
 class PlayerCog(commands.Cog):
 
     @app_commands.guild_only()
