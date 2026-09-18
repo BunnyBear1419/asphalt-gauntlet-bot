@@ -2,6 +2,18 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 
+async def send_admin_dashboard(interaction: discord.Interaction):
+    """Open the canonical staff dashboard view for /staff."""
+    guild_id = str(interaction.guild_id)
+    view = StaffDashboardView(guild_id)
+    embed = discord.Embed(
+        title='🛠️ ALU GAUNTLET • STAFF CONTROL CENTER',
+        description='Manage players, seasons, defenses, setup, diagnostics, backups, and league operations from the staff dashboard below.',
+        color=ASPHALT_ADMIN_COLOR,
+    )
+    embed.set_footer(text='Staff controls • Staff permissions required')
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
 class StaffCog(commands.Cog):
 
     @app_commands.command(name='missingdefense', description='[Staff Only] List current-season drivers without a locked defense.')
