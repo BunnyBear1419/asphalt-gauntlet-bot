@@ -226,6 +226,7 @@ jobs:
 
             if ! MONGO_URI="$MONGO_URI" DEPLOY_STARTED_AT="$DEPLOY_STARTED_AT" python - <<'PY'
           import os
+          import time
           from pymongo import MongoClient
           client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000)
           client.admin.command("ping")
