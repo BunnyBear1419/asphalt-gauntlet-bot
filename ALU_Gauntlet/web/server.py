@@ -111,8 +111,23 @@ class WebControlCenter:
         return user
 
     async def index(self, request: web.Request) -> web.StreamResponse:
-        await self.require_user(request)
-        return web.FileResponse(WEB_DIR / "index.html")
+        # The homepage is the most important production route. If a stale or
+        # malformed web session ever causes an unexpected authentication error,
+        # recover to the login page instead of exposing aiohttp's generic 500.
+        try:
+            await self.require_user(request)
+        except web.HTTPException:
+            raise
+        except Exception:
+            log.exception("Unexpected web authentication failure on /")
+            response = web.HTTPFound("/login")
+            response.del_cookie(SESSION_COOKIE, path="/")
+            return response
+        try:
+            return web.FileResponse(WEB_DIR / "index.html")
+        except Exception:
+            log.exception("Unable to serve the web dashboard")
+            raise web.HTTPServiceUnavailable(text="The ALU Gauntlet web dashboard is temporarily unavailable.")
 
     async def players_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
@@ -170,7 +185,10 @@ class WebControlCenter:
         return response
 
     async def logout(self, request: web.Request) -> web.StreamResponse:
-        await self.auth.destroy_session(request)
+        try:
+            await self.auth.destroy_session(request)
+        except Exception:
+            log.exception("Unable to remove web session during logout")
         response = web.HTTPFound("/login")
         response.del_cookie(SESSION_COOKIE, path="/")
         return response
