@@ -45,7 +45,7 @@
       <article class="season-panel"><div class="season-badge">S<span id="season-number">—</span></div><div><span>SEASON <b id="season-number-text">—</b></span><strong id="season-status">● Live ●</strong><small>Current Gauntlet season</small><a href="/#seasons">View Season →</a></div></article>
     </div>
     <section id="gauntlet" class="feature-row">
-      <a class="feature feature-magenta" href="#matches"><div class="feature-picture fp-one"></div><div class="feature-body"><i>⚑</i><h2>Gauntlet</h2><p>Register &nbsp;•&nbsp; Find Opponent<br>Submit Result &nbsp;•&nbsp; View History</p><b>→</b></div></a>
+      <a class="feature feature-magenta" href="#defense"><div class="feature-picture fp-one"></div><div class="feature-body"><i>🛡</i><h2>Defense Center</h2><p>Set or change your 5-course defense<br>Enter results &nbsp;•&nbsp; Staff review</p><b>→</b></div></a>
       <a class="feature feature-blue" href="#garage"><div class="feature-picture fp-two"></div><div class="feature-body"><i>▣</i><h2>My Garage</h2><p>View Cars &nbsp;•&nbsp; Manage Loadouts<br>Driver statistics &amp; preferences</p><b>→</b></div></a>
       <a class="feature feature-gold" href="/#leaderboard"><div class="feature-picture fp-three"></div><div class="feature-body"><i>♜</i><h2>Competition</h2><p>Standings &nbsp;•&nbsp; Leaderboard<br>Rules &nbsp;•&nbsp; Rewards</p><b>→</b></div></a>
       <a class="feature feature-green" href="#preferences"><div class="feature-picture fp-four"></div><div class="feature-body"><i>⚙</i><h2>Preferences</h2><p>Timezone &nbsp;•&nbsp; Server<br>Keep your driver settings synced</p><b>→</b></div></a>
@@ -59,7 +59,17 @@
   <aside class="right-column">
     <article class="glass-panel profile-card"><div class="panel-heading"><h2>Your Profile</h2></div><div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">Driver</strong><small>▣ Discord &nbsp; <b class="online">● Online</b></small></div></div><div class="profile-stats"><div><span>ELO</span><strong id="right-elo">—</strong></div><div><span>GARAGE PI</span><strong id="right-pi">—</strong></div></div><div class="record-stats"><span>♜ <b id="wins">—</b> Wins</span><span>✕ <b id="losses">—</b> Losses</span><span>🔥 <b id="streak">—</b> Streak</span></div></article>
     <article class="glass-panel quick-actions"><div class="panel-heading"><h2>Quick Actions</h2></div><a class="qa qa-purple" href="#matches">⚑ &nbsp; Match Center</a><a class="qa qa-blue" href="#gauntlet">♟ &nbsp; Find Opponent</a><a class="qa qa-green" href="#preferences">✓ &nbsp; Preferences</a><a class="qa qa-gold" href="/#leaderboard">▥ &nbsp; View Leaderboard</a></article>
-    <article class="glass-panel activity-card" id="registration">
+    <article class="glass-panel activity-card" id="defense">
+  <div class="panel-heading"><h2>🛡️ Defense Center</h2><span id="defense-status" class="online">READY</span></div>
+  <p class="server-sub">Manage your five-course defense without separate defense commands. Your current defense stays active while a change is under review.</p>
+  <div id="defense-courses" class="activity-list"><p class="empty-state">Loading defense status…</p></div>
+  <div class="defense-actions">
+    <button class="qa qa-purple" id="defense-set" type="button">Generate Defense →</button>
+    <button class="qa qa-gold" id="defense-change" type="button">Change Defense →</button>
+  </div>
+  <p id="defense-status-message" class="server-sub" role="status"></p>
+</article>
+<article class="glass-panel activity-card" id="registration">
   <div class="panel-heading"><h2>🏁 Season Registration</h2></div>
   <p class="server-sub">Register or re-register your Garage for the current Gauntlet season. Staff review the same submission used by Discord.</p>
   <div class="activity-list">
