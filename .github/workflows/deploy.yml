@@ -228,6 +228,18 @@ jobs:
               ok=false
             fi
 
+            for asset in hero-4k-final.svg gauntlet-4k-final.svg garage-4k-final.svg competition-4k-final.svg profile-settings-4k-final.svg; do
+              ASSET_HTTP=$(curl -sS -o "asset-$asset" -w "%{http_code}" "https://asph.discloud.app/assets/$asset" || true)
+              echo "Artwork $asset HTTP status: $ASSET_HTTP"
+              if [ "$ASSET_HTTP" != "200" ]; then
+                echo "Dashboard artwork asset failed: $asset"
+                ok=false
+              elif ! grep -q '<svg' "asset-$asset"; then
+                echo "Dashboard artwork asset is not valid SVG: $asset"
+                ok=false
+              fi
+            done
+
             STATIC_HTTP=$(curl -sS -o web-css.css -w "%{http_code}" "https://asph.discloud.app/static/app.css" || true)
             echo "Web static CSS HTTP status: $STATIC_HTTP"
             if [ "$STATIC_HTTP" != "200" ]; then
