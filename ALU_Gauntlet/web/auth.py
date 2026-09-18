@@ -94,11 +94,19 @@ class DiscordOAuth:
 
     async def build_user(self, access_token: str) -> WebUser:
         profile = await self.discord_get("/users/@me", access_token)
+        if not isinstance(profile, dict) or not profile.get("id"):
+            raise web.HTTPBadGateway(text="Discord returned an invalid account profile.")
         guilds = await self.discord_get("/users/@me/guilds", access_token)
+        if not isinstance(guilds, list):
+            # Discord should return a list here, but treat an unexpected payload
+            # as an empty guild list instead of crashing the OAuth callback.
+            guilds = []
         user_id = str(profile["id"])
         admin_guild_ids: set[str] = set()
-        guild_ids: set[str] = {str(guild.get("id")) for guild in guilds if guild.get("id")}
+        guild_ids: set[str] = {str(guild.get("id")) for guild in guilds if isinstance(guild, dict) and guild.get("id")}
         for guild in guilds:
+            if not isinstance(guild, dict) or not guild.get("id"):
+                continue
             try:
                 gid = str(guild["id"])
                 if int(guild.get("permissions", 0)) & ADMINISTRATOR:
