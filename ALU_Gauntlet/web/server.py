@@ -188,7 +188,12 @@ class WebControlCenter:
     async def player_me(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
         player = await self.players.get_player(guild_id, user.user_id)
-        return web.json_response({"player": player, "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name}})
+        preferences = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        return web.json_response({
+            "player": player,
+            "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
+            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications")},
+        })
 
     async def player_preferences(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
