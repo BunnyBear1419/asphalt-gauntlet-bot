@@ -99,4 +99,4 @@ For production monitoring, configure `HEALTH_WEBHOOK_URL`, `DISCORD_ALERT_WEBHOO
 - Season Automation **Disable** is a red danger button.
 - Health & Diagnostics is a single canonical staff diagnostic center; duplicate health/diagnostics entry points should not be added.
 
-<!-- Discloud GitHub integration smoke-test marker; no runtime behavior change. -->
+<!-- CI verification trigger: production dashboard artwork deployment. -->
