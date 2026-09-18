@@ -36,3 +36,15 @@ def test_player_page_uses_same_dashboard_visual_system():
         assert marker in source
     assert "/static/app.css" in source
     assert "/static/player.js" in source
+
+
+def test_player_search_treats_input_as_literal_text():
+    source=(WEB/"players.py").read_text(encoding="utf-8")
+    assert "import re" in source
+    assert "re.escape(search.strip())" in source
+
+
+def test_player_api_exposes_saved_preferences():
+    source=(WEB/"server.py").read_text(encoding="utf-8")
+    assert '"preferences"' in source
+    assert '"timezone"' in source
