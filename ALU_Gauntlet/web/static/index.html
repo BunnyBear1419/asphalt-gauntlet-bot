@@ -13,12 +13,9 @@
   </a>
   <nav aria-label="Primary navigation">
     <a class="active" href="/"><i>⌂</i><span>Home</span></a>
-    <a href="#dashboard"><i>♙</i><span>Dashboard</span></a>
     <a href="/player"><i>▣</i><span>Garage</span></a>
-    <a href="#gauntlet"><i>♜</i><span>Gauntlet</span></a>
-    <a href="#leaderboard"><i>▥</i><span>Leaderboard</span></a>
-    <a href="#seasons"><i>▦</i><span>Seasons</span></a>
-    <a href="#teams"><i>♟</i><span>Teams</span></a>
+    <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
+    <a href="#leaderboard"><i>▥</i><span>Competition</span></a>
     <a href="#help"><i>?</i><span>Help</span></a>
   </nav>
   <div class="top-profile"><a class="auth-link" href="/logout">Sign Out</a></div><div class="top-profile">
@@ -32,16 +29,13 @@
 <aside class="sidebar">
   <nav class="side-nav" aria-label="Dashboard">
     <a class="selected" href="/"><i>⌂</i><span>Home</span></a>
-    <a href="/player"><i>♙</i><span>Profile</span></a>
     <a href="/player"><i>▣</i><span>Garage</span></a>
     <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
     <a href="/player#matches"><i>⚑</i><span>Matches</span></a>
     <a href="#leaderboard"><i>▥</i><span>Leaderboard</span></a>
     <a href="#seasons"><i>▦</i><span>Seasons</span></a>
     <a href="#teams"><i>♟</i><span>Teams</span></a>
-    <a href="/player"><i>✉</i><span>Messages</span></a>
     <a href="/setup" id="side-settings"><i>⚙</i><span>Settings</span></a>
-    <a class="sr-route" href="/players" aria-label="Players directory">Players</a>
   </nav>
   <div class="sidebar-promo" aria-label="Drive your legend"></div>
 </aside>
@@ -78,7 +72,7 @@
           <span>SEASON <b id="season-number-text">4</b></span>
           <strong id="season-status">● Active ●</strong>
           <small id="season-dates">Sep 20, 2026 – Oct 20, 2026</small>
-          <a href="/player">View Season →</a>
+          <a href="#seasons">Season Details →</a>
         </div>
       </article>
     </div>
@@ -104,15 +98,15 @@
 
     <section class="lower-grid">
       <article class="glass-panel garage-card">
-        <div class="panel-heading"><h2>My Garage</h2><a href="/player">View All →</a></div>
+        <div class="panel-heading"><h2>My Garage</h2></div>
         <div class="car-showcase"><div class="showcase-car"></div></div>
         <div class="garage-meta"><div><small>Top Car</small><strong>Lamborghini Terzo Millennio</strong></div><b id="garage-pi">4,287</b></div>
         <div class="garage-dots">● ● ● ●</div>
-        <a class="wide-action" href="/player">View Full Garage →</a>
+        <a class="wide-action" href="/player">Open Garage →</a>
       </article>
 
       <article class="glass-panel matches-card" id="matches">
-        <div class="panel-heading"><h2>Recent Matches</h2><a href="/player">View All →</a></div>
+        <div class="panel-heading"><h2>Recent Matches</h2></div>
         <div class="match-table" id="recent-matches">
           <div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>
           <p class="empty-state">Sign in to load your recent matches.</p>
@@ -120,7 +114,7 @@
       </article>
 
       <article class="glass-panel leaderboard-card" id="leaderboard">
-        <div class="panel-heading"><h2>Leaderboard <small>(Top 5)</small></h2><a href="#leaderboard">View All →</a></div>
+        <div class="panel-heading"><h2>Competition <small>• Top 5</small></h2></div>
         <div class="leaderboard-list" id="leaderboard-list"><p class="empty-state">Loading live drivers…</p></div>
       </article>
     </section>
@@ -139,14 +133,12 @@
 
     <article class="glass-panel quick-actions">
       <div class="panel-heading"><h2>Quick Actions</h2></div>
-      <a class="qa qa-purple" href="/player">⚑ &nbsp; Register for Season</a>
-      <a class="qa qa-blue" href="/player">♟ &nbsp; Find Opponent</a>
-      <a class="qa qa-green" href="/player">✓ &nbsp; Submit Match Result</a>
-      <a class="qa qa-gold" href="#leaderboard">▥ &nbsp; View Leaderboard</a>
+      <a class="qa qa-purple" href="/player">🏁 &nbsp; Open Gauntlet</a>
+      <a class="qa qa-blue" href="#leaderboard">▥ &nbsp; View Competition</a>
     </article>
 
     <article class="glass-panel activity-card" id="teams">
-      <div class="panel-heading"><h2>◎ &nbsp; Server Selection</h2><a href="/setup">View All →</a></div>
+      <div class="panel-heading"><h2>◎ &nbsp; Server</h2></div>
       <div class="server-select"><span id="server-name">Main Server</span><span>⌄</span></div>
       <p class="server-sub">Asphalt Legends Unite</p>
       <div class="activity-list">
