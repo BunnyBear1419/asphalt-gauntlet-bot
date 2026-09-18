@@ -183,6 +183,10 @@ class DiscordOAuth:
     async def create_session(self, user: WebUser) -> str:
         token = secrets.token_urlsafe(32)
         expiry = time.time() + SESSION_TTL
+        # Defensive lazy initialization keeps authentication recoverable if a
+        # long-lived web process was started from an older module instance.
+        if not hasattr(self, "sessions"):
+            self.sessions = {}
         async with self._lock:
             self.sessions[token] = (expiry, user)
         db = getattr(self.bot, "db", None)
