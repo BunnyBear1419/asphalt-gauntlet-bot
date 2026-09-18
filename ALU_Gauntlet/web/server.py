@@ -221,13 +221,28 @@ class WebControlCenter:
             raise web.HTTPBadRequest(text="Invalid or expired OAuth state.")
         if not code:
             raise web.HTTPUnauthorized(text=request.query.get("error", "Authorization was cancelled."))
-        tokens = await self.auth.exchange_code(code)
-        access_token = tokens.get("access_token")
-        if not access_token:
-            raise web.HTTPBadGateway(text="Discord did not return an access token.")
-        user = await self.auth.build_user(access_token)
-        session = await self.auth.create_session(user)
+        try:
+            tokens = await self.auth.exchange_code(code)
+            if not isinstance(tokens, dict):
+                raise web.HTTPBadGateway(text="Discord returned an invalid OAuth token response.")
+            access_token = tokens.get("access_token")
+            if not access_token:
+                raise web.HTTPBadGateway(text="Discord did not return an access token.")
+            user = await self.auth.build_user(access_token)
+            session = await self.auth.create_session(user)
+        except web.HTTPException:
+            raise
+        except Exception as exc:
+            # OAuth failures must never fall through to aiohttp's generic 500.
+            # Keep the traceback in server logs while giving the browser a
+            # deterministic response that tells us the failing stage.
+            log.exception("Discord OAuth callback failed")
+            raise web.HTTPBadGateway(
+                text="Discord sign-in could not be completed. Please try again."
+            ) from exc
         response = web.HTTPFound("/")
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
         self.auth.set_session_cookie(response, session)
         return response
 
