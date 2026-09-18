@@ -29,3 +29,10 @@ def test_web_ui_is_dashboard_first():
     assert "Race Operations" in source
     assert "/setup" in source
     assert "/players" in source
+
+def test_player_page_uses_same_dashboard_visual_system():
+    source=(STATIC/"player.html").read_text(encoding="utf-8")
+    for marker in ("class=\"alu-dashboard\"","class=\"top-nav\"","class=\"sidebar\"","class=\"hero-banner\"","class=\"dashboard-grid\"","id=\"matches\"","id=\"preferences\""):
+        assert marker in source
+    assert "/static/app.css" in source
+    assert "/static/player.js" in source
