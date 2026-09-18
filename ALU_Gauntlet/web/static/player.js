@@ -49,3 +49,16 @@ if(save)save.addEventListener("click",async()=>{
   }catch(e){alert(e.message)}
 });
 load().catch(e=>{const profile=$("#profile");if(profile)profile.textContent=e.message});
+const register=$("#register");
+if(register)register.addEventListener("click",async()=>{
+  const status=$("#registration-status");
+  const payload={game_id:$("#registration-game-id")?.value||"",garage_pi:$("#registration-pi")?.value||"",control:$("#registration-control")?.value||"",proof_url:$("#registration-proof")?.value||""};
+  if(status)status.textContent="Submitting registration…";
+  register.disabled=true;
+  try{
+    const d=await api("/api/player/register?guild_id="+encodeURIComponent($("#guild").value),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    if(status)status.textContent=d.message||"Registration submitted for staff review.";
+    await profile();
+  }catch(e){if(status)status.textContent=e.message||"Registration failed."}
+  finally{register.disabled=false}
+});
