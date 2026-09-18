@@ -186,3 +186,23 @@ html,body{width:100%;min-width:0}
   }
   .welcome-copy{max-width:70%}
 }
+
+
+/* Card artwork cleanup: use only the car portion of the supplied artwork.
+   The card's HTML remains the only source for titles, descriptions, icons and arrows. */
+.feature-picture{
+  background-size:130% 200%!important;
+  background-position:right top!important;
+  background-repeat:no-repeat!important;
+}
+.feature-picture:before{display:none!important}
+.feature-picture:after{
+  background:linear-gradient(180deg,#050a1400 0%,#040a1666 58%,#040a16e8 100%)!important;
+}
+.feature-body i,
+.feature-body h2,
+.feature-body p,
+.feature-body>b{
+  position:relative;
+  z-index:3;
+}
