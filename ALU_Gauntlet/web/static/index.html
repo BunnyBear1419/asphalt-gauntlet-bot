@@ -7,25 +7,23 @@
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body class="alu-dashboard">
-
 <header class="top-nav">
-  <a class="top-brand" href="/" aria-label="Asphalt Legends Unite Gauntlet">
+  <a class="top-brand" href="/" aria-label="Asphalt Legends Unite">
     <span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong>
   </a>
   <nav aria-label="Primary navigation">
-    <a class="active" href="/">HOME</a>
-    <a href="#dashboard">DASHBOARD</a>
-    <a href="/player">GARAGE</a>
-    <a href="#gauntlet">GAUNTLET</a>
-    <a href="#leaderboard">LEADERBOARD</a>
-    <a href="#seasons">SEASONS</a>
-    <a href="#teams">TEAMS</a>
-    <a href="#help">HELP</a>
+    <a class="active" href="/"><i>⌂</i><span>Home</span></a>
+    <a href="#dashboard"><i>♙</i><span>Dashboard</span></a>
+    <a href="/player"><i>▣</i><span>Garage</span></a>
+    <a href="#gauntlet"><i>♜</i><span>Gauntlet</span></a>
+    <a href="#leaderboard"><i>▥</i><span>Leaderboard</span></a>
+    <a href="#seasons"><i>▦</i><span>Seasons</span></a>
+    <a href="#teams"><i>♟</i><span>Teams</span></a>
+    <a href="#help"><i>?</i><span>Help</span></a>
   </nav>
   <div class="top-profile">
-    <span class="status-dot"></span>
     <div class="top-avatar">🏎</div>
-    <div><strong id="user-name">Player</strong><small>PLAYER</small></div>
+    <div><strong id="user-name">PlayerOne</strong><small>Player</small></div>
     <span class="chevron">⌄</span>
   </div>
 </header>
@@ -35,21 +33,16 @@
   <nav class="side-nav" aria-label="Dashboard">
     <a class="selected" href="/"><i>⌂</i><span>Home</span></a>
     <a href="/player"><i>♙</i><span>Profile</span></a>
-    <a href="/player"><i>▰</i><span>Garage</span></a>
-    <a href="/player#gauntlet"><i>🏆</i><span>Gauntlet</span></a>
+    <a href="/player"><i>▣</i><span>Garage</span></a>
+    <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
     <a href="/player#matches"><i>⚑</i><span>Matches</span></a>
     <a href="#leaderboard"><i>▥</i><span>Leaderboard</span></a>
     <a href="#seasons"><i>▦</i><span>Seasons</span></a>
     <a href="#teams"><i>♟</i><span>Teams</span></a>
     <a href="/player"><i>✉</i><span>Messages</span></a>
-    <a href="/players" id="side-players"><i>♟</i><span>Players</span></a>
     <a href="/setup" id="side-settings"><i>⚙</i><span>Settings</span></a>
   </nav>
-  <div class="sidebar-promo">
-    <div class="promo-art"></div>
-    <strong>DRIVE<br>YOUR LEGEND</strong>
-    <span>ASPHALT<br><b>LEGENDS</b><em>UNITE</em></span>
-  </div>
+  <div class="sidebar-promo" aria-label="Drive your legend"></div>
 </aside>
 
 <div class="workspace">
@@ -57,21 +50,22 @@
 <section class="hero-banner">
   <div class="hero-copy">
     <div class="hero-logo"><span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong></div>
-    <p>THE ULTIMATE RACING EXPERIENCE</p>
+  </div>
+  <div class="hero-slogan">
     <h1>RACE. COMPETE. UNITE.</h1>
+    <p>THE ULTIMATE RACING EXPERIENCE</p>
   </div>
   <div class="hero-road"></div>
 </section>
 
 <section id="dashboard" class="dashboard-grid">
   <div class="main-column">
-
     <div class="intro-row">
       <article class="welcome-panel">
         <div class="player-avatar">🏎️</div>
         <div class="welcome-copy">
-          <span class="section-kicker">GAUNTLET CHALLENGER</span>
-          <h1>Welcome back, <span id="welcome-name">Player</span>!</h1>
+          <h1>Welcome back, <span id="welcome-name">PlayerOne</span>!</h1>
+          <div class="welcome-title">♛ &nbsp;Gauntlet Challenger</div>
           <p>Keep racing. Your next match could be the one!</p>
         </div>
         <div class="welcome-car"></div>
@@ -81,9 +75,9 @@
         <div class="season-badge">S<span id="season-number">4</span></div>
         <div>
           <span>SEASON <b id="season-number-text">4</b></span>
-          <strong id="season-status">● ACTIVE ●</strong>
-          <small id="season-dates">Live season data</small>
-          <a href="/player">VIEW SEASON →</a>
+          <strong id="season-status">● Active ●</strong>
+          <small id="season-dates">Sep 20, 2026 – Oct 20, 2026</small>
+          <a href="/player">View Season →</a>
         </div>
       </article>
     </div>
@@ -91,42 +85,41 @@
     <section id="gauntlet" class="feature-row">
       <a class="feature feature-magenta" href="/player">
         <div class="feature-picture fp-one"></div>
-        <div class="feature-body"><i>🏆</i><h2>Gauntlet</h2><p>Register • Find Opponent<br>Submit Result • View History</p><b>→</b></div>
+        <div class="feature-body"><i>⚙</i><h2>Gauntlet</h2><p>Register &nbsp;•&nbsp; Find Opponent<br>Submit Result &nbsp;•&nbsp; View History</p><b>→</b></div>
       </a>
       <a class="feature feature-blue" href="/player">
         <div class="feature-picture fp-two"></div>
-        <div class="feature-body"><i>🚘</i><h2>My Garage</h2><p>View Cars • Upgrade<br>Manage Loadouts</p><b>→</b></div>
+        <div class="feature-body"><i>▣</i><h2>My Garage</h2><p>View Cars &nbsp;•&nbsp; Upgrade<br>Manage Loadouts</p><b>→</b></div>
       </a>
       <a class="feature feature-gold" href="#leaderboard">
         <div class="feature-picture fp-three"></div>
-        <div class="feature-body"><i>🏆</i><h2>Competition</h2><p>Standings • Leaderboard<br>Rules • Rewards</p><b>→</b></div>
+        <div class="feature-body"><i>♜</i><h2>Competition</h2><p>Standings &nbsp;•&nbsp; Leaderboard<br>Rules &nbsp;•&nbsp; Rewards</p><b>→</b></div>
       </a>
       <a class="feature feature-green" href="/player">
         <div class="feature-picture fp-four"></div>
-        <div class="feature-body"><i>⚙</i><h2>Profile &amp; Settings</h2><p>Update Profile • Preferences<br>Notifications • Servers</p><b>→</b></div>
+        <div class="feature-body"><i>⚙</i><h2>Profile &amp; Settings</h2><p>Update Profile &nbsp;•&nbsp; Preferences<br>Notifications &nbsp;•&nbsp; Servers</p><b>→</b></div>
       </a>
     </section>
 
     <section class="lower-grid">
       <article class="glass-panel garage-card">
-        <div class="panel-heading"><div><span>MY GARAGE</span><h2>Featured Car</h2></div><a href="/player">VIEW ALL →</a></div>
-        <div class="car-showcase">
-          <div class="showcase-car"></div>
-          <div class="car-info"><small>TOP CAR</small><strong>Gauntlet Racer</strong><b id="garage-pi">GARAGE PI —</b></div>
-        </div>
-        <a class="wide-action" href="/player">VIEW FULL GARAGE →</a>
+        <div class="panel-heading"><h2>My Garage</h2><a href="/player">View All →</a></div>
+        <div class="car-showcase"><div class="showcase-car"></div></div>
+        <div class="garage-meta"><div><small>Top Car</small><strong>Lamborghini Terzo Millennio</strong></div><b id="garage-pi">4,287</b></div>
+        <div class="garage-dots">● ● ● ●</div>
+        <a class="wide-action" href="/player">View Full Garage →</a>
       </article>
 
       <article class="glass-panel matches-card" id="matches">
-        <div class="panel-heading"><div><span>RECENT MATCHES</span><h2>Race History</h2></div><a href="/player">VIEW ALL →</a></div>
+        <div class="panel-heading"><h2>Recent Matches</h2><a href="/player">View All →</a></div>
         <div class="match-table" id="recent-matches">
-          <div><span>#</span><span>OPPONENT</span><span>RESULT</span><span>DATE</span></div>
+          <div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>
           <p class="empty-state">Sign in to load your recent matches.</p>
         </div>
       </article>
 
       <article class="glass-panel leaderboard-card" id="leaderboard">
-        <div class="panel-heading"><div><span>LEADERBOARD</span><h2>Top 5</h2></div><a href="#leaderboard">VIEW ALL →</a></div>
+        <div class="panel-heading"><h2>Leaderboard <small>(Top 5)</small></h2><a href="#leaderboard">View All →</a></div>
         <div class="leaderboard-list" id="leaderboard-list"><p class="empty-state">Loading live drivers…</p></div>
       </article>
     </section>
@@ -134,30 +127,31 @@
 
   <aside class="right-column">
     <article class="glass-panel profile-card">
-      <div class="panel-heading"><div><span>YOUR PROFILE</span><h2>Driver</h2></div></div>
-      <div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">Player</strong><small>DISCORD <b class="online">● ONLINE</b></small></div></div>
+      <div class="panel-heading"><h2>Your Profile</h2></div>
+      <div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">PlayerOne</strong><small>▣ Discord &nbsp; <b class="online">● Online</b></small></div></div>
       <div class="profile-stats">
-        <div><span>ELO</span><strong id="profile-elo">—</strong></div>
-        <div><span>GARAGE PI</span><strong id="profile-pi">—</strong></div>
+        <div><span>ELO</span><strong id="profile-elo">1,642</strong></div>
+        <div><span>GARAGE PI</span><strong id="profile-pi">4,287</strong></div>
       </div>
-      <div class="record-stats"><span>🏆 <b id="wins">—</b> WINS</span><span>✕ <b id="losses">—</b> LOSSES</span><span>🔥 <b id="streak">—</b> STREAK</span></div>
+      <div class="record-stats"><span>♜ <b id="wins">27</b> Wins</span><span>✕ <b id="losses">11</b> Losses</span><span>🔥 <b id="streak">5</b> Streak</span></div>
     </article>
 
     <article class="glass-panel quick-actions">
-      <div class="panel-heading"><div><span>QUICK ACTIONS</span><h2>Race Controls</h2></div></div>
-      <a class="qa qa-purple" href="/player">🏁 <b>REGISTER FOR SEASON</b></a>
-      <a class="qa qa-blue" href="/player">👥 <b>FIND OPPONENT</b></a>
-      <a class="qa qa-green" href="/player">✓ <b>SUBMIT MATCH RESULT</b></a>
-      <a class="qa qa-gold" href="#leaderboard">▥ <b>VIEW LEADERBOARD</b></a>
+      <div class="panel-heading"><h2>Quick Actions</h2></div>
+      <a class="qa qa-purple" href="/player">⚑ &nbsp; Register for Season</a>
+      <a class="qa qa-blue" href="/player">♟ &nbsp; Find Opponent</a>
+      <a class="qa qa-green" href="/player">✓ &nbsp; Submit Match Result</a>
+      <a class="qa qa-gold" href="#leaderboard">▥ &nbsp; View Leaderboard</a>
     </article>
 
     <article class="glass-panel activity-card" id="teams">
-      <div class="panel-heading"><div><span>SERVER SELECTION</span><h2 id="server-name">Main Server</h2></div><a href="/setup">VIEW ALL →</a></div>
+      <div class="panel-heading"><h2>◎ &nbsp; Server Selection</h2><a href="/setup">View All →</a></div>
+      <div class="server-select"><span id="server-name">Main Server</span><span>⌄</span></div>
       <p class="server-sub">Asphalt Legends Unite</p>
       <div class="activity-list">
-        <div><i>✓</i><p><b>Match result submitted</b><small>Shared with Discord &amp; MongoDB</small></p></div>
-        <div><i>▦</i><p><b>Season state is live</b><small>Channels and roles stay synchronized</small></p></div>
-        <div><i>◈</i><p><b>Welcome to the Gauntlet!</b><small>Good luck in your next race.</small></p></div>
+        <div><i>✓</i><p><b>Match result submitted</b><small>ShadowRacer has been submitted.</small></p><time>2h ago</time></div>
+        <div><i>▦</i><p><b>Season 4 is now active</b><small>Channels and roles have been synchronized.</small></p><time>6h ago</time></div>
+        <div><i>◈</i><p><b>Welcome to the Gauntlet!</b><small>Good luck in Season 4!</small></p><time>1d ago</time></div>
       </div>
     </article>
   </aside>
