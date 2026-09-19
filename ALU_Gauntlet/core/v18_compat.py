@@ -24,7 +24,7 @@ def ensure_named_server_role(guild: discord.Guild, role_name: str, *, colour=Non
     role = discord.utils.get(guild.roles, name=role_name)
     if role is not None:
         return role
-    kwargs = {"name": role_name, "reason": "ALU Gauntlet named role setup"}
+    kwargs = {"name": role_name, "reason": "Racing Syndicate League named role setup"}
     if colour is not None:
         kwargs["colour"] = colour
     return guild.create_role(**kwargs)
