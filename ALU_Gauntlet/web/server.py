@@ -134,6 +134,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
+        self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
         # Serve every checked-in dashboard image through one predictable route.
         # The previous allow-list only covered the newer SVGs, so older JPG/WEBP
@@ -1364,6 +1365,43 @@ class WebControlCenter:
         connection = prefs.get("asphalt_connection") or {}
         season = player.get("season_number")
         return web.json_response({"registered": True, "rank": rank, "elo": elo, "garage_pi": int(player.get("garage_pi", 0) or 0), "career_wins": wins, "career_losses": max(0, played - wins), "streak": int(player.get("streak", 0) or 0), "defense_locked": bool(player.get("defense_locked", False)), "season_number": season, "asphalt_verified": connection.get("status") == "verified"})
+
+    async def competition_recent_matches(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's recent verified Gauntlet match results."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        cursor = self.bot.db.matches.find({
+            "guild_id": str(guild_id),
+            "reverted": {"$ne": True},
+            "$or": [{"challenger_id": str(user.user_id)}, {"opponent_id": str(user.user_id)}],
+        }).sort("timestamp", -1).limit(8)
+        rows = []
+        async for match in cursor:
+            challenger_id = str(match.get("challenger_id", ""))
+            opponent_id = str(match.get("opponent_id", ""))
+            opponent = opponent_id if challenger_id == str(user.user_id) else challenger_id
+            opponent_profile = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent}"}) or {}
+            opponent_name = str(opponent_profile.get("game_id") or opponent_profile.get("username") or opponent)
+            won = str(match.get("w_id", "")) == str(user.user_id)
+            lost = str(match.get("l_id", "")) == str(user.user_id)
+            if not won and not lost:
+                continue
+            timestamp = match.get("timestamp")
+            try:
+                date_value = int(timestamp)
+            except (TypeError, ValueError):
+                try:
+                    date_value = int(datetime.fromisoformat(str(timestamp).replace("Z", "+00:00")).timestamp())
+                except Exception:
+                    date_value = int(time.time())
+            rows.append({
+                "match_id": str(match.get("_id", "")),
+                "opponent_id": opponent,
+                "opponent": opponent_name,
+                "result": "WIN" if won else "LOSS",
+                "courses": int(match.get("courses_beat", 0) or 0),
+                "date": date_value,
+            })
+        return web.json_response({"matches": rows})
 
     async def player_list(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
