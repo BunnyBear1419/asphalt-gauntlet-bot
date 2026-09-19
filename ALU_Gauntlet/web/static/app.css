@@ -496,3 +496,17 @@ html,body{width:100%;min-width:0}
   .hero-banner{height:190px!important;}
   .hero-banner>.hero-art{object-fit:contain!important;object-position:center center!important;}
 }
+
+
+/* Defense results wizard */
+.defense-submit{margin:10px 14px 0;border:1px solid #234d78;background:#040d1e;padding:12px}
+.defense-submit[hidden]{display:none!important}
+.defense-submit .panel-heading{height:auto;padding:0 0 8px}
+.defense-submit h3{margin:0;font-size:13px}
+.defense-result-row{border:1px solid #173a61;padding:10px;margin:9px 0;background:#071427}
+.defense-result-row legend{padding:0 6px;color:#25dfff;font-size:10px;font-weight:700}
+.defense-result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.defense-result-grid label,.activity-list label{display:flex;flex-direction:column;gap:4px;color:#9fb1c9;font-size:8px;font-weight:700}
+.defense-result-grid input,.activity-list input,.activity-list select{width:100%;box-sizing:border-box;min-height:32px;padding:6px 8px;border:1px solid #173a61;border-radius:4px;background:#061226;color:#eef3f8;outline:none}
+.defense-submit>.qa{width:100%;margin:8px 0 0;box-sizing:border-box;justify-content:center}
+@media(max-width:560px){.defense-result-grid{grid-template-columns:1fr}}
