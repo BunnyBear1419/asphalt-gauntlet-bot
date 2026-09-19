@@ -122,6 +122,7 @@ class WebControlCenter:
         self.app.router.add_post("/api/tournaments/clubs/member", self.manage_tournament_club_member)
         self.app.router.add_post("/api/tournaments/clubs/lineup", self.tournament_club_lineup)
         self.app.router.add_post("/api/tournaments/result", self.tournament_match_result)
+        self.app.router.add_post("/api/tournaments/result/verify", self.tournament_verify_result)
         self.app.router.add_post("/api/tournaments/start", self.tournament_start)
         self.app.router.add_get("/api/player/defense", self.player_defense)
         self.app.router.add_post("/api/player/defense", self.player_defense_action)
@@ -277,9 +278,14 @@ class WebControlCenter:
         async for item in self.bot.db.tournaments.find({"guild_id": {"$in": list(guild_ids)}}).sort("start_time", 1):
             item["id"] = str(item.get("_id"))
             item.pop("_id", None)
-            count = await self.bot.db.tournament_registrations.count_documents(
-                {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted"]}}
-            )
+            if int(item.get("team_size", 1)) > 1:
+                count = await self.bot.db.tournament_club_registrations.count_documents(
+                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                )
+            else:
+                count = await self.bot.db.tournament_registrations.count_documents(
+                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                )
             item["registration_count"] = count
             item["format_label"] = {"single_elimination": "Single Elimination", "round_robin": "Round Robin"}.get(
                 item.get("format"), str(item.get("format", "Tournament")).replace("_", " ").title()
@@ -603,6 +609,7 @@ class WebControlCenter:
         return web.json_response({"ok": True, "message": "You joined the club."})
 
     async def tournament_match_result(self, request: web.Request) -> web.Response:
+        """Submit a participant result for staff verification."""
         user = await self.require_user(request)
         from bson import ObjectId
         payload = await request.json()
@@ -617,32 +624,99 @@ class WebControlCenter:
             raise web.HTTPConflict(text="Tournament is not live.")
         match_id = str(payload.get("match_id", "")).strip()
         winner_id = str(payload.get("winner_id", "")).strip()
+        proof_url = str(payload.get("proof_url", "")).strip()
+        notes = str(payload.get("notes", "")).strip()[:500]
         bracket = t.get("bracket") or {}
-        matches = []
-        for group in (bracket.get("rounds") or bracket.get("winners") or []):
-            matches.extend(group.get("matches", []))
+        matches = [m for group in (bracket.get("rounds") or bracket.get("winners") or []) for m in group.get("matches", [])]
         match = next((m for m in matches if str(m.get("id")) == match_id), None)
         if not match:
             raise web.HTTPNotFound(text="Match not found.")
-        if winner_id not in [str(x) for x in (match.get("player_slots") or []) if x]:
-            raise web.HTTPBadRequest(text="Winner must be one of the players in this match.")
+        slots = [str(x) for x in (match.get("player_slots") or []) if x]
+        if winner_id not in slots:
+            raise web.HTTPBadRequest(text="Winner must be one of the entrants in this match.")
+        team_size = int(t.get("team_size", 1))
+        participant_ok = False
+        if team_size > 1:
+            reg = await self.bot.db.tournament_club_registrations.find_one(
+                {"tournament_id": str(oid), "club_id": {"$in": slots}, "lineup": str(user.user_id)}
+            )
+            participant_ok = bool(reg)
+        else:
+            participant_ok = str(user.user_id) in slots
+        if not participant_ok and not user.staff:
+            raise web.HTTPForbidden(text="Only a participant in this match can submit its result.")
+        if match.get("result_status") == "pending":
+            raise web.HTTPConflict(text="This match already has a result waiting for staff verification.")
         if match.get("status") == "completed":
             raise web.HTTPConflict(text="This match is already completed.")
-        match["winner_id"] = winner_id
-        match["status"] = "completed"
-        target = match.get("winner_to")
-        if target:
-            for group in (bracket.get("rounds") or []):
-                for nxt in group.get("matches", []):
-                    if nxt.get("id") == target:
-                        slots = nxt.setdefault("player_slots", [None, None])
-                        if winner_id not in slots:
-                            slots[0 if slots[0] is None else 1] = winner_id
-                        if all(slots):
-                            nxt["status"] = "ready"
-                        break
-        await self.bot.db.tournaments.update_one({"_id": oid}, {"$set": {"bracket": bracket, "updated_at": datetime.now(timezone.utc).isoformat()}})
-        return web.json_response({"ok": True, "message": "Match result recorded.", "bracket": bracket})
+        if proof_url and not proof_url.lower().startswith(("http://", "https://")):
+            raise web.HTTPBadRequest(text="Proof must be a valid URL.")
+        match.update({"result_status":"pending","submitted_by":str(user.user_id),"submitted_at":datetime.now(timezone.utc).isoformat(),"winner_id":winner_id,"proof_url":proof_url,"result_notes":notes})
+        await self.bot.db.tournaments.update_one({"_id": oid},{"$set":{"bracket":bracket,"updated_at":datetime.now(timezone.utc).isoformat()}})
+        cfg = await self.bot.db.settings.find_one({"_id": str(t.get("guild_id"))}) or {}
+        channel_id = cfg.get("match_results_channel_id")
+        channel = self.bot.get_channel(int(channel_id)) if channel_id else None
+        if channel is not None:
+            try:
+                await channel.send("🏁 **Tournament Result Pending Verification**\n**"+str(t.get("name","Tournament"))+"** • "+match_id+"\nWinner: <@"+winner_id+">\nSubmitted by: <@"+str(user.user_id)+">"+(("\nProof: "+proof_url) if proof_url else "")+"\nStaff: use the Tournament Center to verify this result.")
+            except Exception:
+                log.exception("Unable to post tournament result notice")
+        return web.json_response({"ok": True, "message": "Result submitted for staff verification."})
+
+    async def tournament_verify_result(self, request: web.Request) -> web.Response:
+        """Staff verification endpoint that advances a single-elimination bracket."""
+        user, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        payload = await request.json()
+        try:
+            oid = ObjectId(str(payload.get("tournament_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        t = await self.bot.db.tournaments.find_one({"_id": oid, "guild_id": guild_id})
+        if not t:
+            raise web.HTTPNotFound(text="Tournament not found.")
+        bracket = t.get("bracket") or {}
+        match_id = str(payload.get("match_id", "")).strip()
+        action = str(payload.get("action", "approve")).strip().casefold()
+        groups = bracket.get("rounds") or bracket.get("winners") or []
+        match = next((m for group in groups for m in group.get("matches", []) if str(m.get("id")) == match_id), None)
+        if not match:
+            raise web.HTTPNotFound(text="Match not found.")
+        if match.get("result_status") != "pending":
+            raise web.HTTPConflict(text="This match does not have a pending result.")
+        if action == "reject":
+            for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
+                match.pop(key, None)
+            match["status"]="ready"
+            message="Result rejected. The match is ready for another submission."
+        else:
+            winner_id=str(match.get("winner_id",""))
+            slots=[str(x) for x in (match.get("player_slots") or []) if x]
+            if winner_id not in slots:
+                raise web.HTTPConflict(text="Pending result has no valid winner.")
+            match["result_status"]="verified"
+            match["verified_by"]=str(user.user_id)
+            match["verified_at"]=datetime.now(timezone.utc).isoformat()
+            match["status"]="completed"
+            target=match.get("winner_to")
+            if target:
+                for group in groups:
+                    for nxt in group.get("matches",[]):
+                        if nxt.get("id")==target:
+                            ns=nxt.setdefault("player_slots",[None,None])
+                            if winner_id not in ns: ns[0 if ns[0] is None else 1]=winner_id
+                            if all(ns): nxt["status"]="ready"
+                            break
+            elif str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
+                t["status"]="completed"; t["champion_id"]=winner_id; t["completed_at"]=datetime.now(timezone.utc).isoformat()
+            message="Result verified and winner advanced."
+        await self.bot.db.tournaments.update_one({"_id":oid},{"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"updated_at":datetime.now(timezone.utc).isoformat()}})
+        cfg=await self.bot.db.settings.find_one({"_id":guild_id}) or {}
+        channel_id=cfg.get("match_results_channel_id"); channel=self.bot.get_channel(int(channel_id)) if channel_id else None
+        if channel is not None:
+            try: await channel.send("🏆 **Tournament Result "+("Approved" if action!="reject" else "Rejected")+"** • "+str(t.get("name","Tournament"))+" • "+match_id)
+            except Exception: log.exception("Unable to post tournament verification notice")
+        return web.json_response({"ok":True,"message":message,"bracket":bracket,"champion_id":t.get("champion_id")})
 
     async def tournament_checkin(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
