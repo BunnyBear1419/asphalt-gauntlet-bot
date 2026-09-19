@@ -514,3 +514,5 @@ html,body{width:100%;min-width:0}
 .tournament-champion-link:hover,.tournament-champion-link:focus-visible{border-color:#ff18d4;outline:none;box-shadow:0 0 20px #ff18d422}
 .tournament-champion-link strong{font-size:19px}
 .tournament-champion-link small{color:#9eb0c8;font-size:9px}
+
+.tournament-club-profile{max-width:1050px}.tournament-club-profile .public-profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit}.tournament-club-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.tournament-club-driver{border:1px solid #173e66;background:#07182f;color:inherit;padding:11px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:3px;font:inherit}.tournament-club-driver:hover,.tournament-club-driver:focus-visible{border-color:#25dfff;outline:none;transform:translateY(-1px)}.tournament-club-driver small{color:#7f9cbd;font-size:9px}@media(max-width:650px){.tournament-club-roster{grid-template-columns:1fr}}
