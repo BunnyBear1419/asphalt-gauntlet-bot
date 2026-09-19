@@ -31,7 +31,7 @@ def test_production_safety_features_remain_available():
     assert not failed, failed
 
 def test_cogs_package_is_present():
-    expected = {"player.py", "defense.py", "challenges.py", "competition.py", "staff.py", "season.py", "administration.py", "help.py", "system.py", "operations.py", "dashboard_setup_bridge.py"}
+    expected = {"player.py", "defense.py", "challenges.py", "competition.py", "staff.py", "season.py", "administration.py", "help.py", "system.py", "operations.py", "dashboard_setup_bridge.py", "tournament.py", "asphalt_account.py"}
     actual = {p.name for p in (ROOT / "ALU_Gauntlet" / "cogs").glob("*.py") if p.name != "__init__.py"}
     assert actual == expected
 
@@ -39,5 +39,5 @@ def test_root_loader_contains_all_cogs():
     source = (ROOT / "main.py").read_text(encoding="utf-8")
     package_source = (ROOT / "ALU_Gauntlet" / "main.py").read_text(encoding="utf-8")
     assert "from ALU_Gauntlet.main import runner" in source
-    for cog in ("player", "defense", "challenges", "competition", "staff", "season", "administration", "help", "system", "operations", "dashboard_setup_bridge"):
+    for cog in ("player", "defense", "challenges", "competition", "staff", "season", "administration", "help", "system", "operations", "dashboard_setup_bridge", "tournament", "asphalt_account"):
         assert f"ALU_Gauntlet.cogs.{cog}" in package_source
