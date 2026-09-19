@@ -13,7 +13,7 @@ async function loadDashboard(){
   const guild=(g.guilds||[])[0];
   const server=$("#server-name");if(server&&guild)server.textContent=guild.name;
   if(!guild)throw new Error("No Discord server available");
-  const board=await api("/api/leaderboard?guild_id="+encodeURIComponent(guild.id)+"&limit=10");
+  const board=await api("/api/leaderboard?guild_id="+encodeURIComponent(guild.id)+"&limit=50");
   const rows=$("#leaderboard-list");
   const renderBoard=(players)=>{
    if(!rows)return;
