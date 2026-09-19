@@ -188,7 +188,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
         return False, "Match not found."
     if match.get("result_status")!="pending":
         return False, "This match has no pending result."
-    if not await _claim_action(tournament_id, match_id, "verify"):
+    if not await _claim_action(tournament_id, "__bracket__", "verify"):
         return False, "Another staff action is already processing this match."
     try:
         if action=="reject":
@@ -224,7 +224,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
         )
         return True, message
     finally:
-        await _release_action(tournament_id, match_id)
+        await _release_action(tournament_id, "__bracket__")
 
 
 async def build_tournament_view(tournament_id,user):
