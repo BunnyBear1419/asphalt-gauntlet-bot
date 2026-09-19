@@ -66,9 +66,13 @@ $("#guild").addEventListener("change",async()=>{
 
 $("#save").addEventListener("click",async()=>{
   const guild=$("#guild");
-  if(!guild?.value)return;
+  const button=$("#save");
+  if(!guild?.value||button?.disabled)return;
   const payload={};
   document.querySelectorAll("[data-setting]").forEach(x=>payload[x.dataset.setting]=x.value);
+  const original=button?.textContent;
+  if(button){button.disabled=true;button.textContent="Saving…"}
+  $("#status").textContent="Saving server settings…";
   try{
     await api("/api/setup/settings?guild_id="+encodeURIComponent(guild.value),{
       method:"PUT",
@@ -78,6 +82,7 @@ $("#save").addEventListener("click",async()=>{
     $("#status").textContent="Saved ✓ — Discord will use these settings.";
     setTimeout(()=>$("#status").textContent="",3000)
   }catch(e){$("#status").textContent=e.message}
+  finally{if(button){button.disabled=false;button.textContent=original}}
 });
 
 load().catch(e=>$("#status").textContent=e.message);
