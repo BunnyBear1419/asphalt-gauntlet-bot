@@ -43,6 +43,11 @@ async function profile(){
     const about=$("#profile-about"); if(about)about.value=prefs.about||"";
     const location=$("#profile-location"); if(location)location.value=prefs.location||"";
     renderProfileLinks(prefs.links||[]);
+    const connection=prefs.asphalt_connection||{}; const connectionStatus=$("#asphalt-link-status"),connectionName=$("#asphalt-link-name"),connectionId=$("#asphalt-link-id");
+    if(connectionStatus){connectionStatus.textContent=(connection.status||"NOT LINKED").replaceAll("_"," ").toUpperCase();connectionStatus.className=connection.status==="verified"?"online":"";}
+    if(connectionName)connectionName.value=connection.game_name||prefs.game_name||"";
+    if(connectionId){connectionId.value=connection.game_id||p.game_id||"";connectionId.readOnly=connection.status==="verified";}
+    const connectButton=$("#submit-asphalt-link");if(connectButton)connectButton.disabled=connection.status==="verified";
     const profile=$("#profile");
     if(profile){
       profile.textContent=p.game_id?`${p.game_id} • ${wins} career wins • ${p.career_played||0} matches`:"No registered driver profile yet.";
@@ -219,3 +224,5 @@ if(saveProfile)saveProfile.addEventListener("click",async()=>{
   if(status)status.textContent=d.message||"Saved ✓"; await profile();
  }catch(e){if(status)status.textContent=e.message||"Profile save failed."}finally{saveProfile.disabled=false;setTimeout(()=>{if(status)status.textContent=""},1800)}
 });
+
+const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.addEventListener("click",async()=>{const status=$("#asphalt-link-message"),guildId=$("#guild")?.value;if(!guildId)return;const gameName=$("#asphalt-link-name")?.value.trim()||"",gameId=$("#asphalt-link-id")?.value.trim()||"";if(!gameName||!gameId){if(status)status.textContent="Enter both your Asphalt Game Name and Game ID.";return;}asphaltButton.disabled=true;if(status)status.textContent="Submitting for staff verification…";try{const d=await api("/api/player/asphalt?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:gameName,game_id:gameId})});if(status)status.textContent=d.message||"Submitted.";await profile();}catch(e){if(status)status.textContent=e.message||"Unable to connect Asphalt account."}finally{asphaltButton.disabled=false;}});
