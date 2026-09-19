@@ -342,3 +342,6 @@ html,body{width:100%;min-width:0}
 
 /* 2026-09-19 ASPHALT ACCOUNT CONNECTION */
 .asphalt-link-card{border-color:#1c4f78}.asphalt-link-card .activity-list{padding:8px 14px}.asphalt-link-card .activity-list label{margin:6px 0}.asphalt-link-card>.qa{margin:10px 14px 0;width:calc(100% - 28px);box-sizing:border-box;justify-content:center}.asphalt-link-card .online{color:#18e19e}.asphalt-link-card #asphalt-link-status:not(.online){color:#ffd22d}
+
+/* Verified Asphalt identity */
+.verified-badge{display:block;margin-top:4px;color:#18e19e;font-size:.68rem;font-style:normal;letter-spacing:.06em;font-weight:800}
