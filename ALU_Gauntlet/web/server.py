@@ -1284,6 +1284,16 @@ class WebControlCenter:
         except ValueError:
             raise web.HTTPBadRequest(text="limit must be an integer.")
         players = await self.players.list_players(guild_id, search=request.query.get("search", ""), limit=limit)
+        for player in players:
+            uid = str(player.get("user_id", ""))
+            prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{uid}"}) or {}
+            connection = prefs.get("asphalt_connection") or {}
+            player["asphalt_connection"] = {
+                "game_id": connection.get("game_id", ""),
+                "game_name": connection.get("game_name", ""),
+                "status": connection.get("status", "not_linked"),
+            }
+            player["asphalt_verified"] = connection.get("status") == "verified"
         return web.json_response({"players": players})
 
     async def player_detail(self, request: web.Request) -> web.Response:
