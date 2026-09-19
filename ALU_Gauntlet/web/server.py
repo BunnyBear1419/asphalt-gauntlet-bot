@@ -73,7 +73,7 @@ class WebControlCenter:
                 )
             return web.Response(
                 text=(
-                    "ALU Gauntlet web service temporarily unavailable. "
+                    "Racing Syndicate League web service temporarily unavailable. "
                     f"Route: {request.path}"
                 ),
                 status=503,
@@ -841,7 +841,7 @@ class WebControlCenter:
             return await self._page_response("index.html")
         except Exception:
             log.exception("Unable to serve the web dashboard")
-            raise web.HTTPServiceUnavailable(text="The ALU Gauntlet web dashboard is temporarily unavailable.")
+            raise web.HTTPServiceUnavailable(text="The Racing Syndicate League web dashboard is temporarily unavailable.")
 
     async def players_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
