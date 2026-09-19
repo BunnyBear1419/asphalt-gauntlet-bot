@@ -116,10 +116,6 @@ class WebControlCenter:
         self.app.router.add_post("/api/tournaments", self.create_tournament)
         self.app.router.add_post("/api/tournaments/register", self.register_tournament)
         self.app.router.add_post("/api/tournaments/checkin", self.tournament_checkin)
-        self.app.router.add_post("/api/tournaments/teams", self.create_tournament_team)
-        self.app.router.add_post("/api/tournaments/teams/join", self.join_tournament_team)
-        self.app.router.add_post("/api/tournaments/clubs/update", self.update_tournament_club)
-        self.app.router.add_post("/api/tournaments/clubs/member", self.manage_tournament_club_member)
         self.app.router.add_post("/api/tournaments/clubs/lineup", self.tournament_club_lineup)
         self.app.router.add_post("/api/tournaments/result", self.tournament_match_result)
         self.app.router.add_post("/api/tournaments/result/verify", self.tournament_verify_result)
@@ -489,124 +485,6 @@ class WebControlCenter:
             raise web.HTTPBadRequest(text="Every lineup driver must be a current club member.")
         await self.bot.db.tournament_club_registrations.update_one({"_id": reg["_id"]}, {"$set": {"lineup": lineup, "updated_at": datetime.now(timezone.utc).isoformat()}})
         return web.json_response({"ok": True, "message": str(size) + "v" + str(size) + " tournament lineup saved.", "lineup": lineup})
-
-    async def update_tournament_club(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
-        from bson import ObjectId
-        payload = await request.json()
-        tid = str(payload.get("tournament_id", "")).strip()
-        try:
-            team_oid = ObjectId(str(payload.get("team_id", "")))
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid club ID.")
-        club = await self.bot.db.tournament_teams.find_one({"_id": team_oid, "tournament_id": tid})
-        if not club:
-            raise web.HTTPNotFound(text="Club not found.")
-        if str(club.get("captain_id")) != str(user.user_id):
-            raise web.HTTPForbidden(text="Only the club leader can edit this club.")
-        updates = {}
-        if "name" in payload:
-            name = str(payload.get("name", "")).strip()
-            if not name or len(name) > 40:
-                raise web.HTTPBadRequest(text="Club name must be 1-40 characters.")
-            updates["name"] = name
-            updates["name_ci"] = name.casefold()
-        if "about" in payload:
-            updates["about"] = str(payload.get("about", "")).strip()[:500]
-        if "image" in payload:
-            image = str(payload.get("image", "")).strip()
-            if image and not image.startswith("data:image/"):
-                raise web.HTTPBadRequest(text="Club image must be an uploaded image.")
-            if len(image) > 3_000_000:
-                raise web.HTTPBadRequest(text="Club image is too large.")
-            updates["image"] = image
-        if updates:
-            updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-            await self.bot.db.tournament_teams.update_one({"_id": team_oid}, {"$set": updates})
-        return web.json_response({"ok": True, "message": "Club profile updated."})
-
-    async def manage_tournament_club_member(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
-        from bson import ObjectId
-        payload = await request.json()
-        tid = str(payload.get("tournament_id", "")).strip()
-        action = str(payload.get("action", "")).strip().casefold()
-        target_id = str(payload.get("user_id", "")).strip()
-        try:
-            team_oid = ObjectId(str(payload.get("team_id", "")))
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid club ID.")
-        club = await self.bot.db.tournament_teams.find_one({"_id": team_oid, "tournament_id": tid})
-        if not club or str(club.get("captain_id")) != str(user.user_id):
-            raise web.HTTPForbidden(text="Only the club leader can manage members.")
-        if target_id == str(user.user_id):
-            raise web.HTTPBadRequest(text="The club leader cannot manage their own membership.")
-        member = await self.bot.db.tournament_team_members.find_one({"team_id": str(team_oid), "user_id": target_id})
-        if not member:
-            raise web.HTTPNotFound(text="Club member not found.")
-        if action == "promote":
-            await self.bot.db.tournament_team_members.update_one({"_id": member["_id"]}, {"$set": {"role": "officer"}})
-            return web.json_response({"ok": True, "message": "Member promoted to club officer."})
-        if action == "demote":
-            await self.bot.db.tournament_team_members.update_one({"_id": member["_id"]}, {"$set": {"role": "member"}})
-            return web.json_response({"ok": True, "message": "Member demoted to club member."})
-        if action == "kick":
-            await self.bot.db.tournament_team_members.delete_one({"_id": member["_id"]})
-            return web.json_response({"ok": True, "message": "Member removed from the club."})
-        raise web.HTTPBadRequest(text="Unsupported club member action.")
-
-    async def create_tournament_team(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
-        from bson import ObjectId
-        payload = await request.json()
-        try:
-            oid = ObjectId(str(payload.get("tournament_id", "")))
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid tournament ID.")
-        t = await self.bot.db.tournaments.find_one({"_id": oid})
-        if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
-            raise web.HTTPNotFound(text="Tournament not found.")
-        size = int(t.get("team_size", 1))
-        if size <= 1:
-            raise web.HTTPConflict(text="This tournament is configured for solo players.")
-        name = str(payload.get("name", "")).strip()
-        if not name or len(name) > 40:
-            raise web.HTTPBadRequest(text="Team name is required and must be 40 characters or fewer.")
-        tid = str(oid)
-        existing = await self.bot.db.tournament_teams.find_one({"tournament_id": tid, "name_ci": name.casefold()})
-        if existing:
-            raise web.HTTPConflict(text="That team name is already taken.")
-        membership = await self.bot.db.tournament_team_members.find_one({"tournament_id": tid, "user_id": str(user.user_id)})
-        if membership:
-            raise web.HTTPConflict(text="You are already on a team for this tournament.")
-        team = {"tournament_id": tid, "guild_id": str(t["guild_id"]), "name": name, "name_ci": name.casefold(), "captain_id": str(user.user_id), "created_at": datetime.now(timezone.utc).isoformat()}
-        result = await self.bot.db.tournament_teams.insert_one(team)
-        await self.bot.db.tournament_team_members.insert_one({"tournament_id": tid, "team_id": str(result.inserted_id), "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "captain", "joined_at": datetime.now(timezone.utc).isoformat()})
-        return web.json_response({"ok": True, "team_id": str(result.inserted_id), "message": "Club created. Invite members to join."})
-
-    async def join_tournament_team(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
-        from bson import ObjectId
-        payload = await request.json()
-        tid = str(payload.get("tournament_id", "")).strip()
-        try:
-            team_oid = ObjectId(str(payload.get("team_id", "")))
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid team ID.")
-        t = await self.bot.db.tournaments.find_one({"_id": ObjectId(tid)}) if ObjectId.is_valid(tid) else None
-        team = await self.bot.db.tournament_teams.find_one({"_id": team_oid, "tournament_id": tid})
-        if not t or not team or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
-            raise web.HTTPNotFound(text="Tournament or team not found.")
-        if t.get("status") not in {"registration_open", "open"}:
-            raise web.HTTPConflict(text="Team joining is closed.")
-        count = await self.bot.db.tournament_team_members.count_documents({"team_id": str(team_oid)})
-        if count >= 20:
-            raise web.HTTPConflict(text="That club is full. Clubs can have up to 20 members.")
-        existing = await self.bot.db.tournament_team_members.find_one({"tournament_id": tid, "user_id": str(user.user_id)})
-        if existing:
-            raise web.HTTPConflict(text="You are already on a team for this tournament.")
-        await self.bot.db.tournament_team_members.insert_one({"tournament_id": tid, "team_id": str(team_oid), "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": datetime.now(timezone.utc).isoformat()})
-        return web.json_response({"ok": True, "message": "You joined the club."})
 
     async def tournament_match_result(self, request: web.Request) -> web.Response:
         """Submit a participant result for staff verification."""
