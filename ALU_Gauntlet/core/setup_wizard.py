@@ -517,7 +517,7 @@ def build_main_embed(wizard: SetupWizard) -> discord.Embed:
         f"**Progress:** {complete}/{total} configured\n\n"
         f"📺 **Channels:** {wizard.channel_count()}/{len(CHANNEL_FIELDS)}\n"
         f"🎭 **Roles:** {wizard.role_count()}/{len(ROLE_FIELDS)}\n"
-        f"🌎 **Timezone:** {_status(wizard.values.get("timezone"))}\n\n"
+        f"🌎 **Timezone:** {_status(wizard.values.get('timezone'))}\n\n"
         "🏆 **Tournament:** Configure tournament channels and roles with the Tournament Setup button.\n\n"
         "Nothing is saved until you choose **Review & Save**."
     )
