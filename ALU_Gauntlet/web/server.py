@@ -174,6 +174,9 @@ class WebControlCenter:
             wins = 0
             losses = 0
             recent_results = []
+            club_names = {}
+            async for other_club in self.bot.db.clubs.find({"guild_id": club["guild_id"]}, {"name": 1}):
+                club_names[str(other_club.get("_id"))] = str(other_club.get("name") or other_club.get("_id"))
             async for tournament in self.bot.db.tournaments.find({
                 "guild_id": club["guild_id"],
                 "team_size": {"$gt": 1},
@@ -198,9 +201,7 @@ class WebControlCenter:
                             continue
                         opponent_id = next((slot for slot in slots if slot != club["id"]), "")
                         opponent_name = opponent_id
-                        opponent_club = await self.bot.db.clubs.find_one({"_id": ObjectId(opponent_id)}) if opponent_id else None
-                        if opponent_club:
-                            opponent_name = str(opponent_club.get("name") or opponent_id)
+                        opponent_name = club_names.get(opponent_id, opponent_id)
                         recent_results.append({
                             "result": result,
                             "opponent": opponent_name,
