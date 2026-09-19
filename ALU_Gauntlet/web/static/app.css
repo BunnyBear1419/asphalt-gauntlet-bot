@@ -345,3 +345,6 @@ html,body{width:100%;min-width:0}
 
 /* Verified Asphalt identity */
 .verified-badge{display:block;margin-top:4px;color:#18e19e;font-size:.68rem;font-style:normal;letter-spacing:.06em;font-weight:800}
+
+/* Verified identity in competitive surfaces */
+.bracket-match .verified-badge{margin:2px 0;font-size:.58rem}.club-member-row .verified-badge{display:inline-block;margin-left:7px;font-size:.58rem}.club-member-row{flex-wrap:wrap}
