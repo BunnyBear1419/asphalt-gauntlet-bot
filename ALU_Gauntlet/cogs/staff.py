@@ -221,7 +221,7 @@ class StaffCog(commands.Cog):
                 if rec.get('track') not in ALU_TRACKS or int(rec.get('best_ms', 0) or 0) <= 0:
                     issues.append(f"Invalid universal record: {rec.get('_id')}")
             status_line = '✅ DATABASE CONSISTENT' if not issues else f'⚠️ {len(issues)} ISSUE(S) FOUND'
-            embed = discord.Embed(title='🗄️ ALU GAUNTLET — DATABASE CHECK', description=status_line, color=ASPHALT_VICTORY_COLOR if not issues else ASPHALT_ADMIN_COLOR, timestamp=datetime.now(timezone.utc))
+            embed = discord.Embed(title='🗄️ RACING SYNDICATE LEAGUE — DATABASE CHECK', description=status_line, color=ASPHALT_VICTORY_COLOR if not issues else ASPHALT_ADMIN_COLOR, timestamp=datetime.now(timezone.utc))
             embed.add_field(name='Checks', value='\n'.join((f'• {x}' for x in checks)) or '• No records found', inline=False)
             if issues:
                 preview = '\n'.join((f'• {x}' for x in issues[:20]))
@@ -370,7 +370,7 @@ class StaffCog(commands.Cog):
                     backup_text = '🔴 No local backups found'
         except Exception as exc:
             backup_text = f'🔴 Check failed • {str(exc)[:100]}'
-        embed = discord.Embed(title='🛠️ ALU GAUNTLET — DIAGNOSTICS', description='Read-only system, database, task, and backup health check.', color=ASPHALT_ADMIN_COLOR if mongo_ok else ASPHALT_ALERT_COLOR, timestamp=datetime.now(timezone.utc))
+        embed = discord.Embed(title='🛠️ RACING SYNDICATE LEAGUE — DIAGNOSTICS', description='Read-only system, database, task, and backup health check.', color=ASPHALT_ADMIN_COLOR if mongo_ok else ASPHALT_ALERT_COLOR, timestamp=datetime.now(timezone.utc))
         embed.set_thumbnail(url=ASPHALT_MEDIA['thumb_diagnostics'])
         embed.add_field(name='🖥️ Runtime', value='\n'.join((f'**{k}:** {v}' for k, v in runtime)), inline=False)
         embed.add_field(name='🗄️ Database', value='\n'.join([f"**Drivers:** `{counts.get('drivers', '?')}`", f"**Pending:** `{counts.get('pending', '?')}`", f"**Matches:** `{counts.get('matches', '?')}`", f"**Challenges:** `{counts.get('active_challenges', '?')}`", f"**Season Archives:** `{counts.get('season_history', '?')}`", f"**Reference Queue:** `{counts.get('reference_pending', '?')}`"]), inline=True)
