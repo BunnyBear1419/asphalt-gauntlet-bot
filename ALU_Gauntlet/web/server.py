@@ -792,6 +792,35 @@ class WebControlCenter:
             for i, match in enumerate(matches):
                 match["player_slots"] = [slots[i * 2], slots[i * 2 + 1]]
                 match["status"] = "ready" if all(match["player_slots"]) else "bye" if any(match["player_slots"]) else "waiting"
+            # Resolve byes immediately so a tournament with fewer entrants than
+            # the configured bracket size can still advance normally.
+            changed = True
+            while changed:
+                changed = False
+                for group in bracket.get("rounds", []):
+                    for match in group.get("matches", []):
+                        slots_now = [x for x in (match.get("player_slots") or []) if x]
+                        if match.get("status") == "bye" and len(slots_now) == 1:
+                            winner = str(slots_now[0])
+                            match["winner_id"] = winner
+                            match["status"] = "completed"
+                            match["result_status"] = "verified"
+                            target = match.get("winner_to")
+                            if target:
+                                for next_group in bracket.get("rounds", []):
+                                    for nxt in next_group.get("matches", []):
+                                        if nxt.get("id") == target:
+                                            next_slots = nxt.setdefault("player_slots", [None, None])
+                                            if winner not in next_slots:
+                                                next_slots[0 if next_slots[0] is None else 1] = winner
+                                            if all(next_slots):
+                                                nxt["status"] = "ready"
+                                            elif any(next_slots):
+                                                nxt["status"] = "bye"
+                                            changed = True
+                                            break
+                        elif match.get("status") == "bye" and not slots_now:
+                            match["status"] = "waiting"
         await self.bot.db.tournaments.update_one({"_id": oid}, {"$set": {"status": "live", "started_at": datetime.now(timezone.utc).isoformat(), "bracket": bracket, "started_by": str(user.user_id)}})
         return web.json_response({"ok": True, "message": "Tournament started.", "bracket": bracket})
 
