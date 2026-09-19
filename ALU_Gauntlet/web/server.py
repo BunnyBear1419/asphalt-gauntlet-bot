@@ -1357,7 +1357,7 @@ class WebControlCenter:
     async def leaderboard(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_guild_member(request)
         try:
-            limit = max(1, min(25, int(request.query.get("limit", "10"))))
+            limit = max(1, min(100, int(request.query.get("limit", "50"))))
         except ValueError:
             raise web.HTTPBadRequest(text="limit must be an integer.")
         rows = await self.players.list_players(guild_id, limit=limit)
