@@ -61,3 +61,12 @@ def test_player_dashboard_restores_saved_timezone_and_escapes_profile_text():
     assert 'prefs.timezone' in source
     assert 'profile.textContent=' in source
     assert 'profile.innerHTML=' not in source
+
+
+def test_dashboard_image_assets_are_served_with_image_mime_types():
+    source=(WEB/"server.py").read_text(encoding="utf-8")
+    assert 'self.app.router.add_get("/assets/{filename}", self.asset)' in source
+    assert 'mimetypes.guess_type(path.name)[0]' in source
+    assets=WEB/"static"/"assets"
+    expected={"hero-4k-final.svg","gauntlet-4k-final.svg","garage-4k-final.svg","competition-4k-final.svg","profile-settings-4k-final.svg","home-reference.svg"}
+    assert expected.issubset({p.name for p in assets.iterdir()})
