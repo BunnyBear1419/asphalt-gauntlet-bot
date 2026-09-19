@@ -684,6 +684,8 @@ class WebControlCenter:
             raise web.HTTPForbidden(text="Only a participant in this match can submit its result.")
         if match.get("result_status") == "pending":
             raise web.HTTPConflict(text="This match already has a result waiting for staff verification.")
+        if match.get("status") != "ready":
+            raise web.HTTPConflict(text="This match is not ready for a result submission.")
         if match.get("status") == "completed":
             raise web.HTTPConflict(text="This match is already completed.")
         if proof_url and not proof_url.lower().startswith(("http://", "https://")):
@@ -717,6 +719,8 @@ class WebControlCenter:
         t = await self.bot.db.tournaments.find_one({"_id": oid, "guild_id": guild_id})
         if not t:
             raise web.HTTPNotFound(text="Tournament not found.")
+        if t.get("status") != "live":
+            raise web.HTTPConflict(text="Tournament is not live.")
         bracket = t.get("bracket") or {}
         match_id = str(payload.get("match_id", "")).strip()
         action = str(payload.get("action", "approve")).strip().casefold()
