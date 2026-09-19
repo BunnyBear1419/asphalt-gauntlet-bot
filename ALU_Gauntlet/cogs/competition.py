@@ -40,7 +40,7 @@ class CompetitionCog(commands.Cog):
             return
         map_name_only = map_name_from_track(routes[0])
         embed = discord.Embed(title=f'🗺️ {map_name_only}', description='\n'.join((f'🏁 **Route {i + 1}:** `{route}`' for i, route in enumerate(routes))), color=ASPHALT_THEME_COLOR)
-        embed.set_footer(text='ALU Gauntlet Map Reference')
+        embed.set_footer(text='Racing Syndicate League Map Reference')
         icon_file, icon_filename = map_icon_file(routes[0])
         if icon_file:
             add_map_icon(embed, routes[0], icon_filename)
