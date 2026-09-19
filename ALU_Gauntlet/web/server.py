@@ -1157,7 +1157,7 @@ class WebControlCenter:
         if not isinstance(links, list):
             raise web.HTTPBadRequest(text="Links must be a list.")
         clean_links = []
-        for link in links[:3]:
+        for link in links[:5]:
             value = str(link or "").strip()
             if not value:
                 continue
