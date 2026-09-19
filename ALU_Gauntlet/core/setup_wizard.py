@@ -512,7 +512,7 @@ def build_main_embed(wizard: SetupWizard) -> discord.Embed:
     complete = wizard.complete_count()
     total = len(SETUP_FIELDS)
     description = (
-        "Set up the Gauntlet using **Discord's native pickers**.\n"
+        "Set up the Racing Syndicate League using **Discord's native pickers**.\n"
         "No channel IDs, role IDs, or timezone strings need to be entered manually.\n\n"
         f"**Progress:** {complete}/{total} configured\n\n"
         f"📺 **Channels:** {wizard.channel_count()}/{len(CHANNEL_FIELDS)}\n"
