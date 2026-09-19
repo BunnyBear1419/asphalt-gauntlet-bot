@@ -186,6 +186,8 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
     match=next((m for group in groups for m in group.get("matches",[]) if str(m.get("id"))==str(match_id)),None)
     if not match:
         return False, "Match not found."
+    if t.get("status") != "live":
+        return False, "Tournament is not live."
     if match.get("result_status")!="pending":
         return False, "This match has no pending result."
     if not await _claim_action(tournament_id, "__bracket__", "verify"):
