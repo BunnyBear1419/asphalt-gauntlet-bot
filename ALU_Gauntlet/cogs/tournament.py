@@ -134,6 +134,39 @@ async def build_tournament_embed(tournament_id):
     embed.add_field(name="🎮 Match Center",value="\n".join(lines) or "No active matches.",inline=False)
     return embed
 
+async def verify_match_on_discord(tournament_id, match_id, action, user_id):
+    from bson import ObjectId
+    t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
+    if not t: return False, "Tournament not found."
+    bracket=t.get("bracket") or {}
+    groups=bracket.get("rounds") or bracket.get("winners") or []
+    match=next((m for group in groups for m in group.get("matches",[]) if str(m.get("id"))==str(match_id)),None)
+    if not match: return False, "Match not found."
+    if match.get("result_status")!="pending": return False, "This match has no pending result."
+    if action=="reject":
+        for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
+            match.pop(key,None)
+        match["status"]="ready"
+        message="Result rejected. The match is ready for another submission."
+    else:
+        winner=str(match.get("winner_id",""))
+        if winner not in [str(x) for x in (match.get("player_slots") or []) if x]: return False, "Pending result has no valid winner."
+        match.update({"result_status":"verified","verified_by":str(user_id),"verified_at":discord.utils.utcnow().isoformat(),"status":"completed"})
+        target=match.get("winner_to")
+        if target:
+            for group in groups:
+                for nxt in group.get("matches",[]):
+                    if nxt.get("id")==target:
+                        slots=nxt.setdefault("player_slots",[None,None])
+                        if winner not in slots: slots[0 if slots[0] is None else 1]=winner
+                        if all(slots): nxt["status"]="ready"
+                        break
+        else:
+            if str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
+                await bot.db.tournaments.update_one({"_id":t["_id"]},{"$set":{"status":"completed","champion_id":winner,"completed_at":discord.utils.utcnow().isoformat()}})
+    await bot.db.tournaments.update_one({"_id":t["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
+    return True, "Result approved and winner advanced." if action!="reject" else "Result rejected."
+
 async def build_tournament_view(tournament_id,user):
     from bson import ObjectId
     t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
@@ -149,6 +182,17 @@ async def build_tournament_view(tournament_id,user):
             await interaction.response.send_message("Choose the winner:",view=MatchResultView(tournament_id,match),ephemeral=True)
         b.callback=cb
         view.add_item(b)
+    if user.guild_permissions.administrator:
+        pending=[m for m in _matches(t) if m.get("result_status")=="pending"]
+        for m in pending[:MAX_MATCH_BUTTONS]:
+            b=discord.ui.Button(label=f"Review {m.get('id')}",style=discord.ButtonStyle.success)
+            async def review_cb(interaction,match=m):
+                if not interaction.user.guild_permissions.administrator:
+                    await interaction.response.send_message("❌ Staff access required.",ephemeral=True); return
+                ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"approve",interaction.user.id)
+                await interaction.response.send_message(("✅ " if ok else "❌ ")+msg,ephemeral=True)
+            b.callback=review_cb
+            view.add_item(b)
     return view
 
 class TournamentCog(commands.Cog):
