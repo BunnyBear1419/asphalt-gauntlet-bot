@@ -37,7 +37,7 @@ async function profile(){
       ptz.value=prefs.timezone||"UTC";
     }
     setText("profile-discord-name",p.global_name||p.username||"Driver");
-    setText("profile-game-name",prefs.game_name||"");
+    setText("profile-game-name",prefs.game_name||"");\n    const conn=prefs.asphalt_connection||{}; setText("identity-summary-name",conn.game_name||prefs.game_name||"Not linked"); setText("identity-summary-id",conn.game_id||p.game_id||"Not linked"); const ist=$("#identity-summary-status"); if(ist)ist.className="identity-chip "+(conn.status==="verified"?"verified":conn.status==="pending"?"pending":""); setText("identity-summary-state",conn.status==="verified"?"VERIFIED":conn.status==="pending"?"PENDING REVIEW":"NOT LINKED");
     const gameName=$("#profile-game-name"); if(gameName)gameName.value=prefs.game_name||"";
     const gameId=$("#profile-game-id"); if(gameId)gameId.value=p.game_id||"";
     const about=$("#profile-about"); if(about)about.value=prefs.about||"";
