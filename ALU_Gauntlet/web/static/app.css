@@ -286,3 +286,15 @@ html,body{width:100%;min-width:0}
 @media(max-width:560px){.tournament-hero{padding:25px 15px}.tournament-hero h1{font-size:29px}.tournament-layout{padding:14px 8px 24px}.tournament-card{grid-template-columns:1fr}.tournament-card-art{min-height:95px;border-right:0;border-bottom:1px solid #173d64}.tournament-toolbar{gap:8px;align-items:flex-end}.tournament-toolbar select{max-width:160px}.tournament-form-grid{grid-template-columns:1fr}}
 
 .tournament-detail{margin-top:18px;padding:20px}.tournament-bracket{display:flex;gap:14px;overflow:auto;padding:8px 0}.bracket-round{min-width:210px}.bracket-round h4{margin:0 0 10px}.bracket-match{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.03)}.bracket-match span:last-child{text-align:right}.bracket-match b{font-size:10px;opacity:.55}
+
+
+.club-panel{margin-top:18px;padding:20px}
+.club-panel .panel-heading{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.club-card{display:flex;gap:16px;padding:16px;margin-top:12px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:rgba(255,255,255,.03)}
+.club-avatar{width:72px;height:72px;flex:0 0 72px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.06);overflow:hidden;font-size:30px}
+.club-avatar img{width:100%;height:100%;object-fit:cover}
+.club-main{min-width:0}
+.club-main h4{margin:0 0 4px}
+.club-main p{margin:0 0 8px;opacity:.8}
+.club-members{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.club-members span{padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:12px}
