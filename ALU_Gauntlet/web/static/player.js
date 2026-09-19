@@ -202,17 +202,17 @@ window.addEventListener("hashchange",syncPrimaryNav);
 
 function renderProfileLinks(links){
  const box=$("#profile-links"); if(!box)return; box.textContent="";
- const values=[...(links||[])].slice(0,3);
+ const values=[...(links||[])].slice(0,5);
  if(!values.length) addProfileLink(); else values.forEach(v=>addProfileLink(v));
 }
 function addProfileLink(value=""){
- const box=$("#profile-links"); if(!box||box.children.length>=3)return;
+ const box=$("#profile-links"); if(!box||box.children.length>=5)return;
  const row=document.createElement("div"); row.className="profile-link-row";
  const input=document.createElement("input"); input.type="url"; input.maxLength=300; input.placeholder="https://kick.com/…, https://twitch.tv/…, https://youtube.com/…"; input.value=value;
  const remove=document.createElement("button"); remove.type="button"; remove.className="profile-link-remove"; remove.textContent="Remove"; remove.addEventListener("click",()=>{row.remove();refreshAddLinkButton()});
  row.append(input,remove); box.append(row); refreshAddLinkButton();
 }
-function refreshAddLinkButton(){const b=$("#add-profile-link");if(b)b.disabled=($("#profile-links")?.children.length||0)>=3}
+function refreshAddLinkButton(){const b=$("#add-profile-link");if(b)b.disabled=($("#profile-links")?.children.length||0)>=5}
 const addLink=$("#add-profile-link"); if(addLink)addLink.addEventListener("click",()=>addProfileLink());
 const saveProfile=$("#save-profile");
 if(saveProfile)saveProfile.addEventListener("click",async()=>{
