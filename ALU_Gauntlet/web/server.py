@@ -124,6 +124,7 @@ class WebControlCenter:
         self.app.router.add_post("/api/player/defense", self.player_defense_action)
         self.app.router.add_put("/api/player/preferences", self.player_preferences)
         self.app.router.add_put("/api/player/profile", self.player_profile)
+        self.app.router.add_put("/api/player/asphalt", self.player_asphalt)
         self.app.router.add_post("/api/player/register", self.player_register)
         self.app.router.add_get("/api/setup/options", self.setup_options)
         self.app.router.add_get("/api/setup/settings", self.setup_settings)
@@ -922,7 +923,7 @@ class WebControlCenter:
         return web.json_response({
             "player": player,
             "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
-            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "links")},
+            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "links", "asphalt_connection")},
         })
 
     async def player_defense(self, request: web.Request) -> web.Response:
@@ -1155,6 +1156,33 @@ class WebControlCenter:
             upsert=True,
         )
         return web.json_response({"ok": True, "message": "Profile updated.", "profile": {"discord_name": user.global_name or user.username or "Driver", "game_name": game_name, "game_id": (await self.players.get_player(guild_id, user.user_id) or {}).get("game_id", ""), "about": about, "location": location, "timezone": timezone, "links": clean_links}})
+
+    async def player_asphalt(self, request: web.Request) -> web.Response:
+        """Link a player's Asphalt Legends identity to their Discord/web account."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        game_id = str(payload.get("game_id", "")).strip()[:100]
+        game_name = str(payload.get("game_name", "")).strip()[:100]
+        if not game_id or not game_name:
+            raise web.HTTPBadRequest(text="Asphalt Game Name and Game ID are required.")
+        existing = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        connection = existing.get("asphalt_connection") or {}
+        if connection.get("status") == "verified" and connection.get("game_id") != game_id:
+            raise web.HTTPConflict(text="Your Asphalt account is already verified. Ask staff to change the linked account.")
+        duplicate = await self.bot.db.web_preferences.find_one({"guild_id": guild_id, "asphalt_connection.game_id": game_id, "_id": {"$ne": f"{guild_id}_{user.user_id}"}})
+        if duplicate and (duplicate.get("asphalt_connection") or {}).get("status") == "verified":
+            raise web.HTTPConflict(text="That Asphalt Game ID is already linked to another Discord account.")
+        now = datetime.now(timezone.utc).isoformat()
+        connection = {"game_id": game_id, "game_name": game_name, "status": "pending", "submitted_at": connection.get("submitted_at") or now, "updated_at": now, "verified_at": connection.get("verified_at"), "verified_by": connection.get("verified_by")}
+        await self.bot.db.web_preferences.update_one({"_id": f"{guild_id}_{user.user_id}"}, {"$set": {"guild_id": guild_id, "user_id": user.user_id, "asphalt_connection": connection}}, upsert=True)
+        cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        channel = self.bot.get_channel(int(cfg["review_channel_id"])) if cfg.get("review_channel_id") else None
+        if channel:
+            await channel.send(f"🏎️ Asphalt Account Link Pending Verification\nDiscord: <@{user.user_id}>\nGame Name: **{game_name}**\nGame ID: **{game_id}**\n\nStaff can verify with /asphalt verify.")
+        return web.json_response({"ok": True, "message": "Asphalt account submitted for staff verification.", "connection": connection})
 
     async def player_preferences(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
