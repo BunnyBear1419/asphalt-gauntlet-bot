@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Racing Syndicate League • Race Control</title>
-<link rel="stylesheet" href="/static/app.css?v=20260919-13">
+<link rel="stylesheet" href="/static/app.css?v=20260919-14">
 <link rel="stylesheet" href="/static/dashboard-cards.css?v=20260919-4">
 </head>
 <body class="alu-dashboard">
@@ -54,6 +54,18 @@
     <a class="support-card" href="/#leaderboard"><div class="support-icon">▥</div><div><span>LIVE STANDINGS</span><h3>Competition</h3><p>See current Gauntlet rankings and track the competitive field.</p></div><b>→</b></a>
   </section>
 
+  <section class="competition-snapshot glass-panel" id="competition-snapshot">
+    <div class="snapshot-heading"><div><span class="eyebrow">YOUR COMPETITION</span><h2>Competition Snapshot</h2></div><a href="/player">Open Profile →</a></div>
+    <div class="snapshot-grid">
+      <div class="snapshot-rank"><span>LIVE RANK</span><strong id="snapshot-rank">—</strong><small id="snapshot-season">Current season</small></div>
+      <div><span>ELO</span><strong id="snapshot-elo">—</strong></div>
+      <div><span>GARAGE PI</span><strong id="snapshot-pi">—</strong></div>
+      <div><span>RECORD</span><strong id="snapshot-record">—</strong></div>
+      <div><span>STREAK</span><strong id="snapshot-streak">—</strong></div>
+      <div><span>DEFENSE</span><strong id="snapshot-defense">—</strong></div>
+    </div>
+  </section>
+
   <section class="dashboard-columns">
     <div class="dashboard-main">
       <article class="glass-panel panel-block" id="matches">
@@ -87,6 +99,6 @@
   </section>
 </section>
 </main></div></div>
-<script src="/static/app.js?v=20260919-10"></script>
+<script src="/static/app.js?v=20260919-11"></script>
 </body>
 </html>
