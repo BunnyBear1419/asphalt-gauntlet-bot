@@ -53,6 +53,13 @@
     <button class="qa qa-gold" id="defense-change" type="button">Change Defense →</button>
   </div>
   <p id="defense-status-message" class="server-sub" role="status"></p>
+  <form id="defense-submit-form" class="defense-submit" hidden>
+    <div class="panel-heading"><h3>📝 Enter Defense Results</h3></div>
+    <p class="server-sub">Enter the five lap times, cars, performance ratings, and proof image URLs for the generated courses. Your current defense stays active while staff review the submission.</p>
+    <div id="defense-result-fields"></div>
+    <button class="qa qa-purple" id="defense-submit" type="submit">Submit Defense for Staff Review →</button>
+    <p id="defense-submit-status" class="server-sub" role="status"></p>
+  </form>
 </article>
 <article class="glass-panel activity-card" id="registration">
   <div class="panel-heading"><h2>🏁 Season Registration</h2></div>
@@ -66,7 +73,7 @@
     <p id="registration-status" class="server-sub" role="status"></p>
   </div>
 </article>
-<article class="glass-panel activity-card" id="preferences"><div class="panel-heading"><h2>◎ &nbsp; Driver Settings</h2></div><div class="server-select"><select id="guild" aria-label="Server selection"></select><span>⌄</span></div><p class="server-sub">Choose the Discord server for your driver profile.</p><div class="activity-list"><div><i>◷</i><p><b>Timezone</b><small>Used by Discord and web controls.</small></p><select id="timezone" aria-label="Timezone"><option value="UTC">UTC</option><option value="America/New_York">Eastern Time</option><option value="America/Chicago">Central Time</option><option value="America/Denver">Mountain Time</option><option value="America/Los_Angeles">Pacific Time</option><option value="Europe/London">UK / Ireland</option><option value="Europe/Berlin">Central Europe</option><option value="Asia/Kolkata">India</option><option value="Asia/Shanghai">China / Singapore</option><option value="Asia/Tokyo">Japan</option><option value="Australia/Sydney">Australian Eastern</option><option value="Pacific/Auckland">New Zealand</option></select></div><div><i>✓</i><p><b>Save settings</b><small>Keep your driver preferences synchronized.</small></p><button class="qa qa-green" id="save" type="button">Save</button></div></div></article>
+<article class="glass-panel activity-card" id="preferences"><div class="panel-heading"><h2>◎ &nbsp; Driver Settings</h2></div><div class="server-select"><select id="guild" aria-label="Server selection"></select><span>⌄</span></div><p class="server-sub">Choose the Discord server for your driver profile.</p><div class="activity-list"><div><i>◷</i><p><b>Timezone</b><small>Used by Discord and web controls.</small></p><select id="timezone" aria-label="Timezone"><option value="UTC">UTC</option><option value="America/New_York">Eastern Time</option><option value="America/Chicago">Central Time</option><option value="America/Denver">Mountain Time</option><option value="America/Los_Angeles">Pacific Time</option><option value="Europe/London">UK / Ireland</option><option value="Europe/Berlin">Central Europe</option><option value="Europe/Bucharest">Eastern Europe</option><option value="Asia/Kolkata">India</option><option value="Asia/Shanghai">China / Singapore</option><option value="Asia/Tokyo">Japan</option><option value="Asia/Seoul">Korea</option><option value="Australia/Sydney">Australian Eastern</option><option value="Pacific/Auckland">New Zealand</option></select></div><div><i>✓</i><p><b>Save settings</b><small>Keep your driver preferences synchronized.</small></p><button class="qa qa-green" id="save" type="button">Save</button></div></div></article>
   </aside>
 </section>
 <section class="bottom-banner" id="help"><div class="bottom-logo">ASPHALT <b>LEGENDS</b> <strong>UNITE</strong></div><div><b>RACE. COMPETE. UNITE.</b><span>Keep your driver ready for the next Gauntlet match.</span></div><a href="/#gauntlet">RETURN TO GAUNTLET →</a></section>
