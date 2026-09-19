@@ -3,10 +3,77 @@ async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origi
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function toast(m,bad=false){let x=$("#toast");if(!x){x=document.createElement("div");x.id="toast";document.body.appendChild(x)}x.textContent=m;x.dataset.bad=bad?"1":"0";setTimeout(()=>x.remove(),3500)}
 function statusLabel(s){return ({registration_open:"REGISTRATION OPEN",open:"REGISTRATION OPEN",live:"LIVE",completed:"COMPLETED",draft:"DRAFT"})[s]||String(s||"DRAFT").replaceAll("_"," ").toUpperCase()}
-function clubHtml(t){if(Number(t.team_size||1)<=1)return "";const teams=t.teams||[];if(!teams.length)return '<section class="club-panel"><h3>Create Your Club</h3><p>Build a roster of up to 20 members, then use 2v2, 3v3 or 4v4 lineups.</p><button class="qa qa-purple" id="create-club">Create Club</button></section>';return '<section class="club-panel"><div class="panel-heading"><h3>Clubs</h3><span>Up to 20 members</span></div>'+teams.map(team=>'<article class="club-card"><div class="club-avatar">'+(team.image?'<img src="'+esc(team.image)+'" alt="">':'🏁')+'</div><div class="club-main"><h4>'+esc(team.name)+'</h4><p>'+esc(team.about||"ALU tournament club")+'</p><small>'+team.members.length+'/20 members</small><div class="club-members">'+team.members.map(m=>'<span>'+esc(m.username)+' · '+esc(m.role)+'</span>').join("")+'</div></div></article>').join("")+'</section>'}\nfunction bracketText(b){if(!b)return '<div class="tournament-empty">Bracket not generated.</div>';const groups=b.rounds||b.winners||[];return groups.map(r=>'<div class="bracket-round"><h4>'+esc(r.name||("Round "+r.round))+'</h4>'+r.matches.map(m=>'<div class="bracket-match"><span>'+esc(m.player_slots?.[0]||"TBD")+'</span><b>VS</b><span>'+esc(m.player_slots?.[1]||"TBD")+'</span></div>').join('')+'</div>').join('')+(b.losers?b.losers.map(r=>'<div class="bracket-round"><h4>'+esc(r.name)+'</h4>'+r.matches.map(m=>'<div class="bracket-match"><span>TBD</span><b>VS</b><span>TBD</span></div>').join('')+'</div>').join(''):'')+(b.grand_final?'<div class="bracket-round"><h4>Grand Final</h4><div class="bracket-match"><span>TBD</span><b>VS</b><span>TBD</span></div></div>':'')}
-async function submitResult(tournamentId,matchId,winnerId){try{const r=await api("/api/tournaments/result",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:tournamentId,match_id:matchId,winner_id:winnerId})});toast(r.message||"Result recorded.");showTournament(tournamentId)}catch(e){toast(e.message,true)}}
+function clubHtml(t){if(Number(t.team_size||1)<=1)return "";const teams=t.teams||[];if(!teams.length)return '<section class="club-panel"><h3>Create Your Club</h3><p>Build a roster of up to 20 members, then use 2v2, 3v3 or 4v4 lineups.</p><button class="qa qa-purple" id="create-club">Create Club</button></section>';return '<section class="club-panel"><div class="panel-heading"><h3>Clubs</h3><span>Up to 20 members</span></div>'+teams.map(team=>'<article class="club-card"><div class="club-avatar">'+(team.image?'<img src="'+esc(team.image)+'" alt="">':'🏁')+'</div><div class="club-main"><h4>'+esc(team.name)+'</h4><p>'+esc(team.about||"ALU tournament club")+'</p><small>'+team.members.length+'/20 members</small><div class="club-members">'+team.members.map(m=>'<span>'+esc(m.username)+' · '+esc(m.role)+'</span>').join("")+'</div></div></article>').join("")+'</section>'}\nfunction entrantInfo(t,id){
+  const sid=String(id||"");
+  if(Number(t.team_size||1)>1){
+    const club=(t.clubs||[]).find(x=>String(x.id)===sid);
+    if(!club)return {name:sid,detail:"Club"};
+    const lineup=new Set((club.lineup||[]).map(String));
+    const names=(club.members||[]).filter(m=>lineup.has(String(m.user_id))).map(m=>m.username).slice(0,4);
+    return {name:club.name,detail:names.length?names.join(" • "):"Lineup not saved",image:club.image||""};
+  }
+  const reg=(t.registrations||[]).find(x=>String(x.user_id)===sid);
+  return {name:reg?.username||sid,detail:"Driver"};
+}
+function allMatches(b){
+  return (b?.rounds||b?.winners||[]).flatMap(r=>r.matches||[]);
+}
+function bracketText(t){
+  const b=t.bracket;
+  if(!b)return '<div class="tournament-empty">Bracket not generated.</div>';
+  const groups=b.rounds||b.winners||[];
+  return groups.map(r=>'<div class="bracket-round"><h4>'+esc(r.name||("Round "+r.round))+'</h4>'+
+    (r.matches||[]).map(m=>{
+      const a=entrantInfo(t,m.player_slots?.[0]), z=entrantInfo(t,m.player_slots?.[1]);
+      const pending=m.result_status==="pending";
+      return '<div class="bracket-match tournament-match" data-match="'+esc(m.id)+'"><div><strong>'+esc(a.name||"TBD")+'</strong><small>'+esc(a.detail||"Waiting")+'</small></div><b>VS</b><div><strong>'+esc(z.name||"TBD")+'</strong><small>'+esc(z.detail||"Waiting")+'</small></div>'+
+        (pending?'<span class="match-status">PENDING REVIEW</span>':m.status==="completed"?'<span class="match-status">VERIFIED</span>':m.status==="ready"?'<button class="qa qa-purple match-result" data-match="'+esc(m.id)+'">Submit Result</button>':'')+
+        '</div>';
+    }).join('')+'</div>').join('')+
+    (b.losers?b.losers.map(r=>'<div class="bracket-round"><h4>'+esc(r.name)+'</h4>'+((r.matches||[]).map(m=>'<div class="bracket-match"><span>TBD</span><b>VS</b><span>TBD</span></div>').join(''))+'</div>').join(''):'')+
+    (b.grand_final?'<div class="bracket-round"><h4>Grand Final</h4><div class="bracket-match"><span>TBD</span><b>VS</b><span>TBD</span></div></div>':'');
+}
+function resultDialog(t,match){
+  const slots=(match.player_slots||[]).filter(Boolean).map(String);
+  const choices=slots.map(id=>{const x=entrantInfo(t,id);return '<option value="'+esc(id)+'">'+esc(x.name)+'</option>'}).join('');
+  const wrap=document.createElement("div");wrap.className="club-picker-overlay";
+  wrap.innerHTML='<div class="club-picker glass-panel"><span class="eyebrow">MATCH RESULT</span><h2>Submit Match Result</h2><p>Choose the winner. Staff will verify the result before the bracket advances.</p><label>Winner<select id="result-winner">'+choices+'</select></label><label>Proof URL (optional)<input id="result-proof" placeholder="https://..."></label><label>Notes (optional)<textarea id="result-notes" maxlength="500" placeholder="Score, race notes, or other details"></textarea></label><div class="club-picker-actions"><button class="qa qa-blue" id="result-cancel">Cancel</button><button class="qa qa-purple" id="result-send">Submit Result →</button></div></div>';
+  document.body.appendChild(wrap);
+  return new Promise(resolve=>{const close=v=>{wrap.remove();resolve(v)};wrap.querySelector("#result-cancel").onclick=()=>close(null);wrap.querySelector("#result-send").onclick=()=>close({winner_id:wrap.querySelector("#result-winner").value,proof_url:wrap.querySelector("#result-proof").value.trim(),notes:wrap.querySelector("#result-notes").value.trim()})});
+}
+async function submitResult(t,match){
+  try{
+    const data=await resultDialog(t,match); if(!data)return;
+    const r=await api("/api/tournaments/result",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,match_id:match.id,...data})});
+    toast(r.message||"Result submitted."); showTournament(t.id);
+  }catch(e){toast(e.message,true)}
+}
+async function verifyResult(t,match,action){
+  try{
+    const r=await api("/api/tournaments/result/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,match_id:match.id,action})});
+    toast(r.message||"Result updated."); showTournament(t.id);
+  }catch(e){toast(e.message,true)}
+}
 async function checkin(id){try{const r=await api("/api/tournaments/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:id})});toast(r.message||"Checked in.");showTournament(id)}catch(e){toast(e.message,true)}}
-async function showTournament(id){try{const t=await api("/api/tournaments/"+encodeURIComponent(id));const box=$("#tournament-detail");box.hidden=false;box.innerHTML='<div class="panel-heading"><h2>'+esc(t.name)+'</h2><button class="qa qa-blue" id="close-tournament-detail">Close</button></div><p>'+esc(t.description||"")+'</p><div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button></div><div class="tournament-bracket">'+bracketText(t.bracket)+'</div>'+clubHtml(t);$("#close-tournament-detail").onclick=()=>box.hidden=true;$("#checkin-tournament").onclick=()=>checkin(id);box.scrollIntoView({behavior:"smooth",block:"start"})}catch(e){toast(e.message,true)}}
+async function showTournament(id){
+  try{
+    const t=await api("/api/tournaments/"+encodeURIComponent(id)); const box=$("#tournament-detail"); box.hidden=false;
+    const pending=allMatches(t.bracket).filter(m=>m.result_status==="pending");
+    const champion=t.champion_id?entrantInfo(t,t.champion_id):null;
+    box.innerHTML='<div class="panel-heading"><h2>'+esc(t.name)+'</h2><button class="qa qa-blue" id="close-tournament-detail">Close</button></div>'+
+      '<p>'+esc(t.description||"")+'</p>'+
+      (t.status==="completed"&&champion?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><strong>'+esc(champion.name)+'</strong><small>'+esc(champion.detail||"")+'</small></section>':'')+
+      '<div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button></div>'+
+      (pending.length&&window._me?.staff?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+
+      '<div class="tournament-bracket">'+bracketText(t)+'</div>'+clubHtml(t);
+    $("#close-tournament-detail").onclick=()=>box.hidden=true; $("#checkin-tournament").onclick=()=>checkin(id);
+    const matches=allMatches(t.bracket);
+    box.querySelectorAll(".match-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)submitResult(t,m)}});
+    box.querySelectorAll(".verify-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"approve")}});
+    box.querySelectorAll(".reject-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"reject")}});
+    box.scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(e){toast(e.message,true)}
+}
 function tournamentCard(t){const canJoin=t.status==="registration_open"||t.status==="open";const full=Number(t.registration_count||0)>=Number(t.max_players||0);const entrantLabel=Number(t.team_size||1)>1?"CLUBS":"PLAYERS";const button=canJoin&&!full?'<button class="qa qa-purple tournament-join" data-id="'+esc(t.id)+'">Join Tournament →</button>':'<a class="qa qa-blue" href="/tournaments#'+encodeURIComponent(t.id)+'">View Tournament →</a>';return '<article class="glass-panel tournament-card"><div class="tournament-card-art"><span>🏆</span><em>'+esc(statusLabel(t.status))+'</em></div><div class="tournament-card-body"><div class="tournament-card-top"><span>'+esc(t.format_label||t.format||"Tournament")+'</span><b>'+Number(t.registration_count||0)+'/'+Number(t.max_players||0)+' '+entrantLabel+'</b></div><h2>'+esc(t.name)+'</h2><p>'+esc(t.description||"ALU competition event.")+'</p><div class="tournament-meta"><span>📅 '+esc(t.start_time_label||"TBD")+'</span><span>🎯 '+esc(t.eligibility_label||"Open to players")+'</span></div><div class="tournament-card-actions">'+button+'</div></div></article>'}
 async function load(){try{const me=await api("/api/me");window._me=me;const name=me.global_name||me.username||"Driver";if($("#user-name"))$("#user-name").textContent=name;if(me.staff)$("#staff-create").hidden=false;const guilds=await api("/api/guilds");window._adminGuild=(guilds.guilds||[]).find(x=>x.admin)||null;const data=await api("/api/tournaments");window._tournaments=data.tournaments||[];render()}catch(e){$("#tournament-list").innerHTML='<div class="tournament-empty">'+esc(e.message)+'</div>'}}
 function render(){const filter=$("#tournament-filter").value;const all=window._tournaments||[];const rows=all.filter(t=>filter==="all"||t.status===filter||(filter==="open"&&t.status==="registration_open"));$("#tournament-count").textContent=rows.length+" tournament"+(rows.length===1?"":"s");$("#tournament-list").innerHTML=rows.length?rows.map(tournamentCard).join(""):'<div class="tournament-empty">No tournaments match this filter.</div>';document.querySelectorAll(".tournament-join").forEach(b=>b.addEventListener("click",()=>join(b.dataset.id)));document.querySelectorAll(".tournament-view").forEach(b=>b.addEventListener("click",()=>showTournament(b.dataset.id)))}
