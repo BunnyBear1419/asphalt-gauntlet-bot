@@ -13,12 +13,18 @@ async function loadDashboard(){
   const guild=(g.guilds||[])[0];
   const server=$("#server-name");if(server&&guild)server.textContent=guild.name;
   if(!guild)throw new Error("No Discord server available");
-  const board=await api("/api/leaderboard?guild_id="+encodeURIComponent(guild.id)+"&limit=5");
+  const board=await api("/api/leaderboard?guild_id="+encodeURIComponent(guild.id)+"&limit=10");
   const rows=$("#leaderboard-list");
-  if(rows)rows.innerHTML=(board.players||[]).length
-   ?board.players.map((p,i)=>"<button type='button' class='leader-row' data-leader-player='"+esc(p.user_id||"")+"'><span class='leader-rank'>"+(i+1)+"</span><span class='driver-mini'><span class='driver-dot'>🏎</span><span><strong>"+esc(p.username||p.global_name||p.game_id||"Driver")+"</strong>"+(p.asphalt_verified?"<em class='verified-badge'>🟢 VERIFIED ASPHALT</em>":"")+"</span></span><span class='leader-elo'>"+(p.elo??1000).toLocaleString()+"</span></button>").join("")
-   :"<p class='empty-state'>No registered drivers yet.</p>";
-  rows?.querySelectorAll("[data-leader-player]").forEach(x=>x.addEventListener("click",()=>openPlayerProfile(x.dataset.leaderPlayer)));
+  const renderBoard=(players)=>{
+   if(!rows)return;
+   rows.innerHTML=players.length
+    ?players.map((p,i)=>"<button type='button' class='leader-row competition-row' data-leader-player='"+esc(p.user_id||"")+"'><span class='leader-rank'>"+(i+1)+"</span><span class='driver-mini'><span class='driver-dot'>🏎</span><span><strong>"+esc(p.username||p.global_name||p.game_id||"Driver")+"</strong>"+(p.asphalt_verified?"<em class='verified-badge'>🟢 VERIFIED ASPHALT</em>":"")+"</span></span><span class='leader-elo'>"+(p.elo??1000).toLocaleString()+"</span><span class='leader-pi'>"+Number(p.garage_pi||0).toLocaleString()+"</span><span class='leader-record'>"+(p.career_wins??0)+"-"+Math.max(0,(p.career_played??0)-(p.career_wins??0))+"</span><span class='leader-streak'>"+(p.streak??0)+"</span><span class='leader-defense'>"+(p.defense_locked?"LOCKED":"OPEN")+"</span></button>").join("")
+    :"<p class='empty-state'>No registered drivers found.</p>";
+   rows.querySelectorAll("[data-leader-player]").forEach(x=>x.addEventListener("click",()=>openPlayerProfile(x.dataset.leaderPlayer)));
+  };
+  renderBoard(board.players||[]);
+  const seasonLabel=$("#competition-season-label");if(seasonLabel)seasonLabel.textContent=(board.players||[])[0]?.season_number?("Season "+(board.players[0].season_number)):"Current season";
+  $("#competition-search")?.addEventListener("input",e=>{const q=e.target.value.trim().toLowerCase();renderBoard((board.players||[]).filter(p=>String(p.username||p.global_name||p.game_id||"driver").toLowerCase().includes(q)));});
   const own=(board.players||[]).find(p=>String(p.user_id)===String(me.id)||String(p.user_id)===String(me.user_id));
   if(own){
    const set=(s,v)=>{const x=$(s);if(x)x.textContent=v};
