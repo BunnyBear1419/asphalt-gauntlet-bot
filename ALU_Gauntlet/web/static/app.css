@@ -348,3 +348,5 @@ html,body{width:100%;min-width:0}
 
 /* Verified identity in competitive surfaces */
 .bracket-match .verified-badge{margin:2px 0;font-size:.58rem}.club-member-row .verified-badge{display:inline-block;margin-left:7px;font-size:.58rem}.club-member-row{flex-wrap:wrap}
+
+.club-links-editor{margin:12px 0}.club-link-row{display:flex;gap:8px;margin:8px 0}.club-link-row input{flex:1}.club-profile-links{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.club-profile-link,.club-profile-links a{font-size:.78rem;text-decoration:none}.club-links-editor button:disabled{opacity:.45;cursor:not-allowed}
