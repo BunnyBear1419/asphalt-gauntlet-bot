@@ -24,7 +24,7 @@ async function profile(){
     setText("elo",elo); setText("pi",pi); setText("profile-pi",pi);
     setText("right-elo",Number(elo||0).toLocaleString()); setText("right-pi",pi);
     setText("season",season); setText("season-number",p.season_number??"—"); setText("season-number-text",p.season_number??"—");
-    setText("defense",defense); setText("wins",wins); setText("losses",losses); setText("streak",streak);
+    setText("defense",defense); setText("wins",wins); setText("losses",losses); setText("streak",streak);\n    const played=Number(p.career_played||0); const winRate=played?Math.round((Number(wins)||0)/played*100):0; setText("win-rate",winRate+"%");\n    try{const lb=await api("/api/leaderboard?guild_id="+id+"&limit=100"); const me=(lb.players||[]).find(x=>String(x.user_id)===String(p.user_id||"")); setText("profile-rank",me?.competition_rank?"#"+me.competition_rank:"—")}catch(e){setText("profile-rank","—")}\n    setText("profile-defense-state",defense); setText("profile-season-state",season);
     setText("profile-name",p.username||"Driver"); setText("user-name",p.username||"Driver"); setText("welcome-name",p.username||"Driver");
     setText("season-status",p.season_number?"● Active ●":"● Not Registered ●");
     const tz=$("#timezone");
