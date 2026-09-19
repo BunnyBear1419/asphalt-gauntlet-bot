@@ -454,3 +454,43 @@ html,body{width:100%;min-width:0}
 .club-card-large .club-title>b{color:#25dfff;font-size:12px}
 @media(max-width:1050px){.player-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.player-directory-grid{grid-template-columns:1fr;padding:4px 10px 15px}.club-card-large{display:block}.club-card-large .club-cover{width:100%;height:150px;min-height:150px}.club-card-large .club-main{padding:15px}}
+
+/* 2026-09-19 UNIFIED PUBLIC PROFILE SYSTEM */
+.public-profile-overlay{position:fixed;inset:0;z-index:250;display:grid;place-items:center;padding:28px}
+.public-profile-backdrop{position:absolute;inset:0;background:#000b;backdrop-filter:blur(8px)}
+.public-profile{position:relative;z-index:1;width:min(1080px,96vw);max-height:92vh;overflow:auto;border-color:#25608f;box-shadow:0 28px 90px #000b}
+.public-profile-close{position:absolute;z-index:5;right:16px;top:16px;width:42px;height:38px}
+.unified-profile-hero{height:250px;position:relative;overflow:hidden;padding:30px;display:flex;align-items:end;gap:17px;background:linear-gradient(145deg,#0b1d3b,#080520)}
+.unified-profile-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#071126aa,#07112622 60%,#13062e99),radial-gradient(circle at 80% 30%,#25dfff22,transparent 35%);pointer-events:none}
+.unified-profile-hero>*{position:relative;z-index:1}
+.unified-profile-hero>div:last-child{padding-bottom:3px}
+.unified-profile-hero h2{font-size:42px;line-height:.95;margin:7px 0 5px;text-transform:uppercase;font-style:italic}
+.unified-profile-hero p{margin:0 0 8px;color:#c1cde0;font-size:13px}
+.unified-profile-avatar{width:82px;height:82px;flex:none;display:grid;place-items:center;border:1px solid #ff18d4;background:radial-gradient(circle at 35% 30%,#2750b4,#13072d);box-shadow:0 0 28px #ff10d444;font-size:34px}
+.unified-profile-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:-38px 28px 20px;position:relative;z-index:2}
+.unified-profile-stats>div{min-height:72px;padding:13px 15px;border:1px solid #20527d;background:linear-gradient(145deg,#0a1d38,#061126);box-shadow:0 12px 30px #0007}
+.unified-profile-stats small,.unified-profile-info-grid small,.profile-side-card small{display:block;color:#7f9cbd;font-size:8px;letter-spacing:.14em}
+.unified-profile-stats strong{display:block;margin-top:6px;font-size:20px}
+.unified-profile-content{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:22px;padding:0 28px 30px}
+.unified-profile-section{padding:17px 0;border-bottom:1px solid #123657}
+.unified-profile-section>p{margin:9px 0 0;color:#b9c8dd;font-size:13px;line-height:1.55;white-space:pre-wrap}
+.unified-profile-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:11px}
+.unified-profile-info-grid>div{padding:11px 12px;border:1px solid #173e66;background:#06152b}
+.unified-profile-info-grid strong{display:block;margin-top:5px;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.unified-profile-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:11px}
+.unified-profile-links a{min-width:0;padding:10px 12px;border:1px solid #173e66;background:#06152b;text-decoration:none;display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center}
+.unified-profile-links span{font-size:8px;color:#23dfff}
+.unified-profile-links b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.unified-profile-side{border:1px solid #173d65;background:#040d1d;padding:16px;align-self:start}
+.profile-side-card{padding:14px 0;border-bottom:1px solid #102b49}
+.profile-side-card:last-child{border-bottom:0}
+.profile-side-card strong{display:block;margin-top:4px;font-size:20px}
+@media(max-width:800px){
+ .public-profile-overlay{padding:10px}.public-profile{width:100%;max-height:95vh}
+ .unified-profile-hero{height:215px;padding:20px}.unified-profile-hero h2{font-size:31px}
+ .unified-profile-avatar{width:64px;height:64px;font-size:27px}
+ .unified-profile-stats{grid-template-columns:repeat(2,1fr);margin:-25px 15px 15px}
+ .unified-profile-content{grid-template-columns:1fr;padding:0 15px 22px}
+ .unified-profile-side{order:-1}.unified-profile-links{grid-template-columns:1fr}
+}
+@media(max-width:500px){.unified-profile-hero{height:195px}.unified-profile-hero h2{font-size:26px}.unified-profile-info-grid{grid-template-columns:1fr}.unified-profile-stats strong{font-size:17px}.public-profile-close{right:10px;top:10px}}
