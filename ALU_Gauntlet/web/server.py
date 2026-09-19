@@ -163,6 +163,9 @@ class WebControlCenter:
             club["member_count"] = len(members)
             club["mine"] = any(str(m.get("user_id")) == str(user.user_id) for m in members)
             club["leader"] = str(club.get("leader_id")) == str(user.user_id)
+            club["tournament_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"]})
+            club["tournament_pending_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": "pending"})
+            club["tournament_accepted_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": {"$in": ["accepted", "checked_in"]}})
             rows.append(club)
         return web.json_response({"clubs": rows})
 
