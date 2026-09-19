@@ -408,3 +408,12 @@ html,body{width:100%;min-width:0}
 .fp-four{background-image:url('/assets/profile-settings.jpg')!important;background-size:cover!important;background-position:center!important}
 .car-showcase{background:linear-gradient(180deg,#03081700,#03081766),url('/assets/garage-car.jpg') center/cover no-repeat!important}
 .bottom-banner{background:linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),url('/assets/promo-banner.jpg') center/cover no-repeat!important}
+
+
+/* Keep artwork imagery separate from HTML labels by cropping baked-in promotional lettering. */
+.feature-picture{overflow:hidden!important;background:#040a16!important;}
+.feature-picture>.art-img{width:135%!important;height:135%!important;max-width:none!important;max-height:none!important;left:-17.5%!important;top:-17.5%!important;object-fit:cover!important;object-position:center center!important;}
+.hero-banner{overflow:hidden!important;background-color:#020817!important;}
+.hero-banner>.hero-art{width:120%!important;height:120%!important;max-width:none!important;max-height:none!important;left:-10%!important;top:-10%!important;object-fit:cover!important;object-position:center center!important;}
+.car-showcase{overflow:hidden!important;}
+.car-showcase>.art-img{width:125%!important;height:125%!important;max-width:none!important;max-height:none!important;left:-12.5%!important;top:-12.5%!important;object-fit:cover!important;object-position:center center!important;}
