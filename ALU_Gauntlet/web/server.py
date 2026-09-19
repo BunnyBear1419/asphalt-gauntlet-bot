@@ -133,6 +133,7 @@ class WebControlCenter:
         self.app.router.add_put("/api/season", self.save_season)
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
+        self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
         # Serve every checked-in dashboard image through one predictable route.
         # The previous allow-list only covered the newer SVGs, so older JPG/WEBP
@@ -1321,6 +1322,22 @@ class WebControlCenter:
             player["game_name"] = prefs.get("game_name", "") or connection.get("game_name", "")
             player["asphalt_verified"] = connection.get("status") == "verified"
         return web.json_response({"players": rows})
+
+    async def competition_snapshot(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's live competitive snapshot for the selected guild."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        player = await self.players.get_player(guild_id, str(user.user_id))
+        if player is None:
+            return web.json_response({"registered": False, "guild_id": guild_id})
+        elo = int(player.get("elo", 1000) or 1000)
+        higher = await self.bot.db.drivers.count_documents({"guild_id": str(guild_id), "elo": {"$gt": elo}})
+        rank = higher + 1
+        played = int(player.get("career_played", 0) or 0)
+        wins = int(player.get("career_wins", 0) or 0)
+        prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        connection = prefs.get("asphalt_connection") or {}
+        season = player.get("season_number")
+        return web.json_response({"registered": True, "rank": rank, "elo": elo, "garage_pi": int(player.get("garage_pi", 0) or 0), "career_wins": wins, "career_losses": max(0, played - wins), "streak": int(player.get("streak", 0) or 0), "defense_locked": bool(player.get("defense_locked", False)), "season_number": season, "asphalt_verified": connection.get("status") == "verified"})
 
     async def player_list(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
