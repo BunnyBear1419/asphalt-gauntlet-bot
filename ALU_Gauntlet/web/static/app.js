@@ -45,7 +45,7 @@ async function initPlayers(){
  const me=await api("/api/me");const g=await api("/api/guilds");const sel=$("#guild");
  if(sel)sel.innerHTML=(g.guilds||[]).map(x=>"<option value='"+esc(x.id)+"'>"+esc(x.name)+(x.admin?" · Staff":"")+"</option>").join("");
  if(!sel)return;
- const load=async()=>{if(!sel.value)return;try{const q=encodeURIComponent($("#search")?.value||"");const d=await api("/api/players?guild_id="+encodeURIComponent(sel.value)+"&search="+q);$("#rows").innerHTML=d.players.length?d.players.map(p=>"<tr><td><b>"+esc(p.username||p.user_id||"Unknown")+"</b><small>"+esc(p.game_id||"No game ID")+"</small>"+(p.asphalt_verified?"<em class='verified-badge'>🟢 VERIFIED ASPHALT</em>":"")+"</td><td>"+(p.elo??1000)+"</td><td>"+Number(p.garage_pi||0).toLocaleString()+"</td><td>"+(p.season_number??"—")+"</td><td>"+(p.career_wins??0)+"-"+Math.max(0,(p.career_played??0)-(p.career_wins??0))+"</td><td>"+(p.defense_locked?"LOCKED":"OPEN")+"</td></tr>").join(""):"<tr><td colspan='6'>No drivers found.</td></tr>"}catch(e){$("#rows").innerHTML="<tr><td colspan='6'>"+esc(e.message)+"</td></tr>"}};
+ const load=async()=>{if(!sel.value)return;try{const q=encodeURIComponent($("#search")?.value||"");const d=await api("/api/players?guild_id="+encodeURIComponent(sel.value)+"&search="+q);$("#rows").innerHTML=d.players.length?d.players.map(p=>"<tr class='player-directory-row' data-player-id='"+esc(p.user_id)+"' tabindex='0' role='button'><td><b>"+esc(p.username||p.user_id||"Unknown")+"</b><small>"+esc(p.game_id||"No game ID")+"</small>"+(p.asphalt_verified?"<em class='verified-badge'>🟢 VERIFIED ASPHALT</em>":"")+"</td><td>"+(p.elo??1000)+"</td><td>"+Number(p.garage_pi||0).toLocaleString()+"</td><td>"+(p.season_number??"—")+"</td><td>"+(p.career_wins??0)+"-"+Math.max(0,(p.career_played??0)-(p.career_wins??0))+"</td><td>"+(p.defense_locked?"LOCKED":"OPEN")+"</td></tr>").join(""):"<tr><td colspan='6'>No drivers found.</td></tr>"}catch(e){$("#rows").innerHTML="<tr><td colspan='6'>"+esc(e.message)+"</td></tr>"}};
  sel.addEventListener("change",load);$("#refresh")?.addEventListener("click",load);$("#search")?.addEventListener("input",()=>{clearTimeout(window._searchTimer);window._searchTimer=setTimeout(load,250)});await load();
 }
 window.ALUGauntlet={init:loadDashboard,initPlayers};
@@ -69,3 +69,15 @@ function syncPrimaryNav(){
 }
 document.addEventListener("DOMContentLoaded",syncPrimaryNav);
 window.addEventListener("hashchange",syncPrimaryNav);
+
+async function openPlayerProfile(userId){
+ try{
+  const d=await api("/api/players/"+encodeURIComponent(userId)),p=d.player||{},conn=p.asphalt_connection||{},links=Array.isArray(p.links)?p.links.slice(0,5):[];
+  const old=document.querySelector("#public-player-profile"); if(old)old.remove();
+  const o=document.createElement("div");o.id="public-player-profile";o.className="public-profile-overlay";
+  o.innerHTML="<article class='public-profile glass-panel'><button class='public-profile-close' type='button' aria-label='Close'>×</button><div class='public-profile-hero'><div class='public-profile-avatar'>🏎️</div><div><span>DRIVER PROFILE</span><h2>"+esc(p.discord_name||p.username||"Driver")+"</h2>"+(p.asphalt_verified?"<em class='verified-badge'>🟢 VERIFIED ASPHALT</em>":"")+"</div></div><div class='public-profile-grid'><div><small>ASPHALT GAME NAME</small><strong>"+esc(p.game_name||conn.game_name||"Not set")+"</strong></div><div><small>GAME ID</small><strong>"+esc(p.game_id||conn.game_id||"Not set")+"</strong></div><div><small>LOCATION</small><strong>"+esc(p.location||"Not set")+"</strong></div><div><small>TIMEZONE</small><strong>"+esc(p.timezone_label||p.timezone||"UTC")+"</strong></div></div><section class='public-profile-about'><small>ABOUT ME</small><p>"+esc(p.about||"No bio added yet.")+"</p></section>"+(links.length?"<section class='public-profile-links'><small>LINKS</small><div>"+links.map((x,i)=>"<a href='"+esc(x)+"' target='_blank' rel='noopener noreferrer'>LINK "+(i+1)+" ↗</a>").join("")+"</div></section>":"")+"</article>";
+  document.body.appendChild(o);
+  const close=()=>o.remove();o.querySelector(".public-profile-close").addEventListener("click",close);o.addEventListener("click",e=>{if(e.target===o)close()});
+ }catch(e){toast(e.message,true)}
+}
+document.addEventListener("DOMContentLoaded",()=>{const rows=$("#rows");if(!rows)return;rows.addEventListener("click",e=>{const r=e.target.closest(".player-directory-row");if(r)openPlayerProfile(r.dataset.playerId)});rows.addEventListener("keydown",e=>{const r=e.target.closest(".player-directory-row");if(r&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openPlayerProfile(r.dataset.playerId)}})});
