@@ -70,7 +70,7 @@ async function loadDefense(){
     const d=await api("/api/player/defense?guild_id="+encodeURIComponent(sel.value));
     if(status)status.textContent=d.pending_review?"PENDING REVIEW":(d.locked.length?"ACTIVE":"READY");
     if(box){
-      const courses=d.locked.length?d.locked:d.tracks.map(track=>({track,car:"TBD",lap_time:"TBD"}));
+      const courses=d.locked.length?d.locked:(d.pending.length?d.pending:d.tracks.map(track=>({track,car:"TBD",lap_time:"TBD"})));
       box.textContent="";
       courses.forEach((c,i)=>{
         const row=document.createElement("div");
@@ -83,12 +83,62 @@ async function loadDefense(){
       });
       if(!courses.length){const p=document.createElement("p");p.className="empty-state";p.textContent="No defense generated yet.";box.append(p)}
     }
+    const submitCourses=d.pending.length?d.pending:d.tracks.map(track=>({track,car:"TBD",lap_time:"TBD"}));
+    if(!d.locked.length && submitCourses.length===5 && !d.pending_review) renderDefenseForm(submitCourses,false);
+    else if(d.pending_is_change && d.pending.length===5 && !d.pending_review) renderDefenseForm(d.pending,true);
     const change=$("#defense-change");
     if(change)change.disabled=Boolean(d.cooldown_remaining||d.pending_review||!d.locked.length);
     const set=$("#defense-set");
     if(set)set.disabled=Boolean(d.pending_review||d.locked.length);
   }catch(e){if(msg)msg.textContent=e.message}
 }
+
+// Web defense results wizard.
+function renderDefenseForm(courses, isChange=false){
+  const form=$("#defense-submit-form"), fields=$("#defense-result-fields");
+  if(!form||!fields)return;
+  fields.textContent="";
+  courses.forEach((course,i)=>{
+    const wrap=document.createElement("fieldset"); wrap.className="defense-result-row";
+    const legend=document.createElement("legend"); legend.textContent=`Course ${i+1}: ${course.track||"Course"}`;
+    wrap.append(legend);
+    const grid=document.createElement("div"); grid.className="defense-result-grid";
+    const values=[
+      ["lap_time","Lap time (MM:SS.MS)","text","Example: 1:23.456"],
+      ["car","Car name","text","Exact car name"],
+      ["car_rank","Car performance","number","Example: 2450"],
+      ["proof_url","Proof image URL","url","Direct image URL"]
+    ];
+    values.forEach(([name,label,type,placeholder])=>{
+      const labelEl=document.createElement("label"); labelEl.textContent=label;
+      const input=document.createElement("input"); input.name=name; input.type=type; input.required=true; input.placeholder=placeholder;
+      if(type==="number")input.min="1";
+      labelEl.append(input); grid.append(labelEl);
+    });
+    wrap.append(grid); fields.append(wrap);
+  });
+  form.hidden=false; form.dataset.change=isChange?"1":"0";
+}
+async function submitDefense(e){
+  e.preventDefault();
+  const form=$("#defense-submit-form"), status=$("#defense-submit-status"), button=$("#defense-submit"), sel=$("#guild");
+  if(!form||!sel?.value)return;
+  const rows=[...document.querySelectorAll(".defense-result-row")];
+  const courses=rows.map(row=>Object.fromEntries([...row.querySelectorAll("input")].map(x=>[x.name,x.value.trim()])));
+  if(status)status.textContent="Submitting defense for staff review…";
+  if(button)button.disabled=true;
+  try{
+    const d=await api("/api/player/defense?guild_id="+encodeURIComponent(sel.value),{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"submit",courses,is_change:form.dataset.change==="1"})
+    });
+    if(status)status.textContent=d.message||"Defense submitted for staff review.";
+    form.hidden=true; await loadDefense();
+  }catch(err){if(status)status.textContent=err.message||"Defense submission failed."}
+  finally{if(button)button.disabled=false}
+}
+const defenseForm=$("#defense-submit-form"); if(defenseForm)defenseForm.addEventListener("submit",submitDefense);
+
 async function generateDefense(action){
   const sel=$("#guild"),msg=$("#defense-status-message"),button=action==="change"?$("#defense-change"):$("#defense-set");
   if(!sel||!sel.value)return;
