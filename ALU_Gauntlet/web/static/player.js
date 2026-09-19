@@ -84,8 +84,10 @@ async function loadDefense(){
       if(!courses.length){const p=document.createElement("p");p.className="empty-state";p.textContent="No defense generated yet.";box.append(p)}
     }
     const submitCourses=d.pending.length?d.pending:d.tracks.map(track=>({track,car:"TBD",lap_time:"TBD"}));
-    if(!d.locked.length && submitCourses.length===5 && !d.pending_review) renderDefenseForm(submitCourses,false);
-    else if(d.pending_is_change && d.pending.length===5 && !d.pending_review) renderDefenseForm(d.pending,true);
+    const defenseForm=$("#defense-submit-form");
+    if(d.pending_review){if(defenseForm)defenseForm.hidden=true;}
+    else if(!d.locked.length && submitCourses.length===5) renderDefenseForm(submitCourses,false);
+    else if(d.pending_is_change && d.pending.length===5) renderDefenseForm(d.pending,true);
     const change=$("#defense-change");
     if(change)change.disabled=Boolean(d.cooldown_remaining||d.pending_review||!d.locked.length);
     const set=$("#defense-set");
