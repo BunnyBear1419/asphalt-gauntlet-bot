@@ -3,6 +3,127 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 
+class DefenseStartView(discord.ui.View):
+    """Player-facing handoff from generated courses to the defense submission step."""
+    def __init__(self, user_id, tracks, is_change=False):
+        super().__init__(timeout=300)
+        self.user_id = str(user_id)
+        self.tracks = list(tracks or [])
+        self.is_change = bool(is_change)
+
+    @discord.ui.button(label='📝 Enter Defense Results', style=discord.ButtonStyle.primary)
+    async def enter_results(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message('❌ This defense setup belongs to another driver.', ephemeral=True)
+            return
+        await interaction.response.send_message(
+            '🛡️ **Defense results are ready to submit.**\n\n'
+            'Use /submitdefense to enter your 5 lap times, cars, performance ratings, and proof screenshots. '
+            'Your current defense remains active until staff approves a change.',
+            ephemeral=True,
+        )
+
+class DefenseView(discord.ui.View):
+    """Staff review controls for a submitted 5-course defense."""
+    def __init__(self, user_id, guild_id, courses, proof_url=None, is_change=False):
+        super().__init__(timeout=None)
+        self.user_id = str(user_id)
+        self.guild_id = str(guild_id)
+        self.courses = list(courses or [])
+        self.proof_url = proof_url
+        self.is_change = bool(is_change)
+
+    async def _authorized(self, interaction):
+        if interaction.guild is None:
+            return False
+        if interaction.user.guild_permissions.administrator or interaction.user.guild_permissions.manage_guild:
+            return True
+        try:
+            return bool(await check_admin_privileges(interaction))
+        except Exception:
+            return False
+
+    async def _finish_message(self, interaction, title, description, color):
+        for child in self.children:
+            child.disabled = True
+        embed = interaction.message.embeds[0].copy() if interaction.message and interaction.message.embeds else discord.Embed()
+        embed.title = title
+        embed.description = description
+        embed.color = color
+        embed.set_footer(text='ALU Gauntlet • Defense review completed')
+        await interaction.message.edit(embed=embed, view=self)
+
+    async def _notify_driver(self, text):
+        try:
+            user = bot.get_user(int(self.user_id)) or await bot.fetch_user(int(self.user_id))
+            if user:
+                await user.send(text)
+        except Exception:
+            logging.exception('Unable to DM defense review result to driver %s', self.user_id)
+
+    @discord.ui.button(label='✅ Approve Defense', style=discord.ButtonStyle.success)
+    async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._authorized(interaction):
+            await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        driver_id = f'{self.guild_id}_{self.user_id}'
+        profile = await bot.db.drivers.find_one({'_id': driver_id, 'defense_review_pending': True})
+        if not profile:
+            await interaction.followup.send('ℹ️ This defense review is already completed or no longer pending.', ephemeral=True)
+            for child in self.children: child.disabled = True
+            try: await interaction.message.edit(view=self)
+            except Exception: pass
+            return
+        payload = profile.get('defense_review_payload') or {}
+        submitted_courses = payload.get('courses') or self.courses
+        if len(submitted_courses) != 5:
+            await interaction.followup.send('❌ The pending defense payload is invalid and could not be approved.', ephemeral=True)
+            return
+        locked = {'courses': submitted_courses, 'proof_url': payload.get('proof_url') or self.proof_url, 'car_rank_total': get_car_rank_total(submitted_courses), 'locked_at': time.time(), 'approved_by': str(interaction.user.id), 'submission_id': payload.get('submission_id')}
+        update = {'defense_locked': locked, 'pending_tracks': None, 'pending_is_change': False}
+        if payload.get('is_change', self.is_change): update['last_defense_change'] = time.time()
+        result = await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_pending': True, 'defense_review_payload.submission_id': payload.get('submission_id')}, {'$set': update, '$unset': {'defense_review_pending': '', 'defense_review_payload': ''}})
+        if getattr(result, 'modified_count', 0) != 1:
+            await interaction.followup.send('⚠️ The review changed before approval could be recorded. Refresh the review and try again.', ephemeral=True)
+            return
+        await self._finish_message(interaction, '✅ Defense Approved', f'Approved by {interaction.user.mention}. The driver now has an active locked 5-course defense.', ASPHALT_VICTORY_COLOR)
+        await self._notify_driver('🛡️ **Defense Approved!** Your 5-course defense has been approved by staff and is now active.')
+        await interaction.followup.send('✅ Defense approved and locked.', ephemeral=True)
+
+    @discord.ui.button(label='❌ Reject Defense', style=discord.ButtonStyle.danger)
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._authorized(interaction):
+            await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
+            return
+        await interaction.response.send_modal(DefenseRejectModal(self))
+
+class DefenseRejectModal(discord.ui.Modal, title='Reject Defense Submission'):
+    reason = discord.ui.TextInput(label='Reason for rejection', placeholder='Explain what the driver needs to correct...', required=False, max_length=500, style=discord.TextStyle.paragraph)
+    def __init__(self, review_view):
+        super().__init__()
+        self.review_view = review_view
+    async def on_submit(self, interaction: discord.Interaction):
+        view = self.review_view
+        if not await view._authorized(interaction):
+            await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        driver_id = f'{view.guild_id}_{view.user_id}'
+        profile = await bot.db.drivers.find_one({'_id': driver_id, 'defense_review_pending': True})
+        if not profile:
+            await interaction.followup.send('ℹ️ This defense review is already completed or no longer pending.', ephemeral=True)
+            return
+        payload = profile.get('defense_review_payload') or {}
+        reason_text = str(self.reason.value or '').strip() or 'Please review your lap times, cars, ratings, and proof screenshots and resubmit.'
+        result = await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_pending': True, 'defense_review_payload.submission_id': payload.get('submission_id')}, {'$unset': {'defense_review_pending': '', 'defense_review_payload': '', 'pending_tracks': '', 'pending_is_change': ''}})
+        if getattr(result, 'modified_count', 0) != 1:
+            await interaction.followup.send('⚠️ The review changed before rejection could be recorded. Refresh the review and try again.', ephemeral=True)
+            return
+        await view._finish_message(interaction, '❌ Defense Rejected', f'Rejected by {interaction.user.mention}.\n**Reason:** {reason_text}', ASPHALT_ADMIN_COLOR)
+        await view._notify_driver(f'❌ **Defense Submission Rejected**\n\n{reason_text}\n\nPlease correct your results and submit your defense again.')
+        await interaction.followup.send('❌ Defense rejected and returned to the driver for correction.', ephemeral=True)
+
 class DefenseCog(commands.Cog):
 
     @app_commands.command(name='setdefense', description='🛡️ Assigns your 5 seasonal defense routes.')
