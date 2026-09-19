@@ -73,7 +73,7 @@ async function checkin(id){try{const r=await api("/api/tournaments/checkin",{met
 async function showTournament(id){
   try{
     const t=await api("/api/tournaments/"+encodeURIComponent(id)); const box=$("#tournament-detail"); box.hidden=false;
-    const pending=allMatches(t.bracket).filter(m=>m.result_status==="pending");
+    const pending=allMatches(t.bracket).filter(m=>m.result_status==="pending" && m.winner_id);
     const champion=t.champion_id?entrantInfo(t,t.champion_id):null;
     box.innerHTML='<div class="panel-heading"><h2>'+esc(t.name)+'</h2><button class="qa qa-blue" id="close-tournament-detail">Close</button></div>'+
       '<p>'+esc(t.description||"")+'</p>'+
