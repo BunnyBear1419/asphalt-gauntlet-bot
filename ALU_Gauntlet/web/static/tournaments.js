@@ -3,17 +3,18 @@ async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origi
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function toast(m,bad=false){let x=$("#toast");if(!x){x=document.createElement("div");x.id="toast";document.body.appendChild(x)}x.textContent=m;x.dataset.bad=bad?"1":"0";setTimeout(()=>x.remove(),3500)}
 function statusLabel(s){return ({registration_open:"REGISTRATION OPEN",open:"REGISTRATION OPEN",live:"LIVE",completed:"COMPLETED",draft:"DRAFT"})[s]||String(s||"DRAFT").replaceAll("_"," ").toUpperCase()}
-function clubHtml(t){if(Number(t.team_size||1)<=1)return "";const teams=t.teams||[];if(!teams.length)return '<section class="club-panel"><h3>Create Your Club</h3><p>Build a roster of up to 20 members, then use 2v2, 3v3 or 4v4 lineups.</p><button class="qa qa-purple" id="create-club">Create Club</button></section>';return '<section class="club-panel"><div class="panel-heading"><h3>Clubs</h3><span>Up to 20 members</span></div>'+teams.map(team=>'<article class="club-card"><div class="club-avatar">'+(team.image?'<img src="'+esc(team.image)+'" alt="">':'🏁')+'</div><div class="club-main"><h4>'+esc(team.name)+'</h4><p>'+esc(team.about||"ALU tournament club")+'</p><small>'+team.members.length+'/20 members</small><div class="club-members">'+team.members.map(m=>'<span>'+esc(m.username)+' · '+esc(m.role)+'</span>').join("")+'</div></div></article>').join("")+'</section>'}\nfunction entrantInfo(t,id){
+function clubHtml(t){if(Number(t.team_size||1)<=1)return "";const teams=t.teams||[];if(!teams.length)return '<section class="club-panel"><h3>Create Your Club</h3><p>Build a roster of up to 20 members, then use 2v2, 3v3 or 4v4 lineups.</p><button class="qa qa-purple" id="create-club">Create Club</button></section>';return '<section class="club-panel"><div class="panel-heading"><h3>Clubs</h3><span>Up to 20 members</span></div>'+teams.map(team=>'<article class="club-card"><div class="club-avatar">'+(team.image?'<img src="'+esc(team.image)+'" alt="">':'🏁')+'</div><div class="club-main"><h4>'+esc(team.name)+'</h4><p>'+esc(team.about||"ALU tournament club")+'</p><small>'+team.members.length+'/20 members</small><div class="club-members">'+team.members.map(m=>'<span>'+esc(m.username)+' · '+esc(m.role)+'</span>').join("")+'</div></div></article>').join("")+'</section>'}\nfunction verifiedBadge(x){return x?.verified ? '<em class="verified-badge">🟢 VERIFIED ASPHALT</em>' : ""}
+function entrantInfo(t,id){
   const sid=String(id||"");
   if(Number(t.team_size||1)>1){
     const club=(t.clubs||[]).find(x=>String(x.id)===sid);
     if(!club)return {name:sid,detail:"Club"};
     const lineup=new Set((club.lineup||[]).map(String));
     const names=(club.members||[]).filter(m=>lineup.has(String(m.user_id))).map(m=>m.username).slice(0,4);
-    return {name:club.name,detail:names.length?names.join(" • "):"Lineup not saved",image:club.image||""};
+    return {name:club.name,detail:names.length?names.join(" • "):"Lineup not saved",image:club.image||"",verified:club.lineup?.length ? (club.members||[]).filter(m=>club.lineup.map(String).includes(String(m.user_id))).every(m=>m.asphalt_verified) : false};
   }
   const reg=(t.registrations||[]).find(x=>String(x.user_id)===sid);
-  return {name:reg?.username||sid,detail:"Driver"};
+  return {name:reg?.username||sid,detail:reg?.asphalt_game_name?("🏎️ "+reg.asphalt_game_name):"Driver",verified:!!reg?.asphalt_verified};
 }
 function allMatches(b){
   return (b?.rounds||b?.winners||[]).flatMap(r=>r.matches||[]);
@@ -35,7 +36,7 @@ function bracketText(t){
 }
 function resultDialog(t,match){
   const slots=(match.player_slots||[]).filter(Boolean).map(String);
-  const choices=slots.map(id=>{const x=entrantInfo(t,id);return '<option value="'+esc(id)+'">'+esc(x.name)+'</option>'}).join('');
+  const choices=slots.map(id=>{const x=entrantInfo(t,id);return '<option value="'+esc(id)+'">'+esc(x.name)+(x.verified?" • ✓ Verified":"")+'</option>'}).join('');
   const wrap=document.createElement("div");wrap.className="club-picker-overlay";
   wrap.innerHTML='<div class="club-picker glass-panel"><span class="eyebrow">MATCH RESULT</span><h2>Submit Match Result</h2><p>Choose the winner. Staff will verify the result before the bracket advances.</p><label>Winner<select id="result-winner">'+choices+'</select></label><label>Proof URL (optional)<input id="result-proof" placeholder="https://..."></label><label>Notes (optional)<textarea id="result-notes" maxlength="500" placeholder="Score, race notes, or other details"></textarea></label><div class="club-picker-actions"><button class="qa qa-blue" id="result-cancel">Cancel</button><button class="qa qa-purple" id="result-send">Submit Result →</button></div></div>';
   document.body.appendChild(wrap);
