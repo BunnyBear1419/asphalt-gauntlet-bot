@@ -247,8 +247,14 @@ class WebControlCenter:
                 raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
             clean_links.append(value)
         doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": discord_link[:300], "links": clean_links, "image": "", "leader_id": str(user.user_id), "created_at": now, "updated_at": now}
-        result = await self.bot.db.clubs.insert_one(doc)
-        await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
+        try:
+            result = await self.bot.db.clubs.insert_one(doc)
+        except Exception as exc:
+            if exc.__class__.__name__ == "DuplicateKeyError":
+                raise web.HTTPConflict(text="That club name is already taken.")
+            raise
+        try:
+            await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
         return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
 
     async def update_club(self, request: web.Request) -> web.Response:
@@ -527,6 +533,7 @@ class WebControlCenter:
             )
             if existing:
                 raise web.HTTPConflict(text="This club is already registered for the tournament.")
+            try:
             await self.bot.db.tournament_club_registrations.insert_one({
                 "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),
                 "club_id": club_id, "club_name": club.get("name", "Club"),
@@ -534,6 +541,10 @@ class WebControlCenter:
                 "registered_by": str(user.user_id),
                 "registered_at": datetime.now(timezone.utc).isoformat(),
             })
+        except Exception as exc:
+            if exc.__class__.__name__ == "DuplicateKeyError":
+                raise web.HTTPConflict(text="This club is already registered for the tournament.")
+            raise
             return web.json_response({"ok": True, "message": "Club registration submitted for staff review."})
         count = await self.bot.db.tournament_registrations.count_documents(
             {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
@@ -550,14 +561,19 @@ class WebControlCenter:
         )
         if existing:
             raise web.HTTPConflict(text="You are already registered for this tournament.")
-        await self.bot.db.tournament_registrations.insert_one({
-            "tournament_id": tournament_id,
+        try:
+            await self.bot.db.tournament_registrations.insert_one({
+                "tournament_id": tournament_id,
             "guild_id": str(tournament["guild_id"]),
             "user_id": str(user.user_id),
             "username": str(user.global_name or user.username or user.user_id),
             "status": "pending",
             "registered_at": datetime.now(timezone.utc).isoformat(),
         })
+        except Exception as exc:
+            if exc.__class__.__name__ == "DuplicateKeyError":
+                raise web.HTTPConflict(text="You are already registered for this tournament.")
+            raise
         return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
 
     async def tournament_club_lineup(self, request: web.Request) -> web.Response:
