@@ -256,19 +256,13 @@ async def build_tournament_view(tournament_id,user):
     return view
 
 class TournamentCog(commands.Cog):
-    @app_commands.command(name="tournament",description="Open the ALU Tournament Center.")
-    async def tournament_cmd(self,interaction):
-        if not interaction.guild_id:
-            await interaction.response.send_message("❌ This command can only be used in a server.",ephemeral=True); return
-        tournaments=[]
-        async for t in bot.db.tournaments.find({"guild_id":str(interaction.guild_id),"status":{"$in":["registration_open","open","live","completed"]}}).sort("start_time",1).limit(25):
-            tournaments.append(t)
-        if not tournaments:
-            await interaction.response.send_message("🏆 No tournaments are currently available.",ephemeral=True); return
-        if len(tournaments)==1:
-            await interaction.response.send_message(embed=await build_tournament_embed(str(tournaments[0]["_id"])),view=await build_tournament_view(str(tournaments[0]["_id"]),interaction.user),ephemeral=True)
-        else:
-            await interaction.response.send_message(embed=discord.Embed(title="🏆 TOURNAMENT CENTER",description="Choose a tournament below."),view=TournamentPickerView(tournaments),ephemeral=True)
+    """Tournament backend/UI helpers.
+
+    Tournament access is dashboard-driven; the cog intentionally does not expose
+    a standalone /tournament slash command so the public command surface stays
+    limited to /dashboard and /staff.
+    """
+
 
 async def setup(bot):
     await bot.add_cog(TournamentCog(bot))
