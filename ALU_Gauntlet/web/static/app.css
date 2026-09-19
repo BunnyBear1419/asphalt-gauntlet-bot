@@ -401,7 +401,7 @@ html,body{width:100%;min-width:0}
 
 /* Production raster-art fallback: use standalone JPG assets instead of embedded SVG/WebP compositions. */
 .hero-banner{background-image:url('/assets/hero.jpg')!important;background-size:cover!important;background-position:center!important}
-.welcome-panel:after{background:linear-gradient(90deg,#020817e8 0%,#06152fba 30%,#06152f25 58%,#06152f12 100%),url('/assets/welcome-fixed.jpg') center/cover no-repeat!important}
+.welcome-panel:after{background:linear-gradient(90deg,#020817e8 0%,#06152fba 30%,#06152f25 58%,#06152f12 100%),url('/assets/welcome.jpg') center/cover no-repeat!important}
 .fp-one{background-image:url('/assets/gauntlet.jpg')!important;background-size:cover!important;background-position:center!important}
 .fp-two{background-image:url('/assets/garage.jpg')!important;background-size:cover!important;background-position:center!important}
 .fp-three{background-image:url('/assets/competition.jpg')!important;background-size:cover!important;background-position:center!important}
