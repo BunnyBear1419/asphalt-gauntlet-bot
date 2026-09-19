@@ -500,3 +500,17 @@ html,body{width:100%;min-width:0}
 .public-club-member:hover{background:linear-gradient(90deg,#0b234022,transparent);padding-left:5px}
 .public-club-member:last-child{border-bottom:0}
 .public-club-member-arrow{margin-left:auto;color:#25dfff;font-size:15px;opacity:.65}
+
+
+/* 2026-09-19 TOURNAMENT IDENTITY CARDS */
+.tournament-competitor{min-width:0;width:100%;border:1px solid #173e66;background:linear-gradient(145deg,#07182f,#040d1b);color:inherit;text-align:left;padding:10px 11px;display:flex;flex-direction:column;gap:3px;cursor:pointer;font:inherit;transition:transform .15s ease,border-color .15s ease,background .15s ease;}
+.tournament-competitor:hover:not(:disabled),.tournament-competitor:focus-visible:not(:disabled){transform:translateY(-1px);border-color:#25dfff;background:linear-gradient(145deg,#0b2342,#071326);outline:none;box-shadow:0 0 18px #25dfff18}
+.tournament-competitor:disabled{cursor:default;opacity:.62}
+.tournament-competitor strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tournament-competitor small{color:#7f9cbd;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tournament-competitor .verified-badge{font-size:7px;margin-top:2px}
+.tournament-match>b{display:grid;place-items:center;color:#25dfff;font-size:10px;letter-spacing:.12em}
+.tournament-champion-link{margin-top:7px;width:100%;border:1px solid #8b20ff;background:linear-gradient(145deg,#160d32,#09091d);color:inherit;text-align:left;padding:12px 14px;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:3px}
+.tournament-champion-link:hover,.tournament-champion-link:focus-visible{border-color:#ff18d4;outline:none;box-shadow:0 0 20px #ff18d422}
+.tournament-champion-link strong{font-size:19px}
+.tournament-champion-link small{color:#9eb0c8;font-size:9px}
