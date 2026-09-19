@@ -1,4 +1,4 @@
-        for rank, player in enumerate(rows, 1):\n            player["competition_rank"] = rank\n"""A secure, guild-aware web control center shared with the Discord bot."""
+"""A secure, guild-aware web control center shared with the Discord bot."""
 from __future__ import annotations
 
 import hashlib
@@ -681,7 +681,12 @@ class WebControlCenter:
         channel = self.bot.get_channel(int(channel_id)) if channel_id else None
         if channel is not None:
             try:
-                await channel.send("🏁 **Tournament Result Pending Verification**\n**"+str(t.get("name","Tournament"))+"** • "+match_id+"\nWinner: <@"+winner_id+">\nSubmitted by: <@"+str(user.user_id)+">"+(("\nProof: "+proof_url) if proof_url else "")+"\nStaff: use the Tournament Center to verify this result.")
+                await channel.send("🏁 **Tournament Result Pending Verification**
+**"+str(t.get("name","Tournament"))+"** • "+match_id+"
+Winner: <@"+winner_id+">
+Submitted by: <@"+str(user.user_id)+">"+(("
+Proof: "+proof_url) if proof_url else "")+"
+Staff: use the Tournament Center to verify this result.")
             except Exception:
                 log.exception("Unable to post tournament result notice")
         return web.json_response({"ok": True, "message": "Result submitted for staff verification."})
@@ -1196,7 +1201,9 @@ class WebControlCenter:
             embeds[0].add_field(name="Driver", value=f"<@{user.user_id}>", inline=False)
             embeds[0].set_footer(text=f"ALU Defense Submission: {submission_id}")
             for i, course in enumerate(parsed, 1):
-                emb = discord.Embed(title=f"🏁 Course {i}: {course['track']}", description=f"🚗 **Car:** {course['car']}\n📈 **Car Performance:** {course['car_rank']}\n⏱️ **Lap Time:** {course['lap_time']}", color=3447003)
+                emb = discord.Embed(title=f"🏁 Course {i}: {course['track']}", description=f"🚗 **Car:** {course['car']}
+📈 **Car Performance:** {course['car_rank']}
+⏱️ **Lap Time:** {course['lap_time']}", color=3447003)
                 emb.set_image(url=course["proof_url"])
                 embeds.append(emb)
             try:
@@ -1406,7 +1413,12 @@ class WebControlCenter:
         cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
         channel = self.bot.get_channel(int(cfg["review_channel_id"])) if cfg.get("review_channel_id") else None
         if channel:
-            await channel.send(f"🏎️ Asphalt Account Link Pending Verification\nDiscord: <@{user.user_id}>\nGame Name: **{game_name}**\nGame ID: **{game_id}**\n\nStaff can verify with /asphalt verify.")
+            await channel.send(f"🏎️ Asphalt Account Link Pending Verification
+Discord: <@{user.user_id}>
+Game Name: **{game_name}**
+Game ID: **{game_id}**
+
+Staff can verify with /asphalt verify.")
         return web.json_response({"ok": True, "message": "Asphalt account submitted for staff verification.", "connection": connection})
 
     async def player_preferences(self, request: web.Request) -> web.Response:
