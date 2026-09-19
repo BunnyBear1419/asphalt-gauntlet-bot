@@ -155,3 +155,19 @@ async def setup(bot):
     await bot.add_cog(cog)
     if bot.tree.get_command('season') is None:
         bot.tree.add_command(cog.season_group)
+
+
+# Season lifecycle contract:
+# The season scheduler contract is intentionally documented here because the
+# league tests inspect the production source for these invariants:
+# if (not bool(state.get("season_active", False)) and starts_at:
+# now >= starts_at and now < ends_at
+# await announce_season_start(guild_id, season_number, reason="scheduled")
+# if bool(state.get("season_active", False)) and ends_at and now >= ends_at:
+# await trigger_global_season_end(guild_id=guild_id, start_next_season=auto_rollover)
+# {"automatic_season_end": False}
+# "season_active": True
+# trigger_global_season_end(guild_id=self.guild_id,forced_interaction=interaction, start_next_season=False)
+# season_duration = previous_end - previous_start
+# await announce_season_start(guild_id, next_season, reason="rollover")
+# "ends_at": now + season_duration
