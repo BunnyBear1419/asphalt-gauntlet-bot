@@ -21,7 +21,7 @@ function publicClubProfile(c){
  document.querySelector(".public-club-overlay")?.remove();
  const x=document.createElement("div");x.className="public-club-overlay";
  const links=(c.links||[]).slice(0,5).map((v,i)=>'<a class="public-club-link" href="'+esc(v)+'" target="_blank" rel="noopener noreferrer"><span>LINK '+(i+1)+'</span><b>'+esc(v.replace(/^https?:\/\//,"").replace(/\/$/,""))+'</b>↗</a>').join("");
- const roster=(c.members||[]).map(m=>'<div class="public-club-member"><div class="public-club-member-avatar">'+esc((m.username||"?").slice(0,1).toUpperCase())+'</div><div class="public-club-member-info"><strong>'+esc(m.username||"Driver")+'</strong><small>'+esc(m.asphalt_game_name||m.role||"Member")+'</small></div>'+verifiedBadge(m)+'</div>').join("");
+ const roster=(c.members||[]).map(m=>'<button type="button" class="public-club-member" data-player-profile="'+esc(m.user_id)+'"><div class="public-club-member-avatar">'+esc((m.username||"?").slice(0,1).toUpperCase())+'</div><div class="public-club-member-info"><strong>'+esc(m.username||"Driver")+'</strong><small>'+esc(m.asphalt_game_name||m.role||"Member")+'</small></div>'+verifiedBadge(m)+'<span class="public-club-member-arrow">↗</span></button>').join("");
  const formats='<span>2v2</span><span>3v3</span><span>4v4</span>';
  x.innerHTML='<div class="public-club-backdrop" data-close-club-profile></div><section class="public-club-profile glass-panel" role="dialog" aria-modal="true" aria-labelledby="public-club-title">'+
  '<button class="public-club-close qa qa-blue" data-close-club-profile aria-label="Close club profile">✕</button>'+
@@ -35,6 +35,7 @@ function publicClubProfile(c){
  '<section class="public-club-section"><span class="eyebrow">COMPETITION</span><div class="public-club-format-row">'+formats+'</div><p class="public-club-muted">'+(c.tournament_count?("This club has entered "+c.tournament_count+" team tournament"+(c.tournament_count===1?"":"s")+" through the Tournament Center."): "No team tournament entries yet.")+'</p></section>'+
  '</div><aside class="public-club-roster"><div class="public-club-roster-head"><div><span class="eyebrow">ROSTER</span><h3>Drivers</h3></div><b>'+c.member_count+'/20</b></div>'+ (roster||'<p class="public-club-muted">No members yet.</p>')+'</aside></div></div></section>';
  document.body.appendChild(x);
+ x.querySelectorAll("[data-player-profile]").forEach(b=>b.onclick=async()=>{try{await openPlayerProfile(b.dataset.playerProfile)}catch(e){toast(e.message,true)}});
  x.querySelectorAll("[data-close-club-profile]").forEach(b=>b.onclick=()=>x.remove());
  x.addEventListener("click",e=>{if(e.target===x)e.stopPropagation()});
  const close=()=>x.remove();
