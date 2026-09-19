@@ -43,7 +43,7 @@ async function profile(){
     const about=$("#profile-about"); if(about)about.value=prefs.about||"";
     const location=$("#profile-location"); if(location)location.value=prefs.location||"";
     renderProfileLinks(prefs.links||[]);
-    const connection=prefs.asphalt_connection||{}; const connectionStatus=$("#asphalt-link-status"),connectionName=$("#asphalt-link-name"),connectionId=$("#asphalt-link-id");
+    const connection=prefs.asphalt_connection||{}; const connectionStatus=$("#asphalt-link-status"),connectionName=$("#asphalt-link-name"),connectionId=$("#asphalt-link-id");\n    setText("profile-asphalt-status",connection.status==="verified"?"• 🟢 VERIFIED ASPHALT":connection.status==="pending"?"• Asphalt verification pending":"• Asphalt not linked");
     if(connectionStatus){connectionStatus.textContent=(connection.status||"NOT LINKED").replaceAll("_"," ").toUpperCase();connectionStatus.className=connection.status==="verified"?"online":"";}
     if(connectionName)connectionName.value=connection.game_name||prefs.game_name||"";
     if(connectionId){connectionId.value=connection.game_id||p.game_id||"";connectionId.readOnly=connection.status==="verified";}
