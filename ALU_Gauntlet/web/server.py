@@ -1333,10 +1333,26 @@ class WebControlCenter:
         return web.json_response({"players": players})
 
     async def player_detail(self, request: web.Request) -> web.Response:
-        _, guild_id, _ = await self.require_admin(request)
+        """Return a guild member's public profile for the player directory."""
+        _, guild_id, _ = await self.require_guild_member(request)
         player = await self.players.get_player(guild_id, request.match_info["user_id"])
         if player is None:
             raise web.HTTPNotFound(text="Player not found.")
+        prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{request.match_info['user_id']}"}) or {}
+        connection = prefs.get("asphalt_connection") or {}
+        timezone_value = prefs.get("timezone", "UTC")
+        timezone_label = next((label for label, value in TIMEZONE_LABELS if value == timezone_value), timezone_value)
+        player.update({
+            "discord_name": player.get("username") or player.get("global_name") or "Driver",
+            "game_name": prefs.get("game_name", ""),
+            "about": prefs.get("about", ""),
+            "location": prefs.get("location", ""),
+            "timezone": timezone_value,
+            "timezone_label": timezone_label,
+            "links": (prefs.get("links") or [])[:5],
+            "asphalt_connection": {"game_id": connection.get("game_id", ""), "game_name": connection.get("game_name", ""), "status": connection.get("status", "not_linked")},
+            "asphalt_verified": connection.get("status") == "verified",
+        })
         return web.json_response({"player": player})
 
     async def start(self) -> None:
