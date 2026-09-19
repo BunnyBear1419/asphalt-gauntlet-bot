@@ -681,6 +681,9 @@ class WebControlCenter:
             async for row in self.bot.db.tournament_club_registrations.find(
                 {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
             ).sort("registered_at", 1):
+                lineup = row.get("lineup") or []
+                if len(lineup) != int(t.get("team_size", 1)):
+                    raise web.HTTPConflict(text="Every registered club must save a complete tournament lineup before the tournament starts.")
                 players.append(str(row["club_id"]))
         else:
             async for row in self.bot.db.tournament_registrations.find(
