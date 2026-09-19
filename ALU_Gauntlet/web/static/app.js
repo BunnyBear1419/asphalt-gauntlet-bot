@@ -16,8 +16,9 @@ async function loadDashboard(){
   const board=await api("/api/leaderboard?guild_id="+encodeURIComponent(guild.id)+"&limit=5");
   const rows=$("#leaderboard-list");
   if(rows)rows.innerHTML=(board.players||[]).length
-   ?board.players.map((p,i)=>"<div class='leader-row'><span class='leader-rank'>"+(i+1)+"</span><span class='driver-mini'><span class='driver-dot'>🏎</span><strong>"+esc(p.username||p.global_name||p.game_id||"Driver")+"</strong></span><span class='leader-elo'>"+(p.elo??1000).toLocaleString()+"</span></div>").join("")
+   ?board.players.map((p,i)=>"<button type='button' class='leader-row' data-leader-player='"+esc(p.user_id||"")+"'><span class='leader-rank'>"+(i+1)+"</span><span class='driver-mini'><span class='driver-dot'>🏎</span><span><strong>"+esc(p.username||p.global_name||p.game_id||"Driver")+"</strong>"+(p.asphalt_verified?"<em class='verified-badge'>🟢 VERIFIED ASPHALT</em>":"")+"</span></span><span class='leader-elo'>"+(p.elo??1000).toLocaleString()+"</span></button>").join("")
    :"<p class='empty-state'>No registered drivers yet.</p>";
+  rows?.querySelectorAll("[data-leader-player]").forEach(x=>x.addEventListener("click",()=>openPlayerProfile(x.dataset.leaderPlayer)));
   const own=(board.players||[]).find(p=>String(p.user_id)===String(me.id)||String(p.user_id)===String(me.user_id));
   if(own){
    const set=(s,v)=>{const x=$(s);if(x)x.textContent=v};
