@@ -64,13 +64,19 @@ async function showTournament(id){
       '<p>'+esc(t.description||"")+'</p>'+
       (t.status==="completed"&&champion?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><strong>'+esc(champion.name)+'</strong><small>'+esc(champion.detail||"")+'</small></section>':'')+
       '<div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button></div>'+
-      (pending.length&&window._me?.staff?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+
+      (pending.length&&window._me?.staff?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+      (Number(t.team_size||1)>1&&((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).length)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>🏎️ Tournament Lineup</h3><span>'+Number(t.team_size||1)+' drivers required</span></div>'+((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).map(c=>'<div class="lineup-editor"><strong>'+esc(c.name)+'</strong><div class="lineup-list">'+(c.members||[]).map(m=>'<label><input class="lineup-member" data-club="'+esc(c.id)+'" type="checkbox" value="'+esc(m.user_id)+'" '+((c.lineup||[]).map(String).includes(String(m.user_id))?'checked':'')+'> '+esc(m.username)+'</label>').join('')+'</div><button class="qa qa-purple lineup-save" data-club="'+esc(c.id)+'">Save Lineup</button></div>').join(''))+'</section>':'')+
       '<div class="tournament-bracket">'+bracketText(t)+'</div>'+clubHtml(t);
     $("#close-tournament-detail").onclick=()=>box.hidden=true; $("#checkin-tournament").onclick=()=>checkin(id);
     const matches=allMatches(t.bracket);
     box.querySelectorAll(".match-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)submitResult(t,m)}});
     box.querySelectorAll(".verify-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"approve")}});
     box.querySelectorAll(".reject-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"reject")}});
+    box.querySelectorAll(".lineup-save").forEach(b=>{b.onclick=async()=>{
+      const club=(t.clubs||[]).find(x=>String(x.id)===b.dataset.club); if(!club)return;
+      const selected=[...box.querySelectorAll('.lineup-member[data-club="'+CSS.escape(b.dataset.club)+'"]:checked')].map(x=>x.value);
+      if(selected.length!==Number(t.team_size||1)){toast("Select exactly "+Number(t.team_size||1)+" drivers.",true);return}
+      try{const r=await api("/api/tournaments/clubs/lineup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,club_id:club.id,lineup:selected})});toast(r.message||"Lineup saved.");showTournament(t.id)}catch(e){toast(e.message,true)}
+    }});
     box.scrollIntoView({behavior:"smooth",block:"start"});
   }catch(e){toast(e.message,true)}
 }
