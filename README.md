@@ -1,6 +1,6 @@
-# ALU Gauntlet Bot
+# Racing Syndicate League
 
-Production package for the Asphalt Legends Unite Gauntlet League Discord bot.
+Production package for the Racing Syndicate League Discord bot and web control center.
 
 ## Stack
 
