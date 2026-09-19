@@ -75,7 +75,7 @@ def test_dashboard_image_assets_are_served_with_image_mime_types():
 def test_dashboard_uses_browser_safe_raster_artwork():
     source=(STATIC/"app.css").read_text(encoding="utf-8")
     assets=STATIC/"assets"
-    expected={"hero.jpg","welcome-fixed.jpg","gauntlet.jpg","garage.jpg","competition.jpg","profile-settings.jpg","garage-car.jpg","promo-banner.jpg"}
+    expected={"hero.jpg","welcome.jpg","gauntlet.jpg","garage.jpg","competition.jpg","profile-settings.jpg","garage-car.jpg","promo-banner.jpg"}
     assert expected.issubset({p.name for p in assets.iterdir()})
     for name in expected:
         assert f"/assets/{name}" in source
