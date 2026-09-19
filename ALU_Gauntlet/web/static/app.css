@@ -120,7 +120,7 @@ html,body{width:100%;min-width:0}
   z-index:0;
   background:
     linear-gradient(90deg,#020817f2 0%,#06152fba 28%,#06152f25 54%,#06152f08 100%),
-    url('/assets/welcome.jpg') center/cover no-repeat;
+    url('/assets/hero-4k-final.svg') center/cover no-repeat;
   opacity:1;
 }
 .welcome-panel .player-avatar,
@@ -194,7 +194,7 @@ html,body{width:100%;min-width:0}
   overflow:hidden;
   background:
     linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),
-    url('/assets/promo-banner.jpg') center/cover no-repeat;
+    url('/assets/competition-4k-final.svg') center/cover no-repeat;
 }
 .bottom-logo,.bottom-banner>div:nth-child(2),.bottom-banner>a{position:relative;z-index:2}
 
@@ -264,7 +264,7 @@ html,body{width:100%;min-width:0}
   .welcome-panel:after{
     background:
       linear-gradient(90deg,#020817e8 0%,#06152f99 55%,#06152f33 100%),
-      url('/assets/welcome.jpg') center/cover no-repeat;
+      url('/assets/hero-4k-final.svg') center/cover no-repeat;
   }
   .bottom-banner{min-height:110px}
   .defense-actions{grid-template-columns:1fr}
