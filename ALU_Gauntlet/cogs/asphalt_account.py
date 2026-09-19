@@ -12,10 +12,6 @@ log = logging.getLogger(__name__)
 class AsphaltAccountCog(commands.Cog):
     """Discord-side review controls for Asphalt account connections."""
 
-    asphalt = app_commands.Group(name="asphalt", description="Manage Asphalt Legends account connections.")
-
-    @asphalt.command(name="verify", description="Verify a player's Asphalt account link.")
-    @app_commands.describe(player="Discord player to verify", game_id="Exact Asphalt Game ID")
     async def verify(self, interaction: discord.Interaction, player: discord.Member, game_id: str):
         if not interaction.guild_id or not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Staff administrator access is required.", ephemeral=True)
@@ -64,8 +60,6 @@ class AsphaltAccountCog(commands.Cog):
             raise
         await interaction.response.send_message(f"✅ **{player.display_name}** is now linked to Asphalt Game ID **{game_id}**.", ephemeral=True)
 
-    @asphalt.command(name="reject", description="Reject a player's pending Asphalt account link.")
-    @app_commands.describe(player="Discord player to reject")
     async def reject(self, interaction: discord.Interaction, player: discord.Member):
         if not interaction.guild_id or not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Staff administrator access is required.", ephemeral=True)
