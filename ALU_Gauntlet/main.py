@@ -1,5 +1,6 @@
 import os
 import asyncio
+import discord
 from .core.core import bot
 from .core.ui_fixes import install_ui_fixes
 from .web.server import WebControlCenter
@@ -13,6 +14,25 @@ EXTENSIONS = [
     "ALU_Gauntlet.cogs.operations", "ALU_Gauntlet.cogs.dashboard_setup_bridge",
     "ALU_Gauntlet.cogs.tournament", "ALU_Gauntlet.cogs.asphalt_account",
 ]
+
+async def _apply_rsl_identity():
+    """Keep the live Discord bot identity aligned with the Racing Syndicate League brand."""
+    if bot.user:
+        try:
+            if bot.user.name != "Racing Syndicate League":
+                await bot.user.edit(username="Racing Syndicate League")
+        except Exception:
+            # Discord may rate-limit username changes; the bot remains fully operational.
+            pass
+        try:
+            await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Racing Syndicate League"))
+        except Exception:
+            pass
+
+
+@bot.event
+async def on_ready():
+    await _apply_rsl_identity()
 
 async def load_cogs():
     for extension in EXTENSIONS:
