@@ -1629,6 +1629,20 @@ class WebControlCenter:
 
     async def _ensure_integrity_indexes(self) -> None:
         """Create production integrity indexes and fail startup if they cannot be enforced."""
+        # Backfill the normalized club-name field before creating its unique index.
+        # Legacy clubs may predate name_ci; missing data is repaired, but true
+        # duplicate names are intentionally left for the unique index to reject.
+        async for club in self.bot.db.clubs.find({}, {"_id": 1, "name": 1, "name_ci": 1}):
+            name = str(club.get("name") or "").strip()
+            if not name:
+                raise RuntimeError(f"Club {club.get('_id')} has no valid name; database repair is required")
+            normalized = name.casefold()
+            if club.get("name_ci") != normalized:
+                await self.bot.db.clubs.update_one(
+                    {"_id": club["_id"]},
+                    {"$set": {"name_ci": normalized}},
+                )
+
         indexes = (
             (self.bot.db.club_members, [("guild_id", 1), ("user_id", 1)], "uniq_club_member_per_guild", True),
             (self.bot.db.clubs, [("guild_id", 1), ("name_ci", 1)], "uniq_club_name_per_guild", True),
