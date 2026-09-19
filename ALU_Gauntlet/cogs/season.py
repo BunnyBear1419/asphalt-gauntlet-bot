@@ -80,7 +80,23 @@ class SeasonCog(commands.Cog):
             await interaction.followup.send('❌ Set a valid start and end schedule from `/staff` → **Season** → **Season Schedule** before explicitly starting this season.', ephemeral=True)
             return
         now = time.time()
-        await bot.db.season_state.update_one({'_id': f'guild_{gid}', 'season_number': int(state.get('season_number', 1))}, {'$set': {'season_active': True, 'awaiting_staff_start': False, 'started_at': now}, '$unset': {'rollover_phase': '', 'rollover_season': ''}})
+        transition = await bot.db.season_state.update_one(
+            {
+                '_id': f'guild_{gid}',
+                'season_number': int(state.get('season_number', 1)),
+                'season_active': {'$ne': True},
+                'awaiting_staff_start': True,
+                'starts_at': start_at,
+                'ends_at': end_at,
+            },
+            {
+                '$set': {'season_active': True, 'awaiting_staff_start': False, 'started_at': now},
+                '$unset': {'rollover_phase': '', 'rollover_season': ''},
+            },
+        )
+        if not transition.modified_count:
+            await interaction.followup.send('ℹ️ This season was already started by another staff action.', ephemeral=True)
+            return
         season_number = int(state.get('season_number', 1))
         await announce_season_start(gid, season_number, reason='early')
         await interaction.followup.send(f'✅ **Season {season_number} started early.** The "scheduled end time remains unchanged", so the season will still automatically end at the scheduled end time.', ephemeral=True)
