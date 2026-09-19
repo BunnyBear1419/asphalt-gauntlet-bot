@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ALU Gauntlet • Race Control</title>
-<link rel="stylesheet" href="/static/app.css?v=20260919-11">
+<link rel="stylesheet" href="/static/app.css?v=20260919-12">
 <link rel="stylesheet" href="/static/dashboard-cards.css?v=20260919-4">
 </head>
 <body class="alu-dashboard">
@@ -60,9 +60,11 @@
         <div class="panel-heading"><h2>Recent Matches</h2><a href="/player#gauntlet">View history →</a></div>
         <div class="match-table" id="recent-matches"><div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class="empty-state">Sign in to load your recent matches.</p></div>
       </article>
-      <article class="glass-panel panel-block" id="leaderboard">
-        <div class="panel-heading"><h2>Gauntlet Leaderboard <small>• Top 5</small></h2><a href="#leaderboard">Live standings</a></div>
-        <div class="leaderboard-list" id="leaderboard-list"><p class="empty-state">Loading live drivers…</p></div>
+      <article class="glass-panel panel-block competition-center" id="leaderboard">
+        <div class="panel-heading"><div><span class="eyebrow">COMPETITION CENTER</span><h2>Gauntlet Standings <small>• Live</small></h2></div><a href="/players">Driver directory →</a></div>
+        <div class="competition-toolbar"><div class="competition-season"><span>ACTIVE SEASON</span><strong id="competition-season-label">Loading…</strong></div><label class="competition-search"><span>⌕</span><input id="competition-search" type="search" placeholder="Search drivers…" aria-label="Search drivers"></label></div>
+        <div class="competition-table-head"><span>RANK</span><span>DRIVER</span><span>ELO</span><span>PI</span><span>RECORD</span><span>STREAK</span><span>DEFENSE</span></div>
+        <div class="leaderboard-list competition-list" id="leaderboard-list"><p class="empty-state">Loading live drivers…</p></div>
       </article>
     </div>
     <aside class="dashboard-side">
@@ -85,6 +87,6 @@
   </section>
 </section>
 </main></div></div>
-<script src="/static/app.js?v=20260919-9"></script>
+<script src="/static/app.js?v=20260919-10"></script>
 </body>
 </html>
