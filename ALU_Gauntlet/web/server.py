@@ -376,7 +376,7 @@ class WebControlCenter:
         team = {"tournament_id": tid, "guild_id": str(t["guild_id"]), "name": name, "name_ci": name.casefold(), "captain_id": str(user.user_id), "created_at": datetime.now(timezone.utc).isoformat()}
         result = await self.bot.db.tournament_teams.insert_one(team)
         await self.bot.db.tournament_team_members.insert_one({"tournament_id": tid, "team_id": str(result.inserted_id), "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "captain", "joined_at": datetime.now(timezone.utc).isoformat()})
-        return web.json_response({"ok": True, "team_id": str(result.inserted_id), "message": "Team created. Invite members to join."})
+        return web.json_response({"ok": True, "team_id": str(result.inserted_id), "message": "Club created. Invite members to join."})
 
     async def join_tournament_team(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
@@ -394,13 +394,13 @@ class WebControlCenter:
         if t.get("status") not in {"registration_open", "open"}:
             raise web.HTTPConflict(text="Team joining is closed.")
         count = await self.bot.db.tournament_team_members.count_documents({"team_id": str(team_oid)})
-        if count >= int(t.get("team_size", 1)):
-            raise web.HTTPConflict(text="That team is full.")
+        if count >= 20:
+            raise web.HTTPConflict(text="That club is full. Clubs can have up to 20 members.")
         existing = await self.bot.db.tournament_team_members.find_one({"tournament_id": tid, "user_id": str(user.user_id)})
         if existing:
             raise web.HTTPConflict(text="You are already on a team for this tournament.")
         await self.bot.db.tournament_team_members.insert_one({"tournament_id": tid, "team_id": str(team_oid), "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": datetime.now(timezone.utc).isoformat()})
-        return web.json_response({"ok": True, "message": "You joined the team."})
+        return web.json_response({"ok": True, "message": "You joined the club."})
 
     async def tournament_match_result(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
