@@ -60,16 +60,24 @@ async function submitResult(t,match){
   try{
     const data=await resultDialog(t,match); if(!data)return;
     const r=await api("/api/tournaments/result",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,match_id:match.id,...data})});
-    toast(r.message||"Result submitted."); showTournament(t.id);
+    toast(r.message||"Result submitted."); await showTournament(t.id);
   }catch(e){toast(e.message,true)}
 }
-async function verifyResult(t,match,action){
+async function verifyResult(t,match,action,button){
+  if(button?.disabled)return;
+  const original=button?.textContent;
+  if(button){button.disabled=true;button.textContent=action==="approve"?"Approving…":"Rejecting…"}
   try{
     const r=await api("/api/tournaments/result/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,match_id:match.id,action})});
-    toast(r.message||"Result updated."); showTournament(t.id);
-  }catch(e){toast(e.message,true)}
+    toast(r.message||"Result updated."); await showTournament(t.id);
+  }catch(e){toast(e.message,true)}finally{if(button){button.disabled=false;button.textContent=original}}
 }
-async function checkin(id){try{const r=await api("/api/tournaments/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:id})});toast(r.message||"Checked in.");showTournament(id)}catch(e){toast(e.message,true)}}
+async function checkin(id,button){
+  if(button?.disabled)return;
+  const original=button?.textContent;
+  if(button){button.disabled=true;button.textContent="Checking In…"}
+  try{const r=await api("/api/tournaments/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:id})});toast(r.message||"Checked in.");await showTournament(id)}catch(e){toast(e.message,true)}finally{if(button){button.disabled=false;button.textContent=original}}
+}
 async function showTournament(id){
   try{
     const t=await api("/api/tournaments/"+encodeURIComponent(id)); const box=$("#tournament-detail"); box.hidden=false;
@@ -86,13 +94,13 @@ async function showTournament(id){
     box.querySelectorAll(".tournament-champion-link").forEach(b=>{b.onclick=()=>{const type=b.dataset.identityType,id=b.dataset.identityId;if(type==="player")openPlayerProfile(id);else if(type==="club"){openTournamentClubProfile(id)}}});
     const matches=allMatches(t.bracket);
     box.querySelectorAll(".match-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)submitResult(t,m)}});
-    box.querySelectorAll(".verify-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"approve")}});
-    box.querySelectorAll(".reject-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"reject")}});
-    box.querySelectorAll(".lineup-save").forEach(b=>{b.onclick=async()=>{
+    box.querySelectorAll(".verify-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"approve",b)}});
+    box.querySelectorAll(".reject-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"reject",b)}});
+    box.querySelectorAll(".lineup-save").forEach(b=>{b.onclick=async()=>{if(b.disabled)return;const original=b.textContent;b.disabled=true;b.textContent="Saving…";
       const club=(t.clubs||[]).find(x=>String(x.id)===b.dataset.club); if(!club)return;
       const selected=[...box.querySelectorAll('.lineup-member[data-club="'+CSS.escape(b.dataset.club)+'"]:checked')].map(x=>x.value);
       if(selected.length!==Number(t.team_size||1)){toast("Select exactly "+Number(t.team_size||1)+" drivers.",true);return}
-      try{const r=await api("/api/tournaments/clubs/lineup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,club_id:club.id,lineup:selected})});toast(r.message||"Lineup saved.");showTournament(t.id)}catch(e){toast(e.message,true)}
+      try{const r=await api("/api/tournaments/clubs/lineup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,club_id:club.id,lineup:selected})});toast(r.message||"Lineup saved.");await showTournament(t.id)}catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent=original}
     }});
     box.scrollIntoView({behavior:"smooth",block:"start"});
   }catch(e){toast(e.message,true)}
