@@ -70,3 +70,12 @@ def test_dashboard_image_assets_are_served_with_image_mime_types():
     assets=WEB/"static"/"assets"
     expected={"hero-4k-final.svg","gauntlet-4k-final.svg","garage-4k-final.svg","competition-4k-final.svg","profile-settings-4k-final.svg","home-reference.svg"}
     assert expected.issubset({p.name for p in assets.iterdir()})
+
+
+def test_dashboard_uses_browser_safe_raster_artwork():
+    source=(STATIC/"app.css").read_text(encoding="utf-8")
+    assets=STATIC/"assets"
+    expected={"hero.jpg","welcome.jpg","gauntlet.jpg","garage.jpg","competition.jpg","profile-settings.jpg","garage-car.jpg","promo-banner.jpg"}
+    assert expected.issubset({p.name for p in assets.iterdir()})
+    for name in expected:
+        assert f"/assets/{name}" in source

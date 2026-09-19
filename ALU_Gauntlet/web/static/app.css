@@ -397,3 +397,14 @@ html,body{width:100%;min-width:0}
     url('/assets/home-reference.svg') center/158.025% 1150.562% no-repeat!important;
   background-position:37.41% 97.22%!important;
 }
+
+
+/* Production raster-art fallback: use standalone JPG assets instead of embedded SVG/WebP compositions. */
+.hero-banner{background-image:url('/assets/hero.jpg')!important;background-size:cover!important;background-position:center!important}
+.welcome-panel:after{background:linear-gradient(90deg,#020817e8 0%,#06152fba 30%,#06152f25 58%,#06152f12 100%),url('/assets/welcome.jpg') center/cover no-repeat!important}
+.fp-one{background-image:url('/assets/gauntlet.jpg')!important;background-size:cover!important;background-position:center!important}
+.fp-two{background-image:url('/assets/garage.jpg')!important;background-size:cover!important;background-position:center!important}
+.fp-three{background-image:url('/assets/competition.jpg')!important;background-size:cover!important;background-position:center!important}
+.fp-four{background-image:url('/assets/profile-settings.jpg')!important;background-size:cover!important;background-position:center!important}
+.car-showcase{background:linear-gradient(180deg,#03081700,#03081766),url('/assets/garage-car.jpg') center/cover no-repeat!important}
+.bottom-banner{background:linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),url('/assets/promo-banner.jpg') center/cover no-repeat!important}
