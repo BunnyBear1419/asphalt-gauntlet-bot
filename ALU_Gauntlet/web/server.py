@@ -142,6 +142,26 @@ class WebControlCenter:
         self.app.router.add_get("/assets/{filename}", self.asset)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
+    async def start(self) -> None:
+        """Start the aiohttp web server on the configured Discloud host/port."""
+        if self.runner is not None:
+            return
+        self.runner = web.AppRunner(self.app)
+        await self.runner.setup()
+        self.site = web.TCPSite(self.runner, self.host, self.port)
+        await self.site.start()
+        log.info("Web control center listening on %s:%s", self.host, self.port)
+
+    async def stop(self) -> None:
+        """Stop the aiohttp web server and release its listening socket."""
+        if self.runner is None:
+            return
+        try:
+            await self.runner.cleanup()
+        finally:
+            self.site = None
+            self.runner = None
+
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("clubs.html")
