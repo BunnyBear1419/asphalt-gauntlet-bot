@@ -715,14 +715,20 @@ class WebControlCenter:
             raise web.HTTPConflict(text="Check-in is closed.")
         tid = str(oid)
         if int(t.get("team_size", 1)) > 1:
-            requested_club_id = str((await request.json()).get("club_id", "")).strip()
-            if not requested_club_id:
-                raise web.HTTPBadRequest(text="club_id is required for team tournament check-in.")
-            if not ObjectId.is_valid(requested_club_id):
-                raise web.HTTPBadRequest(text="Invalid club ID.")
-            reg = await self.bot.db.tournament_club_registrations.find_one(
-                {"tournament_id": tid, "club_id": requested_club_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
-            )
+            checkin_payload = await request.json()
+            requested_club_id = str(checkin_payload.get("club_id", "")).strip()
+            reg_query = {"tournament_id": tid, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            if requested_club_id:
+                if not ObjectId.is_valid(requested_club_id):
+                    raise web.HTTPBadRequest(text="Invalid club ID.")
+                reg_query["club_id"] = requested_club_id
+            else:
+                # The frontend can omit club_id; resolve the caller's own club safely.
+                owned_clubs = [str(x["_id"]) async for x in self.bot.db.clubs.find({"guild_id": str(t["guild_id"]), "leader_id": str(user.user_id)}, {"_id": 1})]
+                if not owned_clubs:
+                    raise web.HTTPForbidden(text="Only a club leader can check in a team.")
+                reg_query["club_id"] = {"$in": owned_clubs}
+            reg = await self.bot.db.tournament_club_registrations.find_one(reg_query)
             if not reg:
                 raise web.HTTPConflict(text="Your club must be registered before checking in.")
             club = await self.bot.db.clubs.find_one({"_id": ObjectId(reg["club_id"])}) if ObjectId.is_valid(str(reg["club_id"])) else None
