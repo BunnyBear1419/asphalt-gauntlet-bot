@@ -15,7 +15,7 @@ import discord
 
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
-from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application
+from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application, get_current_season_number
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -230,7 +230,23 @@ class WebControlCenter:
         if await self.bot.db.club_members.find_one({"guild_id": guild_id, "user_id": str(user.user_id)}):
             raise web.HTTPConflict(text="You are already in a club in this server.")
         now = datetime.now(timezone.utc).isoformat()
-        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": str(payload.get("discord", "")).strip()[:300], "links": [str(x).strip()[:300] for x in (payload.get("links", []) if isinstance(payload.get("links", []), list) else [])[:5] if str(x).strip()], "image": "", "leader_id": str(user.user_id), "created_at": now, "updated_at": now}
+        discord_link = str(payload.get("discord", "")).strip()
+        if discord_link and not discord_link.lower().startswith(("http://", "https://")):
+            raise web.HTTPBadRequest(text="Discord link must begin with http:// or https://.")
+        raw_links = payload.get("links", [])
+        if not isinstance(raw_links, list):
+            raise web.HTTPBadRequest(text="Club links must be a list.")
+        clean_links = []
+        for link in raw_links[:5]:
+            value = str(link or "").strip()
+            if not value:
+                continue
+            if not value.lower().startswith(("http://", "https://")):
+                raise web.HTTPBadRequest(text="Club links must begin with http:// or https://.")
+            if len(value) > 300:
+                raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
+            clean_links.append(value)
+        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": discord_link[:300], "links": clean_links, "image": "", "leader_id": str(user.user_id), "created_at": now, "updated_at": now}
         result = await self.bot.db.clubs.insert_one(doc)
         await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
         return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
@@ -526,8 +542,9 @@ class WebControlCenter:
             raise web.HTTPConflict(text="This tournament is full.")
         if tournament.get("gauntlet_only"):
             profile = await self.bot.db.drivers.find_one({"_id": f'{tournament["guild_id"]}_{user.user_id}'})
-            if not profile:
-                raise web.HTTPForbidden(text="This tournament is limited to Gauntlet-registered drivers.")
+            current_season = await get_current_season_number(str(tournament["guild_id"]))
+            if not profile or not profile.get("season_registered") or int(profile.get("season_number", 0) or 0) != int(current_season):
+                raise web.HTTPForbidden(text="This tournament is limited to drivers registered for the current Gauntlet season.")
         existing = await self.bot.db.tournament_registrations.find_one(
             {"tournament_id": tournament_id, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}}
         )
@@ -604,7 +621,7 @@ class WebControlCenter:
         participant_ok = False
         if team_size > 1:
             reg = await self.bot.db.tournament_club_registrations.find_one(
-                {"tournament_id": str(oid), "club_id": {"$in": slots}, "lineup": str(user.user_id)}
+                {"tournament_id": str(oid), "club_id": {"$in": slots}, "lineup": str(user.user_id), "status": {"$in": ["accepted", "checked_in"]}}
             )
             participant_ok = bool(reg)
         else:
@@ -698,8 +715,13 @@ class WebControlCenter:
             raise web.HTTPConflict(text="Check-in is closed.")
         tid = str(oid)
         if int(t.get("team_size", 1)) > 1:
+            requested_club_id = str((await request.json()).get("club_id", "")).strip()
+            if not requested_club_id:
+                raise web.HTTPBadRequest(text="club_id is required for team tournament check-in.")
+            if not ObjectId.is_valid(requested_club_id):
+                raise web.HTTPBadRequest(text="Invalid club ID.")
             reg = await self.bot.db.tournament_club_registrations.find_one(
-                {"tournament_id": tid, "status": {"$in": ["pending", "accepted", "checked_in"]}, "club_id": {"$exists": True}}
+                {"tournament_id": tid, "club_id": requested_club_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
             )
             if not reg:
                 raise web.HTTPConflict(text="Your club must be registered before checking in.")
