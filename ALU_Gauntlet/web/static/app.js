@@ -44,7 +44,7 @@ async function loadDashboard(){
   const snapshot=await api("/api/competition/snapshot?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
   if(snapshot&&snapshot.registered){
    const setSnapshot=(s,v)=>{const x=$(s);if(x)x.textContent=v};
-   setSnapshot("#snapshot-rank","#"+Number(snapshot.rank||0).toLocaleString());
+   setSnapshot("#snapshot-rank",snapshot.rank!=null?"#"+Number(snapshot.rank).toLocaleString():"—");
    setSnapshot("#snapshot-elo",Number(snapshot.elo||0).toLocaleString());
    setSnapshot("#snapshot-pi",Number(snapshot.garage_pi||0).toLocaleString());
    setSnapshot("#snapshot-record",(snapshot.career_wins??0)+"-"+(snapshot.career_losses??0));
