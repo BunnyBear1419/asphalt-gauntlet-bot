@@ -65,7 +65,7 @@ async function loadRecentMatches(guildId){
   }catch(e){box.innerHTML="<div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class='empty-state'>Match history unavailable.</p>"}
 }
 
-const guild=$("#guild"); if(guild)guild.addEventListener("change",profile);
+const guild=$("#guild"); if(guild)guild.addEventListener("change",profile);\nif(guild)guild.addEventListener("change",()=>loadRecentMatches(guild.value));
 const save=$("#save");
 if(save)save.addEventListener("click",async()=>{
   try{
@@ -187,7 +187,7 @@ const originalLoad=load;
 load=async()=>{await originalLoad();await loadDefense()};
 if(guild)guild.addEventListener("change",loadDefense);
 
-load().catch(e=>{const profile=$("#profile");if(profile)profile.textContent=e.message});
+load().then(()=>loadRecentMatches(guild?.value)).catch(e=>{const profile=$("#profile");if(profile)profile.textContent=e.message});
 
 
 // Keep the shared top navigation state correct on every player page.
