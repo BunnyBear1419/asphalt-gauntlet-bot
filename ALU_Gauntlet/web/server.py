@@ -1,4 +1,4 @@
-"""A secure, guild-aware web control center shared with the Discord bot."""
+        for rank, player in enumerate(rows, 1):\n            player["competition_rank"] = rank\n"""A secure, guild-aware web control center shared with the Discord bot."""
 from __future__ import annotations
 
 import hashlib
