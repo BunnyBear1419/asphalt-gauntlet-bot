@@ -67,16 +67,19 @@ class WebControlCenter:
             # response that identifies the failing route.
             log.exception("Unhandled web exception on %s %s", request.method, request.path_qs)
             if request.path.startswith("/api/"):
-                return web.json_response(\n                    {"ok": False, "error": "The Racing Syndicate League web service hit an unexpected error.", "path": request.path},
+                return web.json_response(
+                    {"ok": False, "error": "The Racing Syndicate League web service hit an unexpected error.", "path": request.path},
                     status=503,
                 )
             return web.Response(
-                text=(\n                    "Racing Syndicate League web service temporarily unavailable. "
+                text=(
+                    "Racing Syndicate League web service temporarily unavailable. "
                     f"Route: {request.path}"
                 ),
                 status=503,
                 content_type="text/plain",
-            )\n
+            )
+
     async def _page_response(self, filename: str) -> web.Response:
         path = WEB_DIR / filename
         try:
@@ -86,7 +89,8 @@ class WebControlCenter:
             raise web.HTTPServiceUnavailable(
                 text=f"Web page '{filename}' is temporarily unavailable."
             ) from exc
-        return web.Response(text=body, content_type="text/html")\n
+        return web.Response(text=body, content_type="text/html")
+
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/players", self.players_page)
@@ -136,10 +140,12 @@ class WebControlCenter:
         # The previous allow-list only covered the newer SVGs, so older JPG/WEBP
         # artwork could exist in the repository but still return a 404 in production.
         self.app.router.add_get("/assets/{filename}", self.asset)
-        self.app.router.add_static("/static/", WEB_DIR, show_index=False)\n
+        self.app.router.add_static("/static/", WEB_DIR, show_index=False)
+
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("clubs.html")\n
+        return await self._page_response("clubs.html")
+
     async def clubs(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         guild_ids = {str(x) for x in user.guild_ids}
@@ -161,7 +167,8 @@ class WebControlCenter:
             club["leader"] = str(club.get("leader_id")) == str(user.user_id)
             club["tournament_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"]})
             club["tournament_pending_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": "pending"})
-            club["tournament_accepted_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": {"$in": ["accepted", "checked_in"]}})\n
+            club["tournament_accepted_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": {"$in": ["accepted", "checked_in"]}})
+
             # Build the club's tournament W/L from verified, completed team matches.
             # Byes are intentionally excluded so they do not inflate a club's record.
             wins = 0
@@ -170,7 +177,9 @@ class WebControlCenter:
             club_names = {}
             async for other_club in self.bot.db.clubs.find({"guild_id": club["guild_id"]}, {"name": 1}):
                 club_names[str(other_club.get("_id"))] = str(other_club.get("name") or other_club.get("_id"))
-            async for tournament in self.bot.db.tournaments.find({\n                "guild_id": club["guild_id"],\n                "team_size": {"$gt": 1},
+            async for tournament in self.bot.db.tournaments.find({
+                "guild_id": club["guild_id"],
+                "team_size": {"$gt": 1},
             }, {"bracket": 1}):
                 bracket = tournament.get("bracket") or {}
                 groups = bracket.get("rounds") or bracket.get("winners") or []
@@ -193,7 +202,11 @@ class WebControlCenter:
                         opponent_id = next((slot for slot in slots if slot != club["id"]), "")
                         opponent_name = opponent_id
                         opponent_name = club_names.get(opponent_id, opponent_id)
-                        recent_results.append({\n                            "result": result,\n                            "opponent": opponent_name,\n                            "tournament_name": str(tournament.get("name") or "Team Tournament"),\n                            "date_label": str(match.get("completed_at") or match.get("updated_at") or tournament.get("updated_at") or "")[:10],
+                        recent_results.append({
+                            "result": result,
+                            "opponent": opponent_name,
+                            "tournament_name": str(tournament.get("name") or "Team Tournament"),
+                            "date_label": str(match.get("completed_at") or match.get("updated_at") or tournament.get("updated_at") or "")[:10],
                         })
             recent_results.sort(key=lambda x: x.get("date_label", ""), reverse=True)
             club["recent_tournament_results"] = recent_results[:5]
@@ -201,7 +214,8 @@ class WebControlCenter:
             club["tournament_losses"] = losses
             club["tournament_record"] = f"{wins}-{losses}"
             rows.append(club)
-        return web.json_response({"clubs": rows})\n
+        return web.json_response({"clubs": rows})
+
     async def create_club(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         payload = await request.json()
@@ -245,7 +259,8 @@ class WebControlCenter:
             # Compensate if the membership write fails so a club can never be left orphaned.
             await self.bot.db.clubs.delete_one({"_id": result.inserted_id})
             raise
-        return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})\n
+        return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
+
     async def update_club(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         payload = await request.json()
@@ -300,7 +315,8 @@ class WebControlCenter:
         if updates:
             updates["updated_at"] = datetime.now(timezone.utc).isoformat()
             await self.bot.db.clubs.update_one({"_id": oid}, {"$set": updates})
-        return web.json_response({"ok": True, "message": "Club profile updated."})\n
+        return web.json_response({"ok": True, "message": "Club profile updated."})
+
     async def join_club(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         payload = await request.json()
@@ -317,7 +333,9 @@ class WebControlCenter:
             raise web.HTTPConflict(text="You are already in a club in this server.")
         # Reserve a membership slot atomically. The unique membership index then
         # protects the user-level race, while member_count protects the 20-member cap.
-        reservation = await self.bot.db.clubs.update_one(\n            {"_id": oid, "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},\n            {"$inc": {"member_count": 1}},
+        reservation = await self.bot.db.clubs.update_one(
+            {"_id": oid, "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
+            {"$inc": {"member_count": 1}},
         )
         if not reservation.modified_count:
             raise web.HTTPConflict(text="That club is full.")
@@ -329,7 +347,8 @@ class WebControlCenter:
             if exc.__class__.__name__ == "DuplicateKeyError":
                 raise web.HTTPConflict(text="You are already in a club in this server.")
             raise
-        return web.json_response({"ok": True, "message": "You joined the club."})\n
+        return web.json_response({"ok": True, "message": "You joined the club."})
+
     async def manage_club_member(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         payload = await request.json()
@@ -360,10 +379,12 @@ class WebControlCenter:
         else:
             raise web.HTTPBadRequest(text="Unsupported member action.")
         await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
-        return web.json_response({"ok": True, "message": "Member role updated."})\n
+        return web.json_response({"ok": True, "message": "Member role updated."})
+
     async def tournaments_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("tournaments.html")\n
+        return await self._page_response("tournaments.html")
+
     async def tournaments(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         guild_ids = set(str(x) for x in user.guild_ids)
@@ -372,10 +393,12 @@ class WebControlCenter:
             item["id"] = str(item.get("_id"))
             item.pop("_id", None)
             if int(item.get("team_size", 1)) > 1:
-                count = await self.bot.db.tournament_club_registrations.count_documents(\n                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                count = await self.bot.db.tournament_club_registrations.count_documents(
+                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
                 )
             else:
-                count = await self.bot.db.tournament_registrations.count_documents(\n                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                count = await self.bot.db.tournament_registrations.count_documents(
+                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
                 )
             item["registration_count"] = count
             item["format_label"] = {"single_elimination": "Single Elimination", "round_robin": "Round Robin"}.get(
@@ -390,7 +413,8 @@ class WebControlCenter:
             else:
                 item["start_time_label"] = "TBD"
             rows.append(item)
-        return web.json_response({"tournaments": rows})\n
+        return web.json_response({"tournaments": rows})
+
     async def tournament_detail(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         from bson import ObjectId
@@ -405,7 +429,8 @@ class WebControlCenter:
         item["id"] = tournament_id
         item.pop("_id", None)
         registrations = []
-        async for row in self.bot.db.tournament_registrations.find(\n            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+        async for row in self.bot.db.tournament_registrations.find(
+            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
         ).sort("registered_at", 1):
             row.pop("_id", None)
             registrations.append(row)
@@ -437,7 +462,8 @@ class WebControlCenter:
         else:
             item["clubs"] = []
             item["teams"] = []
-        return web.json_response(item)\n
+        return web.json_response(item)
+
     async def create_tournament(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
         try:
@@ -461,10 +487,26 @@ class WebControlCenter:
         now = datetime.now(timezone.utc).isoformat()
         registration_deadline = str(payload.get("registration_deadline", "")).strip() or None
         start_time = str(payload.get("start_time", "")).strip() or None
-        tournament = {\n            "guild_id": guild_id,\n            "name": name,\n            "description": str(payload.get("description", "")).strip()[:500],\n            "format": fmt,\n            "max_players": max_players,\n            "team_size": team_size,\n            "bracket": bracket,\n            "bracket_version": 1,\n            "gauntlet_only": bool(payload.get("gauntlet_only", False)),\n            "registration_deadline": registration_deadline,\n            "start_time": start_time,\n            "status": "registration_open",\n            "created_by": str(user.user_id),\n            "created_at": now,\n            "updated_at": now,
+        tournament = {
+            "guild_id": guild_id,
+            "name": name,
+            "description": str(payload.get("description", "")).strip()[:500],
+            "format": fmt,
+            "max_players": max_players,
+            "team_size": team_size,
+            "bracket": bracket,
+            "bracket_version": 1,
+            "gauntlet_only": bool(payload.get("gauntlet_only", False)),
+            "registration_deadline": registration_deadline,
+            "start_time": start_time,
+            "status": "registration_open",
+            "created_by": str(user.user_id),
+            "created_at": now,
+            "updated_at": now,
         }
         result = await self.bot.db.tournaments.insert_one(tournament)
-        return web.json_response({"ok": True, "tournament_id": str(result.inserted_id)})\n
+        return web.json_response({"ok": True, "tournament_id": str(result.inserted_id)})
+
     async def register_tournament(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         try:
@@ -500,23 +542,31 @@ class WebControlCenter:
                 raise web.HTTPForbidden(text="You must be a member of the club to register it.")
             if str(club.get("leader_id")) != str(user.user_id):
                 raise web.HTTPForbidden(text="Only the club leader can enter a club in a tournament.")
-            count = await self.bot.db.tournament_club_registrations.count_documents(\n                {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            count = await self.bot.db.tournament_club_registrations.count_documents(
+                {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
             )
             if count >= int(tournament.get("max_players", 32)):
                 raise web.HTTPConflict(text="This tournament is full.")
-            existing = await self.bot.db.tournament_club_registrations.find_one(\n                {"tournament_id": tournament_id, "club_id": club_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            existing = await self.bot.db.tournament_club_registrations.find_one(
+                {"tournament_id": tournament_id, "club_id": club_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
             )
             if existing:
                 raise web.HTTPConflict(text="This club is already registered for the tournament.")
             try:
-                await self.bot.db.tournament_club_registrations.insert_one({\n                    "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),\n                    "club_id": club_id, "club_name": club.get("name", "Club"),\n                    "team_size": team_size, "status": "pending",\n                    "registered_by": str(user.user_id),\n                    "registered_at": datetime.now(timezone.utc).isoformat(),
+                await self.bot.db.tournament_club_registrations.insert_one({
+                    "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),
+                    "club_id": club_id, "club_name": club.get("name", "Club"),
+                    "team_size": team_size, "status": "pending",
+                    "registered_by": str(user.user_id),
+                    "registered_at": datetime.now(timezone.utc).isoformat(),
                 })
             except Exception as exc:
                 if exc.__class__.__name__ == "DuplicateKeyError":
                     raise web.HTTPConflict(text="This club is already registered for the tournament.")
                 raise
             return web.json_response({"ok": True, "message": "Club registration submitted for staff review."})
-        count = await self.bot.db.tournament_registrations.count_documents(\n            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
+        count = await self.bot.db.tournament_registrations.count_documents(
+            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
         )
         if count >= int(tournament.get("max_players", 32)):
             raise web.HTTPConflict(text="This tournament is full.")
@@ -525,18 +575,26 @@ class WebControlCenter:
             current_season = await get_current_season_number(str(tournament["guild_id"]))
             if not profile or not profile.get("season_registered") or int(profile.get("season_number", 0) or 0) != int(current_season):
                 raise web.HTTPForbidden(text="This tournament is limited to drivers registered for the current Gauntlet season.")
-        existing = await self.bot.db.tournament_registrations.find_one(\n            {"tournament_id": tournament_id, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}}
+        existing = await self.bot.db.tournament_registrations.find_one(
+            {"tournament_id": tournament_id, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}}
         )
         if existing:
             raise web.HTTPConflict(text="You are already registered for this tournament.")
         try:
-            await self.bot.db.tournament_registrations.insert_one({\n                "tournament_id": tournament_id,\n            "guild_id": str(tournament["guild_id"]),\n            "user_id": str(user.user_id),\n            "username": str(user.global_name or user.username or user.user_id),\n            "status": "pending",\n            "registered_at": datetime.now(timezone.utc).isoformat(),
+            await self.bot.db.tournament_registrations.insert_one({
+                "tournament_id": tournament_id,
+            "guild_id": str(tournament["guild_id"]),
+            "user_id": str(user.user_id),
+            "username": str(user.global_name or user.username or user.user_id),
+            "status": "pending",
+            "registered_at": datetime.now(timezone.utc).isoformat(),
         })
         except Exception as exc:
             if exc.__class__.__name__ == "DuplicateKeyError":
                 raise web.HTTPConflict(text="You are already registered for this tournament.")
             raise
-        return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})\n
+        return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
+
     async def tournament_club_lineup(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         from bson import ObjectId
@@ -566,8 +624,10 @@ class WebControlCenter:
         if not set(lineup).issubset(members):
             raise web.HTTPBadRequest(text="Every lineup driver must be a current club member.")
         await self.bot.db.tournament_club_registrations.update_one({"_id": reg["_id"]}, {"$set": {"lineup": lineup, "updated_at": datetime.now(timezone.utc).isoformat()}})
-        return web.json_response({"ok": True, "message": str(size) + "v" + str(size) + " tournament lineup saved.", "lineup": lineup})\n
-    async def tournament_match_result(self, request: web.Request) -> web.Response:\n        """Submit a participant result for staff verification."""
+        return web.json_response({"ok": True, "message": str(size) + "v" + str(size) + " tournament lineup saved.", "lineup": lineup})
+
+    async def tournament_match_result(self, request: web.Request) -> web.Response:
+        """Submit a participant result for staff verification."""
         user = await self.require_user(request)
         from bson import ObjectId
         payload = await request.json()
@@ -595,7 +655,8 @@ class WebControlCenter:
         team_size = int(t.get("team_size", 1))
         participant_ok = False
         if team_size > 1:
-            reg = await self.bot.db.tournament_club_registrations.find_one(\n                {"tournament_id": str(oid), "club_id": {"$in": slots}, "lineup": str(user.user_id), "status": {"$in": ["accepted", "checked_in"]}}
+            reg = await self.bot.db.tournament_club_registrations.find_one(
+                {"tournament_id": str(oid), "club_id": {"$in": slots}, "lineup": str(user.user_id), "status": {"$in": ["accepted", "checked_in"]}}
             )
             participant_ok = bool(reg)
         else:
@@ -623,8 +684,10 @@ class WebControlCenter:
                 await channel.send("🏁 **Tournament Result Pending Verification**\n**"+str(t.get("name","Tournament"))+"** • "+match_id+"\nWinner: <@"+winner_id+">\nSubmitted by: <@"+str(user.user_id)+">"+(("\nProof: "+proof_url) if proof_url else "")+"\nStaff: use the Tournament Center to verify this result.")
             except Exception:
                 log.exception("Unable to post tournament result notice")
-        return web.json_response({"ok": True, "message": "Result submitted for staff verification."})\n
-    async def tournament_verify_result(self, request: web.Request) -> web.Response:\n        """Staff verification endpoint that advances a single-elimination bracket atomically."""
+        return web.json_response({"ok": True, "message": "Result submitted for staff verification."})
+
+    async def tournament_verify_result(self, request: web.Request) -> web.Response:
+        """Staff verification endpoint that advances a single-elimination bracket atomically."""
         user, guild_id, _ = await self.require_admin(request)
         from bson import ObjectId
         payload = await request.json()
@@ -677,22 +740,36 @@ class WebControlCenter:
                     t["champion_id"] = winner_id
                     t["completed_at"] = datetime.now(timezone.utc).isoformat()
                 message = "Result verified and winner advanced."
-            await self.bot.db.tournaments.update_one(\n                {"_id": oid},\n                {"$set": {\n                    "bracket": bracket,\n                    "status": t.get("status", "live"),\n                    "champion_id": t.get("champion_id"),\n                    "updated_at": datetime.now(timezone.utc).isoformat(),
+            await self.bot.db.tournaments.update_one(
+                {"_id": oid},
+                {"$set": {
+                    "bracket": bracket,
+                    "status": t.get("status", "live"),
+                    "champion_id": t.get("champion_id"),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
                 }},
             )
         finally:
-            await self._release_tournament_action(str(oid), "__bracket__")\n
+            await self._release_tournament_action(str(oid), "__bracket__")
+
         cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
         channel_id = cfg.get("match_results_channel_id")
         channel = self.bot.get_channel(int(channel_id)) if channel_id else None
         if channel is not None:
             try:
-                await channel.send(\n                    "🏆 **Tournament Result " + ("Approved" if action != "reject" else "Rejected") +\n                    "** • " + str(t.get("name", "Tournament")) + " • " + match_id
+                await channel.send(
+                    "🏆 **Tournament Result " + ("Approved" if action != "reject" else "Rejected") +
+                    "** • " + str(t.get("name", "Tournament")) + " • " + match_id
                 )
             except Exception:
                 log.exception("Unable to post tournament verification notice")
-        return web.json_response({\n            "ok": True,\n            "message": message,\n            "bracket": bracket,\n            "champion_id": t.get("champion_id"),
-        })\n
+        return web.json_response({
+            "ok": True,
+            "message": message,
+            "bracket": bracket,
+            "champion_id": t.get("champion_id"),
+        })
+
     async def tournament_checkin(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         from bson import ObjectId
@@ -916,16 +993,20 @@ class WebControlCenter:
             return await self._page_response("index.html")
         except Exception:
             log.exception("Unable to serve the web dashboard")
-            raise web.HTTPServiceUnavailable(text="The Racing Syndicate League web dashboard is temporarily unavailable.")\n
+            raise web.HTTPServiceUnavailable(text="The Racing Syndicate League web dashboard is temporarily unavailable.")
+
     async def players_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
-        return await self._page_response("players.html")\n
+        return await self._page_response("players.html")
+
     async def setup_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
-        return await self._page_response("setup.html")\n
+        return await self._page_response("setup.html")
+
     async def player_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("player.html")\n
+        return await self._page_response("player.html")
+
     async def healthz(self, request: web.Request) -> web.Response:
         ready = bool(getattr(self.bot, "is_ready", lambda: False)())
         db = getattr(self.bot, "db", None)
@@ -941,8 +1022,14 @@ class WebControlCenter:
             for name in ("index.html", "player.html", "players.html", "setup.html", "app.css", "app.js")
         }
         web_files_ok = all(page_files.values())
-        return web.json_response({\n            "ok": ready and db_ok and web_files_ok,\n            "bot_ready": ready,\n            "db_ok": db_ok,\n            "web_files_ok": web_files_ok,\n            "web_files": page_files,
-        })\n
+        return web.json_response({
+            "ok": ready and db_ok and web_files_ok,
+            "bot_ready": ready,
+            "db_ok": db_ok,
+            "web_files_ok": web_files_ok,
+            "web_files": page_files,
+        })
+
     async def login(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
             return web.Response(status=503, text="Web authentication is not configured.", content_type="text/plain")
@@ -953,7 +1040,8 @@ class WebControlCenter:
         return web.Response(
             text=f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign In • Racing Syndicate League</title><link rel="stylesheet" href="/static/app.css?v=20260918-2"></head><body class="alu-dashboard"><main style="min-height:100vh;display:grid;place-items:center;padding:32px"><section class="glass-panel" style="max-width:620px;width:100%;padding:42px;text-align:center"><div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div><h1>Sign In to Racing Syndicate League</h1><p class="server-sub">Use your Discord account to access your player profile, registration, matches and staff controls. Your secure web session will be remembered for up to 30 days and refreshed while you use the site.</p><a class="qa qa-purple" href="{self.auth.login_url(state)}">Continue with Discord →</a></section></main></body></html>""",
             content_type="text/html",
-        )\n
+        )
+
     async def callback(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
             raise web.HTTPServiceUnavailable(text="Web authentication is not configured.")
@@ -989,7 +1077,8 @@ class WebControlCenter:
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
         self.auth.set_session_cookie(response, session)
-        return response\n
+        return response
+
     async def logout(self, request: web.Request) -> web.StreamResponse:
         try:
             await self.auth.destroy_session(request)
@@ -997,30 +1086,39 @@ class WebControlCenter:
             log.exception("Unable to remove web session during logout")
         response = web.HTTPFound("/login")
         response.del_cookie(SESSION_COOKIE, path="/")
-        return response\n
+        return response
+
     async def me(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "staff": user.staff})\n
+        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "staff": user.staff})
+
     async def status(self, request: web.Request) -> web.Response:
         await self.require_user(request)
         ready = bool(getattr(self.bot, "is_ready", lambda: False)())
         guilds = list(getattr(self.bot, "guilds", []) or [])
         latency = getattr(self.bot, "latency", None)
-        return web.json_response({"bot": {"online": ready, "latency_ms": round(latency * 1000, 1) if latency is not None else None, "guild_count": len(guilds)}})\n
+        return web.json_response({"bot": {"online": ready, "latency_ms": round(latency * 1000, 1) if latency is not None else None, "guild_count": len(guilds)}})
+
     async def guilds(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         bot_guilds = {str(getattr(g, "id", "")): g for g in getattr(self.bot, "guilds", [])}
         allowed = set(user.guild_ids) & set(bot_guilds)
         result = [{"id": gid, "name": str(getattr(bot_guilds[gid], "name", gid)), "admin": gid in user.admin_guild_ids or user.user_id in self.auth.allowed_staff_ids} for gid in sorted(allowed)]
         result.sort(key=lambda item: item["name"].casefold())
-        return web.json_response({"guilds": result})\n
+        return web.json_response({"guilds": result})
+
     async def player_me(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
         player = await self.players.get_player(guild_id, user.user_id)
         preferences = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
-        return web.json_response({\n            "player": player,\n            "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},\n            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "platform", "driver_type", "links", "asphalt_connection")},
-        })\n
-    async def player_defense(self, request: web.Request) -> web.Response:\n        """Return the player's current/pending five-course defense state."""
+        return web.json_response({
+            "player": player,
+            "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
+            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "platform", "driver_type", "links", "asphalt_connection")},
+        })
+
+    async def player_defense(self, request: web.Request) -> web.Response:
+        """Return the player's current/pending five-course defense state."""
         user, guild_id, _ = await self.require_guild_member(request)
         profile = await self.players.get_player(guild_id, user.user_id) or {}
         locked = profile.get("defense_locked") or {}
@@ -1289,7 +1387,14 @@ class WebControlCenter:
         previous_prefs = existing
         try:
             await self.bot.db.web_preferences.update_one({"_id": key}, {"$set": {"guild_id": guild_id, "user_id": user.user_id, "asphalt_connection": connection}}, upsert=True)
-            await self.bot.db.drivers.update_one({"_id": key}, {"$set": {\n                "guild_id": guild_id,\n                "user_id": user.user_id,\n                "asphalt_verified": False,\n                "asphalt_game_id": None,\n                "asphalt_game_name": None,\n                "asphalt_verified_by": None,\n                "asphalt_verified_at": None,
+            await self.bot.db.drivers.update_one({"_id": key}, {"$set": {
+                "guild_id": guild_id,
+                "user_id": user.user_id,
+                "asphalt_verified": False,
+                "asphalt_game_id": None,
+                "asphalt_game_name": None,
+                "asphalt_verified_by": None,
+                "asphalt_verified_at": None,
             }}, upsert=True)
         except Exception:
             try:
@@ -1304,7 +1409,8 @@ class WebControlCenter:
         channel = self.bot.get_channel(int(cfg["review_channel_id"])) if cfg.get("review_channel_id") else None
         if channel:
             await channel.send(f"🏎️ Asphalt Account Link Pending Verification\nDiscord: <@{user.user_id}>\nGame Name: **{game_name}**\nGame ID: **{game_id}**\n\nStaff can verify with /asphalt verify.")
-        return web.json_response({"ok": True, "message": "Asphalt account submitted for staff verification.", "connection": connection})\n
+        return web.json_response({"ok": True, "message": "Asphalt account submitted for staff verification.", "connection": connection})
+
     async def player_preferences(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
         try:
@@ -1321,16 +1427,19 @@ class WebControlCenter:
             raise web.HTTPBadRequest(text="Invalid timezone.")
         if updates:
             await self.bot.db.web_preferences.update_one({"_id": f"{guild_id}_{user.user_id}"}, {"$set": {**updates, "guild_id": guild_id, "user_id": user.user_id}}, upsert=True)
-        return web.json_response({"ok": True, "preferences": updates})\n
+        return web.json_response({"ok": True, "preferences": updates})
+
     async def setup_options(self, request: web.Request) -> web.Response:
         _, _, guild = await self.require_admin(request)
         channels = [{"id": str(c.id), "name": c.name, "type": str(getattr(c, "type", "text"))} for c in guild.text_channels]
         roles = [{"id": str(role.id), "name": role.name} for role in guild.roles if not role.is_default() and not role.managed]
-        return web.json_response({"channels": channels, "roles": roles, "timezones": [{"label": label, "value": value} for label, value in TIMEZONE_LABELS]})\n
+        return web.json_response({"channels": channels, "roles": roles, "timezones": [{"label": label, "value": value} for label, value in TIMEZONE_LABELS]})
+
     async def setup_settings(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
         settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
-        return web.json_response({"settings": {key: settings.get(key) for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone": settings.get("timezone", "UTC")}})\n
+        return web.json_response({"settings": {key: settings.get(key) for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone": settings.get("timezone", "UTC")}})
+
     async def save_setup_settings(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
         try:
@@ -1364,11 +1473,13 @@ class WebControlCenter:
                     raise web.HTTPBadRequest(text=f"Invalid role for {key[1]}.")
         await self.bot.db.settings.update_one({"_id": guild_id}, {"$set": clean}, upsert=True)
         await self._audit(guild_id, user.user_id, "Web setup updated")
-        return web.json_response({"ok": True, "settings": clean})\n
+        return web.json_response({"ok": True, "settings": clean})
+
     async def season(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_guild_member(request)
         state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
-        return web.json_response({"season": state})\n
+        return web.json_response({"season": state})
+
     async def save_season(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
         try:
@@ -1379,9 +1490,11 @@ class WebControlCenter:
             value = bool(payload["automatic_season_end"])
             await self.bot.db.settings.update_one({"_id": guild_id}, {"$set": {"automatic_season_end": value}}, upsert=True)
             await self._audit(guild_id, user.user_id, f"Web season automation {'enabled' if value else 'disabled'}")
-        return web.json_response({"ok": True})\n
+        return web.json_response({"ok": True})
+
     async def _audit(self, guild_id: str, user_id: str, action: str) -> None:
-        await self.bot.db.system_events.insert_one({"guild_id": guild_id, "source": "web", "user_id": user_id, "action": action})\n
+        await self.bot.db.system_events.insert_one({"guild_id": guild_id, "source": "web", "user_id": user_id, "action": action})
+
     async def leaderboard(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_guild_member(request)
         try:
@@ -1395,8 +1508,10 @@ class WebControlCenter:
             connection = prefs.get("asphalt_connection") or {}
             player["game_name"] = prefs.get("game_name", "") or connection.get("game_name", "")
             player["asphalt_verified"] = connection.get("status") == "verified"
-        return web.json_response({"players": rows})\n
-    async def competition_snapshot(self, request: web.Request) -> web.Response:\n        """Return the signed-in driver's live competitive snapshot for the selected guild."""
+        return web.json_response({"players": rows})
+
+    async def competition_snapshot(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's live competitive snapshot for the selected guild."""
         user, guild_id, _ = await self.require_guild_member(request)
         player = await self.players.get_player(guild_id, str(user.user_id))
         if player is None:
@@ -1424,7 +1539,10 @@ class WebControlCenter:
     async def competition_recent_matches(self, request: web.Request) -> web.Response:
         """Return the signed-in driver's recent verified Gauntlet match results."""
         user, guild_id, _ = await self.require_guild_member(request)
-        cursor = self.bot.db.matches.find({\n            "guild_id": str(guild_id),\n            "reverted": {"$ne": True},\n            "$or": [{"challenger_id": str(user.user_id)}, {"opponent_id": str(user.user_id)}],
+        cursor = self.bot.db.matches.find({
+            "guild_id": str(guild_id),
+            "reverted": {"$ne": True},
+            "$or": [{"challenger_id": str(user.user_id)}, {"opponent_id": str(user.user_id)}],
         }).sort("timestamp", -1).limit(8)
         rows = []
         async for match in cursor:
@@ -1445,9 +1563,16 @@ class WebControlCenter:
                     date_value = int(datetime.fromisoformat(str(timestamp).replace("Z", "+00:00")).timestamp())
                 except Exception:
                     date_value = int(time.time())
-            rows.append({\n                "match_id": str(match.get("_id", "")),\n                "opponent_id": opponent,\n                "opponent": opponent_name,\n                "result": "WIN" if won else "LOSS",\n                "courses": int(match.get("courses_beat", 0) or 0),\n                "date": date_value,
+            rows.append({
+                "match_id": str(match.get("_id", "")),
+                "opponent_id": opponent,
+                "opponent": opponent_name,
+                "result": "WIN" if won else "LOSS",
+                "courses": int(match.get("courses_beat", 0) or 0),
+                "date": date_value,
             })
-        return web.json_response({"matches": rows})\n
+        return web.json_response({"matches": rows})
+
     async def player_list(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
         try:
@@ -1459,11 +1584,16 @@ class WebControlCenter:
             uid = str(player.get("user_id", ""))
             prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{uid}"}) or {}
             connection = prefs.get("asphalt_connection") or {}
-            player["asphalt_connection"] = {\n                "game_id": connection.get("game_id", ""),\n                "game_name": connection.get("game_name", ""),\n                "status": connection.get("status", "not_linked"),
+            player["asphalt_connection"] = {
+                "game_id": connection.get("game_id", ""),
+                "game_name": connection.get("game_name", ""),
+                "status": connection.get("status", "not_linked"),
             }
             player["asphalt_verified"] = connection.get("status") == "verified"
-        return web.json_response({"players": players})\n
-    async def player_detail(self, request: web.Request) -> web.Response:\n        """Return a guild member's public profile for the player directory."""
+        return web.json_response({"players": players})
+
+    async def player_detail(self, request: web.Request) -> web.Response:
+        """Return a guild member's public profile for the player directory."""
         _, guild_id, _ = await self.require_guild_member(request)
         player = await self.players.get_player(guild_id, request.match_info["user_id"])
         if player is None:
