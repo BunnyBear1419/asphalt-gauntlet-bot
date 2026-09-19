@@ -562,3 +562,6 @@ html,body{width:100%;min-width:0}
 .profile-link-row input{border:1px solid rgba(255,255,255,.1)!important;border-radius:8px!important;padding:9px!important;background:rgba(5,9,18,.72)!important}
 #save-profile{min-width:190px;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.18)}
 @media(max-width:720px){#save-profile{width:100%}}
+
+/* Public driver identity tags */
+.public-profile-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.profile-tag{display:inline-flex;align-items:center;padding:5px 8px;border:1px solid #28547d;border-radius:999px;background:#071b34;color:#a9bdd7;font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.profile-tag.verified{border-color:#176e59;color:#18dfa0;background:#061d1b}
