@@ -167,6 +167,32 @@ class WebControlCenter:
             club["tournament_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"]})
             club["tournament_pending_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": "pending"})
             club["tournament_accepted_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": {"$in": ["accepted", "checked_in"]}})
+
+            # Build the club's tournament W/L from verified, completed team matches.
+            # Byes are intentionally excluded so they do not inflate a club's record.
+            wins = 0
+            losses = 0
+            async for tournament in self.bot.db.tournaments.find({
+                "guild_id": club["guild_id"],
+                "team_size": {"$gt": 1},
+            }, {"bracket": 1}):
+                bracket = tournament.get("bracket") or {}
+                groups = bracket.get("rounds") or bracket.get("winners") or []
+                for group in groups:
+                    for match in group.get("matches", []):
+                        slots = [str(x) for x in (match.get("player_slots") or []) if x]
+                        if len(slots) != 2 or club["id"] not in slots:
+                            continue
+                        if match.get("status") != "completed" or match.get("result_status") != "verified":
+                            continue
+                        winner = str(match.get("winner_id", ""))
+                        if winner == club["id"]:
+                            wins += 1
+                        elif winner in slots:
+                            losses += 1
+            club["tournament_wins"] = wins
+            club["tournament_losses"] = losses
+            club["tournament_record"] = f"{wins}-{losses}"
             rows.append(club)
         return web.json_response({"clubs": rows})
 
