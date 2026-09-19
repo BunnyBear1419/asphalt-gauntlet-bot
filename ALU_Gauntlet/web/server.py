@@ -707,7 +707,7 @@ class WebControlCenter:
             raise web.HTTPNotFound(text="Match not found.")
         if match.get("result_status") != "pending":
             raise web.HTTPConflict(text="This match does not have a pending result.")
-        if not await self._claim_tournament_action(str(oid), match_id, "verify"):
+        if not await self._claim_tournament_action(str(oid), "__bracket__", "verify"):
             raise web.HTTPConflict(text="Another staff action is already processing this match.")
         try:
             if action == "reject":
@@ -750,7 +750,7 @@ class WebControlCenter:
                 }},
             )
         finally:
-            await self._release_tournament_action(str(oid), match_id)
+            await self._release_tournament_action(str(oid), "__bracket__")
 
         cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
         channel_id = cfg.get("match_results_channel_id")
