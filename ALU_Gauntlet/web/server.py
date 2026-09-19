@@ -153,6 +153,11 @@ class WebControlCenter:
             members = []
             async for member in self.bot.db.club_members.find({"club_id": club["id"]}).sort("joined_at", 1):
                 member.pop("_id", None)
+                prefs = await self.bot.db.web_preferences.find_one({"_id": f"{club['guild_id']}_{member.get('user_id', '')}"}) or {}
+                connection = prefs.get("asphalt_connection") or {}
+                member["asphalt_verified"] = connection.get("status") == "verified"
+                member["asphalt_game_name"] = connection.get("game_name", "")
+                member["asphalt_game_id"] = connection.get("game_id", "")
                 members.append(member)
             club["members"] = members
             club["member_count"] = len(members)
@@ -318,6 +323,12 @@ class WebControlCenter:
         ).sort("registered_at", 1):
             row.pop("_id", None)
             registrations.append(row)
+        for row in registrations:
+            prefs = await self.bot.db.web_preferences.find_one({"_id": f"{item['guild_id']}_{row.get('user_id', '')}"}) or {}
+            connection = prefs.get("asphalt_connection") or {}
+            row["asphalt_verified"] = connection.get("status") == "verified"
+            row["asphalt_game_name"] = connection.get("game_name", "")
+            row["asphalt_game_id"] = connection.get("game_id", "")
         item["registrations"] = registrations
         if int(item.get("team_size", 1)) > 1:
             clubs = []
@@ -328,6 +339,11 @@ class WebControlCenter:
                 members = []
                 async for member in self.bot.db.club_members.find({"club_id": reg["club_id"]}).sort("joined_at", 1):
                     member.pop("_id", None)
+                    prefs = await self.bot.db.web_preferences.find_one({"_id": f"{reg.get('guild_id', item.get('guild_id', ''))}_{member.get('user_id', '')}"}) or {}
+                    connection = prefs.get("asphalt_connection") or {}
+                    member["asphalt_verified"] = connection.get("status") == "verified"
+                    member["asphalt_game_name"] = connection.get("game_name", "")
+                    member["asphalt_game_id"] = connection.get("game_id", "")
                     members.append(member)
                 clubs.append({"id": reg["club_id"], "name": club.get("name", "Club"), "image": club.get("image", ""), "about": club.get("about", ""), "status": reg.get("status", "pending"), "lineup": reg.get("lineup", []), "members": members, "registered_by": reg.get("registered_by"), "leader_id": club.get("leader_id")})
             item["clubs"] = clubs
