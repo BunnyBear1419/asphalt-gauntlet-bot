@@ -22,6 +22,36 @@ async def _entrant_name(tournament, entrant_id):
         pass
     return str(getattr(member, "display_name", None) or getattr(member, "name", None) or sid)
 
+async def _claim_action(tournament_id, match_id, action):
+    """Claim a short-lived match action so Discord and web actions cannot double-process it."""
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    doc = {
+        "tournament_id": str(tournament_id),
+        "match_id": str(match_id),
+        "action": str(action),
+        "claimed_at": now,
+        "expires_at": now + timedelta(seconds=60),
+    }
+    try:
+        await bot.db.tournament_action_locks.insert_one(doc)
+        return True
+    except Exception as exc:
+        if exc.__class__.__name__ != "DuplicateKeyError":
+            raise
+        replaced = await bot.db.tournament_action_locks.find_one_and_replace(
+            {"tournament_id": str(tournament_id), "match_id": str(match_id), "expires_at": {"$lt": now}},
+            doc,
+        )
+        return replaced is not None
+
+
+async def _release_action(tournament_id, match_id):
+    await bot.db.tournament_action_locks.delete_one(
+        {"tournament_id": str(tournament_id), "match_id": str(match_id)}
+    )
+
+
 async def _is_participant(tournament, match, user_id):
     uid = str(user_id)
     slots = [str(x) for x in (match.get("player_slots") or []) if x]
@@ -55,12 +85,24 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
         if not await _is_participant(tournament, match, interaction.user.id) and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("❌ Only a participant in this match can submit the result.", ephemeral=True)
             return
+        if match.get("result_status") == "pending":
+            await interaction.response.send_message("❌ This match already has a result waiting for staff verification.", ephemeral=True)
+            return
+        if match.get("status") == "completed":
+            await interaction.response.send_message("❌ This match is already completed.", ephemeral=True)
+            return
+        if not await _claim_action(self.tournament_id, self.match_id, "submit"):
+            await interaction.response.send_message("❌ Another result submission is already being processed for this match.", ephemeral=True)
+            return
         proof = str(self.proof.value).strip()
         if proof and not proof.lower().startswith(("http://", "https://")):
             await interaction.response.send_message("❌ Proof must be a valid URL.", ephemeral=True)
             return
-        match.update({"result_status":"pending","submitted_by":str(interaction.user.id),"submitted_at":discord.utils.utcnow().isoformat(),"winner_id":self.winner_id,"proof_url":proof,"result_notes":str(self.notes.value).strip()})
-        await bot.db.tournaments.update_one({"_id":tournament["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
+        try:
+            match.update({"result_status":"pending","submitted_by":str(interaction.user.id),"submitted_at":discord.utils.utcnow().isoformat(),"winner_id":self.winner_id,"proof_url":proof,"result_notes":str(self.notes.value).strip()})
+            await bot.db.tournaments.update_one({"_id":tournament["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
+        finally:
+            await _release_action(self.tournament_id, self.match_id)
         cfg=await bot.db.settings.find_one({"_id":str(tournament.get("guild_id"))}) or {}
         channel=bot.get_channel(int(cfg["match_results_channel_id"])) if cfg.get("match_results_channel_id") else None
         if channel:
@@ -137,35 +179,53 @@ async def build_tournament_embed(tournament_id):
 async def verify_match_on_discord(tournament_id, match_id, action, user_id):
     from bson import ObjectId
     t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
-    if not t: return False, "Tournament not found."
+    if not t:
+        return False, "Tournament not found."
     bracket=t.get("bracket") or {}
     groups=bracket.get("rounds") or bracket.get("winners") or []
     match=next((m for group in groups for m in group.get("matches",[]) if str(m.get("id"))==str(match_id)),None)
-    if not match: return False, "Match not found."
-    if match.get("result_status")!="pending": return False, "This match has no pending result."
-    if action=="reject":
-        for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
-            match.pop(key,None)
-        match["status"]="ready"
-        message="Result rejected. The match is ready for another submission."
-    else:
-        winner=str(match.get("winner_id",""))
-        if winner not in [str(x) for x in (match.get("player_slots") or []) if x]: return False, "Pending result has no valid winner."
-        match.update({"result_status":"verified","verified_by":str(user_id),"verified_at":discord.utils.utcnow().isoformat(),"status":"completed"})
-        target=match.get("winner_to")
-        if target:
-            for group in groups:
-                for nxt in group.get("matches",[]):
-                    if nxt.get("id")==target:
-                        slots=nxt.setdefault("player_slots",[None,None])
-                        if winner not in slots: slots[0 if slots[0] is None else 1]=winner
-                        if all(slots): nxt["status"]="ready"
-                        break
+    if not match:
+        return False, "Match not found."
+    if match.get("result_status")!="pending":
+        return False, "This match has no pending result."
+    if not await _claim_action(tournament_id, match_id, "verify"):
+        return False, "Another staff action is already processing this match."
+    try:
+        if action=="reject":
+            for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
+                match.pop(key,None)
+            match["status"]="ready"
+            message="Result rejected. The match is ready for another submission."
         else:
-            if str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
-                await bot.db.tournaments.update_one({"_id":t["_id"]},{"$set":{"status":"completed","champion_id":winner,"completed_at":discord.utils.utcnow().isoformat()}})
-    await bot.db.tournaments.update_one({"_id":t["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
-    return True, "Result approved and winner advanced." if action!="reject" else "Result rejected."
+            winner=str(match.get("winner_id",""))
+            if winner not in [str(x) for x in (match.get("player_slots") or []) if x]:
+                return False, "Pending result has no valid winner."
+            match.update({"result_status":"verified","verified_by":str(user_id),"verified_at":discord.utils.utcnow().isoformat(),"status":"completed"})
+            target=match.get("winner_to")
+            if target:
+                for group in groups:
+                    for nxt in group.get("matches",[]):
+                        if nxt.get("id")==target:
+                            slots=nxt.setdefault("player_slots",[None,None])
+                            if winner not in slots:
+                                slots[0 if slots[0] is None else 1]=winner
+                            if all(slots):
+                                nxt["status"]="ready"
+                            break
+            else:
+                if str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
+                    t["status"]="completed"
+                    t["champion_id"]=winner
+                    t["completed_at"]=discord.utils.utcnow().isoformat()
+            message="Result approved and winner advanced."
+        await bot.db.tournaments.update_one(
+            {"_id":t["_id"]},
+            {"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"updated_at":discord.utils.utcnow().isoformat()}}
+        )
+        return True, message
+    finally:
+        await _release_action(tournament_id, match_id)
+
 
 async def build_tournament_view(tournament_id,user):
     from bson import ObjectId

@@ -246,7 +246,7 @@ class WebControlCenter:
             if len(value) > 300:
                 raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
             clean_links.append(value)
-        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": discord_link[:300], "links": clean_links, "image": "", "leader_id": str(user.user_id), "created_at": now, "updated_at": now}
+        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": discord_link[:300], "links": clean_links, "image": "", "leader_id": str(user.user_id), "member_count": 1, "created_at": now, "updated_at": now}
         try:
             result = await self.bot.db.clubs.insert_one(doc)
         except Exception as exc:
@@ -255,6 +255,10 @@ class WebControlCenter:
             raise
         try:
             await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
+        except Exception:
+            # Compensate if the membership write fails so a club can never be left orphaned.
+            await self.bot.db.clubs.delete_one({"_id": result.inserted_id})
+            raise
         return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
 
     async def update_club(self, request: web.Request) -> web.Response:
@@ -324,12 +328,25 @@ class WebControlCenter:
         club = await self.bot.db.clubs.find_one({"_id": oid})
         if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
             raise web.HTTPNotFound(text="Club not found.")
-        if await self.bot.db.club_members.find_one({"guild_id": club["guild_id"], "user_id": str(user.user_id)}):
+        member_filter = {"guild_id": club["guild_id"], "user_id": str(user.user_id)}
+        if await self.bot.db.club_members.find_one(member_filter):
             raise web.HTTPConflict(text="You are already in a club in this server.")
-        if await self.bot.db.club_members.count_documents({"club_id": str(oid)}) >= 20:
+        # Reserve a membership slot atomically. The unique membership index then
+        # protects the user-level race, while member_count protects the 20-member cap.
+        reservation = await self.bot.db.clubs.update_one(
+            {"_id": oid, "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
+            {"$inc": {"member_count": 1}},
+        )
+        if not reservation.modified_count:
             raise web.HTTPConflict(text="That club is full.")
         now = datetime.now(timezone.utc).isoformat()
-        await self.bot.db.club_members.insert_one({"club_id": str(oid), "guild_id": club["guild_id"], "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": now})
+        try:
+            await self.bot.db.club_members.insert_one({"club_id": str(oid), "guild_id": club["guild_id"], "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": now})
+        except Exception as exc:
+            await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            if exc.__class__.__name__ == "DuplicateKeyError":
+                raise web.HTTPConflict(text="You are already in a club in this server.")
+            raise
         return web.json_response({"ok": True, "message": "You joined the club."})
 
     async def manage_club_member(self, request: web.Request) -> web.Response:
@@ -355,7 +372,9 @@ class WebControlCenter:
         elif action == "demote":
             value = "member"
         elif action == "kick":
-            await self.bot.db.club_members.delete_one({"_id": member["_id"]})
+            removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
+            if removed.deleted_count:
+                await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             return web.json_response({"ok": True, "message": "Member removed from the club."})
         else:
             raise web.HTTPBadRequest(text="Unsupported member action.")
@@ -534,17 +553,17 @@ class WebControlCenter:
             if existing:
                 raise web.HTTPConflict(text="This club is already registered for the tournament.")
             try:
-            await self.bot.db.tournament_club_registrations.insert_one({
-                "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),
-                "club_id": club_id, "club_name": club.get("name", "Club"),
-                "team_size": team_size, "status": "pending",
-                "registered_by": str(user.user_id),
-                "registered_at": datetime.now(timezone.utc).isoformat(),
-            })
-        except Exception as exc:
-            if exc.__class__.__name__ == "DuplicateKeyError":
-                raise web.HTTPConflict(text="This club is already registered for the tournament.")
-            raise
+                await self.bot.db.tournament_club_registrations.insert_one({
+                    "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),
+                    "club_id": club_id, "club_name": club.get("name", "Club"),
+                    "team_size": team_size, "status": "pending",
+                    "registered_by": str(user.user_id),
+                    "registered_at": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception as exc:
+                if exc.__class__.__name__ == "DuplicateKeyError":
+                    raise web.HTTPConflict(text="This club is already registered for the tournament.")
+                raise
             return web.json_response({"ok": True, "message": "Club registration submitted for staff review."})
         count = await self.bot.db.tournament_registrations.count_documents(
             {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
@@ -650,8 +669,13 @@ class WebControlCenter:
             raise web.HTTPConflict(text="This match is already completed.")
         if proof_url and not proof_url.lower().startswith(("http://", "https://")):
             raise web.HTTPBadRequest(text="Proof must be a valid URL.")
-        match.update({"result_status":"pending","submitted_by":str(user.user_id),"submitted_at":datetime.now(timezone.utc).isoformat(),"winner_id":winner_id,"proof_url":proof_url,"result_notes":notes})
-        await self.bot.db.tournaments.update_one({"_id": oid},{"$set":{"bracket":bracket,"updated_at":datetime.now(timezone.utc).isoformat()}})
+        if not await self._claim_tournament_action(str(oid), match_id, "submit"):
+            raise web.HTTPConflict(text="Another result submission is already being processed for this match.")
+        try:
+            match.update({"result_status":"pending","submitted_by":str(user.user_id),"submitted_at":datetime.now(timezone.utc).isoformat(),"winner_id":winner_id,"proof_url":proof_url,"result_notes":notes})
+            await self.bot.db.tournaments.update_one({"_id": oid},{"$set":{"bracket":bracket,"updated_at":datetime.now(timezone.utc).isoformat()}})
+        finally:
+            await self._release_tournament_action(str(oid), match_id)
         cfg = await self.bot.db.settings.find_one({"_id": str(t.get("guild_id"))}) or {}
         channel_id = cfg.get("match_results_channel_id")
         channel = self.bot.get_channel(int(channel_id)) if channel_id else None
@@ -663,7 +687,7 @@ class WebControlCenter:
         return web.json_response({"ok": True, "message": "Result submitted for staff verification."})
 
     async def tournament_verify_result(self, request: web.Request) -> web.Response:
-        """Staff verification endpoint that advances a single-elimination bracket."""
+        """Staff verification endpoint that advances a single-elimination bracket atomically."""
         user, guild_id, _ = await self.require_admin(request)
         from bson import ObjectId
         payload = await request.json()
@@ -683,39 +707,68 @@ class WebControlCenter:
             raise web.HTTPNotFound(text="Match not found.")
         if match.get("result_status") != "pending":
             raise web.HTTPConflict(text="This match does not have a pending result.")
-        if action == "reject":
-            for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
-                match.pop(key, None)
-            match["status"]="ready"
-            message="Result rejected. The match is ready for another submission."
-        else:
-            winner_id=str(match.get("winner_id",""))
-            slots=[str(x) for x in (match.get("player_slots") or []) if x]
-            if winner_id not in slots:
-                raise web.HTTPConflict(text="Pending result has no valid winner.")
-            match["result_status"]="verified"
-            match["verified_by"]=str(user.user_id)
-            match["verified_at"]=datetime.now(timezone.utc).isoformat()
-            match["status"]="completed"
-            target=match.get("winner_to")
-            if target:
-                for group in groups:
-                    for nxt in group.get("matches",[]):
-                        if nxt.get("id")==target:
-                            ns=nxt.setdefault("player_slots",[None,None])
-                            if winner_id not in ns: ns[0 if ns[0] is None else 1]=winner_id
-                            if all(ns): nxt["status"]="ready"
-                            break
-            elif str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
-                t["status"]="completed"; t["champion_id"]=winner_id; t["completed_at"]=datetime.now(timezone.utc).isoformat()
-            message="Result verified and winner advanced."
-        await self.bot.db.tournaments.update_one({"_id":oid},{"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"updated_at":datetime.now(timezone.utc).isoformat()}})
-        cfg=await self.bot.db.settings.find_one({"_id":guild_id}) or {}
-        channel_id=cfg.get("match_results_channel_id"); channel=self.bot.get_channel(int(channel_id)) if channel_id else None
+        if not await self._claim_tournament_action(str(oid), match_id, "verify"):
+            raise web.HTTPConflict(text="Another staff action is already processing this match.")
+        try:
+            if action == "reject":
+                for key in ("result_status", "winner_id", "submitted_by", "submitted_at", "proof_url", "result_notes"):
+                    match.pop(key, None)
+                match["status"] = "ready"
+                message = "Result rejected. The match is ready for another submission."
+            else:
+                winner_id = str(match.get("winner_id", ""))
+                slots = [str(x) for x in (match.get("player_slots") or []) if x]
+                if winner_id not in slots:
+                    raise web.HTTPConflict(text="Pending result has no valid winner.")
+                match["result_status"] = "verified"
+                match["verified_by"] = str(user.user_id)
+                match["verified_at"] = datetime.now(timezone.utc).isoformat()
+                match["status"] = "completed"
+                target = match.get("winner_to")
+                if target:
+                    for group in groups:
+                        for nxt in group.get("matches", []):
+                            if nxt.get("id") == target:
+                                ns = nxt.setdefault("player_slots", [None, None])
+                                if winner_id not in ns:
+                                    ns[0 if ns[0] is None else 1] = winner_id
+                                if all(ns):
+                                    nxt["status"] = "ready"
+                                break
+                elif str(match.get("bracket", "winners")) == "winners" and (match.get("round") or 0) == len(groups):
+                    t["status"] = "completed"
+                    t["champion_id"] = winner_id
+                    t["completed_at"] = datetime.now(timezone.utc).isoformat()
+                message = "Result verified and winner advanced."
+            await self.bot.db.tournaments.update_one(
+                {"_id": oid},
+                {"$set": {
+                    "bracket": bracket,
+                    "status": t.get("status", "live"),
+                    "champion_id": t.get("champion_id"),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+        finally:
+            await self._release_tournament_action(str(oid), match_id)
+
+        cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        channel_id = cfg.get("match_results_channel_id")
+        channel = self.bot.get_channel(int(channel_id)) if channel_id else None
         if channel is not None:
-            try: await channel.send("🏆 **Tournament Result "+("Approved" if action!="reject" else "Rejected")+"** • "+str(t.get("name","Tournament"))+" • "+match_id)
-            except Exception: log.exception("Unable to post tournament verification notice")
-        return web.json_response({"ok":True,"message":message,"bracket":bracket,"champion_id":t.get("champion_id")})
+            try:
+                await channel.send(
+                    "🏆 **Tournament Result " + ("Approved" if action != "reject" else "Rejected") +
+                    "** • " + str(t.get("name", "Tournament")) + " • " + match_id
+                )
+            except Exception:
+                log.exception("Unable to post tournament verification notice")
+        return web.json_response({
+            "ok": True,
+            "message": message,
+            "bracket": bracket,
+            "champion_id": t.get("champion_id"),
+        })
 
     async def tournament_checkin(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
@@ -1541,18 +1594,69 @@ class WebControlCenter:
         })
         return web.json_response({"player": player})
 
-    async def _ensure_integrity_indexes(self) -> None:
-        indexes = (
-            (self.bot.db.club_members, [("guild_id", 1), ("user_id", 1)], "uniq_club_member_per_guild"),
-            (self.bot.db.clubs, [("guild_id", 1), ("name_ci", 1)], "uniq_club_name_per_guild"),
-            (self.bot.db.tournament_registrations, [("tournament_id", 1), ("user_id", 1)], "uniq_tournament_player"),
-            (self.bot.db.tournament_club_registrations, [("tournament_id", 1), ("club_id", 1)], "uniq_tournament_club"),
+    async def _claim_tournament_action(self, tournament_id: str, match_id: str, action: str) -> bool:
+        """Acquire a short-lived atomic lock so one match cannot be processed twice concurrently."""
+        now = datetime.now(timezone.utc)
+        expires = now.timestamp() + 60
+        doc = {
+            "tournament_id": str(tournament_id),
+            "match_id": str(match_id),
+            "action": str(action),
+            "claimed_at": now,
+            "expires_at": datetime.fromtimestamp(expires, tz=timezone.utc),
+        }
+        try:
+            await self.bot.db.tournament_action_locks.insert_one(doc)
+            return True
+        except Exception as exc:
+            if exc.__class__.__name__ != "DuplicateKeyError":
+                raise
+            # Recover a stale lock atomically. A live lock always wins.
+            replaced = await self.bot.db.tournament_action_locks.find_one_and_replace(
+                {
+                    "tournament_id": str(tournament_id),
+                    "match_id": str(match_id),
+                    "expires_at": {"$lt": now},
+                },
+                doc,
+            )
+            return replaced is not None
+
+    async def _release_tournament_action(self, tournament_id: str, match_id: str) -> None:
+        await self.bot.db.tournament_action_locks.delete_one(
+            {"tournament_id": str(tournament_id), "match_id": str(match_id)}
         )
-        for collection, keys, name in indexes:
+
+    async def _ensure_integrity_indexes(self) -> None:
+        """Create production integrity indexes and fail startup if they cannot be enforced."""
+        indexes = (
+            (self.bot.db.club_members, [("guild_id", 1), ("user_id", 1)], "uniq_club_member_per_guild", True),
+            (self.bot.db.clubs, [("guild_id", 1), ("name_ci", 1)], "uniq_club_name_per_guild", True),
+            (self.bot.db.tournament_registrations, [("tournament_id", 1), ("user_id", 1)], "uniq_tournament_player", True),
+            (self.bot.db.tournament_club_registrations, [("tournament_id", 1), ("club_id", 1)], "uniq_tournament_club", True),
+            (self.bot.db.tournament_action_locks, [("tournament_id", 1), ("match_id", 1)], "uniq_tournament_action_lock", True),
+            (self.bot.db.tournament_action_locks, [("expires_at", 1)], "ttl_tournament_action_lock", False),
+        )
+        for collection, keys, name, unique in indexes:
             try:
-                await collection.create_index(keys, unique=True, name=name)
-            except Exception:
-                log.exception("Unable to create integrity index %s", name)
+                kwargs = {"name": name}
+                if unique:
+                    kwargs["unique"] = True
+                if name == "ttl_tournament_action_lock":
+                    kwargs["expireAfterSeconds"] = 0
+                await collection.create_index(keys, **kwargs)
+            except Exception as exc:
+                # A duplicate-key error means existing bad data prevents the invariant.
+                # Do not start a production server that silently lacks its safety rails.
+                log.exception("Unable to enforce integrity index %s", name)
+                raise RuntimeError(f"Database integrity index {name} could not be enforced") from exc
+
+        # Repair the cached club member counters once at startup so legacy clubs cannot
+        # bypass the atomic 20-member reservation because member_count was never stored.
+        async for club in self.bot.db.clubs.find({}, {"_id": 1}):
+            club_id = str(club["_id"])
+            count = await self.bot.db.club_members.count_documents({"club_id": club_id})
+            await self.bot.db.clubs.update_one({"_id": club["_id"]}, {"$set": {"member_count": count}})
 
     async def start(self) -> None:
         await self._ensure_integrity_indexes()
