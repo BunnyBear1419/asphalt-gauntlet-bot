@@ -5,6 +5,7 @@ import hashlib
 import logging
 import random
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 import mimetypes
 from typing import Any
@@ -95,6 +96,7 @@ class WebControlCenter:
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/setup", self.setup_page)
         self.app.router.add_get("/player", self.player_page)
+        self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
@@ -103,6 +105,9 @@ class WebControlCenter:
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
+        self.app.router.add_get("/api/tournaments", self.tournaments)
+        self.app.router.add_post("/api/tournaments", self.create_tournament)
+        self.app.router.add_post("/api/tournaments/register", self.register_tournament)
         self.app.router.add_get("/api/player/defense", self.player_defense)
         self.app.router.add_post("/api/player/defense", self.player_defense_action)
         self.app.router.add_put("/api/player/preferences", self.player_preferences)
@@ -120,6 +125,113 @@ class WebControlCenter:
         # artwork could exist in the repository but still return a 404 in production.
         self.app.router.add_get("/assets/{filename}", self.asset)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
+
+    async def tournaments_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("tournaments.html")
+
+    async def tournaments(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        guild_ids = set(str(x) for x in user.guild_ids)
+        rows = []
+        async for item in self.bot.db.tournaments.find({"guild_id": {"$in": list(guild_ids)}}).sort("start_time", 1):
+            item["id"] = str(item.get("_id"))
+            item.pop("_id", None)
+            count = await self.bot.db.tournament_registrations.count_documents(
+                {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted"]}}
+            )
+            item["registration_count"] = count
+            item["format_label"] = {"single_elimination": "Single Elimination", "round_robin": "Round Robin"}.get(
+                item.get("format"), str(item.get("format", "Tournament")).replace("_", " ").title()
+            )
+            item["eligibility_label"] = "Gauntlet registered only" if item.get("gauntlet_only") else "Open to players"
+            if item.get("start_time"):
+                try:
+                    item["start_time_label"] = datetime.fromisoformat(item["start_time"]).astimezone().strftime("%b %d, %Y • %I:%M %p")
+                except Exception:
+                    item["start_time_label"] = "TBD"
+            else:
+                item["start_time_label"] = "TBD"
+            rows.append(item)
+        return web.json_response({"tournaments": rows})
+
+    async def create_tournament(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        name = str(payload.get("name", "")).strip()
+        if not name:
+            raise web.HTTPBadRequest(text="Tournament name is required.")
+        max_players = int(payload.get("max_players", 32))
+        if max_players < 2 or max_players > 256:
+            raise web.HTTPBadRequest(text="Maximum players must be between 2 and 256.")
+        fmt = str(payload.get("format", "single_elimination")).strip().casefold()
+        if fmt not in {"single_elimination", "round_robin"}:
+            raise web.HTTPBadRequest(text="Unsupported tournament format.")
+        now = datetime.now(timezone.utc).isoformat()
+        registration_deadline = str(payload.get("registration_deadline", "")).strip() or None
+        start_time = str(payload.get("start_time", "")).strip() or None
+        tournament = {
+            "guild_id": guild_id,
+            "name": name,
+            "description": str(payload.get("description", "")).strip()[:500],
+            "format": fmt,
+            "max_players": max_players,
+            "gauntlet_only": bool(payload.get("gauntlet_only", False)),
+            "registration_deadline": registration_deadline,
+            "start_time": start_time,
+            "status": "registration_open",
+            "created_by": str(user.user_id),
+            "created_at": now,
+            "updated_at": now,
+        }
+        result = await self.bot.db.tournaments.insert_one(tournament)
+        return web.json_response({"ok": True, "tournament_id": str(result.inserted_id)})
+
+    async def register_tournament(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        tournament_id = str(payload.get("tournament_id", "")).strip()
+        if not tournament_id:
+            raise web.HTTPBadRequest(text="tournament_id is required.")
+        from bson import ObjectId
+        try:
+            oid = ObjectId(tournament_id)
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        tournament = await self.bot.db.tournaments.find_one({"_id": oid})
+        if not tournament or str(tournament.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+            raise web.HTTPNotFound(text="Tournament not found.")
+        if tournament.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Tournament registration is closed.")
+        count = await self.bot.db.tournament_registrations.count_documents(
+            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
+        )
+        if count >= int(tournament.get("max_players", 32)):
+            raise web.HTTPConflict(text="This tournament is full.")
+        if tournament.get("gauntlet_only"):
+            profile = await self.bot.db.drivers.find_one({"_id": f'{tournament["guild_id"]}_{user.user_id}'})
+            if not profile:
+                raise web.HTTPForbidden(text="This tournament is limited to Gauntlet-registered drivers.")
+        existing = await self.bot.db.tournament_registrations.find_one(
+            {"tournament_id": tournament_id, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}}
+        )
+        if existing:
+            raise web.HTTPConflict(text="You are already registered for this tournament.")
+        await self.bot.db.tournament_registrations.insert_one({
+            "tournament_id": tournament_id,
+            "guild_id": str(tournament["guild_id"]),
+            "user_id": str(user.user_id),
+            "username": str(user.global_name or user.username or user.user_id),
+            "status": "pending",
+            "registered_at": datetime.now(timezone.utc).isoformat(),
+        })
+        return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
 
     async def asset(self, request: web.Request) -> web.Response:
         """Serve dashboard artwork with the correct image MIME type."""
