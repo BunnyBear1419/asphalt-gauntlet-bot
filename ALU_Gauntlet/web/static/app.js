@@ -33,6 +33,14 @@ async function loadDashboard(){
    const p=await api("/api/player/me?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
    if(p&&p.player){const d=p.player;const set=(s,v)=>{const x=$(s);if(x)x.textContent=v};set("#profile-elo",(d.elo??1000).toLocaleString());set("#profile-pi",Number(d.garage_pi||0).toLocaleString());set("#garage-pi",Number(d.garage_pi||0).toLocaleString());set("#wins",d.career_wins??0);set("#losses",Math.max(0,(d.career_played??0)-(d.career_wins??0)));set("#streak",d.streak??0)}
   }
+  const recentMatches=await api("/api/competition/recent-matches?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
+  const recentBox=$("#recent-matches");
+  if(recentBox){
+   const matches=recentMatches?.matches||[];
+   recentBox.innerHTML="<div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>"+(matches.length
+    ?matches.map((m,i)=>"<div class='recent-match-row'><span>"+(i+1)+"</span><span><strong>"+esc(m.opponent||"Driver")+"</strong><small>"+Number(m.courses||0)+"/5 courses</small></span><span class='"+(m.result==="WIN"?"match-win":"match-loss")+"'>"+esc(m.result)+"</span><span>"+(m.date?new Date(Number(m.date)*1000).toLocaleDateString(): "—")+"</span></div>").join("")
+    :"<p class='empty-state'>No completed matches yet.</p>");
+  }
   const snapshot=await api("/api/competition/snapshot?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
   if(snapshot&&snapshot.registered){
    const setSnapshot=(s,v)=>{const x=$(s);if(x)x.textContent=v};
