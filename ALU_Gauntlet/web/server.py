@@ -181,6 +181,19 @@ class WebControlCenter:
             row.pop("_id", None)
             registrations.append(row)
         item["registrations"] = registrations
+        if int(item.get("team_size", 1)) > 1:
+            teams = []
+            async for team in self.bot.db.tournament_teams.find({"tournament_id": tournament_id}).sort("created_at", 1):
+                team["id"] = str(team.pop("_id"))
+                members = []
+                async for member in self.bot.db.tournament_team_members.find({"team_id": team["id"]}).sort("joined_at", 1):
+                    member.pop("_id", None)
+                    members.append(member)
+                team["members"] = members
+                teams.append(team)
+            item["teams"] = teams
+        else:
+            item["teams"] = []
         return web.json_response(item)
 
     async def create_tournament(self, request: web.Request) -> web.Response:
