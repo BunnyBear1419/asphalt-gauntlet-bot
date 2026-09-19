@@ -34,7 +34,7 @@ class HelpCog(commands.Cog):
         )
 
         embed = discord.Embed(
-            title='🏁 ALU GAUNTLET — HELP',
+            title='🏁 RACING SYNDICATE LEAGUE — HELP',
             description=(
                 'Choose a section below.\n\n'
                 '📘 Overview  •  📜 Rules  •  🎮 Player Help  •  🛠️ Staff Help\n\n'
@@ -45,7 +45,7 @@ class HelpCog(commands.Cog):
         )
         embed.set_thumbnail(url=ASPHALT_MEDIA['thumb_profile'])
         embed.set_image(url=ASPHALT_MEDIA['banner_help'])
-        embed.set_footer(text='ALU Gauntlet • Quick reference')
+        embed.set_footer(text='Racing Syndicate League • Quick reference')
 
         # HelpView remains the shared interactive renderer in core.py.
         # It contains Overview/Rules plus the player and staff categories above.
