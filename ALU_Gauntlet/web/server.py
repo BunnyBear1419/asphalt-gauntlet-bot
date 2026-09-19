@@ -1009,7 +1009,7 @@ class WebControlCenter:
         return web.json_response({
             "player": player,
             "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
-            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "links", "asphalt_connection")},
+            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "platform", "driver_type", "links", "asphalt_connection")},
         })
 
     async def player_defense(self, request: web.Request) -> web.Response:
@@ -1220,6 +1220,14 @@ class WebControlCenter:
         game_name = str(payload.get("game_name", "")).strip()[:100]
         about = str(payload.get("about", "")).strip()[:500]
         location = str(payload.get("location", "")).strip()[:100]
+        platform = str(payload.get("platform", "")).strip()[:40]
+        driver_type = str(payload.get("driver_type", "")).strip()[:30]
+        allowed_platforms = {"Android", "Nintendo", "macOS", "Steam", "Epic Games", "Windows", "Apple iOS", "Xbox", "Playstation"}
+        allowed_driver_types = {"Manual Driver", "Touch Driver"}
+        if platform and platform not in allowed_platforms:
+            raise web.HTTPBadRequest(text="Invalid platform.")
+        if driver_type and driver_type not in allowed_driver_types:
+            raise web.HTTPBadRequest(text="Invalid driver type.")
         timezone = str(payload.get("timezone", "UTC")).strip()
         if timezone not in {value for _, value in TIMEZONE_LABELS}:
             raise web.HTTPBadRequest(text="Invalid timezone.")
@@ -1238,7 +1246,7 @@ class WebControlCenter:
             clean_links.append(value)
         await self.bot.db.web_preferences.update_one(
             {"_id": f"{guild_id}_{user.user_id}"},
-            {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "timezone": timezone, "links": clean_links}},
+            {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "platform": platform, "driver_type": driver_type, "timezone": timezone, "links": clean_links}},
             upsert=True,
         )
         return web.json_response({"ok": True, "message": "Profile updated.", "profile": {"discord_name": user.global_name or user.username or "Driver", "game_name": game_name, "game_id": (await self.players.get_player(guild_id, user.user_id) or {}).get("game_id", ""), "about": about, "location": location, "timezone": timezone, "links": clean_links}})
