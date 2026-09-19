@@ -553,17 +553,17 @@ class WebControlCenter:
             if existing:
                 raise web.HTTPConflict(text="This club is already registered for the tournament.")
             try:
-            await self.bot.db.tournament_club_registrations.insert_one({
-                "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),
-                "club_id": club_id, "club_name": club.get("name", "Club"),
-                "team_size": team_size, "status": "pending",
-                "registered_by": str(user.user_id),
-                "registered_at": datetime.now(timezone.utc).isoformat(),
-            })
-        except Exception as exc:
-            if exc.__class__.__name__ == "DuplicateKeyError":
-                raise web.HTTPConflict(text="This club is already registered for the tournament.")
-            raise
+                await self.bot.db.tournament_club_registrations.insert_one({
+                    "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),
+                    "club_id": club_id, "club_name": club.get("name", "Club"),
+                    "team_size": team_size, "status": "pending",
+                    "registered_by": str(user.user_id),
+                    "registered_at": datetime.now(timezone.utc).isoformat(),
+                })
+            except Exception as exc:
+                if exc.__class__.__name__ == "DuplicateKeyError":
+                    raise web.HTTPConflict(text="This club is already registered for the tournament.")
+                raise
             return web.json_response({"ok": True, "message": "Club registration submitted for staff review."})
         count = await self.bot.db.tournament_registrations.count_documents(
             {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
@@ -709,33 +709,34 @@ class WebControlCenter:
             raise web.HTTPConflict(text="This match does not have a pending result.")
         if not await self._claim_tournament_action(str(oid), match_id, "verify"):
             raise web.HTTPConflict(text="Another staff action is already processing this match.")
-        if action == "reject":
-            for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
-                match.pop(key, None)
-            match["status"]="ready"
-            message="Result rejected. The match is ready for another submission."
-        else:
-            winner_id=str(match.get("winner_id",""))
-            slots=[str(x) for x in (match.get("player_slots") or []) if x]
-            if winner_id not in slots:
-                raise web.HTTPConflict(text="Pending result has no valid winner.")
-            match["result_status"]="verified"
-            match["verified_by"]=str(user.user_id)
-            match["verified_at"]=datetime.now(timezone.utc).isoformat()
-            match["status"]="completed"
-            target=match.get("winner_to")
-            if target:
-                for group in groups:
-                    for nxt in group.get("matches",[]):
-                        if nxt.get("id")==target:
-                            ns=nxt.setdefault("player_slots",[None,None])
-                            if winner_id not in ns: ns[0 if ns[0] is None else 1]=winner_id
-                            if all(ns): nxt["status"]="ready"
-                            break
-            elif str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
-                t["status"]="completed"; t["champion_id"]=winner_id; t["completed_at"]=datetime.now(timezone.utc).isoformat()
-            message="Result verified and winner advanced."
         try:
+                if action == "reject":
+                for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
+                    match.pop(key, None)
+                match["status"]="ready"
+                message="Result rejected. The match is ready for another submission."
+            else:
+                winner_id=str(match.get("winner_id",""))
+                slots=[str(x) for x in (match.get("player_slots") or []) if x]
+                if winner_id not in slots:
+                    raise web.HTTPConflict(text="Pending result has no valid winner.")
+                match["result_status"]="verified"
+                match["verified_by"]=str(user.user_id)
+                match["verified_at"]=datetime.now(timezone.utc).isoformat()
+                match["status"]="completed"
+                target=match.get("winner_to")
+                if target:
+                    for group in groups:
+                        for nxt in group.get("matches",[]):
+                            if nxt.get("id")==target:
+                                ns=nxt.setdefault("player_slots",[None,None])
+                                if winner_id not in ns: ns[0 if ns[0] is None else 1]=winner_id
+                                if all(ns): nxt["status"]="ready"
+                                break
+                elif str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
+                    t["status"]="completed"; t["champion_id"]=winner_id; t["completed_at"]=datetime.now(timezone.utc).isoformat()
+                message="Result verified and winner advanced."
+
             await self.bot.db.tournaments.update_one({"_id":oid},{"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"updated_at":datetime.now(timezone.utc).isoformat()}})
         finally:
             await self._release_tournament_action(str(oid), match_id)
