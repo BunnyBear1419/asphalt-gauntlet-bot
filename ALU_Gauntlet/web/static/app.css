@@ -410,10 +410,14 @@ html,body{width:100%;min-width:0}
 .bottom-banner{background:linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),url('/assets/promo-banner.jpg') center/cover no-repeat!important}
 
 
-/* Keep artwork imagery separate from HTML labels by cropping baked-in promotional lettering. */
+/* Final image visibility fix: use the real HTML image elements as the artwork layer.
+   Keep labels/content separate HTML, and do not depend on CSS background artwork. */
+.hero-banner{overflow:hidden!important;background:#020817!important;}
+.hero-banner>.hero-art{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;z-index:0!important;}
 .feature-picture{overflow:hidden!important;background:#040a16!important;}
-.feature-picture>.art-img{width:135%!important;height:135%!important;max-width:none!important;max-height:none!important;left:-17.5%!important;top:-17.5%!important;object-fit:cover!important;object-position:center center!important;}
-.hero-banner{overflow:hidden!important;background-color:#020817!important;}
-.hero-banner>.hero-art{width:120%!important;height:120%!important;max-width:none!important;max-height:none!important;left:-10%!important;top:-10%!important;object-fit:cover!important;object-position:center center!important;}
-.car-showcase{overflow:hidden!important;}
-.car-showcase>.art-img{width:125%!important;height:125%!important;max-width:none!important;max-height:none!important;left:-12.5%!important;top:-12.5%!important;object-fit:cover!important;object-position:center center!important;}
+.feature-picture>.art-img{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;z-index:0!important;}
+.feature-picture:after{z-index:1!important;}
+.feature-body{position:absolute!important;z-index:3!important;}
+.car-showcase{overflow:hidden!important;background:#030817!important;position:relative!important;}
+.car-showcase>.art-img{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;z-index:0!important;}
+.car-showcase .showcase-car{z-index:1!important;}
