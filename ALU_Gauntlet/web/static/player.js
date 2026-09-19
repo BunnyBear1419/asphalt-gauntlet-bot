@@ -229,7 +229,7 @@ if(saveProfile)saveProfile.addEventListener("click",async()=>{
  const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,5);
  if(status)status.textContent="Saving…"; saveProfile.disabled=true;
  try{
-  const d=await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:$("#profile-game-name")?.value||"",about:$("#profile-about")?.value||"",location:$("#profile-location")?.value||"",timezone:$("#profile-timezone")?.value||"UTC",links})});
+  const d=await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:$("#profile-game-name")?.value||"",about:$("#profile-about")?.value||"",location:$("#profile-location")?.value||"",timezone:$("#profile-timezone")?.value||"UTC",platform:$("#profile-platform")?.value||"",driver_type:$("#profile-driver-type")?.value||"",links})});
   if(status)status.textContent=d.message||"Saved ✓"; await profile();
  }catch(e){if(status)status.textContent=e.message||"Profile save failed."}finally{saveProfile.disabled=false;setTimeout(()=>{if(status)status.textContent=""},1800)}
 });
