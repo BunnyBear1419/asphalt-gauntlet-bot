@@ -33,6 +33,17 @@ async function loadDashboard(){
    const p=await api("/api/player/me?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
    if(p&&p.player){const d=p.player;const set=(s,v)=>{const x=$(s);if(x)x.textContent=v};set("#profile-elo",(d.elo??1000).toLocaleString());set("#profile-pi",Number(d.garage_pi||0).toLocaleString());set("#garage-pi",Number(d.garage_pi||0).toLocaleString());set("#wins",d.career_wins??0);set("#losses",Math.max(0,(d.career_played??0)-(d.career_wins??0)));set("#streak",d.streak??0)}
   }
+  const snapshot=await api("/api/competition/snapshot?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
+  if(snapshot&&snapshot.registered){
+   const setSnapshot=(s,v)=>{const x=$(s);if(x)x.textContent=v};
+   setSnapshot("#snapshot-rank","#"+Number(snapshot.rank||0).toLocaleString());
+   setSnapshot("#snapshot-elo",Number(snapshot.elo||0).toLocaleString());
+   setSnapshot("#snapshot-pi",Number(snapshot.garage_pi||0).toLocaleString());
+   setSnapshot("#snapshot-record",(snapshot.career_wins??0)+"-"+(snapshot.career_losses??0));
+   setSnapshot("#snapshot-streak",snapshot.streak??0);
+   setSnapshot("#snapshot-defense",snapshot.defense_locked?"LOCKED":"OPEN");
+   setSnapshot("#snapshot-season",snapshot.season_number!=null?"Season "+snapshot.season_number:"Current season");
+  }
   const season=await api("/api/season?guild_id="+encodeURIComponent(guild.id)).catch(()=>null);
   if(season&&season.season){
    const s=season.season;
