@@ -761,6 +761,8 @@ class WebControlCenter:
         t = await self.bot.db.tournaments.find_one({"_id": oid, "guild_id": guild_id})
         if not t:
             raise web.HTTPNotFound(text="Tournament not found.")
+        if t.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Only a tournament still in registration can be started.")
         players = []
         if int(t.get("team_size", 1)) > 1:
             async for row in self.bot.db.tournament_club_registrations.find(
@@ -815,7 +817,13 @@ class WebControlCenter:
                                             break
                         elif match.get("status") == "bye" and not slots_now:
                             match["status"] = "waiting"
-        await self.bot.db.tournaments.update_one({"_id": oid}, {"$set": {"status": "live", "started_at": datetime.now(timezone.utc).isoformat(), "bracket": bracket, "started_by": str(user.user_id)}})
+        started_at = datetime.now(timezone.utc).isoformat()
+        transition = await self.bot.db.tournaments.update_one(
+            {"_id": oid, "status": {"$in": ["registration_open", "open"]}},
+            {"$set": {"status": "live", "started_at": started_at, "bracket": bracket, "started_by": str(user.user_id), "updated_at": started_at}},
+        )
+        if not transition.modified_count:
+            raise web.HTTPConflict(text="Tournament start was already completed by another staff action.")
         return web.json_response({"ok": True, "message": "Tournament started.", "bracket": bracket})
 
     async def asset(self, request: web.Request) -> web.Response:
@@ -1272,10 +1280,15 @@ class WebControlCenter:
             if len(value) > 300:
                 raise web.HTTPBadRequest(text="Profile links must be 300 characters or fewer.")
             clean_links.append(value)
+        preference_id = f"{guild_id}_{user.user_id}"
         await self.bot.db.web_preferences.update_one(
-            {"_id": f"{guild_id}_{user.user_id}"},
+            {"_id": preference_id},
             {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "platform": platform, "driver_type": driver_type, "timezone": timezone, "links": clean_links}},
             upsert=True,
+        )
+        await self.bot.db.drivers.update_one(
+            {"_id": preference_id},
+            {"$set": {"game_name": game_name, "updated_at": time.time()}},
         )
         return web.json_response({"ok": True, "message": "Profile updated.", "profile": {"discord_name": user.global_name or user.username or "Driver", "game_name": game_name, "game_id": (await self.players.get_player(guild_id, user.user_id) or {}).get("game_id", ""), "about": about, "location": location, "timezone": timezone, "links": clean_links}})
 
@@ -1512,7 +1525,21 @@ class WebControlCenter:
         })
         return web.json_response({"player": player})
 
+    async def _ensure_integrity_indexes(self) -> None:
+        indexes = (
+            (self.bot.db.club_members, [("guild_id", 1), ("user_id", 1)], "uniq_club_member_per_guild"),
+            (self.bot.db.clubs, [("guild_id", 1), ("name_ci", 1)], "uniq_club_name_per_guild"),
+            (self.bot.db.tournament_registrations, [("tournament_id", 1), ("user_id", 1)], "uniq_tournament_player"),
+            (self.bot.db.tournament_club_registrations, [("tournament_id", 1), ("club_id", 1)], "uniq_tournament_club"),
+        )
+        for collection, keys, name in indexes:
+            try:
+                await collection.create_index(keys, unique=True, name=name)
+            except Exception:
+                log.exception("Unable to create integrity index %s", name)
+
     async def start(self) -> None:
+        await self._ensure_integrity_indexes()
         if self.runner is not None:
             return
         self.runner = web.AppRunner(self.app)
