@@ -922,7 +922,7 @@ class WebControlCenter:
         return web.json_response({
             "player": player,
             "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
-            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications")},
+            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "links")},
         })
 
     async def player_defense(self, request: web.Request) -> web.Response:
@@ -1154,7 +1154,7 @@ class WebControlCenter:
             {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "timezone": timezone, "links": clean_links}},
             upsert=True,
         )
-        return web.json_response({"ok": True, "message": "Profile updated.", "profile": {"discord_name": user.global_name or user.username or "Driver", "game_name": game_name, "game_id": "", "about": about, "location": location, "timezone": timezone, "links": clean_links}})
+        return web.json_response({"ok": True, "message": "Profile updated.", "profile": {"discord_name": user.global_name or user.username or "Driver", "game_name": game_name, "game_id": (await self.players.get_player(guild_id, user.user_id) or {}).get("game_id", ""), "about": about, "location": location, "timezone": timezone, "links": clean_links}})
 
     async def player_preferences(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
