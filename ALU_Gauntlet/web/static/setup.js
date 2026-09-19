@@ -81,3 +81,22 @@ $("#save").addEventListener("click",async()=>{
 });
 
 load().catch(e=>$("#status").textContent=e.message);
+
+// Keep the shared top navigation state correct on every player page.
+function syncPrimaryNav(){
+ const path=location.pathname;
+ const hash=location.hash;
+ document.querySelectorAll(".top-nav nav a").forEach(a=>a.classList.remove("active"));
+ const links=[...document.querySelectorAll(".top-nav nav a")];
+ let target=null;
+ if(hash==="#leaderboard") target=links.find(a=>a.getAttribute("href")==="/#leaderboard");
+ else if(hash==="#help") target=links.find(a=>a.getAttribute("href")==="/#help");
+ else if(hash==="#gauntlet") target=links.find(a=>a.getAttribute("href")==="/player#gauntlet");
+ else if(path==="/players") target=links.find(a=>a.getAttribute("href")==="/players");
+ else if(path==="/setup") target=links.find(a=>a.getAttribute("href")==="/setup");
+ else if(path==="/player") target=links.find(a=>a.getAttribute("href")==="/player" && !a.getAttribute("href").includes("#"));
+ else if(path==="/") target=links.find(a=>a.getAttribute("href")==="/");
+ if(target) target.classList.add("active");
+}
+document.addEventListener("DOMContentLoaded",syncPrimaryNav);
+window.addEventListener("hashchange",syncPrimaryNav);
