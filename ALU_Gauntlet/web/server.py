@@ -97,6 +97,7 @@ class WebControlCenter:
         self.app.router.add_get("/setup", self.setup_page)
         self.app.router.add_get("/player", self.player_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
+        self.app.router.add_get("/clubs", self.clubs_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
@@ -107,6 +108,11 @@ class WebControlCenter:
         self.app.router.add_get("/api/player/me", self.player_me)
         self.app.router.add_get("/api/tournaments", self.tournaments)
         self.app.router.add_get("/api/tournaments/{tournament_id}", self.tournament_detail)
+        self.app.router.add_get("/api/clubs", self.clubs)
+        self.app.router.add_post("/api/clubs", self.create_club)
+        self.app.router.add_post("/api/clubs/update", self.update_club)
+        self.app.router.add_post("/api/clubs/join", self.join_club)
+        self.app.router.add_post("/api/clubs/member", self.manage_club_member)
         self.app.router.add_post("/api/tournaments", self.create_tournament)
         self.app.router.add_post("/api/tournaments/register", self.register_tournament)
         self.app.router.add_post("/api/tournaments/checkin", self.tournament_checkin)
@@ -133,6 +139,131 @@ class WebControlCenter:
         # artwork could exist in the repository but still return a 404 in production.
         self.app.router.add_get("/assets/{filename}", self.asset)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
+
+    async def clubs_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("clubs.html")
+
+    async def clubs(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        guild_ids = {str(x) for x in user.guild_ids}
+        rows = []
+        async for club in self.bot.db.clubs.find({"guild_id": {"$in": list(guild_ids)}}).sort("name_ci", 1):
+            club["id"] = str(club.pop("_id"))
+            members = []
+            async for member in self.bot.db.club_members.find({"club_id": club["id"]}).sort("joined_at", 1):
+                member.pop("_id", None)
+                members.append(member)
+            club["members"] = members
+            club["member_count"] = len(members)
+            club["mine"] = any(str(m.get("user_id")) == str(user.user_id) for m in members)
+            club["leader"] = str(club.get("leader_id")) == str(user.user_id)
+            rows.append(club)
+        return web.json_response({"clubs": rows})
+
+    async def create_club(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        guild_id = str(payload.get("guild_id", "")).strip()
+        if guild_id not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPForbidden(text="You are not a member of that server.")
+        name = str(payload.get("name", "")).strip()
+        if not name or len(name) > 40:
+            raise web.HTTPBadRequest(text="Club name must be 1-40 characters.")
+        if await self.bot.db.clubs.find_one({"guild_id": guild_id, "name_ci": name.casefold()}):
+            raise web.HTTPConflict(text="That club name is already taken.")
+        if await self.bot.db.club_members.find_one({"guild_id": guild_id, "user_id": str(user.user_id)}):
+            raise web.HTTPConflict(text="You are already in a club in this server.")
+        now = datetime.now(timezone.utc).isoformat()
+        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", "")).strip()[:500], "image": "", "leader_id": str(user.user_id), "created_at": now, "updated_at": now}
+        result = await self.bot.db.clubs.insert_one(doc)
+        await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
+        return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
+
+    async def update_club(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        if str(club.get("leader_id")) != str(user.user_id):
+            raise web.HTTPForbidden(text="Only the club leader can edit the club.")
+        updates = {}
+        if "name" in payload:
+            name = str(payload.get("name", "")).strip()
+            if not name or len(name) > 40:
+                raise web.HTTPBadRequest(text="Club name must be 1-40 characters.")
+            duplicate = await self.bot.db.clubs.find_one({"_id": {"$ne": oid}, "guild_id": club["guild_id"], "name_ci": name.casefold()})
+            if duplicate:
+                raise web.HTTPConflict(text="That club name is already taken.")
+            updates.update(name=name, name_ci=name.casefold())
+        if "about" in payload:
+            updates["about"] = str(payload.get("about", "")).strip()[:500]
+        if "image" in payload:
+            image = str(payload.get("image", "")).strip()
+            if image and not image.startswith("data:image/"):
+                raise web.HTTPBadRequest(text="Club image must be an uploaded image.")
+            if len(image) > 3_000_000:
+                raise web.HTTPBadRequest(text="Club image is too large.")
+            updates["image"] = image
+        if updates:
+            updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await self.bot.db.clubs.update_one({"_id": oid}, {"$set": updates})
+        return web.json_response({"ok": True, "message": "Club profile updated."})
+
+    async def join_club(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        if await self.bot.db.club_members.find_one({"guild_id": club["guild_id"], "user_id": str(user.user_id)}):
+            raise web.HTTPConflict(text="You are already in a club in this server.")
+        if await self.bot.db.club_members.count_documents({"club_id": str(oid)}) >= 20:
+            raise web.HTTPConflict(text="That club is full.")
+        now = datetime.now(timezone.utc).isoformat()
+        await self.bot.db.club_members.insert_one({"club_id": str(oid), "guild_id": club["guild_id"], "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": now})
+        return web.json_response({"ok": True, "message": "You joined the club."})
+
+    async def manage_club_member(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("leader_id")) != str(user.user_id):
+            raise web.HTTPForbidden(text="Only the club leader can manage members.")
+        target = str(payload.get("user_id", "")).strip()
+        if target == str(user.user_id):
+            raise web.HTTPBadRequest(text="The club leader cannot manage their own membership.")
+        member = await self.bot.db.club_members.find_one({"club_id": str(oid), "user_id": target})
+        if not member:
+            raise web.HTTPNotFound(text="Club member not found.")
+        action = str(payload.get("action", "")).casefold()
+        if action == "promote":
+            value = "officer"
+        elif action == "demote":
+            value = "member"
+        elif action == "kick":
+            await self.bot.db.club_members.delete_one({"_id": member["_id"]})
+            return web.json_response({"ok": True, "message": "Member removed from the club."})
+        else:
+            raise web.HTTPBadRequest(text="Unsupported member action.")
+        await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
+        return web.json_response({"ok": True, "message": "Member role updated."})
 
     async def tournaments_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
