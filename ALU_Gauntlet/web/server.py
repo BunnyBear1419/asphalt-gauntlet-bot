@@ -731,12 +731,29 @@ class WebControlCenter:
         if t.get("status") not in {"registration_open", "open", "live"}:
             raise web.HTTPConflict(text="Check-in is closed.")
         tid = str(oid)
-        result = await self.bot.db.tournament_registrations.update_one(
-            {"tournament_id": tid, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}},
-            {"$set": {"status": "checked_in", "checked_in_at": datetime.now(timezone.utc).isoformat()}},
-        )
-        if not result.modified_count:
-            raise web.HTTPConflict(text="You must be registered before checking in.")
+        if int(t.get("team_size", 1)) > 1:
+            reg = await self.bot.db.tournament_club_registrations.find_one(
+                {"tournament_id": tid, "status": {"$in": ["pending", "accepted", "checked_in"]}, "club_id": {"$exists": True}}
+            )
+            if not reg:
+                raise web.HTTPConflict(text="Your club must be registered before checking in.")
+            club = await self.bot.db.clubs.find_one({"_id": ObjectId(reg["club_id"])}) if ObjectId.is_valid(str(reg["club_id"])) else None
+            if not club or str(club.get("leader_id")) != str(user.user_id):
+                raise web.HTTPForbidden(text="Only the club leader can check in the club.")
+            lineup = reg.get("lineup") or []
+            if len(lineup) != int(t.get("team_size", 1)):
+                raise web.HTTPConflict(text="Save a complete tournament lineup before checking in.")
+            await self.bot.db.tournament_club_registrations.update_one(
+                {"_id": reg["_id"]},
+                {"$set": {"status": "checked_in", "checked_in_at": datetime.now(timezone.utc).isoformat()}},
+            )
+        else:
+            result = await self.bot.db.tournament_registrations.update_one(
+                {"tournament_id": tid, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}},
+                {"$set": {"status": "checked_in", "checked_in_at": datetime.now(timezone.utc).isoformat()}},
+            )
+            if not result.modified_count:
+                raise web.HTTPConflict(text="You must be registered before checking in.")
         return web.json_response({"ok": True, "message": "You are checked in."})
 
     async def tournament_start(self, request: web.Request) -> web.Response:
