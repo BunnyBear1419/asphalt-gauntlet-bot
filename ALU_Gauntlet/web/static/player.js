@@ -217,7 +217,7 @@ const addLink=$("#add-profile-link"); if(addLink)addLink.addEventListener("click
 const saveProfile=$("#save-profile");
 if(saveProfile)saveProfile.addEventListener("click",async()=>{
  const guildId=$("#guild")?.value,status=$("#profile-save-status"); if(!guildId)return;
- const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,3);
+ const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,5);
  if(status)status.textContent="Saving…"; saveProfile.disabled=true;
  try{
   const d=await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:$("#profile-game-name")?.value||"",about:$("#profile-about")?.value||"",location:$("#profile-location")?.value||"",timezone:$("#profile-timezone")?.value||"UTC",links})});
