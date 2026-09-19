@@ -1,6 +1,6 @@
 # Discloud-first production deployment
 
-This repository is designed to run the **ALU Gauntlet Discord bot and web control center in the same Discloud app**.
+This repository is designed to run the **Racing Syndicate League Discord bot and web control center in the same Discloud app**.
 
 ## Production architecture
 
