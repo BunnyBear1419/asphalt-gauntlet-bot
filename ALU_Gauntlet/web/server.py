@@ -391,6 +391,40 @@ class WebControlCenter:
             raise web.HTTPNotFound(text="Tournament not found.")
         if tournament.get("status") not in {"registration_open", "open"}:
             raise web.HTTPConflict(text="Tournament registration is closed.")
+        team_size = int(tournament.get("team_size", 1))
+        if team_size > 1:
+            club_id = str(payload.get("club_id", "")).strip()
+            from bson import ObjectId
+            try:
+                club_oid = ObjectId(club_id)
+            except Exception:
+                raise web.HTTPBadRequest(text="A valid club_id is required for team tournaments.")
+            club = await self.bot.db.clubs.find_one({"_id": club_oid, "guild_id": str(tournament["guild_id"])})
+            if not club:
+                raise web.HTTPNotFound(text="Club not found in this server.")
+            membership = await self.bot.db.club_members.find_one({"club_id": club_id, "user_id": str(user.user_id)})
+            if not membership:
+                raise web.HTTPForbidden(text="You must be a member of the club to register it.")
+            if str(club.get("leader_id")) != str(user.user_id):
+                raise web.HTTPForbidden(text="Only the club leader can enter a club in a tournament.")
+            count = await self.bot.db.tournament_club_registrations.count_documents(
+                {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            )
+            if count >= int(tournament.get("max_players", 32)):
+                raise web.HTTPConflict(text="This tournament is full.")
+            existing = await self.bot.db.tournament_club_registrations.find_one(
+                {"tournament_id": tournament_id, "club_id": club_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            )
+            if existing:
+                raise web.HTTPConflict(text="This club is already registered for the tournament.")
+            await self.bot.db.tournament_club_registrations.insert_one({
+                "tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]),
+                "club_id": club_id, "club_name": club.get("name", "Club"),
+                "team_size": team_size, "status": "pending",
+                "registered_by": str(user.user_id),
+                "registered_at": datetime.now(timezone.utc).isoformat(),
+            })
+            return web.json_response({"ok": True, "message": "Club registration submitted for staff review."})
         count = await self.bot.db.tournament_registrations.count_documents(
             {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
         )
@@ -608,14 +642,20 @@ class WebControlCenter:
         if not t:
             raise web.HTTPNotFound(text="Tournament not found.")
         players = []
-        async for row in self.bot.db.tournament_registrations.find(
-            {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
-        ).sort("registered_at", 1):
-            players.append(str(row["user_id"]))
+        if int(t.get("team_size", 1)) > 1:
+            async for row in self.bot.db.tournament_club_registrations.find(
+                {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
+            ).sort("registered_at", 1):
+                players.append(str(row["club_id"]))
+        else:
+            async for row in self.bot.db.tournament_registrations.find(
+                {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
+            ).sort("registered_at", 1):
+                players.append(str(row["user_id"]))
         if len(players) < 2:
-            raise web.HTTPConflict(text="At least 2 accepted players are required to start.")
+            raise web.HTTPConflict(text="At least 2 accepted entrants are required to start.")
         if t.get("format") in {"single_elimination", "double_elimination"} and len(players) > int(t.get("max_players", 32)):
-            raise web.HTTPConflict(text="Too many players for this tournament.")
+            raise web.HTTPConflict(text="Too many entrants for this tournament.")
         bracket = generate_tournament_bracket(t["format"], int(t["max_players"]))
         if t["format"] == "single_elimination":
             slots = players + [None] * (int(t["max_players"]) - len(players))
