@@ -173,6 +173,7 @@ class WebControlCenter:
             # Byes are intentionally excluded so they do not inflate a club's record.
             wins = 0
             losses = 0
+            recent_results = []
             async for tournament in self.bot.db.tournaments.find({
                 "guild_id": club["guild_id"],
                 "team_size": {"$gt": 1},
@@ -189,8 +190,25 @@ class WebControlCenter:
                         winner = str(match.get("winner_id", ""))
                         if winner == club["id"]:
                             wins += 1
+                            result = "WIN"
                         elif winner in slots:
                             losses += 1
+                            result = "LOSS"
+                        else:
+                            continue
+                        opponent_id = next((slot for slot in slots if slot != club["id"]), "")
+                        opponent_name = opponent_id
+                        opponent_club = await self.bot.db.clubs.find_one({"_id": ObjectId(opponent_id)}) if opponent_id else None
+                        if opponent_club:
+                            opponent_name = str(opponent_club.get("name") or opponent_id)
+                        recent_results.append({
+                            "result": result,
+                            "opponent": opponent_name,
+                            "tournament_name": str(tournament.get("name") or "Team Tournament"),
+                            "date_label": str(match.get("completed_at") or match.get("updated_at") or tournament.get("updated_at") or "")[:10],
+                        })
+            recent_results.sort(key=lambda x: x.get("date_label", ""), reverse=True)
+            club["recent_tournament_results"] = recent_results[:5]
             club["tournament_wins"] = wins
             club["tournament_losses"] = losses
             club["tournament_record"] = f"{wins}-{losses}"
