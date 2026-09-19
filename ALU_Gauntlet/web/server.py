@@ -109,6 +109,8 @@ class WebControlCenter:
         self.app.router.add_get("/api/tournaments/{tournament_id}", self.tournament_detail)
         self.app.router.add_post("/api/tournaments", self.create_tournament)
         self.app.router.add_post("/api/tournaments/register", self.register_tournament)
+        self.app.router.add_post("/api/tournaments/checkin", self.tournament_checkin)
+        self.app.router.add_post("/api/tournaments/start", self.tournament_start)
         self.app.router.add_get("/api/player/defense", self.player_defense)
         self.app.router.add_post("/api/player/defense", self.player_defense_action)
         self.app.router.add_put("/api/player/preferences", self.player_preferences)
@@ -259,6 +261,57 @@ class WebControlCenter:
             "registered_at": datetime.now(timezone.utc).isoformat(),
         })
         return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
+
+    async def tournament_checkin(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str((await request.json()).get("tournament_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        t = await self.bot.db.tournaments.find_one({"_id": oid})
+        if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+            raise web.HTTPNotFound(text="Tournament not found.")
+        if t.get("status") not in {"registration_open", "open", "live"}:
+            raise web.HTTPConflict(text="Check-in is closed.")
+        tid = str(oid)
+        result = await self.bot.db.tournament_registrations.update_one(
+            {"tournament_id": tid, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}},
+            {"$set": {"status": "checked_in", "checked_in_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        if not result.modified_count:
+            raise web.HTTPConflict(text="You must be registered before checking in.")
+        return web.json_response({"ok": True, "message": "You are checked in."})
+
+    async def tournament_start(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        from ALU_Gauntlet.core.tournament import generate_tournament_bracket
+        try:
+            oid = ObjectId(str((await request.json()).get("tournament_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        t = await self.bot.db.tournaments.find_one({"_id": oid, "guild_id": guild_id})
+        if not t:
+            raise web.HTTPNotFound(text="Tournament not found.")
+        players = []
+        async for row in self.bot.db.tournament_registrations.find(
+            {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
+        ).sort("registered_at", 1):
+            players.append(str(row["user_id"]))
+        if len(players) < 2:
+            raise web.HTTPConflict(text="At least 2 accepted players are required to start.")
+        if t.get("format") in {"single_elimination", "double_elimination"} and len(players) > int(t.get("max_players", 32)):
+            raise web.HTTPConflict(text="Too many players for this tournament.")
+        bracket = generate_tournament_bracket(t["format"], int(t["max_players"]))
+        if t["format"] == "single_elimination":
+            slots = players + [None] * (int(t["max_players"]) - len(players))
+            matches = bracket["rounds"][0]["matches"]
+            for i, match in enumerate(matches):
+                match["player_slots"] = [slots[i * 2], slots[i * 2 + 1]]
+                match["status"] = "ready" if all(match["player_slots"]) else "bye" if any(match["player_slots"]) else "waiting"
+        await self.bot.db.tournaments.update_one({"_id": oid}, {"$set": {"status": "live", "started_at": datetime.now(timezone.utc).isoformat(), "bracket": bracket, "started_by": str(user.user_id)}})
+        return web.json_response({"ok": True, "message": "Tournament started.", "bracket": bracket})
 
     async def asset(self, request: web.Request) -> web.Response:
         """Serve dashboard artwork with the correct image MIME type."""
