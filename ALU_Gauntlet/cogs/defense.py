@@ -61,7 +61,7 @@ class DefenseView(discord.ui.View):
         except Exception:
             logging.exception('Unable to DM defense review result to driver %s', self.user_id)
 
-    @discord.ui.button(label='✅ Approve Defense', style=discord.ButtonStyle.success)
+    @discord.ui.button(label='✅ Approve Defense', style=discord.ButtonStyle.success, custom_id='alu_defense_approve')
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await self._authorized(interaction):
             await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
@@ -91,7 +91,7 @@ class DefenseView(discord.ui.View):
         await self._notify_driver('🛡️ **Defense Approved!** Your 5-course defense has been approved by staff and is now active.')
         await interaction.followup.send('✅ Defense approved and locked.', ephemeral=True)
 
-    @discord.ui.button(label='❌ Reject Defense', style=discord.ButtonStyle.danger)
+    @discord.ui.button(label='❌ Reject Defense', style=discord.ButtonStyle.danger, custom_id='alu_defense_reject')
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await self._authorized(interaction):
             await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
@@ -314,3 +314,25 @@ class DefenseCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(DefenseCog(bot))
+
+    # Re-register pending review buttons after a bot restart.
+    try:
+        pending = await bot.db.drivers.find({
+            'defense_review_pending': True,
+            'defense_review_payload.review_channel_id': {'$exists': True},
+            'defense_review_payload.review_message_id': {'$exists': True},
+        }).to_list(length=None)
+        for profile in pending:
+            payload = profile.get('defense_review_payload') or {}
+            courses = payload.get('courses') or []
+            raw_id = str(profile.get('_id', ''))
+            if '_' not in raw_id or len(courses) != 5:
+                continue
+            guild_id, user_id = raw_id.split('_', 1)
+            view = DefenseView(
+                user_id, guild_id, courses, payload.get('proof_url'),
+                is_change=bool(payload.get('is_change')),
+            )
+            bot.add_view(view, message_id=int(payload['review_message_id']))
+    except Exception:
+        logging.exception('Unable to restore pending defense review views after startup')
