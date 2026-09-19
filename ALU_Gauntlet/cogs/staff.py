@@ -5,7 +5,9 @@ from ..core.core import *
 async def send_admin_dashboard(interaction: discord.Interaction):
     """Open the canonical staff dashboard view for /staff."""
     guild_id = str(interaction.guild_id)
-    view = StaffDashboardView(guild_id)
+    # StaffDashboardView ownership is per-admin session, not per-guild.
+    # Passing guild_id here makes every component interaction fail its owner check.
+    view = StaffDashboardView(str(interaction.user.id))
     embed = discord.Embed(
         title='🛠️ ALU GAUNTLET • STAFF CONTROL CENTER',
         description='Manage players, seasons, defenses, setup, diagnostics, backups, and league operations from the staff dashboard below.',
