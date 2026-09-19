@@ -9,7 +9,7 @@ async def send_dashboard(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
     view = DashboardView(guild_id, user_id, False)
     embed = discord.Embed(
-        title='🏁 ALU GAUNTLET • PLAYER DASHBOARD',
+        title='🏁 RACING SYNDICATE LEAGUE • PLAYER DASHBOARD',
         description='Race. Compete. Unite.\n\nUse the controls below to manage your driver profile, defense, challenges, rankings, and season activity.',
         color=ASPHALT_THEME_COLOR,
     )
@@ -22,7 +22,7 @@ async def send_dashboard(interaction: discord.Interaction):
 class PlayerCog(commands.Cog):
 
     @app_commands.guild_only()
-    @app_commands.command(name='dashboard', description='Open your ALU Gauntlet player dashboard.')
+    @app_commands.command(name='dashboard', description='Open your Racing Syndicate League player dashboard.')
     async def gauntlet_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
             return
@@ -56,7 +56,7 @@ class PlayerCog(commands.Cog):
         if not profile:
             await interaction.followup.send('❌ Profile card missing. Open `/dashboard` → **My Gauntlet** → **Register** first.')
             return
-        embed = discord.Embed(title='🏁 ALU GAUNTLET DRIVER DOSSIER CARD', color=ASPHALT_THEME_COLOR)
+        embed = discord.Embed(title='🏁 RACING SYNDICATE LEAGUE DRIVER DOSSIER CARD', color=ASPHALT_THEME_COLOR)
         embed.set_thumbnail(url=ASPHALT_MEDIA['thumb_profile'])
         matches = await bot.db.matches.find({
             'guild_id': str(interaction.guild_id),
@@ -101,7 +101,7 @@ class PlayerCog(commands.Cog):
         embed.set_footer(text='Profile & Stats • Use /dashboard → Competition → Season History for archived seasons', icon_url=target_user.display_avatar.url)
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name='register', description='Open the guided ALU Gauntlet registration form.')
+    @app_commands.command(name='register', description='Open the guided Racing Syndicate League registration form.')
     async def register_launcher_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
             return
@@ -131,7 +131,7 @@ class PlayerCog(commands.Cog):
         played = profile.get('career_played', 0) if profile else 0
         await interaction.followup.send(f'🔄 **Season {season_number} Re-Registration Required.** Your career record remains safe (`{career}` wins / `{played}` matches). Open `/dashboard` → **My Gauntlet** → **Register** with your current Garage PI to enter this season.', ephemeral=True)
 
-    @app_commands.command(name='delete_me', description='Permanently delete your ALU Gauntlet data from this server.')
+    @app_commands.command(name='delete_me', description='Permanently delete your Racing Syndicate League data from this server.')
     async def delete_me_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
             return
@@ -140,9 +140,9 @@ class PlayerCog(commands.Cog):
         profile = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}'})
         pending = await bot.db.pending.find_one({'_id': f'{guild_id}_{user_id}'})
         if not profile and (not pending):
-            await interaction.response.send_message('ℹ️ You do not have an active ALU Gauntlet record in this server.', ephemeral=True)
+            await interaction.response.send_message('ℹ️ You do not have an active Racing Syndicate League record in this server.', ephemeral=True)
             return
-        await interaction.response.send_message('⚠️ **Permanently delete your ALU Gauntlet data?**\n\nThis removes your driver profile, current/past match records, active challenges, pending submissions, and your archived season-standing entries from **this server**. This cannot be undone.\n\nIf you join again, you will start as a new player.', view=ConfirmDeleteMeView(guild_id, user_id), ephemeral=True)
+        await interaction.response.send_message('⚠️ **Permanently delete your Racing Syndicate League data?**\n\nThis removes your driver profile, current/past match records, active challenges, pending submissions, and your archived season-standing entries from **this server**. This cannot be undone.\n\nIf you join again, you will start as a new player.', view=ConfirmDeleteMeView(guild_id, user_id), ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(PlayerCog(bot))
