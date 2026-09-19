@@ -5,6 +5,7 @@ import logging
 import random
 import time
 from pathlib import Path
+import mimetypes
 from typing import Any
 
 from aiohttp import web
@@ -112,30 +113,27 @@ class WebControlCenter:
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
-        # Serve dashboard artwork through a dedicated uncached route. This avoids proxy/browser caching and MIME/path handling differences on production hosts.
+        # Serve every checked-in dashboard image through one predictable route.
+        # The previous allow-list only covered the newer SVGs, so older JPG/WEBP
+        # artwork could exist in the repository but still return a 404 in production.
         self.app.router.add_get("/assets/{filename}", self.asset)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
     async def asset(self, request: web.Request) -> web.Response:
-        """Serve approved dashboard artwork with an explicit SVG MIME type."""
-        allowed = {
-            "hero-4k-final.svg",
-            "gauntlet-4k-final.svg",
-            "garage-4k-final.svg",
-            "competition-4k-final.svg",
-            "profile-settings-4k-final.svg",
-            "home-reference.svg",
-        }
+        """Serve dashboard artwork with the correct image MIME type."""
         filename = request.match_info.get("filename", "")
-        if filename not in allowed:
+        if not filename or "/" in filename or "\\" in filename:
             raise web.HTTPNotFound(text="Asset not found.")
         path = WEB_DIR / "assets" / filename
-        if not path.is_file():
+        if not path.is_file() or path.suffix.lower() not in {".svg", ".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            raise web.HTTPNotFound(text="Asset not found.")
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        if not content_type.startswith("image/"):
             raise web.HTTPNotFound(text="Asset not found.")
         return web.FileResponse(
             path,
             headers={
-                "Content-Type": "image/svg+xml; charset=utf-8",
+                "Content-Type": content_type,
                 "Cache-Control": "no-store, max-age=0",
                 "X-Content-Type-Options": "nosniff",
             },
