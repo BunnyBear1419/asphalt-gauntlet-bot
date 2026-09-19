@@ -29,6 +29,19 @@ CHANNEL_FIELDS = (
 )
 ROLE_FIELDS = (("admin_role_id", "Staff / admin role"), ("player_role_id", "Player role"))
 
+TOURNAMENT_CHANNEL_FIELDS = (
+    ("tournament_main_channel_id", "Tournament main channel"),
+    ("tournament_log_channel_id", "Tournament log channel"),
+    ("tournament_bracket_channel_id", "Bracket / result channel"),
+    ("tournament_admin_channel_id", "Tournament admin channel"),
+    ("tournament_announcement_channel_id", "Tournament announcement channel"),
+)
+TOURNAMENT_ROLE_FIELDS = (
+    ("tournament_admin_role_id", "Tournament admin role"),
+    ("tournament_player_announcement_role_id", "Tournament player-announcement role"),
+)
+TOURNAMENT_FIELDS = tuple(key for key, _ in TOURNAMENT_CHANNEL_FIELDS + TOURNAMENT_ROLE_FIELDS)
+
 
 class SetupWizard:
     """Guild-scoped state for the interactive, picker-only server setup wizard."""
@@ -37,6 +50,7 @@ class SetupWizard:
         self.guild_id = str(interaction.guild_id)
         self.owner_id = interaction.user.id
         self.values: dict[str, Any] = {"timezone": "UTC"}
+        self.tournament_target = TOURNAMENT_CHANNEL_FIELDS[0][0]
         self.channel_target = CHANNEL_FIELDS[0][0]
         self.role_target = ROLE_FIELDS[0][0]
 
@@ -81,6 +95,7 @@ class SetupWizardView(discord.ui.View):
         self.channels.label = f"Channels ({wizard.channel_count()}/{len(CHANNEL_FIELDS)})"
         self.roles.label = f"Roles ({wizard.role_count()}/{len(ROLE_FIELDS)})"
         self.timezone.label = "Timezone ✓" if wizard.values.get("timezone") else "Timezone"
+        self.tournament.label = "🏆 Tournament Setup"
 
     @discord.ui.button(label="Channels", style=discord.ButtonStyle.primary, row=0)
     async def channels(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -97,7 +112,12 @@ class SetupWizardView(discord.ui.View):
         if await _authorized(interaction, self.wizard):
             await interaction.response.edit_message(embed=build_timezone_embed(self.wizard, 0), view=TimezoneWizardView(self.wizard, 0))
 
-    @discord.ui.button(label="Review & Save", style=discord.ButtonStyle.success, row=1)
+    @discord.ui.button(label="🏆 Tournament Setup", style=discord.ButtonStyle.primary, row=1)
+    async def tournament(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if await _authorized(interaction, self.wizard):
+            await interaction.response.edit_message(embed=build_tournament_embed(self.wizard), view=TournamentSetupView(self.wizard))
+
+    @discord.ui.button(label="Review & Save", style=discord.ButtonStyle.success, row=2)
     async def review(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await _authorized(interaction, self.wizard):
             return
@@ -107,7 +127,7 @@ class SetupWizardView(discord.ui.View):
             return
         await interaction.response.edit_message(embed=build_review_embed(self.wizard), view=SetupReviewView(self.wizard))
 
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger, row=1)
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.danger, row=2)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if await _authorized(interaction, self.wizard):
             await interaction.response.edit_message(content="⚙️ Server setup cancelled.", embed=None, view=None)
@@ -234,6 +254,128 @@ class SetupRolesView(discord.ui.View):
         if await _authorized(interaction, self.wizard):
             await interaction.response.edit_message(embed=build_main_embed(self.wizard), view=SetupWizardView(self.wizard))
 
+
+
+class TournamentSetupView(discord.ui.View):
+    """Separate picker-based setup for tournament channels and roles."""
+
+    def __init__(self, wizard: SetupWizard):
+        super().__init__(timeout=900)
+        self.wizard = wizard
+        targets = TOURNAMENT_CHANNEL_FIELDS + TOURNAMENT_ROLE_FIELDS
+        self.target_select = discord.ui.Select(
+            placeholder="1. Choose a tournament setting",
+            options=[
+                discord.SelectOption(
+                    label=label,
+                    value=key,
+                    description="Configured" if wizard.values.get(key) else "Not configured yet",
+                    default=key == wizard.tournament_target,
+                )
+                for key, label in targets
+            ],
+            row=0,
+        )
+        self.target_select.callback = self._target_changed
+        self.add_item(self.target_select)
+        if wizard.tournament_target in {key for key, _ in TOURNAMENT_CHANNEL_FIELDS}:
+            self.picker = discord.ui.ChannelSelect(
+                placeholder="2. Select a text channel",
+                channel_types=[discord.ChannelType.text],
+                min_values=1, max_values=1, row=1,
+            )
+        else:
+            self.picker = discord.ui.RoleSelect(
+                placeholder="2. Select a tournament role",
+                min_values=1, max_values=1, row=1,
+            )
+        self.picker.callback = self._picker_changed
+        self.add_item(self.picker)
+        back = discord.ui.Button(label="Back to Setup", style=discord.ButtonStyle.secondary, row=2)
+        back.callback = self._back
+        self.add_item(back)
+        save = discord.ui.Button(label="Save Tournament Setup", style=discord.ButtonStyle.success, row=2)
+        save.callback = self._save
+        self.add_item(save)
+
+    async def _target_changed(self, interaction: discord.Interaction):
+        if not await _authorized(interaction, self.wizard):
+            return
+        self.wizard.tournament_target = self.target_select.values[0]
+        await interaction.response.edit_message(
+            embed=build_tournament_embed(self.wizard),
+            view=TournamentSetupView(self.wizard),
+        )
+
+    async def _picker_changed(self, interaction: discord.Interaction):
+        if not await _authorized(interaction, self.wizard):
+            return
+        key = self.wizard.tournament_target
+        if key in {k for k, _ in TOURNAMENT_CHANNEL_FIELDS}:
+            channel = self.picker.values[0] if self.picker.values else None
+            if not isinstance(channel, discord.TextChannel):
+                await interaction.response.send_message("❌ Please select a text channel.", ephemeral=True)
+                return
+            guild = self.wizard.guild()
+            me = guild.me if guild else None
+            if me:
+                permissions = channel.permissions_for(me)
+                if not permissions.view_channel or not permissions.send_messages:
+                    await interaction.response.send_message(
+                        "❌ I can't use that channel. Choose one where the bot can View Channel and Send Messages.",
+                        ephemeral=True,
+                    )
+                    return
+            self.wizard.values[key] = str(channel.id)
+        else:
+            role = self.picker.values[0] if self.picker.values else None
+            if role is None or role.is_default() or role.managed:
+                await interaction.response.send_message(
+                    "❌ Please select a normal server role, not @everyone or a managed role.",
+                    ephemeral=True,
+                )
+                return
+            self.wizard.values[key] = str(role.id)
+        await interaction.response.edit_message(
+            embed=build_tournament_embed(self.wizard),
+            view=TournamentSetupView(self.wizard),
+        )
+
+    async def _back(self, interaction: discord.Interaction):
+        if await _authorized(interaction, self.wizard):
+            await interaction.response.edit_message(
+                embed=build_main_embed(self.wizard), view=SetupWizardView(self.wizard)
+            )
+
+    async def _save(self, interaction: discord.Interaction):
+        if not await _authorized(interaction, self.wizard):
+            return
+        missing = [
+            label for key, label in TOURNAMENT_CHANNEL_FIELDS + TOURNAMENT_ROLE_FIELDS
+            if not self.wizard.values.get(key)
+        ]
+        if missing:
+            await interaction.response.send_message(
+                "❌ Still needed: " + ", ".join(missing) + ".", ephemeral=True
+            )
+            return
+        await interaction.response.defer()
+        await bot.db.settings.update_one(
+            {"_id": self.wizard.guild_id},
+            {"$set": {key: self.wizard.values[key] for key in TOURNAMENT_FIELDS}},
+            upsert=True,
+        )
+        await dispatch_audit_log(
+            self.wizard.guild_id,
+            "🏆 Tournament Setup Updated",
+            f"Tournament channels and roles configured by {interaction.user.mention}.",
+            color=ASPHALT_THEME_COLOR,
+        )
+        await interaction.edit_original_response(
+            content="✅ Tournament setup saved. Your Gauntlet setup remains unchanged.",
+            embed=None,
+            view=None,
+        )
 
 class TimezoneWizardView(discord.ui.View):
     """Paged native dropdown because Discord select menus allow at most 25 options."""
@@ -375,7 +517,8 @@ def build_main_embed(wizard: SetupWizard) -> discord.Embed:
         f"**Progress:** {complete}/{total} configured\n\n"
         f"📺 **Channels:** {wizard.channel_count()}/{len(CHANNEL_FIELDS)}\n"
         f"🎭 **Roles:** {wizard.role_count()}/{len(ROLE_FIELDS)}\n"
-        f"🌎 **Timezone:** {_status(wizard.values.get('timezone'))}\n\n"
+        f"🌎 **Timezone:** {_status(wizard.values.get("timezone"))}\n\n"
+        "🏆 **Tournament:** Configure tournament channels and roles with the Tournament Setup button.\n\n"
         "Nothing is saved until you choose **Review & Save**."
     )
     return discord.Embed(title="⚙️ Server Setup", description=description, color=ASPHALT_THEME_COLOR)
@@ -411,6 +554,22 @@ def build_roles_embed(wizard: SetupWizard) -> discord.Embed:
         ),
         color=ASPHALT_THEME_COLOR,
     )
+
+
+def build_tournament_embed(wizard: SetupWizard) -> discord.Embed:
+    guild = wizard.guild()
+    channel_keys = {key for key, _ in TOURNAMENT_CHANNEL_FIELDS}
+    lines = ["Use the first dropdown to choose a purpose, then select the matching Discord channel or role."]
+    for key, label in TOURNAMENT_CHANNEL_FIELDS + TOURNAMENT_ROLE_FIELDS:
+        value = wizard.values.get(key)
+        obj = None
+        if guild and value:
+            try:
+                obj = guild.get_channel(int(value)) if key in channel_keys else guild.get_role(int(value))
+            except (TypeError, ValueError):
+                obj = None
+        lines.append(f"**{label}:** {obj.mention if obj else 'Not selected'}")
+    return discord.Embed(title="🏆 Tournament Setup", description="\n\n".join(lines), color=ASPHALT_THEME_COLOR)
 
 
 def build_timezone_embed(wizard: SetupWizard, page: int) -> discord.Embed:
@@ -472,7 +631,7 @@ async def launch_setup_wizard(interaction: discord.Interaction) -> bool:
     wizard = SetupWizard(interaction)
     existing = await bot.db.settings.find_one({"_id": wizard.guild_id})
     if existing:
-        for key in SETUP_FIELDS:
+        for key in SETUP_FIELDS + TOURNAMENT_FIELDS:
             if existing.get(key) is not None:
                 wizard.values[key] = existing[key]
 
