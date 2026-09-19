@@ -27,7 +27,7 @@ function publicClubProfile(c){
  '<button class="public-club-close qa qa-blue" data-close-club-profile aria-label="Close club profile">✕</button>'+
  '<div class="public-club-hero">'+(c.image?'<img src="'+esc(c.image)+'" alt="'+esc(c.name)+' club banner">':'<div class="public-club-hero-empty">🏁</div>')+'<div class="public-club-hero-shade"></div><div class="public-club-hero-copy"><span class="eyebrow">CLUB PROFILE</span><h2 id="public-club-title">'+esc(c.name)+'</h2><p>Led by <b>'+esc(leaderName(c))+'</b></p></div></div>'+
  '<div class="public-club-body">'+
- '<div class="public-club-stat-grid"><div><small>ROSTER</small><strong>'+c.member_count+' / 20</strong></div><div><small>TEAM FORMATS</small><strong>2v2 · 3v3 · 4v4</strong></div><div><small>TOURNAMENT ENTRIES</small><strong>'+Number(c.tournament_count||0)+'</strong></div></div>'+
+ '<div class="public-club-stat-grid unified-profile-stats"><div><small>ROSTER</small><strong>'+c.member_count+' / 20</strong></div><div><small>TEAM FORMATS</small><strong>2v2 · 3v3 · 4v4</strong></div><div><small>TOURNAMENT ENTRIES</small><strong>'+Number(c.tournament_count||0)+'</strong></div></div>'+
  '<div class="public-club-grid"><div class="public-club-main">'+
  '<section class="public-club-section"><span class="eyebrow">ABOUT US</span><p>'+esc(c.about||"This club has not added an About Us description yet.")+'</p></section>'+
  (c.discord?'<section class="public-club-section"><span class="eyebrow">DISCORD</span><a class="public-club-discord" href="'+esc(c.discord)+'" target="_blank" rel="noopener noreferrer">Open Club Discord ↗</a></section>':"")+
