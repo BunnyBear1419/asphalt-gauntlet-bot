@@ -1651,6 +1651,13 @@ class WebControlCenter:
                 log.exception("Unable to enforce integrity index %s", name)
                 raise RuntimeError(f"Database integrity index {name} could not be enforced") from exc
 
+        # Repair the cached club member counters once at startup so legacy clubs cannot
+        # bypass the atomic 20-member reservation because member_count was never stored.
+        async for club in self.bot.db.clubs.find({}, {"_id": 1}):
+            club_id = str(club["_id"])
+            count = await self.bot.db.club_members.count_documents({"club_id": club_id})
+            await self.bot.db.clubs.update_one({"_id": club["_id"]}, {"$set": {"member_count": count}})
+
     async def start(self) -> None:
         await self._ensure_integrity_indexes()
         if self.runner is not None:
