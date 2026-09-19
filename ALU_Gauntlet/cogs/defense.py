@@ -50,7 +50,7 @@ class DefenseView(discord.ui.View):
         embed.title = title
         embed.description = description
         embed.color = color
-        embed.set_footer(text='ALU Gauntlet • Defense review completed')
+        embed.set_footer(text='Racing Syndicate League • Defense review completed')
         await interaction.message.edit(embed=embed, view=self)
 
     async def _notify_driver(self, text):
