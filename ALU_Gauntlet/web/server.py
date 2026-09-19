@@ -123,6 +123,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/player/defense", self.player_defense)
         self.app.router.add_post("/api/player/defense", self.player_defense_action)
         self.app.router.add_put("/api/player/preferences", self.player_preferences)
+        self.app.router.add_put("/api/player/profile", self.player_profile)
         self.app.router.add_post("/api/player/register", self.player_register)
         self.app.router.add_get("/api/setup/options", self.setup_options)
         self.app.router.add_get("/api/setup/settings", self.setup_settings)
@@ -1122,6 +1123,38 @@ class WebControlCenter:
                 raise web.HTTPConflict(text=interaction.message)
             raise web.HTTPBadRequest(text=interaction.message)
         return web.json_response({"ok": True, "message": interaction.message})
+
+    async def player_profile(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        game_name = str(payload.get("game_name", "")).strip()[:100]
+        about = str(payload.get("about", "")).strip()[:500]
+        location = str(payload.get("location", "")).strip()[:100]
+        timezone = str(payload.get("timezone", "UTC")).strip()
+        if timezone not in {value for _, value in TIMEZONE_LABELS}:
+            raise web.HTTPBadRequest(text="Invalid timezone.")
+        links = payload.get("links", [])
+        if not isinstance(links, list):
+            raise web.HTTPBadRequest(text="Links must be a list.")
+        clean_links = []
+        for link in links[:3]:
+            value = str(link or "").strip()
+            if not value:
+                continue
+            if not value.lower().startswith(("http://", "https://")):
+                raise web.HTTPBadRequest(text="Profile links must begin with http:// or https://.")
+            if len(value) > 300:
+                raise web.HTTPBadRequest(text="Profile links must be 300 characters or fewer.")
+            clean_links.append(value)
+        await self.bot.db.web_preferences.update_one(
+            {"_id": f"{guild_id}_{user.user_id}"},
+            {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "timezone": timezone, "links": clean_links}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "message": "Profile updated.", "profile": {"discord_name": user.global_name or user.username or "Driver", "game_name": game_name, "game_id": "", "about": about, "location": location, "timezone": timezone, "links": clean_links}})
 
     async def player_preferences(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
