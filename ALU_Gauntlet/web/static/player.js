@@ -29,6 +29,20 @@ async function profile(){
     setText("season-status",p.season_number?"● Active ●":"● Not Registered ●");
     const tz=$("#timezone");
     if(tz && prefs.timezone)tz.value=prefs.timezone;
+    const ptz=$("#profile-timezone");
+    if(ptz){
+      ptz.textContent="";
+      const options=[["UTC","UTC"],["Eastern Time","America/New_York"],["Central Time","America/Chicago"],["Mountain Time","America/Denver"],["Pacific Time","America/Los_Angeles"],["Alaska Time","America/Anchorage"],["Hawaii Time","Pacific/Honolulu"],["UK / Ireland","Europe/London"],["Central Europe","Europe/Berlin"],["Eastern Europe","Europe/Bucharest"],["India","Asia/Kolkata"],["China / Singapore","Asia/Shanghai"],["Japan","Asia/Tokyo"],["Korea","Asia/Seoul"],["Australian Eastern","Australia/Sydney"],["New Zealand","Pacific/Auckland"]];
+      options.forEach(([label,value])=>{const o=document.createElement("option");o.value=value;o.textContent=label;ptz.append(o)});
+      ptz.value=prefs.timezone||"UTC";
+    }
+    setText("profile-discord-name",p.global_name||p.username||"Driver");
+    setText("profile-game-name",prefs.game_name||"");
+    const gameName=$("#profile-game-name"); if(gameName)gameName.value=prefs.game_name||"";
+    const gameId=$("#profile-game-id"); if(gameId)gameId.value=p.game_id||"";
+    const about=$("#profile-about"); if(about)about.value=prefs.about||"";
+    const location=$("#profile-location"); if(location)location.value=prefs.location||"";
+    renderProfileLinks(prefs.links||[]);
     const profile=$("#profile");
     if(profile){
       profile.textContent=p.game_id?`${p.game_id} • ${wins} career wins • ${p.career_played||0} matches`:"No registered driver profile yet.";
@@ -180,3 +194,28 @@ function syncPrimaryNav(){
 }
 document.addEventListener("DOMContentLoaded",syncPrimaryNav);
 window.addEventListener("hashchange",syncPrimaryNav);
+
+function renderProfileLinks(links){
+ const box=$("#profile-links"); if(!box)return; box.textContent="";
+ const values=[...(links||[])].slice(0,3);
+ if(!values.length) addProfileLink(); else values.forEach(v=>addProfileLink(v));
+}
+function addProfileLink(value=""){
+ const box=$("#profile-links"); if(!box||box.children.length>=3)return;
+ const row=document.createElement("div"); row.className="profile-link-row";
+ const input=document.createElement("input"); input.type="url"; input.maxLength=300; input.placeholder="https://kick.com/…, https://twitch.tv/…, https://youtube.com/…"; input.value=value;
+ const remove=document.createElement("button"); remove.type="button"; remove.className="profile-link-remove"; remove.textContent="Remove"; remove.addEventListener("click",()=>{row.remove();refreshAddLinkButton()});
+ row.append(input,remove); box.append(row); refreshAddLinkButton();
+}
+function refreshAddLinkButton(){const b=$("#add-profile-link");if(b)b.disabled=($("#profile-links")?.children.length||0)>=3}
+const addLink=$("#add-profile-link"); if(addLink)addLink.addEventListener("click",()=>addProfileLink());
+const saveProfile=$("#save-profile");
+if(saveProfile)saveProfile.addEventListener("click",async()=>{
+ const guildId=$("#guild")?.value,status=$("#profile-save-status"); if(!guildId)return;
+ const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,3);
+ if(status)status.textContent="Saving…"; saveProfile.disabled=true;
+ try{
+  const d=await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:$("#profile-game-name")?.value||"",about:$("#profile-about")?.value||"",location:$("#profile-location")?.value||"",timezone:$("#profile-timezone")?.value||"UTC",links})});
+  if(status)status.textContent=d.message||"Saved ✓"; await profile();
+ }catch(e){if(status)status.textContent=e.message||"Profile save failed."}finally{saveProfile.disabled=false;setTimeout(()=>{if(status)status.textContent=""},1800)}
+});
