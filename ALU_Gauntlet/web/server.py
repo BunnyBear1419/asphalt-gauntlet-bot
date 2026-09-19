@@ -163,7 +163,36 @@ class WebControlCenter:
 
     async def require_admin(self, request: web.Request) -> tuple[Any, str, Any]:
         user, guild_id, guild = await self.require_guild_member(request)
-        if guild_id not in user.admin_guild_ids and user.user_id not in self.auth.allowed_staff_ids:
+
+        # Re-check permissions against the live Discord member instead of
+        # trusting a cached OAuth session for up to 30 days. This prevents a
+        # removed admin role/permission from retaining web staff access.
+        if user.user_id in self.auth.allowed_staff_ids:
+            return user, guild_id, guild
+
+        member = guild.get_member(int(user.user_id))
+        if member is None:
+            try:
+                member = await guild.fetch_member(int(user.user_id))
+            except Exception:
+                member = None
+
+        live_admin = bool(
+            member
+            and (
+                member.guild_permissions.administrator
+                or member.guild_permissions.manage_guild
+            )
+        )
+        if not live_admin and member is not None:
+            settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            admin_role_id = str(settings.get("admin_role_id", "")).strip()
+            live_admin = bool(
+                admin_role_id
+                and any(str(role.id) == admin_role_id for role in getattr(member, "roles", []))
+            )
+
+        if not live_admin:
             raise web.HTTPForbidden(text="Administrator access is required for this server.")
         return user, guild_id, guild
 
