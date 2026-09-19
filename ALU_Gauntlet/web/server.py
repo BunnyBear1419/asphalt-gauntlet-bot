@@ -1381,7 +1381,28 @@ class WebControlCenter:
             raise web.HTTPConflict(text="That Asphalt Game ID is already linked to another Discord account.")
         now = datetime.now(timezone.utc).isoformat()
         connection = {"game_id": game_id, "game_name": game_name, "status": "pending", "submitted_at": connection.get("submitted_at") or now, "updated_at": now, "verified_at": connection.get("verified_at"), "verified_by": connection.get("verified_by")}
-        await self.bot.db.web_preferences.update_one({"_id": f"{guild_id}_{user.user_id}"}, {"$set": {"guild_id": guild_id, "user_id": user.user_id, "asphalt_connection": connection}}, upsert=True)
+        key = f"{guild_id}_{user.user_id}"
+        previous_prefs = existing
+        try:
+            await self.bot.db.web_preferences.update_one({"_id": key}, {"$set": {"guild_id": guild_id, "user_id": user.user_id, "asphalt_connection": connection}}, upsert=True)
+            await self.bot.db.drivers.update_one({"_id": key}, {"$set": {
+                "guild_id": guild_id,
+                "user_id": user.user_id,
+                "asphalt_verified": False,
+                "asphalt_game_id": None,
+                "asphalt_game_name": None,
+                "asphalt_verified_by": None,
+                "asphalt_verified_at": None,
+            }}, upsert=True)
+        except Exception:
+            try:
+                if previous_prefs:
+                    await self.bot.db.web_preferences.replace_one({"_id": key}, previous_prefs, upsert=True)
+                else:
+                    await self.bot.db.web_preferences.delete_one({"_id": key})
+            except Exception:
+                log.exception("Failed to compensate partial Asphalt submission for %s", key)
+            raise
         cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
         channel = self.bot.get_channel(int(cfg["review_channel_id"])) if cfg.get("review_channel_id") else None
         if channel:
@@ -1650,6 +1671,7 @@ class WebControlCenter:
             (self.bot.db.tournament_club_registrations, [("tournament_id", 1), ("club_id", 1)], "uniq_tournament_club", True),
             (self.bot.db.tournament_action_locks, [("tournament_id", 1), ("match_id", 1)], "uniq_tournament_action_lock", True),
             (self.bot.db.tournament_action_locks, [("expires_at", 1)], "ttl_tournament_action_lock", False),
+            (self.bot.db.web_preferences, [("guild_id", 1), ("asphalt_connection.game_id", 1)], "uniq_verified_asphalt_game_id_per_guild", True),
         )
         for collection, keys, name, unique in indexes:
             try:
@@ -1658,6 +1680,8 @@ class WebControlCenter:
                     kwargs["unique"] = True
                 if name == "ttl_tournament_action_lock":
                     kwargs["expireAfterSeconds"] = 0
+                if name == "uniq_verified_asphalt_game_id_per_guild":
+                    kwargs["partialFilterExpression"] = {"asphalt_connection.status": "verified", "asphalt_connection.game_id": {"$type": "string"}}
                 await collection.create_index(keys, **kwargs)
             except Exception as exc:
                 # A duplicate-key error means existing bad data prevents the invariant.

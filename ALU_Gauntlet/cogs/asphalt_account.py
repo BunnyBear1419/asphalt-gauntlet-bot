@@ -1,8 +1,12 @@
+import logging
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 
 from ..core.core import bot
+
+log = logging.getLogger(__name__)
 
 
 class AsphaltAccountCog(commands.Cog):
@@ -43,8 +47,21 @@ class AsphaltAccountCog(commands.Cog):
             "verified_at": discord.utils.utcnow().isoformat(),
             "updated_at": discord.utils.utcnow().isoformat(),
         })
-        await bot.db.web_preferences.update_one({"_id": key}, {"$set": {"asphalt_connection": connection}}, upsert=True)
-        await bot.db.drivers.update_one({"_id": key}, {"$set": {"asphalt_verified": True, "asphalt_verified_by": str(interaction.user.id), "asphalt_verified_at": connection["verified_at"]}})
+        try:
+            await bot.db.web_preferences.update_one({"_id": key}, {"$set": {"asphalt_connection": connection}}, upsert=True)
+            await bot.db.drivers.update_one({"_id": key}, {"$set": {
+                "asphalt_verified": True,
+                "asphalt_game_id": game_id,
+                "asphalt_game_name": connection.get("game_name"),
+                "asphalt_verified_by": str(interaction.user.id),
+                "asphalt_verified_at": connection["verified_at"],
+            }}, upsert=True)
+        except Exception:
+            try:
+                await bot.db.web_preferences.update_one({"_id": key}, {"$set": {"asphalt_connection": prefs.get("asphalt_connection")}}, upsert=True)
+            except Exception:
+                log.exception("Failed to compensate partial Asphalt verification for %s", key)
+            raise
         await interaction.response.send_message(f"✅ **{player.display_name}** is now linked to Asphalt Game ID **{game_id}**.", ephemeral=True)
 
     @asphalt.command(name="reject", description="Reject a player's pending Asphalt account link.")
@@ -60,8 +77,21 @@ class AsphaltAccountCog(commands.Cog):
             await interaction.response.send_message("❌ That player has no Asphalt account connection to reject.", ephemeral=True)
             return
         connection.update({"status": "rejected", "rejected_by": str(interaction.user.id), "rejected_at": discord.utils.utcnow().isoformat(), "updated_at": discord.utils.utcnow().isoformat()})
-        await bot.db.web_preferences.update_one({"_id": key}, {"$set": {"asphalt_connection": connection}}, upsert=True)
-        await bot.db.drivers.update_one({"_id": key}, {"$set": {"asphalt_verified": False}})
+        try:
+            await bot.db.web_preferences.update_one({"_id": key}, {"$set": {"asphalt_connection": connection}}, upsert=True)
+            await bot.db.drivers.update_one({"_id": key}, {"$set": {
+                "asphalt_verified": False,
+                "asphalt_game_id": None,
+                "asphalt_game_name": None,
+                "asphalt_verified_by": None,
+                "asphalt_verified_at": None,
+            }}, upsert=True)
+        except Exception:
+            try:
+                await bot.db.web_preferences.update_one({"_id": key}, {"$set": {"asphalt_connection": prefs.get("asphalt_connection")}}, upsert=True)
+            except Exception:
+                log.exception("Failed to compensate partial Asphalt rejection for %s", key)
+            raise
         await interaction.response.send_message(f"🚫 Asphalt account link rejected for **{player.display_name}**.", ephemeral=True)
 
 
