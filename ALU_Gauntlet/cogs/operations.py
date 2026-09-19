@@ -12,7 +12,7 @@ from ..core.core import *
 class OperationsCog(commands.Cog):
     """Production observability and player statistics."""
 
-    @app_commands.command(name="status", description="Show live ALU Gauntlet bot and league status.")
+    @app_commands.command(name="status", description="Show live Racing Syndicate League bot and league status.")
     @require_admin()
     async def status_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
