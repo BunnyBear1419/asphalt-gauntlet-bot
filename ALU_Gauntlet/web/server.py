@@ -120,6 +120,7 @@ class WebControlCenter:
         self.app.router.add_post("/api/tournaments/teams/join", self.join_tournament_team)
         self.app.router.add_post("/api/tournaments/clubs/update", self.update_tournament_club)
         self.app.router.add_post("/api/tournaments/clubs/member", self.manage_tournament_club_member)
+        self.app.router.add_post("/api/tournaments/clubs/lineup", self.tournament_club_lineup)
         self.app.router.add_post("/api/tournaments/result", self.tournament_match_result)
         self.app.router.add_post("/api/tournaments/start", self.tournament_start)
         self.app.router.add_get("/api/player/defense", self.player_defense)
@@ -315,17 +316,20 @@ class WebControlCenter:
             registrations.append(row)
         item["registrations"] = registrations
         if int(item.get("team_size", 1)) > 1:
-            teams = []
-            async for team in self.bot.db.tournament_teams.find({"tournament_id": tournament_id}).sort("created_at", 1):
-                team["id"] = str(team.pop("_id"))
+            clubs = []
+            async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tournament_id}).sort("registered_at", 1):
+                club = await self.bot.db.clubs.find_one({"_id": ObjectId(reg["club_id"])})
+                if not club:
+                    continue
                 members = []
-                async for member in self.bot.db.tournament_team_members.find({"team_id": team["id"]}).sort("joined_at", 1):
+                async for member in self.bot.db.club_members.find({"club_id": reg["club_id"]}).sort("joined_at", 1):
                     member.pop("_id", None)
                     members.append(member)
-                team["members"] = members
-                teams.append(team)
-            item["teams"] = teams
+                clubs.append({"id": reg["club_id"], "name": club.get("name", "Club"), "image": club.get("image", ""), "about": club.get("about", ""), "status": reg.get("status", "pending"), "lineup": reg.get("lineup", []), "members": members, "registered_by": reg.get("registered_by")})
+            item["clubs"] = clubs
+            item["teams"] = []
         else:
+            item["clubs"] = []
             item["teams"] = []
         return web.json_response(item)
 
@@ -448,6 +452,37 @@ class WebControlCenter:
             "registered_at": datetime.now(timezone.utc).isoformat(),
         })
         return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
+
+    async def tournament_club_lineup(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        payload = await request.json()
+        tournament_id = str(payload.get("tournament_id", "")).strip()
+        club_id = str(payload.get("club_id", "")).strip()
+        try:
+            ObjectId(tournament_id)
+            ObjectId(club_id)
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament or club ID.")
+        tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tournament_id)})
+        club = await self.bot.db.clubs.find_one({"_id": ObjectId(club_id)})
+        if not tournament or not club or str(tournament.get("guild_id")) not in {str(x) for x in user.guild_ids} or str(club.get("guild_id")) != str(tournament.get("guild_id")):
+            raise web.HTTPNotFound(text="Tournament or club not found.")
+        if str(club.get("leader_id")) != str(user.user_id):
+            raise web.HTTPForbidden(text="Only the club leader can set the tournament lineup.")
+        reg = await self.bot.db.tournament_club_registrations.find_one({"tournament_id": tournament_id, "club_id": club_id})
+        if not reg:
+            raise web.HTTPNotFound(text="This club is not registered for the tournament.")
+        size = int(tournament.get("team_size", 1))
+        lineup = [str(x).strip() for x in (payload.get("lineup") or []) if str(x).strip()]
+        if len(lineup) != size or len(set(lineup)) != size:
+            raise web.HTTPBadRequest(text="Select exactly " + str(size) + " unique drivers for the lineup.")
+        member_rows = await self.bot.db.club_members.find({"club_id": club_id}).to_list(length=20)
+        members = {str(x["user_id"]) for x in member_rows}
+        if not set(lineup).issubset(members):
+            raise web.HTTPBadRequest(text="Every lineup driver must be a current club member.")
+        await self.bot.db.tournament_club_registrations.update_one({"_id": reg["_id"]}, {"$set": {"lineup": lineup, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        return web.json_response({"ok": True, "message": str(size) + "v" + str(size) + " tournament lineup saved.", "lineup": lineup})
 
     async def update_tournament_club(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
