@@ -397,7 +397,15 @@ class WebControlCenter:
                 emb.set_image(url=course["proof_url"])
                 embeds.append(emb)
             try:
-                message = await channel.send(embeds=embeds)
+                from ..cogs.defense import DefenseView
+                review_view = DefenseView(
+                    str(user.user_id),
+                    str(guild_id),
+                    parsed,
+                    parsed[0]["proof_url"],
+                    is_change=is_change,
+                )
+                message = await channel.send(embeds=embeds, view=review_view)
             except Exception:
                 await self.bot.db.drivers.update_one({"_id": driver_id, "defense_review_payload.submission_id": submission_id}, {"$unset": {"defense_review_pending": "", "defense_review_payload": ""}})
                 raise web.HTTPServiceUnavailable(text="Staff review message could not be delivered; your submission was rolled back.")
