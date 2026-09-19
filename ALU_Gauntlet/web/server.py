@@ -170,6 +170,8 @@ class WebControlCenter:
         fmt = str(payload.get("format", "single_elimination")).strip().casefold()
         if fmt not in {"single_elimination", "double_elimination", "round_robin"}:
             raise web.HTTPBadRequest(text="Unsupported tournament format.")
+        from ALU_Gauntlet.core.tournament import generate_tournament_bracket
+        bracket = generate_tournament_bracket(fmt, max_players)
         now = datetime.now(timezone.utc).isoformat()
         registration_deadline = str(payload.get("registration_deadline", "")).strip() or None
         start_time = str(payload.get("start_time", "")).strip() or None
@@ -179,6 +181,8 @@ class WebControlCenter:
             "description": str(payload.get("description", "")).strip()[:500],
             "format": fmt,
             "max_players": max_players,
+            "bracket": bracket,
+            "bracket_version": 1,
             "gauntlet_only": bool(payload.get("gauntlet_only", False)),
             "registration_deadline": registration_deadline,
             "start_time": start_time,
