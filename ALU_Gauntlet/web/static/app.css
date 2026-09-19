@@ -460,3 +460,39 @@ html,body{width:100%;min-width:0}
 .feature-body>b{
   background:transparent!important;
 }
+
+
+/* FINAL HERO TITLE FIT FIX — preserve the complete banner artwork and prevent side cropping. */
+.hero-banner{
+  position:relative!important;
+  overflow:hidden!important;
+  background:#020817!important;
+}
+.hero-banner>.hero-art{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  z-index:0!important;
+}
+.hero-banner:after{
+  z-index:1!important;
+  pointer-events:none!important;
+}
+.hero-banner .hero-copy,
+.hero-banner .hero-slogan{
+  z-index:3!important;
+}
+@media(max-width:760px){
+  .hero-banner{height:205px!important;}
+  .hero-banner>.hero-art{object-fit:contain!important;object-position:center center!important;}
+}
+@media(max-width:560px){
+  .hero-banner{height:190px!important;}
+  .hero-banner>.hero-art{object-fit:contain!important;object-position:center center!important;}
+}
