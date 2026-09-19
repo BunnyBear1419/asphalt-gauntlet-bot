@@ -4,149 +4,87 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ALU Gauntlet • Race Control</title>
-<link rel="stylesheet" href="/static/app.css?v=20260919-5">
-<link rel="stylesheet" href="/static/dashboard-cards.css?v=20260919-3">
+<link rel="stylesheet" href="/static/app.css?v=20260919-6">
+<link rel="stylesheet" href="/static/dashboard-cards.css?v=20260919-4">
 </head>
 <body class="alu-dashboard">
 <header class="top-nav">
-  <a class="top-brand" href="/" aria-label="Asphalt Legends Unite">
-    <span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong>
-  </a>
+  <a class="top-brand" href="/" aria-label="Asphalt Legends Unite"><span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong></a>
   <nav aria-label="Primary navigation">
     <a href="/" class="active"><i>⌂</i><span>Home</span></a>
     <a href="/player"><i>▣</i><span>Garage</span></a>
     <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
     <a href="/tournaments"><i>🏆</i><span>Tournaments</span></a>
+    <a href="/tournaments#clubs"><i>♣</i><span>Clubs</span></a>
     <a href="/#leaderboard"><i>▥</i><span>Competition</span></a>
-    
-    
     <a href="/#help"><i>?</i><span>Help</span></a>
   </nav>
-  <div class="top-user-area"><a class="auth-link" href="/logout">Sign Out</a><div class="top-profile">
-    <div class="top-avatar">🏎</div>
-    <div><strong id="user-name">PlayerOne</strong><small>Player</small></div>
-    <span class="chevron">⌄</span>
-  </div></div>
+  <div class="top-user-area"><a class="auth-link" href="/logout">Sign Out</a><div class="top-profile"><div class="top-avatar">🏎</div><div><strong id="user-name">Player</strong><small>Driver</small></div><span class="chevron">⌄</span></div></div>
 </header>
 
-<div class="app-frame"><div class="workspace">
-<main>
-<section class="hero-banner"><img class="art-img hero-art" src="/assets/hero.jpg" alt="Asphalt Legends Unite racing scene" loading="eager" decoding="async">
-  <div class="hero-copy">
-    <div class="hero-logo"><span>ASPHALT</span><b>LEGENDS</b><strong>UNITE</strong></div>
+<div class="app-frame"><div class="workspace"><main>
+<section class="hero-banner">
+  <img class="art-img hero-art" src="/assets/hero.jpg" alt="Asphalt Legends Unite racing scene" loading="eager" decoding="async">
+  <div class="hero-overlay">
+    <div><span class="hero-kicker">ASPHALT LEGENDS UNITE</span><h1>RACE. COMPETE. UNITE.</h1><p>One home for Gauntlet seasons, tournaments, clubs and competition.</p></div>
+    <div class="hero-status"><span>● LIVE RACE CONTROL</span><small id="system-pill">CONNECTING…</small></div>
   </div>
-  <div class="hero-slogan">
-    <h1>RACE. COMPETE. UNITE.</h1>
-    <p>THE ULTIMATE RACING EXPERIENCE</p>
-  </div>
-  <div class="hero-road"></div>
 </section>
 
-<section id="dashboard" class="dashboard-grid">
-  <div class="main-column">
-    <div class="intro-row">
-      <article class="welcome-panel">
-        <div class="player-avatar">🏎️</div>
-        <div class="welcome-copy">
-          <h1>Welcome back, <span id="welcome-name">PlayerOne</span>!</h1>
-          <div class="welcome-title">♛ &nbsp;Gauntlet Challenger</div>
-          <p>Keep racing. Your next match could be the one!</p>
-        </div>
-        <div class="welcome-car"></div>
+<section class="dashboard-shell">
+  <div class="dashboard-intro">
+    <div><span class="eyebrow">RACE CONTROL</span><h1>Welcome back, <span id="welcome-name">Driver</span>.</h1><p>Your Gauntlet season and competitive events are all in one place.</p></div>
+    <a class="primary-action" href="/player#gauntlet">Open Gauntlet →</a>
+  </div>
+
+  <section class="competition-pillars" aria-label="Competition areas">
+    <a class="pillar pillar-gauntlet" href="/player#gauntlet">
+      <img src="/assets/dashboard-gauntlet.jpg" alt="" loading="lazy" decoding="async">
+      <div class="pillar-shade"></div><div class="pillar-copy"><span>CORE COMPETITION</span><h2>Gauntlet</h2><p>Season registration, defenses, matchups, results and rankings.</p><b>ENTER GAUNTLET →</b></div>
+    </a>
+    <a class="pillar pillar-tournaments" href="/tournaments">
+      <img src="/assets/competition.jpg" alt="" loading="lazy" decoding="async">
+      <div class="pillar-shade"></div><div class="pillar-copy"><span>EVENT CENTER</span><h2>Tournaments</h2><p>Run 1v1, 2v2, 3v3 and 4v4 events with brackets and results.</p><b>BROWSE TOURNAMENTS →</b></div>
+    </a>
+  </section>
+
+  <section class="support-grid">
+    <a class="support-card" href="/tournaments#clubs"><div class="support-icon">♣</div><div><span>TEAM PLAY</span><h3>Clubs</h3><p>Build a roster of up to 20 drivers and enter team tournaments.</p></div><b>→</b></a>
+    <a class="support-card" href="/player"><div class="support-icon">▣</div><div><span>YOUR DRIVER</span><h3>Garage &amp; Profile</h3><p>Manage your cars, stats, identity and personal competition record.</p></div><b>→</b></a>
+    <a class="support-card" href="/#leaderboard"><div class="support-icon">▥</div><div><span>LIVE STANDINGS</span><h3>Competition</h3><p>See current Gauntlet rankings and track the competitive field.</p></div><b>→</b></a>
+  </section>
+
+  <section class="dashboard-columns">
+    <div class="dashboard-main">
+      <article class="glass-panel panel-block" id="matches">
+        <div class="panel-heading"><h2>Recent Matches</h2><a href="/player#gauntlet">View history →</a></div>
+        <div class="match-table" id="recent-matches"><div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class="empty-state">Sign in to load your recent matches.</p></div>
       </article>
-
-      <article id="seasons" class="season-panel">
-        <div class="season-badge">S<span id="season-number">4</span></div>
-        <div>
-          <span>SEASON <b id="season-number-text">4</b></span>
-          <strong id="season-status">● Active ●</strong>
-          <small id="season-dates">Sep 20, 2026 – Oct 20, 2026</small>
-          <a href="#seasons">Season Details →</a>
-        </div>
-      </article>
-    </div>
-
-    <section id="gauntlet" class="feature-row" aria-label="Race Operations">
-      <a class="feature feature-magenta" href="/player">
-        <div class="feature-picture fp-one"><img class="art-img" src="/assets/dashboard-gauntlet.jpg" alt="" loading="lazy" decoding="async"></div>
-        <div class="feature-body"><i>⚙</i><h2>Gauntlet</h2><p>Register &nbsp;•&nbsp; Find Opponent<br>Submit Result &nbsp;•&nbsp; View History</p><b>→</b></div>
-      </a>
-      <a class="feature feature-blue" href="/player">
-        <div class="feature-picture fp-two"><img class="art-img" src="/assets/dashboard-racing.jpg" alt="" loading="lazy" decoding="async"></div>
-        <div class="feature-body"><i>▣</i><h2>My Garage</h2><p>View Cars &nbsp;•&nbsp; Upgrade<br>Manage Loadouts</p><b>→</b></div>
-      </a>
-      <a class="feature feature-gold" href="#leaderboard">
-        <div class="feature-picture fp-three"><img class="art-img" src="/assets/dashboard-competition.jpg" alt="" loading="lazy" decoding="async"></div>
-        <div class="feature-body"><i>♜</i><h2>Competition</h2><p>Standings &nbsp;•&nbsp; Leaderboard<br>Rules &nbsp;•&nbsp; Rewards</p><b>→</b></div>
-      </a>
-      <a class="feature feature-green" href="/player">
-        <div class="feature-picture fp-four"><img class="art-img" src="/assets/dashboard-home.jpg" alt="" loading="lazy" decoding="async"></div>
-        <div class="feature-body"><i>⚙</i><h2>Profile &amp; Settings</h2><p>Update Profile &nbsp;•&nbsp; Preferences<br>Notifications &nbsp;•&nbsp; Servers</p><b>→</b></div>
-      </a>
-    </section>
-
-
-    <section class="lower-grid">
-      <article class="glass-panel garage-card">
-        <div class="panel-heading"><h2>My Garage</h2></div>
-        <div class="car-showcase"><img class="art-img" src="/assets/garage.jpg" alt="Garage racing scene" loading="lazy" decoding="async"><div class="showcase-car"></div></div>
-        <div class="garage-meta"><div><small>Top Car</small><strong>Lamborghini Terzo Millennio</strong></div><b id="garage-pi">4,287</b></div>
-        <div class="garage-dots">● ● ● ●</div>
-        <a class="wide-action" href="/player">Open Garage →</a>
-      </article>
-
-      <article class="glass-panel matches-card" id="matches">
-        <div class="panel-heading"><h2>Recent Matches</h2></div>
-        <div class="match-table" id="recent-matches">
-          <div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>
-          <p class="empty-state">Sign in to load your recent matches.</p>
-        </div>
-      </article>
-
-      <article class="glass-panel leaderboard-card" id="leaderboard">
-        <div class="panel-heading"><h2>Competition <small>• Top 5</small></h2></div>
+      <article class="glass-panel panel-block" id="leaderboard">
+        <div class="panel-heading"><h2>Gauntlet Leaderboard <small>• Top 5</small></h2><a href="#leaderboard">Live standings</a></div>
         <div class="leaderboard-list" id="leaderboard-list"><p class="empty-state">Loading live drivers…</p></div>
       </article>
-    </section>
-  </div>
+    </div>
+    <aside class="dashboard-side">
+      <article class="glass-panel profile-card-clean">
+        <div class="panel-heading"><h2>Your Profile</h2><a href="/player">Open →</a></div>
+        <div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">Driver</strong><small>▣ Discord &nbsp; <b class="online">● Online</b></small></div></div>
+        <div class="profile-stats"><div><span>ELO</span><strong id="profile-elo">1,000</strong></div><div><span>GARAGE PI</span><strong id="profile-pi">0</strong></div></div>
+        <div class="record-stats"><span>♜ <b id="wins">0</b> Wins</span><span>✕ <b id="losses">0</b> Losses</span><span>🔥 <b id="streak">0</b> Streak</span></div>
+      </article>
+      <article class="glass-panel season-card-clean" id="seasons">
+        <div class="season-badge">S<span id="season-number">4</span></div><div><span>ACTIVE SEASON</span><strong id="season-status">● Active ●</strong><small id="season-dates">Loading season…</small><a href="#seasons">Season details →</a></div>
+      </article>
+    </aside>
+  </section>
 
-  <aside class="right-column">
-    <article class="glass-panel profile-card">
-      <div class="panel-heading"><h2>Your Profile</h2></div>
-      <div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">PlayerOne</strong><small>▣ Discord &nbsp; <b class="online">● Online</b></small></div></div>
-      <div class="profile-stats">
-        <div><span>ELO</span><strong id="profile-elo">1,642</strong></div>
-        <div><span>GARAGE PI</span><strong id="profile-pi">4,287</strong></div>
-      </div>
-      <div class="record-stats"><span>♜ <b id="wins">27</b> Wins</span><span>✕ <b id="losses">11</b> Losses</span><span>🔥 <b id="streak">5</b> Streak</span></div>
-    </article>
-
-    <article class="glass-panel quick-actions">
-      <div class="panel-heading"><h2>Quick Actions</h2></div>
-      <a class="qa qa-purple" href="/player">🏁 &nbsp; Open Gauntlet</a>
-      <a class="qa qa-blue" href="/player#gauntlet">👥 &nbsp; Find Opponent</a>
-      <a class="qa qa-green" href="/player#gauntlet">☑ &nbsp; Submit Match Result</a>
-      <a class="qa qa-gold" href="#leaderboard">▥ &nbsp; View Leaderboard</a>
-    </article>
-
-    <article class="glass-panel activity-card" id="teams">
-      <div class="panel-heading"><h2>◎ &nbsp; Server</h2></div>
-      <div class="server-select"><span id="server-name">Main Server</span><span>⌄</span></div>
-      <p class="server-sub">Asphalt Legends Unite</p>
-      <div class="activity-list">
-        <div><i>✓</i><p><b>Match result submitted</b><small>ShadowRacer has been submitted.</small></p><time>2h ago</time></div>
-        <div><i>▦</i><p><b>Season 4 is now active</b><small>Channels and roles have been synchronized.</small></p><time>6h ago</time></div>
-        <div><i>◈</i><p><b>Welcome to the Gauntlet!</b><small>Good luck in Season 4!</small></p><time>1d ago</time></div>
-      </div>
-    </article>
-  </aside>
+  <section class="bottom-banner" id="help">
+    <div class="bottom-logo">ASPHALT <b>LEGENDS</b> <strong>UNITE</strong></div>
+    <div><b>FASTER. BOLDER. TOGETHER.</b><span>Everything competitive, organized in one clean race hub.</span></div>
+    <a href="/tournaments">EXPLORE EVENTS →</a>
+  </section>
 </section>
-
-<section class="bottom-banner" id="help">
-  <div class="bottom-logo">ASPHALT <b>LEGENDS</b> <strong>UNITE</strong></div>
-  <div><b>FASTER. BOLDER. TOGETHER.</b><span>Run the Gauntlet with your community.</span></div>
-  <a href="/player">JOIN THE GAUNTLET →</a>
-</section>
-</main></div></div><script src="/static/app.js?v=20260919-7"></script>
+</main></div></div>
+<script src="/static/app.js?v=20260919-8"></script>
 </body>
 </html>
