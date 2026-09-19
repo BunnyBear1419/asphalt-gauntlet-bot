@@ -9,7 +9,7 @@ async def send_admin_dashboard(interaction: discord.Interaction):
     # Passing guild_id here makes every component interaction fail its owner check.
     view = StaffDashboardView(str(interaction.user.id))
     embed = discord.Embed(
-        title='🛠️ ALU GAUNTLET • STAFF CONTROL CENTER',
+        title='🛠️ RACING SYNDICATE LEAGUE • STAFF CONTROL CENTER',
         description='Manage players, seasons, defenses, setup, diagnostics, backups, and league operations from the staff dashboard below.',
         color=ASPHALT_ADMIN_COLOR,
     )
@@ -58,7 +58,7 @@ class StaffCog(commands.Cog):
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.guild_only()
-    @app_commands.command(name='staff', description='[Staff Only] Open the ALU Gauntlet staff control center.')
+    @app_commands.command(name='staff', description='[Staff Only] Open the Racing Syndicate League staff control center.')
     async def staff_dashboard_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message('❌ Staff only.', ephemeral=True)
@@ -381,7 +381,7 @@ class StaffCog(commands.Cog):
         await interaction.followup.send(embed=embed, ephemeral=True)
         await audit_admin_action(interaction, 'Diagnostics', 'Ran read-only system, database, task, and backup diagnostics.')
 
-    @app_commands.command(name='launchcheck', description='[Staff Only] Run a read-only ALU Gauntlet production readiness check.')
+    @app_commands.command(name='launchcheck', description='[Staff Only] Run a read-only Racing Syndicate League production readiness check.')
     async def launchcheck_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message('⛔ Staff only.', ephemeral=True)
