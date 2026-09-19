@@ -32,440 +32,42 @@
 
 .defense-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 14px 0}.defense-actions .qa{margin:0}.defense-course{display:grid!important;grid-template-columns:28px 1fr;gap:8px;align-items:center;padding:8px 14px!important;border-bottom:1px solid #112b4b}.defense-course i{width:25px;height:25px;display:grid;place-items:center;border-radius:50%;background:#082541;color:#25dfff;font-style:normal}.defense-course p{margin:0;display:flex;flex-direction:column}.defense-course b{font-size:9px}.defense-course small{font-size:7px;color:#8094b0;margin-top:2px}
 @media(max-width:560px){.defense-actions{grid-template-columns:1fr}}
+/* =========================================================
+   ALU GAUNTLET — CANONICAL RESPONSIVE UI
+   Keep this section as the single source of truth for the
+   dashboard shell, artwork layers, and responsive behavior.
+   ========================================================= */
 
-
-/* Top-only navigation: the dashboard stays visually calm and has no left rail. */
-.sidebar{display:none!important}
-.top-nav nav{overflow-x:auto;scrollbar-width:none}
-.top-nav nav::-webkit-scrollbar{display:none}
-.top-nav nav a{white-space:nowrap}
-.workspace{margin-left:0!important;width:100%!important}
-@media(max-width:820px){
-  .top-nav{height:70px}
-  .top-brand{height:70px;width:135px;padding-left:18px}
-  .top-brand span{font-size:15px}.top-brand b{font-size:6px}.top-brand strong{font-size:32px}
-  .top-nav nav a{height:70px;min-width:64px;gap:5px;padding:0 8px}
-  .top-nav nav a i{font-size:18px}.top-nav nav a span{font-size:11px}
-  .top-profile{height:44px;margin-top:13px;width:105px;padding:4px 7px}
-  .top-avatar{width:32px;height:32px;font-size:16px}.top-profile strong{font-size:12px}.top-profile small{font-size:8px}
-  .app-frame{padding-top:70px}
-}
-
-
-/* Full-width ALU reference composition */
+/* Shell */
 html,body{width:100%;min-width:0}
-.app-frame{padding-top:80px}
-.dashboard-grid{width:100%;max-width:none;grid-template-columns:minmax(0,1fr) 380px;gap:14px;padding:8px 8px 0}
-.main-column,.right-column{min-width:0;width:100%}
-.intro-row{grid-template-columns:minmax(0,1fr) 275px}
-.feature-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.feature{width:100%}
-.lower-grid{grid-template-columns:minmax(280px,1fr) minmax(360px,1.15fr) minmax(360px,1.15fr);gap:14px}
-.bottom-banner{margin:13px 8px 0;height:90px}
-.welcome-panel{isolation:isolate}
-.welcome-panel:after{width:46%;opacity:.62;background-position:center}
-.welcome-copy{max-width:48%;position:relative}
-.welcome-car{right:20px;width:290px;opacity:.38}
-.quick-actions{height:auto;min-height:235px;padding-bottom:8px}
-.profile-card{height:auto;min-height:201px}
-.activity-card{height:auto;min-height:249px}
-@media(max-width:1280px){
- .dashboard-grid{grid-template-columns:minmax(0,1fr) 320px;padding-left:8px;padding-right:8px}
- .feature-row{grid-template-columns:repeat(4,minmax(0,1fr))}
- .lower-grid{grid-template-columns:1fr 1.15fr 1.15fr}
-}
-@media(max-width:1050px){
- .dashboard-grid{grid-template-columns:1fr}
- .right-column{display:grid;grid-template-columns:1fr 1fr}
- .intro-row{grid-template-columns:minmax(0,1fr) 230px}
- .lower-grid{grid-template-columns:1fr 1.2fr}
- .leaderboard-card{grid-column:span 2}
-}
-@media(max-width:760px){
- .feature-row,.lower-grid{grid-template-columns:1fr 1fr}
- .welcome-copy{max-width:54%}
-}
-@media(max-width:560px){
- .feature-row,.lower-grid,.right-column{grid-template-columns:1fr}
- .leaderboard-card{grid-column:auto}
- .intro-row{grid-template-columns:1fr}
- .welcome-copy{max-width:100%}
- .welcome-panel:after{width:100%;opacity:.25}
-}
+.app-frame{padding-top:70px;min-height:100vh}
+.workspace{margin-left:0!important;width:100%!important;min-width:0}
+.workspace main{padding:0}
+.sidebar{display:none!important}
 
-
-/* Final full-width cleanup: one image layer per card, no synthetic car overlays. */
-.dashboard-grid{width:100%;max-width:none;grid-template-columns:minmax(0,1fr) 380px;gap:14px;padding:8px 0 0}
-.main-column{width:100%;min-width:0}
-.right-column{width:100%;min-width:0}
-.lower-grid{width:100%;grid-template-columns:minmax(280px,1fr) minmax(360px,1.15fr) minmax(360px,1.15fr);gap:14px}
-.bottom-banner{width:100%;margin:13px 0 0}
-.welcome-car,.showcase-car{display:none}
-.feature-picture{background:none!important;opacity:1;transform:none}
-.feature-picture:before{display:none}
-.feature-picture:after{background:linear-gradient(180deg,#050a1400 5%,#040a16d9 100%)}
-.fp-one{background:url('/assets/gauntlet-4k-final.svg') center/cover no-repeat!important}
-.fp-two{background:url('/assets/garage-4k-final.svg') center/cover no-repeat!important}
-.fp-three{background:url('/assets/competition-4k-final.svg') center/cover no-repeat!important}
-.fp-four{background:url('/assets/profile-settings-4k-final.svg') center/cover no-repeat!important}
-.car-showcase{background:linear-gradient(180deg,#03081700,#03081766),url('/assets/garage-4k-final.svg') center/cover no-repeat}
-.welcome-panel:after{background:linear-gradient(90deg,#06152f00,#06152f22),url('/assets/hero-4k-final.svg') center/cover no-repeat}
-@media(max-width:1280px){.dashboard-grid{grid-template-columns:minmax(0,1fr) 320px;padding-left:0;padding-right:0}}
-@media(max-width:1050px){.dashboard-grid{grid-template-columns:1fr;padding-left:0;padding-right:0}}
-
-
-/* Keep the full Welcome reference image visible instead of cropping it. */
-.welcome-panel:after{
-  width:52%;
-  right:0;
-  background-size:100% 100%;
-  background-position:center center;
-  background-repeat:no-repeat;
-  opacity:.68;
-}
-.welcome-copy{max-width:46%;z-index:2}
-@media(max-width:1050px){
-  .welcome-panel:after{width:50%}
-  .welcome-copy{max-width:52%}
-}
-@media(max-width:560px){
-  .welcome-panel:after{width:100%;opacity:.24;background-size:100% 100%}
-  .welcome-copy{max-width:100%}
-}
-
-
-/* Welcome artwork: contain the uploaded reference crop so none of its edges are clipped. */
-.welcome-panel:after{
-  width:52%;
-  right:0;
-  top:0;
-  bottom:0;
-  background-image:url('/assets/hero-4k-final.svg');
-  background-repeat:no-repeat;
-  background-position:center center;
-  background-size:contain;
-  background-color:#06152f;
-  opacity:.78;
-}
-
-
-/* Final Welcome banner: make the uploaded racing artwork fill the entire card,
-   matching the compact cinematic reference layout while keeping all artwork visible. */
-.welcome-panel{
-  position:relative;
-  height:137px;
-  overflow:hidden;
-  background:#06152f;
-}
-.welcome-panel:after{
-  width:100%;
-  right:0;
-  top:0;
-  bottom:0;
-  background:
-    linear-gradient(90deg,#020817e8 0%,#06152fb8 30%,#06152f35 58%,#06152f12 100%),
-    url('/assets/hero-4k-final.svg') center center/100% 100% no-repeat;
-  opacity:1;
-  z-index:0;
-}
-.welcome-panel .player-avatar,
-.welcome-panel .welcome-copy{
-  position:relative;
-  z-index:2;
-}
-.welcome-copy{
-  max-width:58%;
-  margin-left:19px;
-}
-.welcome-car{display:none!important}
-@media(max-width:560px){
-  .welcome-panel:after{
-    background:
-      linear-gradient(90deg,#020817e8 0%,#06152f99 55%,#06152f33 100%),
-      url('/assets/hero-4k-final.svg') center center/100% 100% no-repeat;
-  }
-  .welcome-copy{max-width:70%}
-}
-
-
-/* Card artwork cleanup: use only the car portion of the supplied artwork.
-   The card's HTML remains the only source for titles, descriptions, icons and arrows. */
-.feature-picture{
-  background-size:130% 200%!important;
-  background-position:right top!important;
-  background-repeat:no-repeat!important;
-}
-.feature-picture:before{display:none!important}
-.feature-picture:after{
-  background:linear-gradient(180deg,#050a1400 0%,#040a1666 58%,#040a16e8 100%)!important;
-}
-.feature-body i,
-.feature-body h2,
-.feature-body p,
-.feature-body>b{
-  position:relative;
-  z-index:3;
-}
-
-
-/* Footer artwork cleanup: show only the racing scene from competition-4k.svg.
-   Footer copy and JOIN button are rendered by HTML, so baked-in artwork text is hidden. */
-.bottom-banner{
-  background:
-    linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),
-    url('/assets/competition-4k-final.svg') 36% center/232% 100% no-repeat;
-}
-.bottom-banner:after{
-  background:linear-gradient(100deg,#ff00d400 35%,#ff00d422 75%,#ff00d400);
-}
-.bottom-logo,.bottom-banner>div:nth-child(2),.bottom-banner>a{
-  position:relative;
-  z-index:2;
-}
-
-
-/* Reference layout #3 — desktop composition */
+/* Top navigation */
 .top-nav{height:70px}
 .top-brand{height:70px;width:250px;padding-left:54px}
-.top-brand span{font-size:16px}.top-brand b{font-size:7px}.top-brand strong{font-size:43px}
-.top-nav nav a{height:70px;min-width:150px;font-size:15px}
+.top-brand span{font-size:16px}
+.top-brand b{font-size:7px}
+.top-brand strong{font-size:43px}
+.top-nav nav{overflow-x:auto;scrollbar-width:none}
+.top-nav nav::-webkit-scrollbar{display:none}
+.top-nav nav a{height:70px;min-width:150px;white-space:nowrap}
 .top-profile{height:56px;margin:7px 0 0 12px;width:245px}
 .top-user-area{height:70px;display:flex;align-items:center;margin-left:auto;padding-right:14px;gap:10px}
 .top-user-area .auth-link{height:44px;min-width:126px;display:grid;place-items:center;border:1px solid #25466f;background:#071533;text-decoration:none;font-size:13px}
 .top-user-area .top-profile{margin:0}
-.app-frame{padding-top:70px}
 
-/* #3 has no separate oversized hero strip; the Welcome/Season row is the hero. */
-.hero-banner{display:none!important}
-
-.dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px;padding:28px 16px 0}
-.intro-row{height:160px;grid-template-columns:minmax(0,1fr) 390px;gap:0}
-.welcome-panel,.season-panel{height:160px}
-.welcome-panel{padding:20px 14px}
-.player-avatar{width:96px;height:96px}
-.welcome-copy{margin-left:22px;max-width:48%}
-.welcome-copy h1{font-size:25px;margin-bottom:9px}
-.welcome-title{font-size:14px;margin-bottom:10px}
-.welcome-copy p{font-size:13px}
-.welcome-panel:after{
-  width:100%;
-  background:
-    linear-gradient(90deg,#020817f2 0%,#06152fba 28%,#06152f25 54%,#06152f08 100%),
-    url('/assets/hero-4k-final.svg') center center/cover no-repeat;
-  opacity:1;
-}
-.season-panel{padding:18px 22px;gap:18px}
-.season-badge{width:64px;height:64px;font-size:28px}
-.season-panel span{font-size:16px}.season-panel strong{font-size:12px}.season-panel small{font-size:11px}.season-panel a{font-size:11px}
-
-.feature-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
-.feature{height:210px}
-.feature-picture{background-size:cover!important;background-position:center!important}
-.feature-body{left:24px;right:20px;bottom:18px}
-.feature-body i{font-size:25px}.feature-body h2{font-size:23px;margin-bottom:5px}.feature-body p{font-size:13px;line-height:1.35}
-.feature-body>b{width:43px;height:43px;font-size:24px}
-
-.lower-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.12fr) minmax(0,1.12fr);gap:14px;margin-top:18px}
-.garage-card,.matches-card,.leaderboard-card{height:250px}
-.panel-heading{height:44px;padding:0 18px}.panel-heading h2{font-size:16px}
-.car-showcase{height:130px;margin:0 16px}
-.wide-action{margin:0 16px;padding:8px;font-size:11px}
-.match-table>div:first-child,.match-row{grid-template-columns:42px 1fr 70px 88px}
-.match-table>div:first-child{height:31px}.match-row{height:35px;font-size:11px}
-.leader-row{height:35px;font-size:11px}
-.quick-actions{min-height:250px}.qa{height:34px;margin:5px 14px;font-size:11px}
-.profile-card{min-height:205px}.activity-card{min-height:250px}
-
-.bottom-banner{
-  height:58px;
-  margin:18px 0 0;
-  padding:0 28px;
-}
-.bottom-logo strong{font-size:26px}
-.bottom-banner>div:nth-child(2) b{font-size:15px}
-.bottom-banner>div:nth-child(2) span{font-size:9px}
-.bottom-banner>a{padding:8px 16px;font-size:9px}
-
-@media(max-width:1100px){
-  .top-brand{width:180px;padding-left:30px}
-  .top-nav nav a{min-width:105px}
-  .dashboard-grid{grid-template-columns:minmax(0,1fr) 320px}
-  .intro-row{grid-template-columns:minmax(0,1fr) 320px}
-}
-@media(max-width:900px){
-  .top-user-area{padding-right:7px}.top-user-area .auth-link{display:none}
-  .top-profile{width:155px}
-  .dashboard-grid{grid-template-columns:1fr}
-  .right-column{display:grid;grid-template-columns:1fr 1fr}
-  .intro-row{grid-template-columns:minmax(0,1fr) 300px}
-}
-@media(max-width:700px){
-  .top-nav{height:64px}.app-frame{padding-top:64px}
-  .top-brand{height:64px;width:140px;padding-left:16px}.top-brand strong{font-size:33px}
-  .top-nav nav a{height:64px;min-width:70px}.top-nav nav a span{display:none}
-  .top-profile{width:52px;height:44px}.top-profile>div:nth-child(2),.top-profile .chevron{display:none}
-  .dashboard-grid{padding:12px 8px 0}
-  .intro-row,.right-column,.feature-row,.lower-grid{grid-template-columns:1fr}
-  .intro-row{height:auto}.welcome-panel{height:150px}.season-panel{height:125px}
-  .feature{height:185px}.garage-card,.matches-card,.leaderboard-card{height:250px}
-  .bottom-banner{height:auto;min-height:95px;flex-wrap:wrap;padding:12px 16px}
-}
-
-
-/* Final card-art treatment: keep the car scene in the upper artwork area and
-   push the baked-in title/copy below the visible image region. All labels stay
-   as real, clickable HTML text. */
-.feature-picture{
-  background-size:auto 175%!important;
-  background-position:center top!important;
-  background-repeat:no-repeat!important;
-  background-color:#040a16!important;
-}
-.feature-picture:after{
-  background:
-    linear-gradient(180deg,#050a1400 0%,#040a1610 38%,#040a16f2 70%,#040a16ff 100%)!important;
-}
-.feature-body{
-  z-index:4!important;
-}
-
-/* Apply the same clean-art treatment to the footer/promo banner. */
-.bottom-banner{
-  background:
-    linear-gradient(90deg,#080b24f4 0%,#080b2420 48%,#080b24ee 100%),
-    url('/assets/competition-4k-final.svg') center top/auto 260% no-repeat!important;
-}
-
-/* Explicit artwork layer: visible <img> fallback for production/static deployments. */
-.art-img{display:block;width:100%;height:100%;object-fit:cover;object-position:center;pointer-events:none;user-select:none}
-.hero-banner>.hero-art{position:absolute;inset:0;width:100%;height:100%;z-index:0;object-fit:cover;object-position:center}
-.hero-banner>.hero-road{z-index:2}
-.feature-picture>.art-img{position:absolute;inset:0;z-index:0}
-.feature-picture:after{z-index:1}
-.feature-body{z-index:2}
-.car-showcase>.art-img{position:absolute;inset:0;z-index:0}
-.car-showcase>.showcase-car{z-index:1}
-
-
-
-
-/* Uploaded dashboard reference artwork: use the supplied reference composition in the same visual spots. */
+/* Hero: HTML content stays above the artwork. */
 .hero-banner{
   display:block!important;
-  height:217px;
-  background:url('/assets/home-reference.svg') center/100% 100% no-repeat!important;
-}
-.hero-banner>.hero-art{display:none!important}
-
-.welcome-panel:after{
-  width:100%!important;
-  background:
-    linear-gradient(90deg,#020817f2 0%,#06152fba 28%,#06152f25 54%,#06152f08 100%),
-    url('/assets/home-reference.svg') center/158.025% 752.941% no-repeat!important;
-  background-position:37.41% 33.67%!important;
-  opacity:1!important;
-}
-.feature-picture{
-  background-image:url('/assets/home-reference.svg')!important;
-  background-repeat:no-repeat!important;
-  background-color:#040a16!important;
-  opacity:1!important;
-  transform:none!important;
-}
-.feature-picture>.art-img{display:none!important}
-.feature-picture:before{display:none!important}
-.feature-picture:after{
-  background:linear-gradient(180deg,#050a1400 0%,#040a1610 38%,#040a16f2 70%,#040a16ff 100%)!important;
-}
-.fp-one{background-size:593.05% 1402.74%!important;background-position:16.52% 47%!important}
-.fp-two{background-size:714.42% 1402.74%!important;background-position:36.71% 47%!important}
-.fp-three{background-size:676.65% 1402.74%!important;background-position:54.55% 47%!important}
-.fp-four{background-size:673.68% 1402.74%!important;background-position:73.01% 47%!important}
-
-.car-showcase{
-  background:
-    linear-gradient(180deg,#03081700,#03081766),
-    url('/assets/home-reference.svg') center/593.05% 948.15% no-repeat!important;
-  background-position:17.93% 71.62%!important;
-}
-.car-showcase>.art-img{display:none!important}
-.showcase-car{display:none!important}
-
-.bottom-banner{
-  background:
-    linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),
-    url('/assets/home-reference.svg') center/158.025% 1150.562% no-repeat!important;
-  background-position:37.41% 97.22%!important;
-}
-
-
-/* Production raster-art fallback: use standalone JPG assets instead of embedded SVG/WebP compositions. */
-.hero-banner{background-image:url('/assets/hero.jpg')!important;background-size:cover!important;background-position:center!important}
-.welcome-panel:after{background:linear-gradient(90deg,#020817e8 0%,#06152fba 30%,#06152f25 58%,#06152f12 100%),url('/assets/welcome.jpg') center/cover no-repeat!important}
-.fp-one{background-image:url('/assets/gauntlet.jpg')!important;background-size:cover!important;background-position:center!important}
-.fp-two{background-image:url('/assets/garage.jpg')!important;background-size:cover!important;background-position:center!important}
-.fp-three{background-image:url('/assets/competition.jpg')!important;background-size:cover!important;background-position:center!important}
-.fp-four{background-image:url('/assets/profile-settings.jpg')!important;background-size:cover!important;background-position:center!important}
-.car-showcase{background:linear-gradient(180deg,#03081700,#03081766),url('/assets/garage-car.jpg') center/cover no-repeat!important}
-.bottom-banner{background:linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),url('/assets/promo-banner.jpg') center/cover no-repeat!important}
-
-
-/* Final image visibility fix: use the real HTML image elements as the artwork layer.
-   Keep labels/content separate HTML, and do not depend on CSS background artwork. */
-.hero-banner{overflow:hidden!important;background:#020817!important;}
-.hero-banner>.hero-art{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;z-index:0!important;}
-.feature-picture{overflow:hidden!important;background:#040a16!important;}
-.feature-picture>.art-img{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;z-index:0!important;}
-.feature-picture:after{z-index:1!important;}
-.feature-body{position:absolute!important;z-index:3!important;}
-.car-showcase{overflow:hidden!important;background:#030817!important;position:relative!important;}
-.car-showcase>.art-img{display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center!important;z-index:0!important;}
-.car-showcase .showcase-car{z-index:1!important;}
-
-
-/* Remove promotional lettering baked into raster artwork while preserving the HTML labels.
-   The artwork is intentionally oversized and shifted upward inside its clipped frame. */
-.hero-banner>.hero-art{
-  width:118%!important;height:118%!important;
-  inset:-9% 0 0 -9%!important;
-  max-width:none!important;max-height:none!important;
-  object-fit:cover!important;object-position:center top!important;
-}
-.feature-picture>.art-img{
-  width:142%!important;height:142%!important;
-  inset:-12% 0 0 -21%!important;
-  max-width:none!important;max-height:none!important;
-  object-fit:cover!important;object-position:center top!important;
-}
-.car-showcase>.art-img{
-  width:132%!important;height:132%!important;
-  inset:-12% 0 0 -16%!important;
-  max-width:none!important;max-height:none!important;
-  object-fit:cover!important;object-position:center top!important;
-}
-
-/* Final dashboard card text-overlay fix: keep the artwork fully visible.
-   HTML labels remain clickable; no dark gradient is applied behind them. */
-.feature-picture:after{
-  background:transparent!important;
-  opacity:1!important;
-}
-.feature-body{
-  background:transparent!important;
-  text-shadow:0 1px 8px rgba(0,0,0,.72);
-}
-.feature-body i,
-.feature-body h2,
-.feature-body p,
-.feature-body>b{
-  background:transparent!important;
-}
-
-
-/* FINAL HERO TITLE FIT FIX — preserve the complete banner artwork and prevent side cropping. */
-.hero-banner{
   position:relative!important;
+  width:100%!important;
+  height:217px;
+  margin:0;
   overflow:hidden!important;
+  border-bottom:1px solid #1a3b65;
   background:#020817!important;
 }
 .hero-banner>.hero-art{
@@ -485,20 +87,118 @@ html,body{width:100%;min-width:0}
   pointer-events:none!important;
 }
 .hero-banner .hero-copy,
-.hero-banner .hero-slogan{
-  z-index:3!important;
-}
-@media(max-width:760px){
-  .hero-banner{height:205px!important;}
-  .hero-banner>.hero-art{object-fit:contain!important;object-position:center center!important;}
-}
-@media(max-width:560px){
-  .hero-banner{height:190px!important;}
-  .hero-banner>.hero-art{object-fit:contain!important;object-position:center center!important;}
-}
+.hero-banner .hero-slogan{z-index:3!important}
+.hero-road{z-index:2!important}
 
+/* Dashboard frame */
+.dashboard-grid{
+  width:100%;
+  max-width:none;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 390px;
+  gap:14px;
+  padding:28px 16px 0;
+}
+.main-column,.right-column{width:100%;min-width:0}
+.right-column{display:flex;flex-direction:column;gap:12px}
+.intro-row{height:160px;grid-template-columns:minmax(0,1fr) 390px;gap:0}
+.welcome-panel,.season-panel{height:160px}
 
-/* Defense results wizard */
+/* Welcome artwork is one image layer; all wording remains HTML. */
+.welcome-panel{
+  position:relative;
+  overflow:hidden;
+  isolation:isolate;
+  padding:20px 14px;
+  background:#06152f;
+}
+.welcome-panel:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  width:100%;
+  z-index:0;
+  background:
+    linear-gradient(90deg,#020817f2 0%,#06152fba 28%,#06152f25 54%,#06152f08 100%),
+    url('/assets/welcome.jpg') center/cover no-repeat;
+  opacity:1;
+}
+.welcome-panel .player-avatar,
+.welcome-panel .welcome-copy{
+  position:relative;
+  z-index:2;
+}
+.welcome-copy{max-width:58%;margin-left:22px}
+.welcome-car{display:none!important}
+
+/* Four feature cards */
+.feature-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
+.feature{width:100%;height:210px}
+.feature-picture{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:#040a16;
+}
+.feature-picture>.art-img{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  z-index:0!important;
+}
+.feature-picture:before{display:none!important}
+.feature-picture:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1!important;
+  background:linear-gradient(180deg,transparent 35%,#040a16b8 100%)!important;
+  pointer-events:none;
+}
+.feature-body{z-index:3!important}
+
+/* Lower cards */
+.lower-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.12fr) minmax(0,1.12fr);gap:14px;margin-top:18px}
+.garage-card,.matches-card,.leaderboard-card{height:250px}
+.car-showcase{
+  position:relative!important;
+  overflow:hidden!important;
+  background:#030817!important;
+}
+.car-showcase>.art-img{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  z-index:0!important;
+}
+.car-showcase .showcase-car{display:none!important}
+
+/* Promo banner */
+.bottom-banner{
+  width:100%;
+  height:58px;
+  margin:18px 0 0;
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(90deg,#080b24ee 0%,#080b2418 58%,#080b24cc 100%),
+    url('/assets/promo-banner.jpg') center/cover no-repeat;
+}
+.bottom-logo,.bottom-banner>div:nth-child(2),.bottom-banner>a{position:relative;z-index:2}
+
+/* Defense wizard */
 .defense-submit{margin:10px 14px 0;border:1px solid #234d78;background:#040d1e;padding:12px}
 .defense-submit[hidden]{display:none!important}
 .defense-submit .panel-heading{height:auto;padding:0 0 8px}
@@ -509,4 +209,63 @@ html,body{width:100%;min-width:0}
 .defense-result-grid label,.activity-list label{display:flex;flex-direction:column;gap:4px;color:#9fb1c9;font-size:8px;font-weight:700}
 .defense-result-grid input,.activity-list input,.activity-list select{width:100%;box-sizing:border-box;min-height:32px;padding:6px 8px;border:1px solid #173a61;border-radius:4px;background:#061226;color:#eef3f8;outline:none}
 .defense-submit>.qa{width:100%;margin:8px 0 0;box-sizing:border-box;justify-content:center}
-@media(max-width:560px){.defense-result-grid{grid-template-columns:1fr}}
+
+/* Compact desktop/tablet */
+@media(max-width:1100px){
+  .top-brand{width:180px;padding-left:30px}
+  .top-nav nav a{min-width:105px}
+  .dashboard-grid{grid-template-columns:minmax(0,1fr) 320px}
+  .intro-row{grid-template-columns:minmax(0,1fr) 320px}
+}
+
+/* Tablet */
+@media(max-width:900px){
+  .top-user-area{padding-right:7px}
+  .top-user-area .auth-link{display:none}
+  .top-profile{width:155px}
+  .dashboard-grid{grid-template-columns:1fr}
+  .right-column{display:grid;grid-template-columns:1fr 1fr}
+  .intro-row{grid-template-columns:minmax(0,1fr) 300px}
+}
+
+/* Mobile */
+@media(max-width:700px){
+  .top-nav,.top-nav nav a{height:64px}
+  .app-frame{padding-top:64px}
+  .top-brand{height:64px;width:140px;padding-left:16px}
+  .top-brand strong{font-size:33px}
+  .top-nav nav a{min-width:70px}
+  .top-nav nav a span{display:none}
+  .top-profile{width:52px;height:44px}
+  .top-profile>div:nth-child(2),.top-profile .chevron{display:none}
+  .dashboard-grid{padding:12px 8px 0}
+  .intro-row,.right-column,.feature-row,.lower-grid{grid-template-columns:1fr}
+  .intro-row{height:auto}
+  .welcome-panel{height:150px}
+  .season-panel{height:125px}
+  .feature{height:185px}
+  .garage-card,.matches-card,.leaderboard-card{height:250px}
+  .bottom-banner{height:auto;min-height:95px;flex-wrap:wrap;padding:12px 16px}
+  .defense-result-grid{grid-template-columns:1fr}
+}
+
+/* Small phones */
+@media(max-width:560px){
+  .hero-banner{height:190px!important}
+  .hero-banner>.hero-art{object-fit:contain!important}
+  .top-brand{width:125px}
+  .top-brand span{font-size:13px}
+  .top-brand b{font-size:6px}
+  .top-brand strong{font-size:29px}
+  .top-profile{width:45px}
+  .dashboard-grid{padding:8px}
+  .welcome-panel{height:137px}
+  .welcome-copy{max-width:70%;margin-left:12px}
+  .welcome-panel:after{
+    background:
+      linear-gradient(90deg,#020817e8 0%,#06152f99 55%,#06152f33 100%),
+      url('/assets/welcome.jpg') center/cover no-repeat;
+  }
+  .bottom-banner{min-height:110px}
+  .defense-actions{grid-template-columns:1fr}
+}
