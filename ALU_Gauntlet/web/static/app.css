@@ -425,3 +425,32 @@ html,body{width:100%;min-width:0}
  .public-club-stat-grid strong{font-size:17px}
  .public-club-close{right:10px;top:10px}
 }
+
+/* 2026-09-19 UNIFIED PLAYER + CLUB DIRECTORY */
+.player-directory-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:4px 16px 18px}
+.player-directory-card{position:relative;min-height:205px;padding:16px;border:1px solid #174a79;background:linear-gradient(145deg,#07172f,#030c1b);box-shadow:0 10px 26px #0005;overflow:hidden;cursor:pointer;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.player-directory-card:before{content:"";position:absolute;inset:auto -20% -65% 30%;height:150px;background:radial-gradient(circle,#168dff22,transparent 68%);pointer-events:none}
+.player-directory-card:hover,.player-directory-card:focus-visible{transform:translateY(-2px);border-color:#25dfff;box-shadow:0 14px 34px #0008,0 0 22px #25dfff18;outline:none}
+.player-card-top{display:flex;align-items:flex-start;gap:11px;position:relative;z-index:1}
+.player-card-avatar{width:52px;height:52px;flex:none;display:grid;place-items:center;border:1px solid #25dfff;background:radial-gradient(circle at 35% 30%,#2750b4,#13072d);box-shadow:0 0 20px #25dfff22;font-size:23px}
+.player-card-identity{min-width:0;flex:1}
+.player-card-identity h3{margin:3px 0 3px;font-size:19px;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-card-identity small{display:block;color:#7891af;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-card-identity .verified-badge{margin-top:5px}
+.player-card-arrow{width:28px;height:28px;display:grid;place-items:center;border:1px solid #214b72;color:#25dfff;font-size:15px}
+.player-card-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:18px;background:#173a61;border:1px solid #173a61;position:relative;z-index:1}
+.player-card-stats div{min-width:0;padding:9px 7px;background:#061226}
+.player-card-stats small{display:block;color:#7189a8;font-size:7px;letter-spacing:.08em}
+.player-card-stats strong{display:block;margin-top:3px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:13px;position:relative;z-index:1;color:#7189a8;font-size:8px;letter-spacing:.08em}
+.player-card-footer b{color:#25dfff;font-size:9px}
+.directory-loading,.directory-empty{grid-column:1/-1;padding:28px;text-align:center;color:#7189a8;border:1px dashed #21466b;background:#040d1b;font-size:11px}
+.club-card-large{display:flex;min-height:245px}
+.club-card-large .club-cover{width:40%;min-width:220px;height:auto;min-height:245px;object-fit:cover}
+.club-card-large .club-main{flex:1;padding:18px}
+.club-card-large .club-title{display:flex;justify-content:space-between;gap:12px}
+.club-card-large .club-title h2{margin:3px 0 0;font-size:23px}
+.club-card-large .club-title>div>span{font-size:8px;color:#25dfff;letter-spacing:.15em}
+.club-card-large .club-title>b{color:#25dfff;font-size:12px}
+@media(max-width:1050px){.player-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.player-directory-grid{grid-template-columns:1fr;padding:4px 10px 15px}.club-card-large{display:block}.club-card-large .club-cover{width:100%;height:150px;min-height:150px}.club-card-large .club-main{padding:15px}}
