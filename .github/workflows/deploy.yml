@@ -87,6 +87,22 @@ jobs:
           done
           echo "Deployment secrets are present. Secret values are never printed."
 
+      - name: Validate Discord bot token before deployment
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          HTTP_CODE=$(curl -sS -o discord-preflight.json -w "%{http_code}" \
+            -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+            -H "Accept: application/json" \
+            "https://discord.com/api/v10/users/@me" || true)
+          echo "Discord API preflight HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: DISCORD_BOT_TOKEN is present but Discord rejected it. Deployment stopped before touching Discloud."
+            exit 1
+          fi
+          echo "Discord bot token preflight passed."
+
       - name: Capture pre-deployment heartbeat
         id: predeploy
         env:
