@@ -110,6 +110,8 @@ class WebControlCenter:
         self.app.router.add_post("/api/tournaments", self.create_tournament)
         self.app.router.add_post("/api/tournaments/register", self.register_tournament)
         self.app.router.add_post("/api/tournaments/checkin", self.tournament_checkin)
+        self.app.router.add_post("/api/tournaments/teams", self.create_tournament_team)
+        self.app.router.add_post("/api/tournaments/teams/join", self.join_tournament_team)
         self.app.router.add_post("/api/tournaments/result", self.tournament_match_result)
         self.app.router.add_post("/api/tournaments/start", self.tournament_start)
         self.app.router.add_get("/api/player/defense", self.player_defense)
@@ -194,6 +196,9 @@ class WebControlCenter:
         if max_players < 2 or max_players > 256:
             raise web.HTTPBadRequest(text="Maximum players must be between 2 and 256.")
         fmt = str(payload.get("format", "single_elimination")).strip().casefold()
+        team_size = int(payload.get("team_size", 1))
+        if team_size not in {1, 2, 3, 4}:
+            raise web.HTTPBadRequest(text="Team size must be 1v1, 2v2, 3v3, or 4v4.")
         if fmt not in {"single_elimination", "double_elimination", "round_robin"}:
             raise web.HTTPBadRequest(text="Unsupported tournament format.")
         from ALU_Gauntlet.core.tournament import generate_tournament_bracket
@@ -207,6 +212,7 @@ class WebControlCenter:
             "description": str(payload.get("description", "")).strip()[:500],
             "format": fmt,
             "max_players": max_players,
+            "team_size": team_size,
             "bracket": bracket,
             "bracket_version": 1,
             "gauntlet_only": bool(payload.get("gauntlet_only", False)),
@@ -262,6 +268,59 @@ class WebControlCenter:
             "registered_at": datetime.now(timezone.utc).isoformat(),
         })
         return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
+
+    async def create_tournament_team(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        payload = await request.json()
+        try:
+            oid = ObjectId(str(payload.get("tournament_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        t = await self.bot.db.tournaments.find_one({"_id": oid})
+        if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+            raise web.HTTPNotFound(text="Tournament not found.")
+        size = int(t.get("team_size", 1))
+        if size <= 1:
+            raise web.HTTPConflict(text="This tournament is configured for solo players.")
+        name = str(payload.get("name", "")).strip()
+        if not name or len(name) > 40:
+            raise web.HTTPBadRequest(text="Team name is required and must be 40 characters or fewer.")
+        tid = str(oid)
+        existing = await self.bot.db.tournament_teams.find_one({"tournament_id": tid, "name_ci": name.casefold()})
+        if existing:
+            raise web.HTTPConflict(text="That team name is already taken.")
+        membership = await self.bot.db.tournament_team_members.find_one({"tournament_id": tid, "user_id": str(user.user_id)})
+        if membership:
+            raise web.HTTPConflict(text="You are already on a team for this tournament.")
+        team = {"tournament_id": tid, "guild_id": str(t["guild_id"]), "name": name, "name_ci": name.casefold(), "captain_id": str(user.user_id), "created_at": datetime.now(timezone.utc).isoformat()}
+        result = await self.bot.db.tournament_teams.insert_one(team)
+        await self.bot.db.tournament_team_members.insert_one({"tournament_id": tid, "team_id": str(result.inserted_id), "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "captain", "joined_at": datetime.now(timezone.utc).isoformat()})
+        return web.json_response({"ok": True, "team_id": str(result.inserted_id), "message": "Team created. Invite members to join."})
+
+    async def join_tournament_team(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        payload = await request.json()
+        tid = str(payload.get("tournament_id", "")).strip()
+        try:
+            team_oid = ObjectId(str(payload.get("team_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid team ID.")
+        t = await self.bot.db.tournaments.find_one({"_id": ObjectId(tid)}) if ObjectId.is_valid(tid) else None
+        team = await self.bot.db.tournament_teams.find_one({"_id": team_oid, "tournament_id": tid})
+        if not t or not team or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+            raise web.HTTPNotFound(text="Tournament or team not found.")
+        if t.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Team joining is closed.")
+        count = await self.bot.db.tournament_team_members.count_documents({"team_id": str(team_oid)})
+        if count >= int(t.get("team_size", 1)):
+            raise web.HTTPConflict(text="That team is full.")
+        existing = await self.bot.db.tournament_team_members.find_one({"tournament_id": tid, "user_id": str(user.user_id)})
+        if existing:
+            raise web.HTTPConflict(text="You are already on a team for this tournament.")
+        await self.bot.db.tournament_team_members.insert_one({"tournament_id": tid, "team_id": str(team_oid), "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": datetime.now(timezone.utc).isoformat()})
+        return web.json_response({"ok": True, "message": "You joined the team."})
 
     async def tournament_match_result(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
