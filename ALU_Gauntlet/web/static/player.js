@@ -56,7 +56,7 @@ async function profile(){
     const profile=$("#profile"); if(profile)profile.textContent=e.message;
   }
 }
-async async function loadRecentMatches(guildId){
+async function loadRecentMatches(guildId){
   const box=$("#matches .match-table"); if(!box||!guildId)return;
   try{
     const d=await api("/api/competition/recent-matches?guild_id="+encodeURIComponent(guildId));
