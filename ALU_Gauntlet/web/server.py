@@ -1,6 +1,7 @@
 """A secure, guild-aware web control center shared with the Discord bot."""
 from __future__ import annotations
 
+import hashlib
 import logging
 import random
 import time
@@ -9,6 +10,7 @@ import mimetypes
 from typing import Any
 
 from aiohttp import web
+import discord
 
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
@@ -343,6 +345,65 @@ class WebControlCenter:
             raise web.HTTPConflict(text="Register your driver for the current season before setting a defense.")
         if profile.get("defense_review_pending"):
             raise web.HTTPConflict(text="Your defense submission is already pending staff review.")
+        if action == "submit":
+            courses_in = payload.get("courses")
+            if not isinstance(courses_in, list) or len(courses_in) != 5:
+                raise web.HTTPBadRequest(text="Exactly five defense course results are required.")
+            pending_tracks = profile.get("pending_tracks") or profile.get("season_defense_tracks") or []
+            if len(pending_tracks) != 5:
+                raise web.HTTPConflict(text="Generate your five defense courses first.")
+            if bool(payload.get("is_change")) != bool(profile.get("pending_is_change")):
+                raise web.HTTPBadRequest(text="Defense submission state is out of date. Refresh and try again.")
+            from ..core.core import parse_lap_time
+            parsed, seen = [], set()
+            for i, item in enumerate(courses_in):
+                if not isinstance(item, dict):
+                    raise web.HTTPBadRequest(text=f"Course {i + 1} is invalid.")
+                car = str(item.get("car", "")).strip()
+                lap_time = str(item.get("lap_time", "")).strip()
+                proof_url = str(item.get("proof_url", "")).strip()
+                try:
+                    car_rank = int(item.get("car_rank"))
+                except (TypeError, ValueError):
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: car performance must be a whole number.")
+                ms = parse_lap_time(lap_time)
+                if ms <= 0:
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: lap time must use MM:SS.MS format.")
+                if not car or car.casefold() in seen:
+                    raise web.HTTPBadRequest(text="All five cars are required and must be different.")
+                if car_rank <= 0:
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: car performance must be positive.")
+                if not proof_url.lower().startswith(("http://", "https://")):
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: proof must be a valid image URL.")
+                seen.add(car.casefold())
+                parsed.append({"track": str(pending_tracks[i]), "car": car, "car_rank": car_rank, "lap_time": lap_time, "ms": ms, "proof_url": proof_url})
+            cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            channel_id = cfg.get("review_channel_id")
+            channel = self.bot.get_channel(int(channel_id)) if channel_id else None
+            if channel is None:
+                raise web.HTTPServiceUnavailable(text="Staff review channel is not configured.")
+            submitted_at = time.time()
+            submission_id = hashlib.sha256(f"{guild_id}:{user.user_id}:{submitted_at}".encode()).hexdigest()[:24]
+            is_change = bool(profile.get("pending_is_change"))
+            payload_doc = {"courses": parsed, "proof_url": parsed[0]["proof_url"], "is_change": is_change, "submitted_at": submitted_at, "submission_id": submission_id}
+            claim = await self.bot.db.drivers.update_one({"_id": driver_id, "defense_review_pending": {"$ne": True}}, {"$set": {"defense_review_pending": True, "defense_review_payload": payload_doc}})
+            if getattr(claim, "modified_count", 0) != 1:
+                raise web.HTTPConflict(text="Your defense submission is already pending staff review.")
+            embeds = [discord.Embed(title="🛡️ Gauntlet Defense Change Request" if is_change else "🛡️ New Gauntlet Defense Placement Verification", description="A web submission is awaiting staff verification.", color=3447003)]
+            embeds[0].add_field(name="Driver", value=f"<@{user.user_id}>", inline=False)
+            embeds[0].set_footer(text=f"ALU Defense Submission: {submission_id}")
+            for i, course in enumerate(parsed, 1):
+                emb = discord.Embed(title=f"🏁 Course {i}: {course['track']}", description=f"🚗 **Car:** {course['car']}\n📈 **Car Performance:** {course['car_rank']}\n⏱️ **Lap Time:** {course['lap_time']}", color=3447003)
+                emb.set_image(url=course["proof_url"])
+                embeds.append(emb)
+            try:
+                message = await channel.send(embeds=embeds)
+            except Exception:
+                await self.bot.db.drivers.update_one({"_id": driver_id, "defense_review_payload.submission_id": submission_id}, {"$unset": {"defense_review_pending": "", "defense_review_payload": ""}})
+                raise web.HTTPServiceUnavailable(text="Staff review message could not be delivered; your submission was rolled back.")
+            await self.bot.db.drivers.update_one({"_id": driver_id, "defense_review_payload.submission_id": submission_id}, {"$set": {"defense_review_payload.review_channel_id": int(channel.id), "defense_review_payload.review_message_id": int(message.id), "defense_review_payload.delivery_status": "delivered"}})
+            return web.json_response({"ok": True, "message": "Defense submitted for staff review.", "submission_id": submission_id})
+
         existing = profile.get("defense_locked") or {}
         if action == "change":
             if not has_5_course_defense(profile):
