@@ -1384,14 +1384,24 @@ class WebControlCenter:
         if player is None:
             return web.json_response({"registered": False, "guild_id": guild_id})
         elo = int(player.get("elo", 1000) or 1000)
-        higher = await self.bot.db.drivers.count_documents({"guild_id": str(guild_id), "elo": {"$gt": elo}})
-        rank = higher + 1
+        season = await get_current_season_number(str(guild_id))
+        player_season = int(player.get("season_number", 0) or 0)
+        season_active = bool(player.get("season_registered")) and player_season == season
+        if season_active:
+            higher = await self.bot.db.drivers.count_documents({
+                "guild_id": str(guild_id),
+                "season_registered": True,
+                "season_number": season,
+                "elo": {"$gt": elo},
+            })
+            rank = higher + 1
+        else:
+            rank = None
         played = int(player.get("career_played", 0) or 0)
         wins = int(player.get("career_wins", 0) or 0)
         prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
         connection = prefs.get("asphalt_connection") or {}
-        season = player.get("season_number")
-        return web.json_response({"registered": True, "rank": rank, "elo": elo, "garage_pi": int(player.get("garage_pi", 0) or 0), "career_wins": wins, "career_losses": max(0, played - wins), "streak": int(player.get("streak", 0) or 0), "defense_locked": bool(player.get("defense_locked", False)), "season_number": season, "asphalt_verified": connection.get("status") == "verified"})
+        return web.json_response({"registered": season_active, "profile_exists": True, "rank": rank, "elo": elo, "garage_pi": int(player.get("garage_pi", 0) or 0), "career_wins": wins, "career_losses": max(0, played - wins), "streak": int(player.get("streak", 0) or 0), "defense_locked": bool(player.get("defense_locked", False)), "season_number": season, "player_season_number": player_season, "asphalt_verified": connection.get("status") == "verified"})
 
     async def competition_recent_matches(self, request: web.Request) -> web.Response:
         """Return the signed-in driver's recent verified Gauntlet match results."""
