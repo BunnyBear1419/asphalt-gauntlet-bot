@@ -494,3 +494,9 @@ html,body{width:100%;min-width:0}
  .unified-profile-side{order:-1}.unified-profile-links{grid-template-columns:1fr}
 }
 @media(max-width:500px){.unified-profile-hero{height:195px}.unified-profile-hero h2{font-size:26px}.unified-profile-info-grid{grid-template-columns:1fr}.unified-profile-stats strong{font-size:17px}.public-profile-close{right:10px;top:10px}}
+
+/* 2026-09-19 PROFILE NETWORK */
+.public-club-member{width:100%;border:0;border-bottom:1px solid #102b49;background:transparent;color:inherit;text-align:left;cursor:pointer;font:inherit;display:flex;align-items:center;gap:10px;padding:11px 0}
+.public-club-member:hover{background:linear-gradient(90deg,#0b234022,transparent);padding-left:5px}
+.public-club-member:last-child{border-bottom:0}
+.public-club-member-arrow{margin-left:auto;color:#25dfff;font-size:15px;opacity:.65}
