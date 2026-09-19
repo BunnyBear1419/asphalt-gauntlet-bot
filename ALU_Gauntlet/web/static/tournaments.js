@@ -11,10 +11,10 @@ function entrantInfo(t,id){
     if(!club)return {name:sid,detail:"Club"};
     const lineup=new Set((club.lineup||[]).map(String));
     const names=(club.members||[]).filter(m=>lineup.has(String(m.user_id))).map(m=>m.username).slice(0,4);
-    return {name:club.name,detail:names.length?names.join(" • "):"Lineup not saved",image:club.image||"",verified:club.lineup?.length ? (club.members||[]).filter(m=>club.lineup.map(String).includes(String(m.user_id))).every(m=>m.asphalt_verified) : false};
+    return {name:club.name,detail:names.length?names.join(" • "):"Lineup not saved",image:club.image||"",verified:club.lineup?.length ? (club.members||[]).filter(m=>club.lineup.map(String).includes(String(m.user_id))).every(m=>m.asphalt_verified) : false,clubId:club.id,identityType:"club"};
   }
   const reg=(t.registrations||[]).find(x=>String(x.user_id)===sid);
-  return {name:reg?.username||sid,detail:reg?.asphalt_game_name?("🏎️ "+reg.asphalt_game_name):"Driver",verified:!!reg?.asphalt_verified};
+  return {name:reg?.username||sid,detail:reg?.asphalt_game_name?("🏎️ "+reg.asphalt_game_name):"Driver",verified:!!reg?.asphalt_verified,userId:reg?.user_id||sid,identityType:"player"};
 }
 function allMatches(b){
   return (b?.rounds||b?.winners||[]).flatMap(r=>r.matches||[]);
@@ -27,7 +27,7 @@ function bracketText(t){
     (r.matches||[]).map(m=>{
       const a=entrantInfo(t,m.player_slots?.[0]), z=entrantInfo(t,m.player_slots?.[1]);
       const pending=m.result_status==="pending";
-      return '<div class="bracket-match tournament-match" data-match="'+esc(m.id)+'"><div><strong>'+esc(a.name||"TBD")+'</strong><small>'+esc(a.detail||"Waiting")+'</small></div><b>VS</b><div><strong>'+esc(z.name||"TBD")+'</strong><small>'+esc(z.detail||"Waiting")+'</small></div>'+
+      return '<div class="bracket-match tournament-match" data-match="'+esc(m.id)+'"><button type="button" class="tournament-competitor '+(a.identityType==="club"?"club-competitor":"player-competitor")+'" data-identity-type="'+esc(a.identityType||"")+'" data-identity-id="'+esc(a.identityType==="club"?a.clubId:(a.userId||""))+'" '+(!a.name||a.name==="TBD"?"disabled":"")+'><strong>'+esc(a.name||"TBD")+'</strong><small>'+esc(a.detail||"Waiting")+'</small>'+verifiedBadge(a)+'</button><b>VS</b><button type="button" class="tournament-competitor '+(z.identityType==="club"?"club-competitor":"player-competitor")+'" data-identity-type="'+esc(z.identityType||"")+'" data-identity-id="'+esc(z.identityType==="club"?z.clubId:(z.userId||""))+'" '+(!z.name||z.name==="TBD"?"disabled":"")+'><strong>'+esc(z.name||"TBD")+'</strong><small>'+esc(z.detail||"Waiting")+'</small>'+verifiedBadge(z)+'</button>'+
         (pending?'<span class="match-status">PENDING REVIEW</span>':m.status==="completed"?'<span class="match-status">VERIFIED</span>':m.status==="ready"?'<button class="qa qa-purple match-result" data-match="'+esc(m.id)+'">Submit Result</button>':'')+
         '</div>';
     }).join('')+'</div>').join('')+
@@ -63,11 +63,13 @@ async function showTournament(id){
     const champion=t.champion_id?entrantInfo(t,t.champion_id):null;
     box.innerHTML='<div class="panel-heading"><h2>'+esc(t.name)+'</h2><button class="qa qa-blue" id="close-tournament-detail">Close</button></div>'+
       '<p>'+esc(t.description||"")+'</p>'+
-      (t.status==="completed"&&champion?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><strong>'+esc(champion.name)+'</strong><small>'+esc(champion.detail||"")+'</small></section>':'')+
+      (t.status==="completed"&&champion?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><button type="button" class="tournament-champion-link" data-identity-type="'+esc(champion.identityType||"")+'" data-identity-id="'+esc(champion.identityType==="club"?champion.clubId:(champion.userId||""))+'"><strong>'+esc(champion.name)+'</strong><small>'+esc(champion.detail||"")+'</small>'+verifiedBadge(champion)+'</button></section>':'')+
       '<div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button></div>'+
       (pending.length&&window._me?.staff?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+      (Number(t.team_size||1)>1&&((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).length)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>🏎️ Tournament Lineup</h3><span>'+Number(t.team_size||1)+' drivers required</span></div>'+((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).map(c=>'<div class="lineup-editor"><strong>'+esc(c.name)+'</strong><div class="lineup-list">'+(c.members||[]).map(m=>'<label><input class="lineup-member" data-club="'+esc(c.id)+'" type="checkbox" value="'+esc(m.user_id)+'" '+((c.lineup||[]).map(String).includes(String(m.user_id))?'checked':'')+'> '+esc(m.username)+'</label>').join('')+'</div><button class="qa qa-purple lineup-save" data-club="'+esc(c.id)+'">Save Lineup</button></div>').join(''))+'</section>':'')+
       '<div class="tournament-bracket">'+bracketText(t)+'</div>'+clubHtml(t);
     $("#close-tournament-detail").onclick=()=>box.hidden=true; $("#checkin-tournament").onclick=()=>checkin(id);
+    box.querySelectorAll(".tournament-competitor").forEach(b=>{b.onclick=()=>{const type=b.dataset.identityType,id=b.dataset.identityId;if(!id)return;if(type==="player")openPlayerProfile(id);else if(type==="club"){const club=(t.clubs||[]).find(c=>String(c.id)===String(id));if(club&&typeof publicClubProfile==="function")publicClubProfile(club)}}});
+    box.querySelectorAll(".tournament-champion-link").forEach(b=>{b.onclick=()=>{const type=b.dataset.identityType,id=b.dataset.identityId;if(type==="player")openPlayerProfile(id);else if(type==="club"){const club=(t.clubs||[]).find(c=>String(c.id)===String(id));if(club&&typeof publicClubProfile==="function")publicClubProfile(club)}}});
     const matches=allMatches(t.bracket);
     box.querySelectorAll(".match-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)submitResult(t,m)}});
     box.querySelectorAll(".verify-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"approve")}});
