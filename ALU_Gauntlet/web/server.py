@@ -106,6 +106,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
         self.app.router.add_get("/api/tournaments", self.tournaments)
+        self.app.router.add_get("/api/tournaments/{tournament_id}", self.tournament_detail)
         self.app.router.add_post("/api/tournaments", self.create_tournament)
         self.app.router.add_post("/api/tournaments/register", self.register_tournament)
         self.app.router.add_get("/api/player/defense", self.player_defense)
@@ -154,6 +155,28 @@ class WebControlCenter:
                 item["start_time_label"] = "TBD"
             rows.append(item)
         return web.json_response({"tournaments": rows})
+
+    async def tournament_detail(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        tournament_id = request.match_info.get("tournament_id", "")
+        try:
+            oid = ObjectId(tournament_id)
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        item = await self.bot.db.tournaments.find_one({"_id": oid})
+        if not item or str(item.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+            raise web.HTTPNotFound(text="Tournament not found.")
+        item["id"] = tournament_id
+        item.pop("_id", None)
+        registrations = []
+        async for row in self.bot.db.tournament_registrations.find(
+            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+        ).sort("registered_at", 1):
+            row.pop("_id", None)
+            registrations.append(row)
+        item["registrations"] = registrations
+        return web.json_response(item)
 
     async def create_tournament(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
