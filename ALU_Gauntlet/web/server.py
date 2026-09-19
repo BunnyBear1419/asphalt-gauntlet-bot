@@ -1464,6 +1464,8 @@ class WebControlCenter:
             "game_name": prefs.get("game_name", ""),
             "about": prefs.get("about", ""),
             "location": prefs.get("location", ""),
+            "platform": prefs.get("platform", ""),
+            "driver_type": prefs.get("driver_type", ""),
             "timezone": timezone_value,
             "timezone_label": timezone_label,
             "links": (prefs.get("links") or [])[:5],
