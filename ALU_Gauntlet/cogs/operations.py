@@ -45,7 +45,7 @@ class OperationsCog(commands.Cog):
                 pass
             return "⚪"
 
-        embed = discord.Embed(title="🛰️ ALU GAUNTLET — LIVE STATUS", color=ASPHALT_VICTORY_COLOR if mongo_ok and not stale else ASPHALT_ALERT_COLOR, timestamp=datetime.now(timezone.utc))
+        embed = discord.Embed(title="🛰️ RACING SYNDICATE LEAGUE — LIVE STATUS", color=ASPHALT_VICTORY_COLOR if mongo_ok and not stale else ASPHALT_ALERT_COLOR, timestamp=datetime.now(timezone.utc))
         embed.add_field(name="Bot", value=f"🟢 Online\n⏱️ Uptime: `{format_duration(int(now - bot.started_at))}`\n🏓 Gateway: `{round(bot.latency * 1000, 1) if bot.latency != float('inf') else 'N/A'}ms`", inline=True)
         embed.add_field(name="Database", value=(f"🟢 MongoDB `{mongo_ms}ms`" if mongo_ok else "🔴 MongoDB unavailable"), inline=True)
         embed.add_field(name="Season", value=f"🏁 Season `{season}`\n👥 Registered `{registered}`\n⏳ Pending `{pending}`\n⚡ Active challenges `{active}`", inline=True)
