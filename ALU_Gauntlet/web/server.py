@@ -180,7 +180,7 @@ class WebControlCenter:
         if await self.bot.db.club_members.find_one({"guild_id": guild_id, "user_id": str(user.user_id)}):
             raise web.HTTPConflict(text="You are already in a club in this server.")
         now = datetime.now(timezone.utc).isoformat()
-        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", "")).strip()[:500], "image": "", "leader_id": str(user.user_id), "created_at": now, "updated_at": now}
+        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": str(payload.get("discord", "")).strip()[:300], "links": [str(x).strip()[:300] for x in (payload.get("links", []) if isinstance(payload.get("links", []), list) else [])[:5] if str(x).strip()], "image": "", "leader_id": str(user.user_id), "created_at": now, "updated_at": now}
         result = await self.bot.db.clubs.insert_one(doc)
         await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
         return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
@@ -207,8 +207,28 @@ class WebControlCenter:
             if duplicate:
                 raise web.HTTPConflict(text="That club name is already taken.")
             updates.update(name=name, name_ci=name.casefold())
-        if "about" in payload:
-            updates["about"] = str(payload.get("about", "")).strip()[:500]
+        if "about" in payload or "about_us" in payload:
+            updates["about"] = str(payload.get("about", payload.get("about_us", ""))).strip()[:500]
+        if "discord" in payload:
+            discord_link = str(payload.get("discord", "")).strip()
+            if discord_link and not discord_link.lower().startswith(("http://", "https://")):
+                raise web.HTTPBadRequest(text="Discord link must begin with http:// or https://.")
+            updates["discord"] = discord_link[:300]
+        if "links" in payload:
+            links = payload.get("links", [])
+            if not isinstance(links, list):
+                raise web.HTTPBadRequest(text="Club links must be a list.")
+            clean_links = []
+            for link in links[:5]:
+                value = str(link or "").strip()
+                if not value:
+                    continue
+                if not value.lower().startswith(("http://", "https://")):
+                    raise web.HTTPBadRequest(text="Club links must begin with http:// or https://.")
+                if len(value) > 300:
+                    raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
+                clean_links.append(value)
+            updates["links"] = clean_links
         if "image" in payload:
             image = str(payload.get("image", "")).strip()
             if image and not image.startswith("data:image/"):
