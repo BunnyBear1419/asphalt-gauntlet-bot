@@ -298,3 +298,32 @@ html,body{width:100%;min-width:0}
 .club-main p{margin:0 0 8px;opacity:.8}
 .club-members{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .club-members span{padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.06);font-size:12px}
+
+/* =========================================================
+   2026-09-19 BALANCED RACE HUB
+   ========================================================= */
+.dashboard-shell{max-width:1440px;margin:0 auto;padding:26px 24px 34px}
+.hero-overlay{position:absolute;z-index:3;inset:0;display:flex;align-items:flex-end;justify-content:space-between;padding:28px 42px;background:linear-gradient(90deg,#020817d9 0%,#02081755 48%,#02081722 100%)}
+.hero-kicker{font-size:10px;letter-spacing:.22em;color:#25dfff;font-weight:800}
+.hero-overlay h1{margin:5px 0 4px;font-size:38px;line-height:1;font-style:italic}
+.hero-overlay p{margin:0;color:#d2dded;font-size:12px}
+.hero-status{display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:10px;color:#18e19e;font-weight:800}
+.hero-status small{color:#a9b8cc;font-size:9px}
+.dashboard-intro{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:18px}
+.dashboard-intro h1{margin:4px 0 3px;font-size:28px}.dashboard-intro p{margin:0;color:#8fa3bf;font-size:11px}.primary-action{display:inline-flex;align-items:center;justify-content:center;padding:11px 17px;background:linear-gradient(135deg,#7b19e7,#b20de0);border:1px solid #cf55ff;text-decoration:none;font-size:10px;font-weight:800;white-space:nowrap;box-shadow:0 0 24px #8b20ff22}
+.competition-pillars{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pillar{height:245px;position:relative;overflow:hidden;border:1px solid #214a73;text-decoration:none;background:#061226;isolation:isolate}
+.pillar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;transition:transform .35s ease}
+.pillar:hover img{transform:scale(1.035)}
+.pillar-shade{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,#02081712 0%,#02081728 38%,#020817ec 100%),linear-gradient(90deg,#ff0bd422,#25dfff08)}
+.pillar-copy{position:absolute;z-index:2;left:22px;right:22px;bottom:19px}.pillar-copy span{font-size:9px;letter-spacing:.17em;color:#25dfff;font-weight:800}.pillar-copy h2{font-size:29px;margin:4px 0 5px}.pillar-copy p{margin:0;max-width:560px;color:#c0cee0;font-size:11px;line-height:1.45}.pillar-copy b{display:inline-block;margin-top:12px;font-size:9px;color:#fff}
+.pillar-gauntlet{border-color:#ff0bd4;box-shadow:inset 0 -3px #ff0bd4}.pillar-tournaments{border-color:#25dfff;box-shadow:inset 0 -3px #25dfff}
+.support-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.support-card{min-height:88px;display:grid;grid-template-columns:42px 1fr 22px;align-items:center;gap:12px;padding:13px 15px;border:1px solid #173d64;background:linear-gradient(145deg,#07162d,#040c1a);text-decoration:none;transition:transform .18s ease,border-color .18s ease}
+.support-card:hover{transform:translateY(-2px);border-color:#2a7eb9}.support-icon{width:40px;height:40px;display:grid;place-items:center;border:1px solid #315d88;background:#0a1d38;font-size:20px;color:#25dfff}.support-card span{font-size:8px;color:#7189a8;letter-spacing:.13em;font-weight:800}.support-card h3{margin:2px 0;font-size:15px}.support-card p{margin:0;color:#8499b5;font-size:9px;line-height:1.35}.support-card>b{font-size:17px;color:#25dfff}
+.dashboard-columns{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(290px,.75fr);gap:14px;margin-top:14px}.dashboard-main{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}.dashboard-side{display:flex;flex-direction:column;gap:12px}.panel-block{min-height:250px}.profile-card-clean{min-height:180px}.season-card-clean{min-height:102px;display:flex;align-items:center;gap:13px;padding:16px;background:linear-gradient(145deg,#160943,#080b1d);border-color:#4b278d}.season-card-clean>div:last-child{display:flex;flex-direction:column}.season-card-clean>div:last-child>span{font-size:9px;color:#b7a7d6;font-weight:800;letter-spacing:.12em}.season-card-clean strong{font-size:11px;color:#18dfa0;margin:4px 0}.season-card-clean small{font-size:9px;color:#aebbd0}.season-card-clean a{font-size:9px;color:#e16bff;text-decoration:none;margin-top:6px;font-weight:700}
+.profile-card-clean .profile-head{padding:5px 18px 10px}.profile-card-clean .profile-avatar{width:60px;height:60px;font-size:24px}.profile-card-clean .profile-stats{padding:0 18px}.profile-card-clean .record-stats{margin:10px 18px 0}
+.bottom-banner{margin-top:14px!important;border:1px solid #173d64}
+@media(max-width:1050px){.top-nav nav a{min-width:92px}.dashboard-shell{padding:22px 16px 30px}.dashboard-columns{grid-template-columns:1fr}.dashboard-side{display:grid;grid-template-columns:1fr 1fr}.dashboard-main{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){.hero-overlay{padding:22px}.hero-overlay h1{font-size:30px}.hero-status{display:none}.competition-pillars{grid-template-columns:1fr}.support-grid{grid-template-columns:1fr}.dashboard-main{grid-template-columns:1fr}.dashboard-side{grid-template-columns:1fr}.pillar{height:220px}}
+@media(max-width:560px){.dashboard-shell{padding:17px 9px 24px}.hero-overlay{padding:18px}.hero-overlay h1{font-size:24px}.hero-overlay p{font-size:10px}.dashboard-intro{align-items:flex-start;flex-direction:column}.dashboard-intro h1{font-size:23px}.primary-action{width:100%}.pillar{height:205px}.pillar-copy{left:16px;right:16px}.pillar-copy h2{font-size:25px}}
