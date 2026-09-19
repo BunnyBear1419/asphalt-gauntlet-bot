@@ -63,6 +63,7 @@ function syncPrimaryNav(){
  else if(path==="/players") target=links.find(a=>a.getAttribute("href")==="/players");
  else if(path==="/setup") target=links.find(a=>a.getAttribute("href")==="/setup");
  else if(path==="/player") target=links.find(a=>a.getAttribute("href")==="/player" && !a.getAttribute("href").includes("#"));
+ else if(path==="/tournaments") target=links.find(a=>a.getAttribute("href")==="/tournaments" || a.getAttribute("href")==="/tournaments#clubs");
  else if(path==="/") target=links.find(a=>a.getAttribute("href")==="/");
  if(target) target.classList.add("active");
 }
