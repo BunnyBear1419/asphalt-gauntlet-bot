@@ -168,7 +168,7 @@ class WebControlCenter:
         if max_players < 2 or max_players > 256:
             raise web.HTTPBadRequest(text="Maximum players must be between 2 and 256.")
         fmt = str(payload.get("format", "single_elimination")).strip().casefold()
-        if fmt not in {"single_elimination", "round_robin"}:
+        if fmt not in {"single_elimination", "double_elimination", "round_robin"}:
             raise web.HTTPBadRequest(text="Unsupported tournament format.")
         now = datetime.now(timezone.utc).isoformat()
         registration_deadline = str(payload.get("registration_deadline", "")).strip() or None
