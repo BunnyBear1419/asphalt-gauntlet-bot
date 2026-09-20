@@ -78,6 +78,15 @@
 .home-help-icon{width:76px;height:76px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;border:1px solid #168cff;background:linear-gradient(145deg,#061b35,#020a16);box-shadow:0 0 24px #168cff20;border-radius:50%;position:relative}
 .home-help-icon:before{content:"";position:absolute;inset:-5px;border:1px solid #16cfff35;border-radius:50%}
 .home-help-icon svg{width:48px;height:48px;fill:none;stroke:#27cfff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 7px #168cff)}
+
+.home-help-content{display:flex;align-items:center;justify-content:center;gap:28px;text-align:left;max-width:1000px;margin:0 auto}
+.home-help-icon{width:108px;height:108px;min-width:108px;margin:0;display:flex;align-items:center;justify-content:center;border:1px solid #168cff;background:linear-gradient(145deg,#061b35,#020a16);box-shadow:0 0 28px #168cff28;border-radius:50%;position:relative}
+.home-help-icon:before{content:"";position:absolute;inset:-6px;border:1px solid #16cfff35;border-radius:50%}
+.home-help-icon svg{width:70px;height:70px;fill:none;stroke:#27cfff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 8px #168cff)}
+.home-help-copy{flex:1;min-width:0}
+.home-help-copy .home-eyebrow{display:block}
+.home-help-copy h2{margin:8px 0}
+@media(max-width:760px){.home-help-content{gap:18px}.home-help-icon{width:86px;height:86px;min-width:86px}.home-help-icon svg{width:56px;height:56px}}
 </style>
 </head>
 <body class="home-page">
@@ -121,11 +130,11 @@
 </section>
 
 <a class="home-card home-help-card home-help-link" id="help" href="/help" aria-label="Open Help Center">
-<div class="home-help-icon" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="19" r="9"></circle><path d="M17 52c1-12 7-18 15-18s14 6 15 18"></path><path d="M13 28v-3c0-11 8-19 19-19s19 8 19 19v3"></path><path d="M12 27h7v10h-7zM45 27h7v10h-7z"></path><path d="M19 35c2 5 7 8 13 8s11-3 13-8"></path><path d="M52 34h4"></path></svg></div>
+<div class="home-help-content"><div class="home-help-icon" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="19" r="9"></circle><path d="M17 52c1-12 7-18 15-18s14 6 15 18"></path><path d="M13 28v-3c0-11 8-19 19-19s19 8 19 19v3"></path><path d="M12 27h7v10h-7zM45 27h7v10h-7z"></path><path d="M19 35c2 5 7 8 13 8s11-3 13-8"></path><path d="M52 34h4"></path></svg></div><div class="home-help-copy">
 <span class="home-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2>
 <p>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</p>
-<span class="home-help-arrow">OPEN HELP CENTER →</span>
-</a>
+<span class="home-help-arrow">OPEN HELP CENTER →</span></div>
+</div></a>
 <div class="home-news-modal" id="home-news-modal" hidden><div class="home-news-modal-backdrop" data-close-news></div><article class="home-news-modal-card"><button type="button" class="home-news-close" data-close-news aria-label="Close">×</button><span id="news-modal-category" class="home-eyebrow"></span><h2 id="news-modal-title"></h2><small id="news-modal-meta"></small><div id="news-modal-body"></div></article></div>
 </main>
 <script src="/static/home-news.js?v=20260920-1"></script>
