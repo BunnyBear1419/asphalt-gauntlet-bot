@@ -24,12 +24,6 @@
 <rect x="110" y="472" width="5" height="66" fill="#19cfff"/>
 <text x="138" y="495" fill="#e6f0ff" font-family="Arial,Helvetica,sans-serif" font-size="22">The competitive home for Gauntlet seasons, tournaments, clubs,</text>
 <text x="138" y="526" fill="#e6f0ff" font-family="Arial,Helvetica,sans-serif" font-size="22">rankings &amp; your driver career.</text>
-<g font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="18">
-<path d="M110 566H480L462 622H110Z" fill="url(#blue)" stroke="#12cfff" stroke-width="2"/>
-<text x="205" y="601" fill="#fff">ENTER GAUNTLET →</text>
-<path d="M505 566H875L857 622H505Z" fill="#030b18" stroke="#12cfff" stroke-width="2"/>
-<text x="594" y="601" fill="#fff">VIEW TOURNAMENTS →</text>
-</g>
 <g transform="translate(1590 365) scale(.88)">
 <path d="M-470-175L-390-285L-305-205L-205-330L-105-205L0-360L105-205L205-330L305-205L390-285L470-175L405-30L330-85L250-10L170-85L85-15L0-95L-85-15L-170-85L-250-10L-330-85L-405-30Z" fill="url(#blue)" stroke="#8cefff" stroke-width="9"/>
 <path d="M-250 265L-205-165L-75-300L75-300L205-165L250 265L120 205L0 290L-120 205Z" fill="#050b16" stroke="url(#silver)" stroke-width="18"/>
