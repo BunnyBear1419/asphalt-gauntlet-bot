@@ -191,7 +191,70 @@ class StaffCog(commands.Cog):
             async def duplicate_groups(collection, key_fields, label):
                 pipeline = [
                     {'$match': {'guild_id': guild_id}},
-                    {'$group': {'_id': {k: '
+                    {'$group': {'_id': {k: '$' + k for k in key_fields}, 'count': {'$sum': 1}}},
+                    {'$match': {'count': {'$gt': 1}}},
+                    {'$limit': 20},
+                ]
+                rows = await collection.aggregate(pipeline).to_list(length=20)
+                if rows:
+                    issues.append(f'{label}: {len(rows)} duplicate key group(s)')
+                else:
+                    checks.append(f'{label}: 0 duplicates')
+                return rows
+
+            await duplicate_groups(bot.db.club_members, ['club_id', 'user_id'], 'Duplicate club memberships')
+            await duplicate_groups(bot.db.tournament_club_registrations, ['tournament_id', 'club_id'], 'Duplicate tournament registrations')
+            await duplicate_groups(bot.db.matches, ['settlement_id'], 'Duplicate match settlements')
+            await duplicate_groups(bot.db.drivers, ['user_id'], 'Duplicate driver identities')
+
+            verified_game_ids = await bot.db.web_preferences.aggregate([
+                {'$match': {'guild_id': guild_id, 'asphalt_connection.status': 'verified'}},
+                {'$group': {'_id': '$asphalt_connection.game_id', 'count': {'$sum': 1}}},
+                {'$match': {'count': {'$gt': 1}}},
+                {'$limit': 20},
+            ]).to_list(length=20)
+            if verified_game_ids:
+                issues.append(f'Duplicate verified Asphalt IDs: {len(verified_game_ids)}')
+            else:
+                checks.append('Duplicate verified Asphalt IDs: 0')
+
+            club_ids = {str(x.get('_id')) for x in await bot.db.clubs.find({'guild_id': guild_id}, {'_id': 1}).to_list(length=5000)}
+            memberships = await bot.db.club_members.find({'guild_id': guild_id}, {'_id': 1, 'club_id': 1}).to_list(length=5000)
+            orphan_memberships = [x for x in memberships if str(x.get('club_id')) not in club_ids]
+            checks.append(f'Orphaned club memberships: {len(orphan_memberships)}')
+            if orphan_memberships:
+                issues.append(f'Orphaned club memberships: {len(orphan_memberships)}')
+
+            tournament_ids = {str(x.get('_id')) for x in await bot.db.tournaments.find({'guild_id': guild_id}, {'_id': 1}).to_list(length=5000)}
+            registrations = await bot.db.tournament_club_registrations.find({'guild_id': guild_id}, {'_id': 1, 'tournament_id': 1, 'club_id': 1}).to_list(length=5000)
+            orphan_regs = [x for x in registrations if str(x.get('tournament_id')) not in tournament_ids or str(x.get('club_id')) not in club_ids]
+            checks.append(f'Orphaned tournament registrations: {len(orphan_regs)}')
+            if orphan_regs:
+                issues.append(f'Orphaned tournament registrations: {len(orphan_regs)}')
+
+            driver_ids = {str(x.get('_id')) for x in drivers}
+            referenced_driver_ids = set()
+            for m in matches:
+                for field in ('challenger_id', 'opponent_id', 'winner_id', 'w_id'):
+                    value = m.get(field)
+                    if value:
+                        referenced_driver_ids.add(f'{guild_id}_{value}' if '_' not in str(value) else str(value))
+            missing_match_drivers = sorted(x for x in referenced_driver_ids if x not in driver_ids)
+            checks.append(f'Match references to missing drivers: {len(missing_match_drivers)}')
+            if missing_match_drivers:
+                issues.append(f'Matches reference missing drivers: {len(missing_match_drivers)}')
+
+            tournament_docs = await bot.db.tournaments.find({'guild_id': guild_id}, {'_id': 1, 'club_id': 1, 'club_ids': 1}).to_list(length=5000)
+            missing_tournament_clubs = 0
+            for t in tournament_docs:
+                refs = []
+                if t.get('club_id'):
+                    refs.append(t.get('club_id'))
+                refs.extend(t.get('club_ids') or [])
+                missing_tournament_clubs += sum(1 for cid in refs if str(cid) not in club_ids)
+            checks.append(f'Tournament references to missing clubs: {missing_tournament_clubs}')
+            if missing_tournament_clubs:
+                issues.append(f'Tournaments reference missing clubs: {missing_tournament_clubs}')
             completed_matches = [m for m in matches if m.get('settlement_status') == 'completed' and not m.get('reverted')]
             match_counts = {}
             win_counts = {}
