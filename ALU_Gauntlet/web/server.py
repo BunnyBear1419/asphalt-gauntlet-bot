@@ -93,6 +93,7 @@ class WebControlCenter:
 
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
+        self.app.router.add_get("/help", self.help_page)
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/setup", self.setup_page)
         self.app.router.add_get("/player", self.player_page)
@@ -1726,4 +1727,7 @@ class WebControlCenter:
         _, guild_id, _ = await self.require_guild_member(request)
         player = await self.players.get_player(guild_id, request.match_info["user_id"])
         if player is None:
-            raise web.HTTPNotFound(text="Player not found.")
+            raise web.HTTPNotFound(text="Player not found."    async def help_page(self, request):
+        return await self._page_response("help.html")
+
+)
