@@ -264,6 +264,16 @@ jobs:
               ok=false
             fi
 
+            HERO_JPG_HTTP=$(curl -sS -o hero-home.jpg -w "%{http_code}" "https://asph.discloud.app/assets/home-hero-4k.jpg?v=20260920-hero-jpg" || true)
+            echo "Homepage hero JPG HTTP status: $HERO_JPG_HTTP"
+            if [ "$HERO_JPG_HTTP" != "200" ]; then
+              echo "Homepage hero JPG failed."
+              ok=false
+            elif ! file hero-home.jpg | grep -qi "JPEG image data"; then
+              echo "Homepage hero asset is not a valid JPEG."
+              ok=false
+            fi
+
             for asset in hero-4k-final.svg gauntlet-4k-final.svg garage-4k-final.svg competition-4k-final.svg profile-settings-4k-final.svg; do
               ASSET_HTTP=$(curl -sS -o "asset-$asset" -w "%{http_code}" "https://asph.discloud.app/assets/$asset" || true)
               echo "Artwork $asset HTTP status: $ASSET_HTTP"
