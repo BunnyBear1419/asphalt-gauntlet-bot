@@ -647,6 +647,27 @@ class WebControlCenter:
         await self.bot.db.tournament_club_registrations.update_one({"_id": reg["_id"]}, {"$set": {"lineup": lineup, "updated_at": datetime.now(timezone.utc).isoformat()}})
         return web.json_response({"ok": True, "message": str(size) + "v" + str(size) + " tournament lineup saved.", "lineup": lineup})
 
+    async def _claim_tournament_action(self, tournament_id, match_id, action):
+        """Claim a short-lived MongoDB lock shared by web tournament actions."""
+        from datetime import datetime, timezone, timedelta
+        from pymongo.errors import DuplicateKeyError
+        now = datetime.now(timezone.utc)
+        doc = {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action),
+               "claimed_at": now, "expires_at": now + timedelta(seconds=60)}
+        try:
+            await self.bot.db.tournament_action_locks.insert_one(doc)
+            return True
+        except DuplicateKeyError:
+            replaced = await self.bot.db.tournament_action_locks.find_one_and_replace(
+                {"tournament_id": str(tournament_id), "match_id": str(match_id), "expires_at": {"$lt": now}}, doc
+            )
+            return replaced is not None
+
+    async def _release_tournament_action(self, tournament_id, match_id):
+        await self.bot.db.tournament_action_locks.delete_one(
+            {"tournament_id": str(tournament_id), "match_id": str(match_id)}
+        )
+
     async def tournament_match_result(self, request: web.Request) -> web.Response:
         """Submit a participant result for staff verification."""
         user = await self.require_user(request)
