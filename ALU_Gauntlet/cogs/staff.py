@@ -198,7 +198,8 @@ class StaffCog(commands.Cog):
                     {'$match': {'count': {'$gt': 1}}},
                     {'$limit': 20},
                 ]
-                rows = await collection.aggregate(pipeline).to_list(length=20)
+                cursor = await collection.aggregate(pipeline)
+                rows = await cursor.to_list(length=20)
                 if rows:
                     issues.append(f'{label}: {len(rows)} duplicate key group(s)')
                 else:
@@ -210,12 +211,13 @@ class StaffCog(commands.Cog):
             await duplicate_groups(bot.db.matches, ['settlement_id'], 'Duplicate match settlements', {'settlement_id': {'$exists': True, '$ne': None}})
             await duplicate_groups(bot.db.drivers, ['user_id'], 'Duplicate driver identities')
 
-            verified_game_ids = await bot.db.web_preferences.aggregate([
+            verified_game_cursor = await bot.db.web_preferences.aggregate([
                 {'$match': {'guild_id': guild_id, 'asphalt_connection.status': 'verified'}},
                 {'$group': {'_id': '$asphalt_connection.game_id', 'count': {'$sum': 1}}},
                 {'$match': {'count': {'$gt': 1}}},
                 {'$limit': 20},
-            ]).to_list(length=20)
+            ])
+            verified_game_ids = await verified_game_cursor.to_list(length=20)
             if verified_game_ids:
                 issues.append(f'Duplicate verified Asphalt IDs: {len(verified_game_ids)}')
             else:
