@@ -52,6 +52,20 @@ class AsphaltAccountCog(commands.Cog):
                 "asphalt_verified_by": str(interaction.user.id),
                 "asphalt_verified_at": connection["verified_at"],
             }}, upsert=True)
+
+            # Confirm both collections reached the same verified state before
+            # reporting success. If either write did not persist correctly,
+            # restore the previous values rather than leaving a split state.
+            saved_prefs = await bot.db.web_preferences.find_one({"_id": key}) or {}
+            saved_driver = await bot.db.drivers.find_one({"_id": key}) or {}
+            saved_connection = saved_prefs.get("asphalt_connection") or {}
+            if (
+                saved_connection.get("status") != "verified"
+                or str(saved_connection.get("game_id") or "").strip() != game_id
+                or saved_driver.get("asphalt_verified") is not True
+                or str(saved_driver.get("asphalt_game_id") or "").strip() != game_id
+            ):
+                raise RuntimeError("Asphalt verification synchronization check failed.")
         except Exception:
             try:
                 await bot.db.web_preferences.update_one({"_id": key}, {"$set": {"asphalt_connection": prefs.get("asphalt_connection")}}, upsert=True)
