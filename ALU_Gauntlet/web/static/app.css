@@ -582,7 +582,7 @@ html,body{width:100%;min-width:0}
 
 /* Player menu + My Career esports UI */
 .player-menu{position:relative;width:238px;margin-right:18px;padding:0;clip-path:none;background:transparent;border:0;box-shadow:none;overflow:visible}
-.player-menu-trigger{width:100%;height:52px;border:1px solid #173969;background:linear-gradient(135deg,#081936,#0a102b);color:#fff;display:flex;align-items:center;gap:11px;padding:5px 12px;cursor:pointer;clip-path:polygon(0 0,96% 0,100% 24%,100% 100%,0 100%);text-align:left}
+.player-menu-trigger{list-style:none;width:100%;height:52px;border:1px solid #173969;background:linear-gradient(135deg,#081936,#0a102b);color:#fff;display:flex;align-items:center;gap:11px;padding:5px 12px;cursor:pointer;clip-path:polygon(0 0,96% 0,100% 24%,100% 100%,0 100%);text-align:left}
 .player-menu-trigger:hover{border-color:#25dfff;box-shadow:0 0 20px #25dfff22}
 .player-menu-name{display:flex;flex-direction:column;line-height:1}.player-menu-name small{font-size:11px;color:#91a5c3;margin-top:5px}.player-menu-trigger .chevron{transition:transform .2s ease}.player-menu-trigger[aria-expanded="true"] .chevron{transform:rotate(180deg)}
 .player-menu-dropdown{position:absolute;right:0;top:60px;width:250px;padding:8px;background:linear-gradient(145deg,#081a35,#030a18);border:1px solid #1c527f;box-shadow:0 18px 45px #000b,0 0 24px #25dfff15;z-index:200;border-radius:6px}
@@ -598,3 +598,10 @@ html,body{width:100%;min-width:0}
 
 /* Ensure the player dropdown visibility is controlled by the native hidden attribute. */
 .player-menu-dropdown[hidden]{display:none!important}
+
+/* Native player menu: no JavaScript is required for opening/closing. */
+.player-menu>summary::-webkit-details-marker{display:none}
+.player-menu>summary::marker{content:""}
+.player-menu[open] .player-menu-trigger .chevron{transform:rotate(180deg)}
+.player-menu-dropdown{display:block!important}
+.player-menu:not([open]) .player-menu-dropdown{display:none!important}
