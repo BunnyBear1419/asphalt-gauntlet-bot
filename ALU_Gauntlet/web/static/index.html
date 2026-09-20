@@ -6,6 +6,7 @@
 <title>Racing Syndicate League • Home</title>
 <link rel="stylesheet" href="/static/app.css?v=20260920-blue2">
 <style>
+.home-section-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.home-section-heading h2{margin:7px 0 0;font-size:28px;line-height:1.05}.news-live{font-size:9px;color:#18e19e;border:1px solid #18e19e;padding:7px 10px;letter-spacing:.1em}.home-news-list{display:grid;gap:10px;margin-top:18px}.home-news-item{border:1px solid #174a79;background:linear-gradient(135deg,#07172f,#030a17);padding:14px 16px;cursor:pointer;transition:.18s}.home-news-item:hover{transform:translateX(3px);border-color:#25dfff;box-shadow:0 0 22px #25dfff12}.home-news-item strong{display:block;font-size:15px}.home-news-item small{display:block;color:#7f9bbb;font-size:9px;margin-top:5px}.home-news-item p{margin:7px 0 0;color:#aebdd2;font-size:10px;line-height:1.45}.news-loading,.news-empty{color:#7188a7;font-size:10px;padding:18px 0}.home-news-modal{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px}.home-news-modal[hidden]{display:none}.home-news-modal-backdrop{position:absolute;inset:0;background:#000b;backdrop-filter:blur(5px)}.home-news-modal-card{position:relative;z-index:1;max-width:780px;width:100%;max-height:82vh;overflow:auto;border:1px solid #25dfff;background:linear-gradient(145deg,#071936,#020916);padding:34px;box-shadow:0 0 50px #25dfff18}.home-news-modal-card h2{font-size:34px;margin:8px 0}.home-news-modal-card small{color:#8198b5}.home-news-modal-card #news-modal-body{margin-top:22px;color:#c6d2e3;line-height:1.7;white-space:pre-wrap}.home-news-close{position:absolute;right:12px;top:8px;border:0;background:transparent;color:#fff;font-size:28px;cursor:pointer}
 .home-page{min-height:100vh;background:radial-gradient(circle at 70% 10%,#11194a 0,#020817 45%,#01050d 100%)}
 .home-main{max-width:1500px;margin:0 auto;padding:112px 28px 48px}
 .home-hero{position:relative;border:1px solid #214d78;overflow:hidden;background:#030b19;aspect-ratio:2170/725;box-shadow:0 0 40px #168cff12}
@@ -72,12 +73,9 @@
 <p>Racing Syndicate League brings drivers together in one organized competitive hub. Track seasons, defend your position, compete in tournaments, build clubs and follow your career without jumping between disconnected systems.</p>
 <p>Our goal is simple: make organized racing feel clean, competitive and professional.</p>
 </article>
-<article class="home-card home-info-card" id="news">
-<span class="home-eyebrow">NEWS</span>
-<h2>League News</h2>
-<div class="news-item"><strong>Racing Syndicate League is online.</strong><span>Official league hub • Live</span></div>
-<div class="news-item"><strong>Gauntlet, tournaments and clubs are ready.</strong><span>Competition Center</span></div>
-<p class="news-empty">Staff announcements will appear here as the league publishes them.</p>
+<article class="home-card home-info-card news-card" id="news">
+<div class="home-section-heading"><div><span class="home-eyebrow">NEWS &amp; ANNOUNCEMENTS</span><h2>What's happening in the League</h2></div><span class="news-live">● LIVE</span></div>
+<div id="home-news-list" class="home-news-list"><div class="news-loading">Loading league news…</div></div>
 </article>
 </section>
 
@@ -86,6 +84,8 @@
 <p>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</p>
 <span class="home-help-arrow">OPEN HELP CENTER →</span>
 </a>
+<div class="home-news-modal" id="home-news-modal" hidden><div class="home-news-modal-backdrop" data-close-news></div><article class="home-news-modal-card"><button type="button" class="home-news-close" data-close-news aria-label="Close">×</button><span id="news-modal-category" class="home-eyebrow"></span><h2 id="news-modal-title"></h2><small id="news-modal-meta"></small><div id="news-modal-body"></div></article></div>
 </main>
+<script src="/static/home-news.js?v=20260920-1"></script>
 </body>
 </html>
