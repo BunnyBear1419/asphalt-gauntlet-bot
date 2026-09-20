@@ -24,7 +24,10 @@ async function profile(){
     setText("elo",elo); setText("pi",pi); setText("profile-pi",pi);
     setText("right-elo",Number(elo||0).toLocaleString()); setText("right-pi",pi);
     setText("season",season); setText("season-number",p.season_number??"—"); setText("season-number-text",p.season_number??"—");
-    setText("defense",defense); setText("wins",wins); setText("losses",losses); setText("streak",streak);\n    const played=Number(p.career_played||0); const winRate=played?Math.round((Number(wins)||0)/played*100):0; setText("win-rate",winRate+"%");\n    try{const lb=await api("/api/leaderboard?guild_id="+id+"&limit=100"); const me=(lb.players||[]).find(x=>String(x.user_id)===String(p.user_id||"")); setText("profile-rank",me?.competition_rank?"#"+me.competition_rank:"—")}catch(e){setText("profile-rank","—")}\n    setText("profile-defense-state",defense); setText("profile-season-state",season);
+    setText("defense",defense); setText("wins",wins); setText("losses",losses); setText("streak",streak);
+    const played=Number(p.career_played||0); const winRate=played?Math.round((Number(wins)||0)/played*100):0; setText("win-rate",winRate+"%");
+    try{const lb=await api("/api/leaderboard?guild_id="+id+"&limit=100"); const me=(lb.players||[]).find(x=>String(x.user_id)===String(p.user_id||"")); setText("profile-rank",me?.competition_rank?"#"+me.competition_rank:"—")}catch(e){setText("profile-rank","—")}
+    setText("profile-defense-state",defense); setText("profile-season-state",season);
     setText("profile-name",p.username||"Driver"); setText("user-name",p.username||"Driver"); setText("welcome-name",p.username||"Driver");
     setText("season-status",p.season_number?"● Active ●":"● Not Registered ●");
     const tz=$("#timezone");
@@ -37,13 +40,16 @@ async function profile(){
       ptz.value=prefs.timezone||"UTC";
     }
     setText("profile-discord-name",p.global_name||p.username||"Driver");
-    setText("profile-game-name",prefs.game_name||"");\n    const aboutCounter=$("#profile-about-count"), aboutField=$("#profile-about"); if(aboutCounter&&aboutField){aboutCounter.textContent=String(aboutField.value.length); if(!aboutField.dataset.counterBound){aboutField.addEventListener("input",()=>aboutCounter.textContent=String(aboutField.value.length)); aboutField.dataset.counterBound="1";}}\n    const conn=prefs.asphalt_connection||{}; setText("identity-summary-name",conn.game_name||prefs.game_name||"Not linked"); setText("identity-summary-id",conn.game_id||p.game_id||"Not linked"); const ist=$("#identity-summary-status"); if(ist)ist.className="identity-chip "+(conn.status==="verified"?"verified":conn.status==="pending"?"pending":""); setText("identity-summary-state",conn.status==="verified"?"VERIFIED":conn.status==="pending"?"PENDING REVIEW":"NOT LINKED");
+    setText("profile-game-name",prefs.game_name||"");
+    const aboutCounter=$("#profile-about-count"), aboutField=$("#profile-about"); if(aboutCounter&&aboutField){aboutCounter.textContent=String(aboutField.value.length); if(!aboutField.dataset.counterBound){aboutField.addEventListener("input",()=>aboutCounter.textContent=String(aboutField.value.length)); aboutField.dataset.counterBound="1";}}
+    const conn=prefs.asphalt_connection||{}; setText("identity-summary-name",conn.game_name||prefs.game_name||"Not linked"); setText("identity-summary-id",conn.game_id||p.game_id||"Not linked"); const ist=$("#identity-summary-status"); if(ist)ist.className="identity-chip "+(conn.status==="verified"?"verified":conn.status==="pending"?"pending":""); setText("identity-summary-state",conn.status==="verified"?"VERIFIED":conn.status==="pending"?"PENDING REVIEW":"NOT LINKED");
     const gameName=$("#profile-game-name"); if(gameName)gameName.value=prefs.game_name||"";
     const gameId=$("#profile-game-id"); if(gameId)gameId.value=p.game_id||"";
     const about=$("#profile-about"); if(about)about.value=prefs.about||"";
     const location=$("#profile-location"); if(location)location.value=prefs.location||"";
     renderProfileLinks(prefs.links||[]);
-    const connection=prefs.asphalt_connection||{}; const connectionStatus=$("#asphalt-link-status"),connectionName=$("#asphalt-link-name"),connectionId=$("#asphalt-link-id");\n    setText("profile-asphalt-status",connection.status==="verified"?"• 🟢 VERIFIED ASPHALT":connection.status==="pending"?"• Asphalt verification pending":"• Asphalt not linked");
+    const connection=prefs.asphalt_connection||{}; const connectionStatus=$("#asphalt-link-status"),connectionName=$("#asphalt-link-name"),connectionId=$("#asphalt-link-id");
+    setText("profile-asphalt-status",connection.status==="verified"?"• 🟢 VERIFIED ASPHALT":connection.status==="pending"?"• Asphalt verification pending":"• Asphalt not linked");
     if(connectionStatus){connectionStatus.textContent=(connection.status||"NOT LINKED").replaceAll("_"," ").toUpperCase();connectionStatus.className=connection.status==="verified"?"online":"";}
     if(connectionName)connectionName.value=connection.game_name||prefs.game_name||"";
     if(connectionId){connectionId.value=connection.game_id||p.game_id||"";connectionId.readOnly=connection.status==="verified";}
@@ -65,7 +71,8 @@ async function loadRecentMatches(guildId){
   }catch(e){box.innerHTML="<div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class='empty-state'>Match history unavailable.</p>"}
 }
 
-const guild=$("#guild"); if(guild)guild.addEventListener("change",profile);\nif(guild)guild.addEventListener("change",()=>loadRecentMatches(guild.value));
+const guild=$("#guild"); if(guild)guild.addEventListener("change",profile);
+if(guild)guild.addEventListener("change",()=>loadRecentMatches(guild.value));
 const save=$("#save");
 if(save)save.addEventListener("click",async()=>{
   try{
