@@ -29,7 +29,7 @@ def test_web_ui_is_dashboard_first():
     assert 'class="top-nav"' in source
     assert 'href="/player"' in source
     assert 'href="/player#gauntlet"' in source
-    assert 'href="/#help"' in source
+    assert 'href="/help"' in source
     assert 'class="sidebar"' not in source
 
 def test_player_page_uses_same_dashboard_visual_system():
