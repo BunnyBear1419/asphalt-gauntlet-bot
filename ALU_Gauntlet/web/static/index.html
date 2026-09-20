@@ -17,6 +17,16 @@
 @media(max-width:900px){.home-grid{grid-template-columns:1fr 1fr}.home-main{padding:100px 14px 30px}}
 @media(max-width:560px){.home-grid{grid-template-columns:1fr}}
 
+
+/* Home page content stays on the Home page — no separate About/News pages. */
+.home-grid{grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
+.home-info-card{min-height:230px;position:relative;border-color:#168cff;box-shadow:0 0 0 1px #168cff18 inset,0 14px 40px #0008}
+.home-info-card:after,.home-help-card:after{content:"";position:absolute;right:0;bottom:0;width:54px;height:4px;background:#16cfff;box-shadow:-18px -18px 0 #16cfff55}
+.home-help-card{position:relative;min-height:150px;border-color:#168cff;text-align:center}
+.home-help-card .home-eyebrow{display:block}
+.home-help-card h2{margin-bottom:8px}
+.home-help-card p{max-width:900px;margin:0 auto}
+@media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-info-card{min-height:0}.home-help-card{min-height:130px}}
 </style>
 </head>
 <body class="home-page">
@@ -43,14 +53,14 @@
 </section>
 
 <section class="home-grid">
-<article class="home-card" id="about">
+<article class="home-card home-info-card" id="about">
 <span class="home-eyebrow">ABOUT US</span>
 <h2>Built for competitive Asphalt racing.</h2>
 <p>Racing Syndicate League brings drivers together in one organized competitive hub. Track seasons, defend your position, compete in tournaments, build clubs and follow your career without jumping between disconnected systems.</p>
 <p>Our goal is simple: make organized racing feel clean, competitive and professional.</p>
 </article>
-<article class="home-card" id="news">
-<span class="home-eyebrow">LATEST NEWS</span>
+<article class="home-card home-info-card" id="news">
+<span class="home-eyebrow">NEWS</span>
 <h2>League News</h2>
 <div class="news-item"><strong>Racing Syndicate League is online.</strong><span>Official league hub • Live</span></div>
 <div class="news-item"><strong>Gauntlet, tournaments and clubs are ready.</strong><span>Competition Center</span></div>
@@ -58,7 +68,7 @@
 </article>
 </section>
 
-<section class="home-card" id="help" style="margin-top:18px;min-height:0">
+<section class="home-card home-help-card" id="help" style="margin-top:18px;min-height:0">
 <span class="home-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2>
 <p>Use your Player page for your profile and career, Tournaments for events, Clubs for team play, and Gauntlet for the current season.</p>
 </section>
