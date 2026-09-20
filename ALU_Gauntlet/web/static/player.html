@@ -126,6 +126,24 @@
   <div><span>CLUB</span><h2>Club Career</h2><p>Your club affiliation and tournament participation will appear here.</p><a class="qa qa-blue" href="/clubs">Open Club Center →</a></div>
 </section>
 <section class="bottom-banner" id="help"><div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div><div><b>RACE. COMPETE. UNITE.</b><span>Keep your driver ready for the next Gauntlet match.</span></div><a href="/#gauntlet">RETURN TO GAUNTLET →</a></section>
-</main></div></div><script src="/static/player.js?v=20260920-1"></script>
+</main></div></div><script>
+(function(){
+  function initPlayerMenu(){
+    var menu=document.getElementById("player-menu");
+    var trigger=document.getElementById("player-menu-trigger");
+    var dropdown=document.getElementById("player-menu-dropdown");
+    if(!menu||!trigger||!dropdown)return;
+    function close(){dropdown.hidden=true;trigger.setAttribute("aria-expanded","false");}
+    function toggle(e){if(e)e.stopPropagation();var open=dropdown.hidden;dropdown.hidden=!open;trigger.setAttribute("aria-expanded",open?"true":"false");}
+    trigger.onclick=toggle;
+    dropdown.querySelectorAll("a").forEach(function(a){a.addEventListener("click",close);});
+    document.addEventListener("click",function(e){if(!menu.contains(e.target))close();});
+    document.addEventListener("keydown",function(e){if(e.key==="Escape")close();});
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initPlayerMenu);
+  else initPlayerMenu();
+})();
+</script>
+<script src="/static/player.js?v=20260920-2"></script>
 </body>
 </html>
