@@ -32,6 +32,11 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_club_name_per_guild",
     )
+    await db.tournament_action_locks.create_index(
+        [("tournament_id", 1), ("match_id", 1)],
+        unique=True,
+        name="uniq_tournament_action_lock",
+    )
 
 
 async def _apply_rsl_identity():
