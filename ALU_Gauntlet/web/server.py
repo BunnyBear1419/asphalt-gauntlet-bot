@@ -1163,10 +1163,20 @@ class WebControlCenter:
 
 
     async def news(self, request: web.Request) -> web.Response:
-        """Return published news scoped to the signed-in user's Discord servers."""
-        user = await self.require_user(request)
-        guild_ids = {str(x) for x in user.guild_ids}
-        cursor = self.bot.db.news_posts.find({"guild_id": {"$in": list(guild_ids)}, "published": True}).sort("published_at", -1).limit(12)
+        """Return news scoped to the signed-in user; staff may manage drafts for one server."""
+        requested_guild = request.query.get("guild_id", "").strip()
+        include_drafts = False
+        if requested_guild:
+            user, guild_id, _ = await self.require_admin(request)
+            guild_ids = {guild_id}
+            include_drafts = True
+        else:
+            user = await self.require_user(request)
+            guild_ids = {str(x) for x in user.guild_ids}
+        query = {"guild_id": {"$in": list(guild_ids)}}
+        if not include_drafts:
+            query["published"] = True
+        cursor = self.bot.db.news_posts.find(query).sort("updated_at", -1).limit(100 if include_drafts else 12)
         rows = []
         async for row in cursor:
             row["id"] = str(row.pop("_id"))
