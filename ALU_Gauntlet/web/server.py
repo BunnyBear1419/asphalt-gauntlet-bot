@@ -220,6 +220,21 @@ class WebControlCenter:
         guild_id = str(request.query.get("guild_id") or (user.guild_ids[0] if user.guild_ids else ""))
         if guild_id not in {str(x) for x in user.guild_ids}:
             raise web.HTTPForbidden(text="You are not a member of that server.")
+        requested_season = request.query.get("season")
+        if requested_season:
+            try:
+                season_number = int(requested_season)
+            except ValueError:
+                raise web.HTTPBadRequest(text="Invalid season.")
+            archive = await self.bot.db.season_history.find_one({"_id": f"{guild_id}_{season_number}"})
+            if not archive:
+                raise web.HTTPNotFound(text="Archived season not found.")
+            return web.json_response({
+                "season": season_number,
+                "standings": archive.get("standings", []),
+                "player_count": int(archive.get("player_count", len(archive.get("standings", []))) or 0),
+                "closed_at": archive.get("closed_at"),
+            })
         state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
         season_number = int(state.get("season_number", 1) or 1)
         drivers = {}
