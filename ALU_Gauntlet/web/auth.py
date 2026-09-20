@@ -208,6 +208,10 @@ class DiscordOAuth:
         if not token:
             return None
         now = time.time()
+        # Recover safely if a long-lived process retained an older OAuth instance
+        # created before the in-memory session cache was initialized.
+        if not hasattr(self, "sessions"):
+            self.sessions = {}
         async with self._lock:
             entry = self.sessions.get(token)
             if entry:
