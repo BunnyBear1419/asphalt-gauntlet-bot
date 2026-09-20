@@ -27,6 +27,9 @@
 .home-help-card h2{margin-bottom:8px}
 .home-help-card p{max-width:900px;margin:0 auto}
 @media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-info-card{min-height:0}.home-help-card{min-height:130px}}
+.home-help-link{display:block;text-decoration:none;color:inherit;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}
+.home-help-link:hover{transform:translateY(-2px);box-shadow:0 0 28px #168cff25,0 14px 40px #0008}
+.home-help-arrow{display:inline-block;margin-top:14px;color:#25dfff;font-weight:800;letter-spacing:.08em}
 </style>
 </head>
 <body class="home-page">
@@ -40,7 +43,7 @@
 <a href="/tournaments"><i>🏆</i><span>Tournaments</span></a>
 <a href="/clubs"><i>♣</i><span>Clubs</span></a>
 <a href="/#leaderboard"><i>▥</i><span>Competition</span></a>
-<a href="/#help"><i>?</i><span>Help</span></a>
+<a href="/help"><i>?</i><span>Help</span></a>
 </nav>
 <div class="top-user-area"><a class="auth-link" href="/logout">Sign Out</a></div>
 </header>
@@ -68,10 +71,11 @@
 </article>
 </section>
 
-<section class="home-card home-help-card" id="help" style="margin-top:18px;min-height:0">
+<a class="home-card home-help-card home-help-link" id="help" href="/help" aria-label="Open Help Center">
 <span class="home-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2>
-<p>Use your Player page for your profile and career, Tournaments for events, Clubs for team play, and Gauntlet for the current season.</p>
-</section>
+<p>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</p>
+<span class="home-help-arrow">OPEN HELP CENTER →</span>
+</a>
 </main>
 </body>
 </html>
