@@ -135,6 +135,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
+        self.app.router.add_get("/api/player/career", self.player_career)
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
         # Serve every checked-in dashboard image through one predictable route.
         # The previous allow-list only covered the newer SVGs, so older JPG/WEBP
@@ -1628,6 +1629,78 @@ class WebControlCenter:
                 "date": date_value,
             })
         return web.json_response({"matches": rows})
+
+    async def player_career(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's tournament and Gauntlet career history."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        uid = str(user.user_id)
+        driver_id = f"{guild_id}_{uid}"
+        driver = await self.bot.db.drivers.find_one({"_id": driver_id}) or {}
+        season = await get_current_season_number(str(guild_id))
+        elo = int(driver.get("elo", 1000) or 1000)
+
+        higher = await self.bot.db.drivers.count_documents({
+            "guild_id": str(guild_id), "elo": {"$gt": elo}
+        })
+        career_rank = higher + 1
+
+        registrations = []
+        async for reg in self.bot.db.tournament_registrations.find({
+            "guild_id": str(guild_id), "user_id": uid
+        }).sort("registered_at", -1):
+            tid = str(reg.get("tournament_id", ""))
+            try:
+                from bson import ObjectId
+                tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tid)})
+            except Exception:
+                tournament = None
+            if not tournament:
+                continue
+            bracket = tournament.get("bracket") or {}
+            groups = bracket.get("rounds") or bracket.get("winners") or []
+            wins = losses = played = 0
+            placement = None
+            for group in groups:
+                for match in group.get("matches", []):
+                    slots = [str(x) for x in (match.get("player_slots") or []) if x]
+                    if uid not in slots:
+                        continue
+                    status = str(match.get("status", ""))
+                    winner = str(match.get("winner_id", ""))
+                    if status == "completed" and winner:
+                        played += 1
+                        if winner == uid:
+                            wins += 1
+                        else:
+                            losses += 1
+            if str(tournament.get("status")) == "completed" and losses and not wins:
+                placement = "Eliminated"
+            registrations.append({
+                "id": tid,
+                "name": str(tournament.get("name", "Tournament")),
+                "format": str(tournament.get("format", "tournament")).replace("_", " ").title(),
+                "status": str(tournament.get("status", "unknown")).replace("_", " ").title(),
+                "registered_at": str(reg.get("registered_at", "")),
+                "played": played, "wins": wins, "losses": losses,
+                "record": f"{wins}-{losses}", "placement": placement or ("Active" if str(tournament.get("status")) != "completed" else "Completed"),
+                "start_time": str(tournament.get("start_time", "")),
+            })
+
+        gauntlet = {
+            "season": season,
+            "registered": bool(driver.get("season_registered")) and int(driver.get("season_number", 0) or 0) == season,
+            "rank": career_rank,
+            "elo": elo,
+            "wins": int(driver.get("career_wins", 0) or 0),
+            "played": int(driver.get("career_played", 0) or 0),
+            "streak": int(driver.get("streak", 0) or 0),
+        }
+        gauntlet["losses"] = max(0, gauntlet["played"] - gauntlet["wins"])
+        return web.json_response({
+            "player": {"username": str(driver.get("username") or user.global_name or user.username or "Driver")},
+            "career": gauntlet,
+            "tournaments": registrations[:25],
+        })
 
     async def player_list(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
