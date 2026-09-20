@@ -24,11 +24,8 @@
 .home-card h2{margin:6px 0 12px;font-size:27px}.home-card p{color:#aebdd2;line-height:1.55}
 .home-eyebrow{font-size:11px;color:#25dfff;letter-spacing:.2em;font-weight:700}
 .news-item{padding:14px 0;border-top:1px solid #16375b}.news-item strong{display:block;font-size:17px}.news-item span{display:block;color:#7f95b4;font-size:11px;margin-top:5px}.news-empty{color:#91a5c3}
-.home-sections{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
-.home-link{min-height:150px;padding:20px;border:1px solid #173e68;background:#061226;text-decoration:none;display:flex;flex-direction:column;justify-content:space-between}
-.home-link:hover{border-color:#25dfff;transform:translateY(-2px)}.home-link h3{font-size:20px;margin:10px 0 5px}.home-link p{margin:0;color:#8fa4c1;font-size:12px;line-height:1.4}.home-link b{color:#25dfff;font-size:11px}
-@media(max-width:900px){.home-grid,.home-sections{grid-template-columns:1fr 1fr}.home-main{padding:100px 14px 30px}.home-hero-copy{left:25px;right:20px}.home-hero img{height:380px}}
-@media(max-width:560px){.home-grid,.home-sections{grid-template-columns:1fr}.home-hero h1{font-size:44px}}
+@media(max-width:900px){.home-grid{grid-template-columns:1fr 1fr}.home-main{padding:100px 14px 30px}.home-hero-copy{left:25px;right:20px}.home-hero img{height:380px}}
+@media(max-width:560px){.home-grid{grid-template-columns:1fr}.home-hero h1{font-size:44px}}
 </style>
 </head>
 <body class="home-page">
@@ -72,19 +69,6 @@
 <div class="news-item"><strong>Gauntlet, tournaments and clubs are ready.</strong><span>Competition Center</span></div>
 <p class="news-empty">Staff announcements will appear here as the league publishes them.</p>
 </article>
-</section>
-
-<section class="home-card" id="leaderboard" style="margin-top:18px;min-height:0">
-<span class="home-eyebrow">RACE OPERATIONS</span><h2>Race Operations</h2>
-<p>Manage your garage, prepare for competition, and keep your driver career ready for the next event.</p>
-<div class="home-actions"><a href="/player#garage">MY GARAGE →</a><a href="/player">PLAYER CONTROL CENTER →</a></div>
-</section>
-
-<section class="home-sections" id="competition">
-<a class="home-link" href="/player#gauntlet"><div><span class="home-eyebrow">CORE COMPETITION</span><h3>Gauntlet</h3><p>Season registration, matchups, defense, results and rankings.</p></div><b>OPEN GAUNTLET →</b></a>
-<a class="home-link" href="/tournaments"><div><span class="home-eyebrow">EVENT CENTER</span><h3>Tournaments</h3><p>Browse events, brackets, registrations and results.</p></div><b>OPEN TOURNAMENTS →</b></a>
-<a class="home-link" href="/clubs"><div><span class="home-eyebrow">TEAM PLAY</span><h3>Clubs</h3><p>Find your club, manage members and compete as a team.</p></div><b>OPEN CLUBS →</b></a>
-<a class="home-link" href="/players"><div><span class="home-eyebrow">STANDINGS</span><h3>Competition</h3><p>Explore the driver directory and current competitive field.</p></div><b>VIEW DRIVERS →</b></a>
 </section>
 
 <section class="home-card" id="help" style="margin-top:18px;min-height:0">
