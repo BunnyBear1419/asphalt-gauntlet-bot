@@ -39,6 +39,15 @@ async def _ensure_database_indexes():
     )
 
 
+async def _wait_for_database(timeout=60):
+    """Wait for the bot's MongoDB connection to be initialized during startup."""
+    deadline = asyncio.get_running_loop().time() + timeout
+    while getattr(bot, "db", None) is None:
+        if asyncio.get_running_loop().time() >= deadline:
+            raise RuntimeError("MongoDB initialization timed out during startup")
+        await asyncio.sleep(0.25)
+
+
 async def _apply_rsl_identity():
     """Keep the live Discord bot identity aligned with the Racing Syndicate League brand."""
     if bot.user:
@@ -64,18 +73,29 @@ async def load_cogs():
 
 
 async def runner():
-    await load_cogs()
-    await _ensure_database_indexes()
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:
         raise RuntimeError("DISCORD_BOT_TOKEN is required in production")
+
     host = os.getenv("WEB_HOST", "0.0.0.0")
     port = int(os.getenv("PORT", os.getenv("WEB_PORT", "8080")))
     web_center = WebControlCenter(bot, host=host, port=port)
+
     await web_center.start()
+    await load_cogs()
+
+    bot_task = asyncio.create_task(bot.start(token))
     try:
-        await bot.start(token)
+        await _wait_for_database()
+        await _ensure_database_indexes()
+        await bot_task
     finally:
+        if not bot_task.done():
+            bot_task.cancel()
+            try:
+                await bot_task
+            except asyncio.CancelledError:
+                pass
         await web_center.stop()
 
 
