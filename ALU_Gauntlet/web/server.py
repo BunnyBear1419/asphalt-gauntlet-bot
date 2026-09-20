@@ -153,6 +153,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/gauntlet/references", self.gauntlet_references)
         self.app.router.add_post("/api/gauntlet/references", self.create_gauntlet_reference)
         self.app.router.add_get("/api/gauntlet/matches", self.gauntlet_matches)
+        self.app.router.add_post("/api/gauntlet/matches/submit", self.gauntlet_submit_match)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/player/career", self.player_career)
@@ -263,6 +264,35 @@ class WebControlCenter:
             opp=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{other}"}) or {}
             recent.append({"id":str(match.get("_id","")),"opponent":str(opp.get("game_id") or opp.get("username") or other),"result":"WIN" if won else "LOSS","courses":int(match.get("courses_beat",0) or 0),"timestamp":match.get("timestamp") or 0})
         return web.json_response({"active":active,"recent":recent})
+
+    async def gauntlet_submit_match(self, request: web.Request) -> web.Response:
+        """Submit five attack runs for the signed-in driver's active challenge."""
+        user,guild_id,_=await self.require_guild_member(request)
+        payload=await request.json()
+        from ..core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge
+        uid=str(user.user_id); active=await claim_active_challenge(str(guild_id),uid)
+        if not active: raise web.HTTPConflict(text="No active challenge is available to submit.")
+        try:
+            rows=payload.get("courses"); proof=str(payload.get("proof","")).strip()
+            if not isinstance(rows,list) or len(rows)!=5: raise web.HTTPBadRequest(text="Exactly five course results are required.")
+            if not proof.lower().startswith(("http://","https://")): raise web.HTTPBadRequest(text="Proof must be an image URL.")
+            attack=[]; seen=set()
+            for n,row in enumerate(rows,1):
+                if not isinstance(row,dict): raise web.HTTPBadRequest(text=f"Course {n} is invalid.")
+                car=str(row.get("car","")).strip(); lap=str(row.get("lap_time","")).strip()
+                try: rank=int(row.get("car_rank",0))
+                except (TypeError,ValueError): rank=0
+                ms=parse_lap_time(lap)
+                if not car or car.casefold() in seen or rank<=0 or ms<=0: raise web.HTTPBadRequest(text=f"Course {n} has an invalid car, car rating, or lap time.")
+                seen.add(car.casefold()); attack.append({"lap_time_str":lap,"ms":ms,"car":car,"car_rank":rank})
+            defense=active.get("defense_courses") or []
+            result=await process_match_result(str(guild_id),uid,str(active["opponent_id"]),defense,attack,proof,active.get("defender_proof_url"),None,settlement_id=f"{active['_id']}:match")
+            if not result: raise web.HTTPConflict(text="The match could not be settled.")
+            await self.bot.db.active_challenges.update_one({"_id":active["_id"],"guild_id":str(guild_id),"challenger_id":uid,"status":"processing"},{"$set":{"status":"completed","completed_at":time.time(),"match_id":result["_id"]},"$unset":{"processing_at":""}})
+            return web.json_response({"ok":True,"match_id":str(result["_id"]),"result":result.get("outcome_desc","Match submitted.")})
+        except Exception:
+            await release_active_challenge(active["_id"])
+            raise
 
     async def gauntlet_leaderboard(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
