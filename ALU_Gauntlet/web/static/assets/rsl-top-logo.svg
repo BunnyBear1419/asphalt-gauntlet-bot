@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 120" role="img" aria-label="Racing Syndicate League logo">
+<defs>
+<linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#06152f"/><stop offset=".45" stop-color="#178dff"/><stop offset="1" stop-color="#00d8ff"/></linearGradient>
+<linearGradient id="s" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".45" stop-color="#aab9c8"/><stop offset=".7" stop-color="#fff"/><stop offset="1" stop-color="#607285"/></linearGradient>
+<filter id="g"><feGaussianBlur stdDeviation="4" result="x"/><feMerge><feMergeNode in="x"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<pattern id="c" width="18" height="18" patternUnits="userSpaceOnUse"><rect width="18" height="18" fill="#fff"/><rect width="9" height="9" fill="#07101c"/><rect x="9" y="9" width="9" height="9" fill="#07101c"/></pattern>
+</defs>
+<path d="M24 62L50 32L72 48L91 22L110 45L130 10L150 45L169 22L188 48L211 32L236 62L218 84L190 70L164 91L130 76L96 91L70 70L42 84Z" fill="url(#b)" stroke="#8cefff" stroke-width="4" filter="url(#g)"/>
+<path d="M75 83L86 42L105 27L155 27L174 42L185 83L155 69L130 91L105 69Z" fill="#050b16" stroke="url(#s)" stroke-width="7"/>
+<path d="M99 76L104 43L121 32L145 48L133 60L151 70L143 82L126 72L116 84Z" fill="url(#b)" stroke="#eefaff" stroke-width="4"/>
+<path d="M25 48Q42 35 69 54L55 77Q38 66 25 54Z" fill="url(#c)" stroke="#a9bfd2" stroke-width="3"/>
+<path d="M235 48Q218 35 191 54L205 77Q222 66 235 54Z" fill="url(#c)" stroke="#a9bfd2" stroke-width="3"/>
+<path d="M22 49Q40 59 58 78M238 49Q220 59 202 78" fill="none" stroke="#07101c" stroke-width="3" stroke-dasharray="7 7"/>
+</svg>
