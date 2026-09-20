@@ -3,17 +3,20 @@
 <body class="alu-dashboard">
 <header class="top-nav">
 <a class="top-brand" href="/" aria-label="Racing Syndicate League"><span>RACING</span><b>SYNDICATE</b><strong>LEAGUE</strong></a>
-<nav aria-label="Primary navigation">
-    <a href="/"><i>⌂</i><span>Home</span></a>
-    <a href="/player"><i>▣</i><span>Garage</span></a>
-    <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
-    <a href="/tournaments"><i>🏆</i><span>Tournaments</span></a>
-    <a href="/clubs"><i>♣</i><span>Clubs</span></a>
-    <a href="/#leaderboard"><i>▥</i><span>Competition</span></a>
-    <a href="/players" class="active"><i>♟</i><span>Players</span></a>
-    <a href="/setup"><i>⚙</i><span>Setup</span></a>
-    <a href="/#help"><i>?</i><span>Help</span></a>
-  </nav>
+<nav aria-label="Primary navigation"><a href="/"><i>⌂</i><span>Home</span></a><details class="top-nav-dropdown" open><summary class="top-nav-dropdown-trigger active"><i>♜</i><span>Gauntlet</span><b>⌄</b></summary><div class="top-nav-dropdown-menu">
+<a href="/player#gauntlet"><i>⌂</i><span>Gauntlet Overview</span></a>
+<a href="/player#registration"><i>✓</i><span>Registration</span></a>
+<a href="/player#defense"><i>◆</i><span>Defense</span></a>
+<a href="/player#matches"><i>⚔</i><span>Challenges &amp; Matches</span></a>
+<a href="/player#career"><i>▥</i><span>Leaderboards &amp; Career</span></a>
+<a href="/player#help"><i>?</i><span>Gauntlet Help</span></a>
+</div></details><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><i>🏆</i><span>Tournaments</span><b>⌄</b></summary><div class="top-nav-dropdown-menu">
+<a href="/tournaments"><i>⌂</i><span>Tournament Center</span></a>
+<a href="/tournaments"><i>✓</i><span>Registration</span></a>
+<a href="/tournaments"><i>◆</i><span>Brackets &amp; Matches</span></a>
+<a href="/tournaments"><i>▥</i><span>Results &amp; Rankings</span></a>
+<a href="/tournaments"><i>♣</i><span>Club Tournaments</span></a>
+</div></details><a href="/clubs"><i>♣</i><span>Clubs</span></a><a href="/help"><i>?</i><span>Help</span></a></nav>
 <div class="top-profile"><a class="auth-link" href="/logout">Sign Out</a></div><div class="top-profile"><div class="top-avatar">🛠</div><div><strong id="user-name">Staff</strong><small>Staff Control</small></div><span class="chevron">⌄</span></div>
 </header>
 <div class="app-frame"><div class="workspace"><main><section class="hero-banner"><img class="art-img hero-art" src="/assets/hero-4k-final.svg" alt="Racing Syndicate League racing scene" loading="eager" decoding="async"><div class="hero-road"></div></section>
