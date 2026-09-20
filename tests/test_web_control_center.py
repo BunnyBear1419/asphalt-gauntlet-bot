@@ -23,9 +23,11 @@ def test_web_routes_are_guild_scoped():
     assert "guild_id is required." in source
     assert "Administrator access is required for this server." in source
 
-def test_web_ui_is_dashboard_first():
+def test_web_ui_is_simplified_control_center():
     source=(STATIC/"index.html").read_text(encoding="utf-8")
-    assert "My Garage" in source
+    assert "ABOUT ME" in source
+    assert "NEWS &amp; ANNOUNCEMENTS" in source
+    assert "HELP CENTER" in source
     assert 'class="top-nav"' in source
     assert 'href="/player"' in source
     assert 'href="/player#gauntlet"' in source
