@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Racing Syndicate League • Home</title>
-<link rel="stylesheet" href="/static/app.css?v=20260920-home1">
+<link rel="stylesheet" href="/static/app.css?v=20260920-blue1">
 <style>
 .home-page{min-height:100vh;background:radial-gradient(circle at 70% 10%,#11194a 0,#020817 45%,#01050d 100%)}
 .home-main{max-width:1500px;margin:0 auto;padding:112px 28px 48px}
@@ -26,6 +26,10 @@
 .news-item{padding:14px 0;border-top:1px solid #16375b}.news-item strong{display:block;font-size:17px}.news-item span{display:block;color:#7f95b4;font-size:11px;margin-top:5px}.news-empty{color:#91a5c3}
 @media(max-width:900px){.home-grid{grid-template-columns:1fr 1fr}.home-main{padding:100px 14px 30px}.home-hero-copy{left:25px;right:20px}.home-hero img{height:380px}}
 @media(max-width:560px){.home-grid{grid-template-columns:1fr}.home-hero h1{font-size:44px}}
+
+.rsl-main-logo{position:absolute;z-index:2;right:5%;top:50%;transform:translateY(-50%);width:min(43vw,650px);filter:drop-shadow(0 0 24px #168cff55)}
+.rsl-main-logo img{display:block;width:100%;height:auto}
+@media(max-width:760px){.rsl-main-logo{width:48vw;right:2%;opacity:.9}.home-hero-copy{max-width:58%}}
 </style>
 </head>
 <body class="home-page">
@@ -46,7 +50,7 @@
 
 <main class="home-main">
 <section class="home-hero">
-<img src="/assets/hero.jpg" alt="Racing Syndicate League racing scene">
+<img src="/assets/hero.jpg" alt="Racing Syndicate League racing scene"><div class="rsl-main-logo"><img src="/assets/rsl-logo-4k.svg" alt="Racing Syndicate League chrome R logo"></div>
 <div class="home-hero-copy">
 <span class="home-kicker">RACING SYNDICATE LEAGUE</span>
 <h1>RACE.<br><strong>COMPETE.</strong><br>UNITE.</h1>
