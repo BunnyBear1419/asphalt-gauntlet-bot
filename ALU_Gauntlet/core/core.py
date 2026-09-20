@@ -1605,6 +1605,24 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
             existing = await bot.db.matches.find_one({"_id": match_id, "guild_id": guild_id})
             if existing and existing.get("settlement_status") == "completed":
                 return existing
+            # A concurrent submission may lose the unique reservation race after the
+            # winning transaction commits. Reconcile that committed result instead of
+            # surfacing a false failure to the second caller.
+            if existing and existing.get("settlement_status") == "pending":
+                p1_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{challenger_id}"})
+                p2_now = await bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent_id}"})
+                if (
+                    p1_now
+                    and p2_now
+                    and p1_now.get("elo") == existing.get("challenger_elo_after")
+                    and p2_now.get("elo") == existing.get("defender_elo_after")
+                ):
+                    await bot.db.matches.update_one(
+                        {"_id": match_id, "guild_id": guild_id, "settlement_status": "pending"},
+                        {"$set": {"settlement_status": "completed"}},
+                    )
+                    existing["settlement_status"] = "completed"
+                    return existing
             # Transaction failure means MongoDB should have rolled back the writes.
             logging.exception("Atomic match settlement failed: %s", match_id)
             raise
