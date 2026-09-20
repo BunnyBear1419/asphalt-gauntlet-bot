@@ -8,12 +8,20 @@
 <style>
 .home-page{min-height:100vh;background:radial-gradient(circle at 70% 10%,#11194a 0,#020817 45%,#01050d 100%)}
 .home-main{max-width:1500px;margin:0 auto;padding:112px 28px 48px}
-.home-hero{position:relative;border:1px solid #214d78;overflow:hidden;background:#030b19;aspect-ratio:2170/725}
+.home-hero{position:relative;border:1px solid #214d78;overflow:hidden;background:#030b19;aspect-ratio:2170/725;box-shadow:0 0 40px #168cff12}
 .home-hero>img{width:100%;height:100%;object-fit:cover;display:block}
-.home-hero .hero-hotspot{position:absolute;z-index:3;display:block}
-.hero-hotspot-gauntlet{left:5.1%;top:78%;width:17.2%;height:8.2%}
-.hero-hotspot-tournaments{left:23.3%;top:78%;width:17.2%;height:8.2%}
-.hero-hotspot:hover{background:#ffffff08}
+.hero-actions{position:absolute;z-index:3;left:5.05%;top:78.05%;display:flex;gap:1.15%;width:40.4%;height:8.2%}
+.hero-action{display:flex;align-items:center;justify-content:center;height:100%;width:42.6%;padding:0 18px;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:clamp(12px,1.05vw,18px);font-weight:700;letter-spacing:.01em;color:#fff;border:2px solid #12cfff;clip-path:polygon(0 0,100% 0,95.2% 100%,0 100%);transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}
+.hero-action-gauntlet{background:linear-gradient(90deg,#08bfff,#1878ff 62%,#064bb8);box-shadow:0 0 20px #08bfff44}
+.hero-action-tournaments{background:#030b18;box-shadow:0 0 18px #12cfff1a}
+.hero-action:hover{transform:translateY(-2px);filter:brightness(1.14);box-shadow:0 0 26px #12cfff55}
+@media(max-width:700px){
+  .hero-actions{left:5%;top:78%;width:72%;height:9%;gap:2%}
+  .hero-action{font-size:clamp(10px,2.4vw,15px);padding:0 8px}
+}
+@media(max-width:430px){
+  .hero-actions{width:88%;height:10%}
+}
 @media(max-width:900px){.home-grid{grid-template-columns:1fr 1fr}.home-main{padding:100px 14px 30px}}
 @media(max-width:560px){.home-grid{grid-template-columns:1fr}}
 
@@ -50,9 +58,11 @@
 
 <main class="home-main">
 <section class="home-hero" aria-label="Racing Syndicate League">
-<img src="/assets/home-hero-4k.svg?v=20260920-hero2" alt="Racing Syndicate League — Race, Compete, Unite">
-<a class="hero-hotspot hero-hotspot-gauntlet" href="/player#gauntlet" aria-label="Enter Gauntlet"></a>
-<a class="hero-hotspot hero-hotspot-tournaments" href="/tournaments" aria-label="View Tournaments"></a>
+<img src="/assets/home-hero-4k.svg?v=20260920-hero3" alt="Racing Syndicate League — Race, Compete, Unite">
+<div class="hero-actions" aria-label="Featured actions">
+<a class="hero-action hero-action-gauntlet" href="/player#gauntlet">ENTER GAUNTLET →</a>
+<a class="hero-action hero-action-tournaments" href="/tournaments">VIEW TOURNAMENTS →</a>
+</div>
 </section>
 
 <section class="home-grid">
