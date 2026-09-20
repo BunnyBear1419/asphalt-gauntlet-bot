@@ -194,9 +194,273 @@ class StaffCog(commands.Cog):
                     match_filter.update(extra_match)
                 pipeline = [
                     {'$match': match_filter},
-                    {'$group': {'_id': {k: '$' + k for k in key_fields}, 'count': {'$sum': 1}}},
+                    {'$group': {'_id': {k: '
+                if rows:
+                    issues.append(f'{label}: {len(rows)} duplicate key group(s)')
+                else:
+                    checks.append(f'{label}: 0 duplicates')
+                return rows
+
+            await duplicate_groups(bot.db.club_members, ['club_id', 'user_id'], 'Duplicate club memberships')
+            await duplicate_groups(bot.db.tournament_club_registrations, ['tournament_id', 'club_id'], 'Duplicate tournament registrations')
+            await duplicate_groups(bot.db.matches, ['settlement_id'], 'Duplicate match settlements', {'settlement_id': {'$exists': True, '$ne': None}})
+            await duplicate_groups(bot.db.drivers, ['user_id'], 'Duplicate driver identities')
+
+            verified_game_ids = await bot.db.web_preferences.aggregate([
+                {'$match': {'guild_id': guild_id, 'asphalt_connection.status': 'verified'}},
+                {'$group': {'_id': '$asphalt_connection.game_id', 'count': {'$sum': 1}}},
+                {'$match': {'count': {'$gt': 1}}},
+                {'$limit': 20},
+            ]).to_list(length=20)
+            if verified_game_ids:
+                issues.append(f'Duplicate verified Asphalt IDs: {len(verified_game_ids)}')
+            else:
+                checks.append('Duplicate verified Asphalt IDs: 0')
+
+            club_ids = {str(x.get('_id')) for x in await bot.db.clubs.find({'guild_id': guild_id}, {'_id': 1}).to_list(length=5000)}
+            memberships = await bot.db.club_members.find({'guild_id': guild_id}, {'_id': 1, 'club_id': 1}).to_list(length=5000)
+            orphan_memberships = [x for x in memberships if str(x.get('club_id')) not in club_ids]
+            checks.append(f'Orphaned club memberships: {len(orphan_memberships)}')
+            if orphan_memberships:
+                issues.append(f'Orphaned club memberships: {len(orphan_memberships)}')
+
+            tournament_ids = {str(x.get('_id')) for x in await bot.db.tournaments.find({'guild_id': guild_id}, {'_id': 1}).to_list(length=5000)}
+            registrations = await bot.db.tournament_club_registrations.find({'guild_id': guild_id}, {'_id': 1, 'tournament_id': 1, 'club_id': 1}).to_list(length=5000)
+            orphan_regs = [x for x in registrations if str(x.get('tournament_id')) not in tournament_ids or str(x.get('club_id')) not in club_ids]
+            checks.append(f'Orphaned tournament registrations: {len(orphan_regs)}')
+            if orphan_regs:
+                issues.append(f'Orphaned tournament registrations: {len(orphan_regs)}')
+
+            driver_ids = {str(x.get('_id')) for x in drivers}
+            referenced_driver_ids = set()
+            for m in matches:
+                for field in ('challenger_id', 'opponent_id', 'winner_id', 'w_id'):
+                    value = m.get(field)
+                    if value:
+                        referenced_driver_ids.add(f'{guild_id}_{value}' if '_' not in str(value) else str(value))
+            missing_match_drivers = sorted(x for x in referenced_driver_ids if x not in driver_ids)
+            checks.append(f'Match references to missing drivers: {len(missing_match_drivers)}')
+            if missing_match_drivers:
+                issues.append(f'Matches reference missing drivers: {len(missing_match_drivers)}')
+
+            tournament_docs = await bot.db.tournaments.find({'guild_id': guild_id}, {'_id': 1, 'club_id': 1, 'club_ids': 1}).to_list(length=5000)
+            missing_tournament_clubs = 0
+            for t in tournament_docs:
+                refs = []
+                if t.get('club_id'):
+                    refs.append(t.get('club_id'))
+                refs.extend(t.get('club_ids') or [])
+                missing_tournament_clubs += sum(1 for cid in refs if str(cid) not in club_ids)
+            checks.append(f'Tournament references to missing clubs: {missing_tournament_clubs}')
+            if missing_tournament_clubs:
+                issues.append(f'Tournaments reference missing clubs: {missing_tournament_clubs}')
+            completed_matches = [m for m in matches if m.get('settlement_status') == 'completed' and not m.get('reverted')]
+            match_counts = {}
+            win_counts = {}
+            for m in completed_matches:
+                for uid in (m.get('challenger_id'), m.get('opponent_id')):
+                    if uid:
+                        match_counts[uid] = match_counts.get(uid, 0) + 1
+                winner = m.get('w_id')
+                if winner:
+                    win_counts[winner] = win_counts.get(winner, 0) + 1
+                if m.get('challenger_elo_after') is not None and m.get('defender_elo_after') is not None:
+                    if m.get('challenger_elo_after') < 100 or m.get('defender_elo_after') < 100:
+                        issues.append(f"Completed match has invalid post-match ELO: {m.get('_id')}")
+            for d in drivers:
+                uid = str(d.get('user_id'))
+                played = int(d.get('career_played', 0) or 0)
+                wins = int(d.get('career_wins', 0) or 0)
+                if played < match_counts.get(uid, 0):
+                    issues.append(f"Career played is below match history for {d.get('_id')}: {played} < {match_counts.get(uid, 0)}")
+                if wins < win_counts.get(uid, 0):
+                    issues.append(f"Career wins are below match history for {d.get('_id')}: {wins} < {win_counts.get(uid, 0)}")
+                if wins > played:
+                    issues.append(f"Career wins exceed career played for {d.get('_id')}: {wins} > {played}")
+                if d.get('defense_review_pending') and not d.get('defense_review_payload'):
+                    issues.append(f"Defense review flag has no payload: {d.get('_id')}")
+            # Universal record integrity: every stored record must point to a real track
+            # and have a positive time.
+            global_records = await bot.db.map_records.find({}).to_list(length=5000)
+            checks.append(f'Universal records scanned: {len(global_records)}')
+            for rec in global_records:
+                if rec.get('track') not in ALU_TRACKS or int(rec.get('best_ms', 0) or 0) <= 0:
+                    issues.append(f"Invalid universal record: {rec.get('_id')}")
+            status_line = '✅ DATABASE CONSISTENT' if not issues else f'⚠️ {len(issues)} ISSUE(S) FOUND'
+            embed = discord.Embed(title='🗄️ RACING SYNDICATE LEAGUE — DATABASE CHECK', description=status_line, color=ASPHALT_VICTORY_COLOR if not issues else ASPHALT_ADMIN_COLOR, timestamp=datetime.now(timezone.utc))
+            embed.add_field(name='Checks', value='\n'.join((f'• {x}' for x in checks)) or '• No records found', inline=False)
+            if issues:
+                preview = '\n'.join((f'• {x}' for x in issues[:20]))
+                if len(issues) > 20:
+                    preview += f'\n• …and {len(issues) - 20} more'
+                embed.add_field(name='Issues / Recovery Review', value=preview[:1024], inline=False)
+            else:
+                embed.add_field(name='Recovery Test', value='• Settlement reservations and challenge locks passed structural checks.\n• No automatic mutations were made.', inline=False)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            await audit_admin_action(interaction, 'DBCheck', f'Database consistency audit: {len(issues)} issue(s).')
+        except Exception as exc:
+            logging.exception('Database consistency check failed', exc_info=exc)
+            await interaction.followup.send(f'❌ Database consistency check failed: `{exc}`', ephemeral=True)
+
+    @app_commands.command(name='backup', description='[Staff Only] Create an immediate database backup.')
+    async def backup_cmd(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message('❌ Staff only.', ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        try:
+            folder = await create_database_backup(f'manual by {interaction.user.id}')
+            if folder:
+                await interaction.followup.send(f'✅ Database backup created.\n`{folder}`', ephemeral=True)
+                await audit_admin_action(interaction, 'Database Backup', f'Created backup `{folder}`.')
+            else:
+                await interaction.followup.send('ℹ️ MongoDB is not connected; no cloud database backup was created.', ephemeral=True)
+        except Exception as exc:
+            logging.exception('Manual database backup failed')
+            await interaction.followup.send(f'❌ Backup failed: `{exc}`', ephemeral=True)
+            await send_admin_alert(str(interaction.guild_id), 'DATABASE BACKUP FAILED', str(exc))
+
+    @app_commands.command(name='diagnostics', description='[Staff Only] Run a read-only health and database diagnostic report.')
+    async def diagnostics_cmd(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message('❌ Staff only.', ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        guild_id = str(interaction.guild_id)
+        now = time.time()
+        uptime_seconds = max(0, int(now - getattr(bot, 'started_at', now)))
+
+        def fmt_uptime(seconds: int) -> str:
+            days, rem = divmod(seconds, 86400)
+            hours, rem = divmod(rem, 3600)
+            minutes, secs = divmod(rem, 60)
+            parts = []
+            if days:
+                parts.append(f'{days}d')
+            if hours or days:
+                parts.append(f'{hours}h')
+            if minutes or hours or days:
+                parts.append(f'{minutes}m')
+            parts.append(f'{secs}s')
+            return ' '.join(parts)
+
+        def task_status(task_obj) -> str:
+            if task_obj is None:
+                return '⚪ Not initialized'
+            try:
+                if task_obj.is_running():
+                    return '🟢 Running'
+                if task_obj.is_being_cancelled():
+                    return '🟡 Stopping'
+                if task_obj.failed():
+                    return '🔴 Failed'
+            except Exception:
+                pass
+            return '⚪ Stopped'
+        runtime = []
+        counts = {}
+        integrity = []
+        mongo_ok = False
+        latency = bot.latency
+        latency_text = f'{round(latency * 1000, 1)}ms' if latency != float('inf') else 'N/A'
+        runtime.append(('Gateway', f'🟢 Online • {latency_text}'))
+        runtime.append(('Uptime', f'🟢 {fmt_uptime(uptime_seconds)}'))
+        runtime.append(('Commands', f'🟢 {len(bot.tree.get_commands())} loaded'))
+        runtime.append(('Python', f'`{sys.version.split()[0]}`'))
+        runtime.append(('Host', f'`{platform.system()}`'))
+        try:
+            if bot.mongo_client:
+                started = time.perf_counter()
+                await bot.mongo_client.admin.command('ping')
+                mongo_ms = round((time.perf_counter() - started) * 1000, 1)
+                mongo_ok = True
+                runtime.append(('MongoDB', f'🟢 Connected • {mongo_ms}ms'))
+                for name in ('drivers', 'pending', 'matches', 'active_challenges', 'season_history', 'reference_pending'):
+                    try:
+                        counts[name] = await getattr(bot.db, name).count_documents({})
+                    except Exception:
+                        counts[name] = '?'
+                try:
+                    meta = await bot.db.settings.find_one({'_id': 'global_meta'})
+                    if meta and meta.get('guild_overrides_cleaned'):
+                        runtime.append(('Guild Command Overrides', '🟢 Cleared (cached — skipped on future boots)'))
+                    else:
+                        runtime.append(('Guild Command Overrides', '🟡 Not yet cleared — will run on next boot, or use `/staff` → **System → Sync Commands** with full cleanup if needed'))
+                except Exception:
+                    runtime.append(('Guild Command Overrides', '🔴 Could not check status'))
+            else:
+                runtime.append(('MongoDB', '🔴 Not connected • mock DB active'))
+        except Exception as exc:
+            runtime.append(('MongoDB', f'🔴 Error • {str(exc)[:160]}'))
+        season_text = 'Unavailable'
+        queue_text = 'Unavailable'
+        if mongo_ok:
+            try:
+                state = await bot.db.season_state.find_one({'_id': f'guild_{guild_id}'})
+                season = int(state.get('season_number', 1)) if state else 1
+                registered = await bot.db.drivers.count_documents({'guild_id': guild_id, 'season_registered': True, 'season_number': season})
+                pending = await bot.db.pending.count_documents({'guild_id': guild_id, 'season_number': season})
+                active = await bot.db.active_challenges.count_documents({'guild_id': guild_id, 'status': {'$in': ['active', 'processing']}})
+                stale = await bot.db.active_challenges.count_documents({'guild_id': guild_id, 'status': 'processing', 'processing_at': {'$lt': now - 900}})
+                pending_settlements = await bot.db.matches.count_documents({'guild_id': guild_id, 'settlement_status': 'pending'})
+                bad_elo = await bot.db.drivers.count_documents({'guild_id': guild_id, '$or': [{'elo': {'$lt': 0}}, {'elo': {'$gt': 10000}}]})
+                bad_pi = await bot.db.drivers.count_documents({'guild_id': guild_id, '$or': [{'garage_pi': {'$lt': 0}}, {'garage_pi': {'$gt': 100000}}]})
+                season_text = f'Season {season} • {registered} registered'
+                queue_text = f'{active} active/processing • {pending} pending'
+                if stale:
+                    integrity.append(f'⚠️ Stale processing challenges: `{stale}`')
+                if pending_settlements:
+                    integrity.append(f'⚠️ Pending settlements: `{pending_settlements}`')
+                if bad_elo:
+                    integrity.append(f'⚠️ Invalid ELO records: `{bad_elo}`')
+                if bad_pi:
+                    integrity.append(f'⚠️ Invalid PI records: `{bad_pi}`')
+                if not integrity:
+                    integrity.append('🟢 No obvious integrity issues found')
+            except Exception as exc:
+                integrity.append(f'🔴 Integrity check failed: {str(exc)[:160]}')
+        else:
+            integrity.append('🔴 Database integrity checks skipped — MongoDB unavailable')
+        task_lines = [f"**Season Clock:** {task_status(getattr(bot, 'seasonal_clock_loop', None))}", f"**Player Reminders:** {task_status(getattr(bot, 'player_reminder_loop', None))}", f"**Backups:** {task_status(getattr(bot, 'backup_loop', None))}"]
+        backup_root = os.getenv('BACKUP_DIR', './backups')
+        backup_text = '⚪ No local backup directory'
+        try:
+            if os.path.isdir(backup_root):
+                folders = [os.path.join(backup_root, x) for x in os.listdir(backup_root) if os.path.isdir(os.path.join(backup_root, x))]
+                folders.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+                if folders:
+                    age_hours = max(0, (now - os.path.getmtime(folders[0])) / 3600)
+                    status = '🟢' if age_hours <= 30 else '🟡' if age_hours <= 48 else '🔴'
+                    backup_text = f'{status} {len(folders)} local • latest {age_hours:.1f}h ago'
+                else:
+                    backup_text = '🔴 No local backups found'
+        except Exception as exc:
+            backup_text = f'🔴 Check failed • {str(exc)[:100]}'
+        embed = discord.Embed(title='🛠️ RACING SYNDICATE LEAGUE — DIAGNOSTICS', description='Read-only system, database, task, and backup health check.', color=ASPHALT_ADMIN_COLOR if mongo_ok else ASPHALT_ALERT_COLOR, timestamp=datetime.now(timezone.utc))
+        embed.set_thumbnail(url=ASPHALT_MEDIA['thumb_diagnostics'])
+        embed.add_field(name='🖥️ Runtime', value='\n'.join((f'**{k}:** {v}' for k, v in runtime)), inline=False)
+        embed.add_field(name='🗄️ Database', value='\n'.join([f"**Drivers:** `{counts.get('drivers', '?')}`", f"**Pending:** `{counts.get('pending', '?')}`", f"**Matches:** `{counts.get('matches', '?')}`", f"**Challenges:** `{counts.get('active_challenges', '?')}`", f"**Season Archives:** `{counts.get('season_history', '?')}`", f"**Reference Queue:** `{counts.get('reference_pending', '?')}`"]), inline=True)
+        embed.add_field(name='⚙️ Tasks & Backups', value='\n'.join(task_lines) + f'\n**Local Backups:** {backup_text}', inline=True)
+        embed.add_field(name='🏁 League', value=f'**Current:** {season_text}\n**Queue:** {queue_text}', inline=False)
+        embed.add_field(name='🔍 Integrity', value='\n'.join(integrity)[:1024], inline=False)
+        embed.set_footer(text='Read-only • `/staff` → **Data → Database Check** = full audit • `/staff` → **Data → Backup** = manual backup')
+        await interaction.followup.send(embed=embed, ephemeral=True)
+        await audit_admin_action(interaction, 'Diagnostics', 'Ran read-only system, database, task, and backup diagnostics.')
+
+    @app_commands.command(name='launchcheck', description='[Staff Only] Run a read-only Racing Syndicate League production readiness check.')
+    async def launchcheck_cmd(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message('⛔ Staff only.', ephemeral=True)
+            return
+        await send_launch_readiness(interaction)
+        await record_system_event(str(interaction.guild_id), 'LAUNCH_CHECK', f'Launch readiness check requested by {interaction.user.id}')
+
+async def setup(bot):
+    await bot.add_cog(StaffCog(bot))
+ + k for k in key_fields}, 'count': {'$sum': 1}}},
                     {'$match': {'count': {'$gt': 1}}},
                     {'$limit': 20},
+                ]
                 rows = await collection.aggregate(pipeline).to_list(length=20)
                 if rows:
                     issues.append(f'{label}: {len(rows)} duplicate key group(s)')
