@@ -62,7 +62,6 @@ jobs:
             exit 1
           fi
           file "$HERO_JPG"
-          identify "$HERO_JPG"
           if ! file "$HERO_JPG" | grep -qi "JPEG image data"; then
             echo "ERROR: Homepage hero asset is not a valid JPEG."
             exit 1
