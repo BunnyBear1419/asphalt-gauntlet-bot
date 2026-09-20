@@ -10,7 +10,21 @@
 <header class="top-nav">
   <a class="top-brand" href="/" aria-label="Racing Syndicate League"><span>RACING</span><b>SYNDICATE</b><strong>LEAGUE</strong></a>
   <nav aria-label="Primary navigation"><a href="/"><i>⌂</i><span>Home</span></a><a href="/player"><i>▣</i><span>Garage</span></a><a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a><a href="/tournaments"><i>🏆</i><span>Tournaments</span></a><a href="/clubs"><i>♣</i><span>Clubs</span></a><a href="/#leaderboard"><i>▥</i><span>Competition</span></a><a href="/#help"><i>?</i><span>Help</span></a></nav>
-  <div class="top-profile"><a class="auth-link" href="/logout">Sign Out</a></div><div class="top-profile"><div class="top-avatar">🏎</div><div><strong id="user-name">Driver</strong><small>Player</small></div><span class="chevron">⌄</span></div>
+  <div class="top-profile player-menu" id="player-menu">
+  <button class="player-menu-trigger" id="player-menu-trigger" type="button" aria-expanded="false" aria-controls="player-menu-dropdown">
+    <span class="top-avatar">🏎</span><span class="player-menu-name"><strong id="user-name">Driver</strong><small>Player</small></span><span class="chevron">⌄</span>
+  </button>
+  <div class="player-menu-dropdown" id="player-menu-dropdown" hidden>
+    <div class="player-menu-heading"><span>DRIVER HUB</span><b id="menu-user-name">Driver</b></div>
+    <a href="#profile-settings">👤 <span>Profile</span><b>→</b></a>
+    <a href="#career">🏆 <span>My Career</span><b>→</b></a>
+    <a href="#preferences">⚙ <span>Settings</span><b>→</b></a>
+    <a href="#garage">🏎 <span>Garage</span><b>→</b></a>
+    <a href="#club">🛡 <span>Club</span><b>→</b></a>
+    <a href="/login">🔐 <span>Login</span><b>→</b></a>
+    <a href="/logout" class="menu-danger">🚪 <span>Logout</span><b>→</b></a>
+  </div>
+</div>
 </header>
 <div class="app-frame"><div class="workspace">
 <main>
@@ -85,7 +99,33 @@
 <article class="glass-panel activity-card" id="preferences"><div class="panel-heading"><h2>◎ &nbsp; Driver Settings</h2></div><div class="server-select"><select id="guild" aria-label="Server selection"></select><span>⌄</span></div><p class="server-sub">Choose the Discord server for your driver profile.</p><div class="activity-list"><div><i>◷</i><p><b>Timezone</b><small>Used by Discord and web controls.</small></p><select id="timezone" aria-label="Timezone"><option value="UTC">UTC</option><option value="America/New_York">Eastern Time</option><option value="America/Chicago">Central Time</option><option value="America/Denver">Mountain Time</option><option value="America/Los_Angeles">Pacific Time</option><option value="Europe/London">UK / Ireland</option><option value="Europe/Berlin">Central Europe</option><option value="Europe/Bucharest">Eastern Europe</option><option value="Asia/Kolkata">India</option><option value="Asia/Shanghai">China / Singapore</option><option value="Asia/Tokyo">Japan</option><option value="Asia/Seoul">Korea</option><option value="Australia/Sydney">Australian Eastern</option><option value="Pacific/Auckland">New Zealand</option></select></div><div><i>✓</i><p><b>Save settings</b><small>Keep your driver preferences synchronized.</small></p><button class="qa qa-green" id="save" type="button">Save</button></div></div></article>
   </aside>
 </section>
+<section class="career-section" id="career">
+  <div class="career-header">
+    <div><span>PLAYER CAREER</span><h2>My Career</h2><p>Your competitive history across Racing Syndicate League.</p></div>
+    <div class="career-season-badge"><small>SEASON</small><strong id="career-season">—</strong></div>
+  </div>
+  <div class="career-stat-grid">
+    <div><span>RANK</span><strong id="career-rank">—</strong></div>
+    <div><span>ELO</span><strong id="career-elo">—</strong></div>
+    <div><span>RECORD</span><strong id="career-record">—</strong></div>
+    <div><span>WIN RATE</span><strong id="career-winrate">—</strong></div>
+    <div><span>STREAK</span><strong id="career-streak">—</strong></div>
+  </div>
+  <div class="career-columns">
+    <article class="career-card">
+      <div class="career-card-head"><div><span>GAUNTLET</span><h3>Current Season</h3></div><b id="career-gauntlet-status">—</b></div>
+      <div class="career-gauntlet"><div class="career-rank-ring"><strong id="career-gauntlet-rank">—</strong><small>RANK</small></div><div><strong id="career-gauntlet-title">Gauntlet Season</strong><p id="career-gauntlet-copy">Loading competitive status…</p></div></div>
+    </article>
+    <article class="career-card">
+      <div class="career-card-head"><div><span>TOURNAMENTS</span><h3>Competition History</h3></div><b id="career-tournament-count">0</b></div>
+      <div id="career-tournaments" class="career-tournament-list"><p class="empty-state">Loading tournament history…</p></div>
+    </article>
+  </div>
+</section>
+<section class="career-club" id="club">
+  <div><span>CLUB</span><h2>Club Career</h2><p>Your club affiliation and tournament participation will appear here.</p><a class="qa qa-blue" href="/clubs">Open Club Center →</a></div>
+</section>
 <section class="bottom-banner" id="help"><div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div><div><b>RACE. COMPETE. UNITE.</b><span>Keep your driver ready for the next Gauntlet match.</span></div><a href="/#gauntlet">RETURN TO GAUNTLET →</a></section>
-</main></div></div><script src="/static/player.js?v=20260919-10"></script>
+</main></div></div><script src="/static/player.js?v=20260920-1"></script>
 </body>
 </html>
