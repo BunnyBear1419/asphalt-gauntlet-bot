@@ -82,11 +82,14 @@ async def runner():
     web_center = WebControlCenter(bot, host=host, port=port)
 
     await web_center.start()
-    await load_cogs()
 
+    # bot.start() runs discord.py's setup_hook first. setup_hook initializes
+    # MongoDB, so database-dependent cogs must not be loaded until that work
+    # has completed and bot.db is available.
     bot_task = asyncio.create_task(bot.start(token))
     try:
         await _wait_for_database()
+        await load_cogs()
         await _ensure_database_indexes()
         await bot_task
     finally:
