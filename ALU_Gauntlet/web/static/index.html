@@ -3,102 +3,87 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Racing Syndicate League • Race Control</title>
-<link rel="stylesheet" href="/static/app.css?v=20260919-25">
-<link rel="stylesheet" href="/static/dashboard-cards.css?v=20260919-4">
+<title>Racing Syndicate League • Home</title>
+<link rel="stylesheet" href="/static/app.css?v=20260920-home1">
+<style>
+.home-page{min-height:100vh;background:radial-gradient(circle at 70% 10%,#11194a 0,#020817 45%,#01050d 100%)}
+.home-main{max-width:1500px;margin:0 auto;padding:112px 28px 48px}
+.home-hero{position:relative;min-height:380px;border:1px solid #214d78;overflow:hidden;background:#030b19}
+.home-hero img{width:100%;height:380px;object-fit:cover;display:block;opacity:.72}
+.home-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#020817f2 0%,#020817aa 42%,#02081720 100%)}
+.home-hero-copy{position:absolute;z-index:2;left:48px;top:50%;transform:translateY(-50%);max-width:650px}
+.home-kicker{font-size:13px;letter-spacing:.25em;color:#25dfff;font-weight:700}
+.home-hero h1{font-size:clamp(42px,6vw,82px);line-height:.9;margin:12px 0;color:#fff;font-style:italic}
+.home-hero h1 strong{color:#ff0bd4}
+.home-hero p{font-size:16px;color:#c0cce0;max-width:560px}
+.home-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.home-actions a{padding:12px 20px;border:1px solid #25dfff;text-decoration:none;font-weight:700;background:#071a32}
+.home-actions a.primary{background:#7b10c8;border-color:#ff0bd4}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+.home-card{border:1px solid #174a79;background:linear-gradient(145deg,#06152f,#030c1b);padding:26px;min-height:245px;box-shadow:0 12px 30px #0006}
+.home-card h2{margin:6px 0 12px;font-size:27px}.home-card p{color:#aebdd2;line-height:1.55}
+.home-eyebrow{font-size:11px;color:#25dfff;letter-spacing:.2em;font-weight:700}
+.news-item{padding:14px 0;border-top:1px solid #16375b}.news-item strong{display:block;font-size:17px}.news-item span{display:block;color:#7f95b4;font-size:11px;margin-top:5px}.news-empty{color:#91a5c3}
+.home-sections{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.home-link{min-height:150px;padding:20px;border:1px solid #173e68;background:#061226;text-decoration:none;display:flex;flex-direction:column;justify-content:space-between}
+.home-link:hover{border-color:#25dfff;transform:translateY(-2px)}.home-link h3{font-size:20px;margin:10px 0 5px}.home-link p{margin:0;color:#8fa4c1;font-size:12px;line-height:1.4}.home-link b{color:#25dfff;font-size:11px}
+@media(max-width:900px){.home-grid,.home-sections{grid-template-columns:1fr 1fr}.home-main{padding:100px 14px 30px}.home-hero-copy{left:25px;right:20px}.home-hero img{height:380px}}
+@media(max-width:560px){.home-grid,.home-sections{grid-template-columns:1fr}.home-hero h1{font-size:44px}}
+</style>
 </head>
-<body class="alu-dashboard">
+<body class="home-page">
 <header class="top-nav">
-  <a class="top-brand" href="/" aria-label="Racing Syndicate League"><span>RACING</span><b>SYNDICATE</b><strong>LEAGUE</strong></a>
-  <nav aria-label="Primary navigation">
-    <a href="/" class="active"><i>⌂</i><span>Home</span></a>
-    <a href="/player"><i>▣</i><span>Garage</span></a>
-    <a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
-    <a href="/tournaments"><i>🏆</i><span>Tournaments</span></a>
-    <a href="/clubs"><i>♣</i><span>Clubs</span></a>
-    <a href="/#leaderboard"><i>▥</i><span>Competition</span></a>
-    <a href="/#help"><i>?</i><span>Help</span></a>
-  </nav>
-  <div class="top-user-area"><a class="auth-link" href="/logout">Sign Out</a><div class="top-profile"><div class="top-avatar">🏎</div><div><strong id="user-name">Player</strong><small>Driver</small></div><span class="chevron">⌄</span></div></div>
+<a class="top-brand" href="/" aria-label="Racing Syndicate League"><span>RACING</span><b>SYNDICATE</b><strong>LEAGUE</strong></a>
+<nav aria-label="Primary navigation">
+<a href="/" class="active"><i>⌂</i><span>Home</span></a>
+<a href="/player"><i>▣</i><span>Player</span></a>
+<a href="/player#gauntlet"><i>♜</i><span>Gauntlet</span></a>
+<a href="/tournaments"><i>🏆</i><span>Tournaments</span></a>
+<a href="/clubs"><i>♣</i><span>Clubs</span></a>
+<a href="/#competition"><i>▥</i><span>Competition</span></a>
+<a href="/#help"><i>?</i><span>Help</span></a>
+</nav>
+<div class="top-user-area"><a class="auth-link" href="/logout">Sign Out</a></div>
 </header>
 
-<div class="app-frame"><div class="workspace"><main>
-<section class="hero-banner">
-  <img class="art-img hero-art" src="/assets/hero.jpg" alt="Racing Syndicate League racing scene" loading="eager" decoding="async">
-  <div class="hero-overlay">
-    <div><span class="hero-kicker">RACING SYNDICATE LEAGUE</span><h1>RACE. COMPETE. UNITE.</h1><p>One home for Gauntlet seasons, tournaments, clubs and competition.</p></div>
-    <div class="hero-status"><span>● LIVE RACE CONTROL</span><small id="system-pill">CONNECTING…</small></div>
-  </div>
+<main class="home-main">
+<section class="home-hero">
+<img src="/assets/hero.jpg" alt="Racing Syndicate League racing scene">
+<div class="home-hero-copy">
+<span class="home-kicker">RACING SYNDICATE LEAGUE</span>
+<h1>RACE.<br><strong>COMPETE.</strong><br>UNITE.</h1>
+<p>The competitive home for Gauntlet seasons, tournaments, clubs, rankings and your driver career.</p>
+<div class="home-actions"><a class="primary" href="/player#gauntlet">ENTER GAUNTLET →</a><a href="/tournaments">VIEW TOURNAMENTS →</a></div>
+</div>
 </section>
 
-<section class="dashboard-shell">
-  <div class="dashboard-intro">
-    <div><span class="eyebrow">RACE CONTROL</span><h1>Welcome back, <span id="welcome-name">Driver</span>.</h1><p>Your Gauntlet season and competitive events are all in one place.</p></div>
-    <a class="primary-action" href="/player#gauntlet">Open Gauntlet →</a>
-  </div>
-
-  <section class="competition-pillars" aria-label="Competition areas">
-    <a class="pillar pillar-gauntlet" href="/player#gauntlet">
-      <img src="/assets/dashboard-gauntlet.jpg" alt="" loading="lazy" decoding="async">
-      <div class="pillar-shade"></div><div class="pillar-copy"><span>CORE COMPETITION</span><h2>Gauntlet</h2><p>Season registration, defenses, matchups, results and rankings.</p><b>ENTER GAUNTLET →</b></div>
-    </a>
-    <a class="pillar pillar-tournaments" href="/tournaments">
-      <img src="/assets/competition.jpg" alt="" loading="lazy" decoding="async">
-      <div class="pillar-shade"></div><div class="pillar-copy"><span>EVENT CENTER</span><h2>Tournaments</h2><p>Run 1v1, 2v2, 3v3 and 4v4 events with brackets and results.</p><b>BROWSE TOURNAMENTS →</b></div>
-    </a>
-  </section>
-
-  <section class="support-grid">
-    <a class="support-card" href="/tournaments#clubs"><div class="support-icon">♣</div><div><span>TEAM PLAY</span><h3>Clubs</h3><p>Build a roster of up to 20 drivers and enter team tournaments.</p></div><b>→</b></a>
-    <a class="support-card" href="/player"><div class="support-icon">▣</div><div><span>YOUR DRIVER</span><h3>My Garage &amp; Profile</h3><p>Manage your cars, stats, identity and personal competition record.</p></div><b>→</b></a>
-    <a class="support-card" href="/#leaderboard"><div class="support-icon">▥</div><div><span>LIVE STANDINGS</span><h3>Race Operations</h3><p>See current Gauntlet rankings and track the competitive field.</p></div><b>→</b></a>
-  </section>
-
-  <section class="competition-snapshot glass-panel" id="competition-snapshot">
-    <div class="snapshot-heading"><div><span class="eyebrow">YOUR COMPETITION</span><h2>Competition Snapshot</h2></div><a href="/player">Open Profile →</a></div>
-    <div class="snapshot-grid">
-      <div class="snapshot-rank"><span>LIVE RANK</span><strong id="snapshot-rank">—</strong><small id="snapshot-season">Current season</small></div>
-      <div><span>ELO</span><strong id="snapshot-elo">—</strong></div>
-      <div><span>GARAGE PI</span><strong id="snapshot-pi">—</strong></div>
-      <div><span>RECORD</span><strong id="snapshot-record">—</strong></div>
-      <div><span>STREAK</span><strong id="snapshot-streak">—</strong></div>
-      <div><span>DEFENSE</span><strong id="snapshot-defense">—</strong></div>
-    </div>
-  </section>
-
-  <section class="dashboard-columns">
-    <div class="dashboard-main">
-      <article class="glass-panel panel-block" id="matches">
-        <div class="panel-heading"><h2>Recent Matches</h2><a href="/player#gauntlet">View history →</a></div>
-        <div class="match-table" id="recent-matches"><div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class="empty-state">Sign in to load your recent matches.</p></div>
-      </article>
-      <article class="glass-panel panel-block competition-center" id="leaderboard">
-        <div class="panel-heading"><div><span class="eyebrow">COMPETITION CENTER</span><h2>Gauntlet Standings <small>• Live</small></h2></div><a href="/players">Driver directory →</a></div>
-        <div class="competition-toolbar"><div class="competition-season"><span>ACTIVE SEASON</span><strong id="competition-season-label">Loading…</strong></div><label class="competition-search"><span>⌕</span><input id="competition-search" type="search" placeholder="Search drivers…" aria-label="Search drivers"></label></div>
-        <div class="competition-table-head"><span>RANK</span><span>DRIVER</span><span>ELO</span><span>PI</span><span>RECORD</span><span>STREAK</span><span>DEFENSE</span></div>
-        <div class="leaderboard-list competition-list" id="leaderboard-list"><p class="empty-state">Loading live drivers…</p></div>
-      </article>
-    </div>
-    <aside class="dashboard-side">
-      <article class="glass-panel profile-card-clean">
-        <div class="panel-heading"><h2>Your Profile</h2><a href="/player">Open →</a></div>
-        <div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">Driver</strong><small>▣ Discord &nbsp; <b class="online">● Online</b></small></div></div>
-        <div class="profile-stats"><div><span>ELO</span><strong id="profile-elo">1,000</strong></div><div><span>GARAGE PI</span><strong id="profile-pi">0</strong></div></div>
-        <div class="record-stats"><span>♜ <b id="wins">0</b> Wins</span><span>✕ <b id="losses">0</b> Losses</span><span>🔥 <b id="streak">0</b> Streak</span></div>
-      </article>
-      <article class="glass-panel season-card-clean" id="seasons">
-        <div class="season-badge">S<span id="season-number">4</span></div><div><span>ACTIVE SEASON</span><strong id="season-status">● Active ●</strong><small id="season-dates">Loading season…</small><a href="#seasons">Season details →</a></div>
-      </article>
-    </aside>
-  </section>
-
-  <section class="bottom-banner" id="help">
-    <div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div>
-    <div><b>FASTER. BOLDER. TOGETHER.</b><span>Everything competitive, organized in one clean race hub.</span></div>
-    <a href="/tournaments">EXPLORE EVENTS →</a>
-  </section>
+<section class="home-grid">
+<article class="home-card" id="about">
+<span class="home-eyebrow">ABOUT US</span>
+<h2>Built for competitive Asphalt racing.</h2>
+<p>Racing Syndicate League brings drivers together in one organized competitive hub. Track seasons, defend your position, compete in tournaments, build clubs and follow your career without jumping between disconnected systems.</p>
+<p>Our goal is simple: make organized racing feel clean, competitive and professional.</p>
+</article>
+<article class="home-card" id="news">
+<span class="home-eyebrow">LATEST NEWS</span>
+<h2>League News</h2>
+<div class="news-item"><strong>Racing Syndicate League is online.</strong><span>Official league hub • Live</span></div>
+<div class="news-item"><strong>Gauntlet, tournaments and clubs are ready.</strong><span>Competition Center</span></div>
+<p class="news-empty">Staff announcements will appear here as the league publishes them.</p>
+</article>
 </section>
-</main></div></div>
-<script src="/static/app.js?v=20260919-15"></script>
+
+<section class="home-sections" id="competition">
+<a class="home-link" href="/player#gauntlet"><div><span class="home-eyebrow">CORE COMPETITION</span><h3>Gauntlet</h3><p>Season registration, matchups, defense, results and rankings.</p></div><b>OPEN GAUNTLET →</b></a>
+<a class="home-link" href="/tournaments"><div><span class="home-eyebrow">EVENT CENTER</span><h3>Tournaments</h3><p>Browse events, brackets, registrations and results.</p></div><b>OPEN TOURNAMENTS →</b></a>
+<a class="home-link" href="/clubs"><div><span class="home-eyebrow">TEAM PLAY</span><h3>Clubs</h3><p>Find your club, manage members and compete as a team.</p></div><b>OPEN CLUBS →</b></a>
+<a class="home-link" href="/players"><div><span class="home-eyebrow">STANDINGS</span><h3>Competition</h3><p>Explore the driver directory and current competitive field.</p></div><b>VIEW DRIVERS →</b></a>
+</section>
+
+<section class="home-card" id="help" style="margin-top:18px;min-height:0">
+<span class="home-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2>
+<p>Use your Player page for your profile and career, Tournaments for events, Clubs for team play, and Gauntlet for the current season.</p>
+</section>
+</main>
 </body>
 </html>
