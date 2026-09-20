@@ -41,3 +41,16 @@ def test_root_loader_contains_all_cogs():
     assert "from ALU_Gauntlet.main import runner" in source
     for cog in ("player", "defense", "challenges", "competition", "staff", "season", "administration", "help", "system", "operations", "dashboard_setup_bridge", "tournament", "asphalt_account"):
         assert f"ALU_Gauntlet.cogs.{cog}" in package_source
+
+
+def test_tournament_advancement_guards_are_present():
+    source = (ROOT / "ALU_Gauntlet" / "cogs" / "tournament.py").read_text(encoding="utf-8")
+    required = (
+        "Bracket advancement target is invalid.",
+        "Winner has already advanced to the target match.",
+        "Bracket advancement target is already occupied.",
+        "empty_index = slots.index(None)",
+        "target_match[\"player_slots\"] = slots",
+    )
+    failed = [item for item in required if item not in source]
+    assert not failed, failed
