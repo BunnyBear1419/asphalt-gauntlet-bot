@@ -753,15 +753,24 @@ class WebControlCenter:
                 match["status"] = "completed"
                 target = match.get("winner_to")
                 if target:
-                    for group in groups:
-                        for nxt in group.get("matches", []):
-                            if nxt.get("id") == target:
-                                ns = nxt.setdefault("player_slots", [None, None])
-                                if winner_id not in ns:
-                                    ns[0 if ns[0] is None else 1] = winner_id
-                                if all(ns):
-                                    nxt["status"] = "ready"
-                                break
+                    target_match = next(
+                        (nxt for group in groups for nxt in group.get("matches", []) if str(nxt.get("id")) == str(target)),
+                        None,
+                    )
+                    if target_match is None:
+                        raise web.HTTPConflict(text="Bracket advancement target is invalid.")
+                    ns = list(target_match.get("player_slots") or [None, None])
+                    while len(ns) < 2:
+                        ns.append(None)
+                    if winner_id in [str(x) for x in ns if x is not None]:
+                        raise web.HTTPConflict(text="Winner has already advanced to the target match.")
+                    if all(ns):
+                        raise web.HTTPConflict(text="Bracket advancement target is already occupied.")
+                    empty_index = ns.index(None)
+                    ns[empty_index] = winner_id
+                    target_match["player_slots"] = ns
+                    if all(ns):
+                        target_match["status"] = "ready"
                 elif str(match.get("bracket", "winners")) == "winners" and (match.get("round") or 0) == len(groups):
                     t["status"] = "completed"
                     t["champion_id"] = winner_id
