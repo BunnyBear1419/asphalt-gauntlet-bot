@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2170" height="725" viewBox="0 0 2170 725">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#01050d"/><stop offset=".48" stop-color="#031127"/><stop offset="1" stop-color="#010713"/></linearGradient>
+<linearGradient id="blue" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#08bfff"/><stop offset=".5" stop-color="#1878ff"/><stop offset="1" stop-color="#064bb8"/></linearGradient>
+<linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".45" stop-color="#b8c9d9"/><stop offset=".7" stop-color="#fff"/><stop offset="1" stop-color="#617386"/></linearGradient>
+<radialGradient id="glow"><stop stop-color="#168cff" stop-opacity=".35"/><stop offset="1" stop-color="#168cff" stop-opacity="0"/></radialGradient>
+<pattern id="mesh" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M0 42L42 0M-10 42L42-10M0 52L52 0" stroke="#168cff" stroke-opacity=".08" stroke-width="2"/></pattern>
+<filter id="g"><feGaussianBlur stdDeviation="12" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="28"/></filter>
+</defs>
+<rect width="2170" height="725" fill="url(#bg)"/>
+<rect width="2170" height="725" fill="url(#mesh)"/>
+<path d="M0 610L500 0M260 725L840 0M1270 725L1960 0M1510 725L2170 120" stroke="#0b4fa9" stroke-opacity=".25" stroke-width="24"/>
+<path d="M0 585L420 90M1510 725L2170 150" stroke="#16a8ff" stroke-opacity=".55" stroke-width="5" filter="url(#g)"/>
+<ellipse cx="1600" cy="390" rx="560" ry="340" fill="url(#glow)" filter="url(#soft)"/>
+<path d="M0 665H2170" stroke="#12bfff" stroke-opacity=".55" stroke-width="4" filter="url(#g)"/>
+<g font-family="Arial,Helvetica,sans-serif" font-weight="700">
+<text x="110" y="66" fill="#22d9ff" font-size="18" letter-spacing="7">RACING SYNDICATE LEAGUE</text>
+<rect x="108" y="88" width="250" height="3" fill="#16cfff"/>
+<text x="110" y="205" fill="url(#silver)" font-size="104" font-style="italic" letter-spacing="2">RACE.</text>
+<text x="110" y="320" fill="url(#blue)" font-size="104" font-style="italic" letter-spacing="1">COMPETE.</text>
+<text x="110" y="435" fill="url(#silver)" font-size="104" font-style="italic">UNITE.</text>
+</g>
+<rect x="110" y="472" width="5" height="66" fill="#19cfff"/>
+<text x="138" y="495" fill="#e6f0ff" font-family="Arial,Helvetica,sans-serif" font-size="22">The competitive home for Gauntlet seasons, tournaments, clubs,</text>
+<text x="138" y="526" fill="#e6f0ff" font-family="Arial,Helvetica,sans-serif" font-size="22">rankings &amp; your driver career.</text>
+<g font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="18">
+<path d="M110 566H480L462 622H110Z" fill="url(#blue)" stroke="#12cfff" stroke-width="2"/>
+<text x="205" y="601" fill="#fff">ENTER GAUNTLET →</text>
+<path d="M505 566H875L857 622H505Z" fill="#030b18" stroke="#12cfff" stroke-width="2"/>
+<text x="594" y="601" fill="#fff">VIEW TOURNAMENTS →</text>
+</g>
+<g transform="translate(1590 365) scale(.88)">
+<path d="M-470-175L-390-285L-305-205L-205-330L-105-205L0-360L105-205L205-330L305-205L390-285L470-175L405-30L330-85L250-10L170-85L85-15L0-95L-85-15L-170-85L-250-10L-330-85L-405-30Z" fill="url(#blue)" stroke="#8cefff" stroke-width="9"/>
+<path d="M-250 265L-205-165L-75-300L75-300L205-165L250 265L120 205L0 290L-120 205Z" fill="#050b16" stroke="url(#silver)" stroke-width="18"/>
+<path d="M-145 190L-105-185L-25-260L55-205L-5-120L105-55L165-5L110 55L10 5L-45 85L35 145L-20 225Z" fill="url(#blue)" stroke="#eefaff" stroke-width="10"/>
+<path d="M-510-115L-300 15L-515 145Z" fill="#fff" stroke="#a9bfd2" stroke-width="7"/>
+<path d="M510-115L300 15L515 145Z" fill="#fff" stroke="#a9bfd2" stroke-width="7"/>
+<path d="M-510-115L-300 15L-515 145M510-115L300 15L515 145" stroke="#07101c" stroke-width="10" stroke-dasharray="18 18"/>
+</g>
+<text x="2030" y="690" text-anchor="end" fill="#1bbfff" font-family="Arial,Helvetica,sans-serif" font-size="12" letter-spacing="4">RSL • COMPETITIVE RACING</text>
+</svg>
