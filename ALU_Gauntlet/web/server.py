@@ -96,6 +96,7 @@ class WebControlCenter:
         self.app.router.add_get("/help", self.help_page)
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/setup", self.setup_page)
+        self.app.router.add_get("/news-admin", self.news_admin_page)
         self.app.router.add_get("/player", self.player_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/clubs", self.clubs_page)
@@ -105,6 +106,10 @@ class WebControlCenter:
         self.app.router.add_get("/healthz", self.healthz)
         self.app.router.add_get("/api/me", self.me)
         self.app.router.add_get("/api/status", self.status)
+        self.app.router.add_get("/api/news", self.news)
+        self.app.router.add_post("/api/news", self.create_news)
+        self.app.router.add_put("/api/news/{news_id}", self.update_news)
+        self.app.router.add_delete("/api/news/{news_id}", self.delete_news)
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
         self.app.router.add_get("/api/tournaments", self.tournaments)
@@ -1063,6 +1068,10 @@ class WebControlCenter:
         await self.require_admin(request)
         return await self._page_response("setup.html")
 
+    async def news_admin_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_admin(request)
+        return await self._page_response("news-admin.html")
+
     async def player_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("player.html")
@@ -1152,6 +1161,81 @@ class WebControlCenter:
         user = await self.require_user(request)
         return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "staff": user.staff})
 
+
+    async def news(self, request: web.Request) -> web.Response:
+        """Return published news scoped to the signed-in user's Discord servers."""
+        user = await self.require_user(request)
+        guild_ids = {str(x) for x in user.guild_ids}
+        cursor = self.bot.db.news_posts.find({"guild_id": {"$in": list(guild_ids)}, "published": True}).sort("published_at", -1).limit(12)
+        rows = []
+        async for row in cursor:
+            row["id"] = str(row.pop("_id"))
+            rows.append({k: row.get(k) for k in ("id","guild_id","title","category","excerpt","body","author_name","published_at","updated_at")})
+        return web.json_response({"news": rows})
+
+    async def _news_rows(self, guild_id: str) -> list[dict[str, Any]]:
+        rows = []
+        async for row in self.bot.db.news_posts.find({"guild_id": guild_id}).sort("updated_at", -1).limit(100):
+            row["id"] = str(row.pop("_id"))
+            rows.append({k: row.get(k) for k in ("id","guild_id","title","category","excerpt","body","author_id","author_name","published","published_at","created_at","updated_at")})
+        return rows
+
+    async def create_news(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        title = str(payload.get("title","")).strip()[:120]
+        body = str(payload.get("body","")).strip()[:10000]
+        if not title or not body:
+            raise web.HTTPBadRequest(text="Title and article body are required.")
+        now = datetime.now(timezone.utc).isoformat()
+        published = bool(payload.get("published", True))
+        doc = {
+            "guild_id": guild_id, "title": title,
+            "category": str(payload.get("category","Announcement")).strip()[:40] or "Announcement",
+            "excerpt": str(payload.get("excerpt","")).strip()[:300],
+            "body": body, "author_id": str(user.user_id),
+            "author_name": str(user.global_name or user.username or "Staff"),
+            "published": published, "published_at": now if published else None,
+            "created_at": now, "updated_at": now,
+        }
+        result = await self.bot.db.news_posts.insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        await self._audit(guild_id, str(user.user_id), f"News {'published' if published else 'drafted'}: {title}")
+        return web.json_response({"ok": True, "news": doc}, status=201)
+
+    async def update_news(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        try: oid = ObjectId(str(request.match_info["news_id"]))
+        except Exception: raise web.HTTPBadRequest(text="Invalid news article ID.")
+        existing = await self.bot.db.news_posts.find_one({"_id": oid, "guild_id": guild_id})
+        if not existing: raise web.HTTPNotFound(text="News article not found.")
+        payload = await request.json()
+        updates = {}
+        for key, limit in (("title",120),("category",40),("excerpt",300),("body",10000)):
+            if key in payload: updates[key] = str(payload.get(key,"")).strip()[:limit]
+        if ("title" in updates and not updates["title"]) or ("body" in updates and not updates["body"]):
+            raise web.HTTPBadRequest(text="Title and article body cannot be empty.")
+        if "published" in payload:
+            updates["published"] = bool(payload["published"])
+            updates["published_at"] = (datetime.now(timezone.utc).isoformat() if updates["published"] and not existing.get("published_at") else existing.get("published_at") if updates["published"] else None)
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await self.bot.db.news_posts.update_one({"_id": oid, "guild_id": guild_id}, {"$set": updates})
+        await self._audit(guild_id, str(user.user_id), f"News updated: {existing.get('title', str(oid))}")
+        row = await self.bot.db.news_posts.find_one({"_id": oid, "guild_id": guild_id})
+        row["id"] = str(row.pop("_id"))
+        return web.json_response({"ok": True, "news": row})
+
+    async def delete_news(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        try: oid = ObjectId(str(request.match_info["news_id"]))
+        except Exception: raise web.HTTPBadRequest(text="Invalid news article ID.")
+        row = await self.bot.db.news_posts.find_one({"_id": oid, "guild_id": guild_id})
+        if not row: raise web.HTTPNotFound(text="News article not found.")
+        await self.bot.db.news_posts.delete_one({"_id": oid, "guild_id": guild_id})
+        await self._audit(guild_id, str(user.user_id), f"News deleted: {row.get('title', str(oid))}")
+        return web.json_response({"ok": True})
     async def status(self, request: web.Request) -> web.Response:
         await self.require_user(request)
         ready = bool(getattr(self.bot, "is_ready", lambda: False)())
