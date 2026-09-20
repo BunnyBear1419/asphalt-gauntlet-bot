@@ -194,7 +194,11 @@ class StaffCog(commands.Cog):
                     match_filter.update(extra_match)
                 pipeline = [
                     {'$match': match_filter},
-                    {'$group': {'_id': {k: '
+                    {'$group': {'_id': {k: '$' + k for k in key_fields}, 'count': {'$sum': 1}}},
+                    {'$match': {'count': {'$gt': 1}}},
+                    {'$limit': 20},
+                ]
+                rows = await collection.aggregate(pipeline).to_list(length=20)
                 if rows:
                     issues.append(f'{label}: {len(rows)} duplicate key group(s)')
                 else:
