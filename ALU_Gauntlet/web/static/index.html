@@ -28,10 +28,10 @@
 
 
 /* Home page content stays on the Home page — no separate About/News pages. */
-.home-grid{grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
-.home-info-card{min-height:230px;position:relative;border-color:#168cff;box-shadow:0 0 0 1px #168cff18 inset,0 14px 40px #0008}
+.home-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;margin-top:22px;width:100%;align-items:stretch}
+.home-info-card{min-height:310px;position:relative;border-color:#168cff;box-shadow:0 0 0 1px #168cff18 inset,0 14px 40px #0008}
 .home-info-card:after,.home-help-card:after{content:"";position:absolute;right:0;bottom:0;width:54px;height:4px;background:#16cfff;box-shadow:-18px -18px 0 #16cfff55}
-.home-help-card{position:relative;min-height:150px;border-color:#168cff;text-align:center}
+.home-help-card{position:relative;min-height:190px;width:100%;margin-top:22px;border-color:#168cff;text-align:center}
 .home-help-card .home-eyebrow{display:block}
 .home-help-card h2{margin-bottom:8px}
 .home-help-card p{max-width:900px;margin:0 auto}
