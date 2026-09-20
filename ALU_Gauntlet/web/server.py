@@ -102,6 +102,7 @@ class WebControlCenter:
         self.app.router.add_get("/gauntlet/defense", self.gauntlet_defense_page)
         self.app.router.add_get("/gauntlet/matches", self.gauntlet_matches_page)
         self.app.router.add_get("/gauntlet/leaderboard", self.gauntlet_leaderboard_page)
+        self.app.router.add_get("/gauntlet/references", self.gauntlet_references_page)
         self.app.router.add_get("/gauntlet/career", self.gauntlet_leaderboard_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/tournaments/registration", self.tournament_registration_page)
@@ -149,6 +150,8 @@ class WebControlCenter:
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
         self.app.router.add_get("/api/gauntlet/leaderboard", self.gauntlet_leaderboard)
+        self.app.router.add_get("/api/gauntlet/references", self.gauntlet_references)
+        self.app.router.add_post("/api/gauntlet/references", self.create_gauntlet_reference)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/player/career", self.player_career)
@@ -214,6 +217,36 @@ class WebControlCenter:
     async def gauntlet_leaderboard_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("gauntlet-leaderboard.html")
+
+    async def gauntlet_references_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("gauntlet-references.html")
+
+    async def gauntlet_references(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        guild_id = str(user.guild_ids[0]) if user.guild_ids else ""
+        if not guild_id:
+            raise web.HTTPForbidden(text="No server available.")
+        refs = []
+        async for item in self.bot.db.gauntlet_references.find({"guild_id": guild_id}).sort("created_at", -1):
+            refs.append({"id": str(item.get("_id")), "course": str(item.get("course","")), "title": str(item.get("title","")), "driver": str(item.get("driver","")), "time": str(item.get("time","")), "car": str(item.get("car","")), "video_url": str(item.get("video_url","")), "description": str(item.get("description","")), "official": bool(item.get("official",False))})
+        member = guild_id and self.bot.get_guild(int(guild_id)).get_member(int(user.user_id)) if self.bot.get_guild(int(guild_id)) else None
+        is_staff = bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))
+        return web.json_response({"courses": list(ALU_TRACKS), "references": refs, "is_staff": is_staff})
+
+    async def create_gauntlet_reference(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        course = str(payload.get("course","")).strip()
+        title = str(payload.get("title","")).strip()[:120]
+        video_url = str(payload.get("video_url","")).strip()[:500]
+        if course not in ALU_TRACKS or not title or not video_url:
+            raise web.HTTPBadRequest(text="Course, title and video URL are required.")
+        from bson import ObjectId
+        doc = {"_id": ObjectId(), "guild_id": str(guild_id), "course": course, "title": title, "driver": str(payload.get("driver","")).strip()[:100], "time": str(payload.get("time","")).strip()[:30], "car": str(payload.get("car","")).strip()[:100], "video_url": video_url, "description": str(payload.get("description","")).strip()[:1000], "official": bool(payload.get("official",False)), "created_by": str(user.user_id), "created_at": time.time()}
+        await self.bot.db.gauntlet_references.insert_one(doc)
+        await self._audit(str(guild_id), str(user.user_id), "Gauntlet reference added")
+        return web.json_response({"ok": True, "id": str(doc["_id"])})
 
     async def gauntlet_leaderboard(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
