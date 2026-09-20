@@ -1725,9 +1725,20 @@ class WebControlCenter:
     async def player_detail(self, request: web.Request) -> web.Response:
         """Return a guild member's public profile for the player directory."""
         _, guild_id, _ = await self.require_guild_member(request)
-        player = await self.players.get_player(guild_id, request.match_info["user_id"])
+        user_id = str(request.match_info["user_id"]).strip()
+        player = await self.players.get_player(guild_id, user_id)
         if player is None:
-            raise web.HTTPNotFound(text="Player not found."    async def help_page(self, request):
-        return await self._page_response("help.html")
+            raise web.HTTPNotFound(text="Player not found.")
+        prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user_id}"}) or {}
+        connection = prefs.get("asphalt_connection") or {}
+        player["asphalt_connection"] = {
+            "game_id": connection.get("game_id", ""),
+            "game_name": connection.get("game_name", ""),
+            "status": connection.get("status", "not_linked"),
+        }
+        player["asphalt_verified"] = connection.get("status") == "verified"
+        return web.json_response({"player": player})
 
-)
+    async def help_page(self, request: web.Request) -> web.Response:
+        """Render the public Help Center page."""
+        return await self._page_response("help.html")
