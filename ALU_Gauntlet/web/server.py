@@ -152,6 +152,7 @@ class WebControlCenter:
         self.app.router.add_get("/api/gauntlet/leaderboard", self.gauntlet_leaderboard)
         self.app.router.add_get("/api/gauntlet/references", self.gauntlet_references)
         self.app.router.add_post("/api/gauntlet/references", self.create_gauntlet_reference)
+        self.app.router.add_get("/api/gauntlet/matches", self.gauntlet_matches)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/player/career", self.player_career)
@@ -223,30 +224,45 @@ class WebControlCenter:
         return await self._page_response("gauntlet-references.html")
 
     async def gauntlet_references(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
-        guild_id = str(user.guild_ids[0]) if user.guild_ids else ""
-        if not guild_id:
-            raise web.HTTPForbidden(text="No server available.")
-        refs = []
-        async for item in self.bot.db.gauntlet_references.find({"guild_id": guild_id}).sort("created_at", -1):
-            refs.append({"id": str(item.get("_id")), "course": str(item.get("course","")), "title": str(item.get("title","")), "driver": str(item.get("driver","")), "time": str(item.get("time","")), "car": str(item.get("car","")), "video_url": str(item.get("video_url","")), "description": str(item.get("description","")), "official": bool(item.get("official",False))})
-        member = guild_id and self.bot.get_guild(int(guild_id)).get_member(int(user.user_id)) if self.bot.get_guild(int(guild_id)) else None
-        is_staff = bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))
-        return web.json_response({"courses": list(ALU_TRACKS), "references": refs, "is_staff": is_staff})
+        """Return references with the signed-in driver's best known run and car rating."""
+        user=await self.require_user(request)
+        guild_id=str(user.guild_ids[0]) if user.guild_ids else ""
+        if not guild_id: raise web.HTTPForbidden(text="No server available.")
+        profile=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{user.user_id}"}) or {}
+        best_times=profile.get("best_times") or profile.get("track_records") or {}
+        refs=[]
+        async for item in self.bot.db.gauntlet_references.find({"guild_id":guild_id}).sort("created_at",-1):
+            course=str(item.get("course","")); mine=best_times.get(course) if isinstance(best_times,dict) else None
+            if isinstance(mine,dict): my_time=mine.get("lap_time") or mine.get("lap_time_str") or mine.get("time"); my_rank=mine.get("car_rank"); my_car=mine.get("car")
+            else: my_time,my_rank,my_car=(mine if mine else None),None,None
+            refs.append({"id":str(item.get("_id")),"course":course,"title":str(item.get("title","")),"driver":str(item.get("driver","")),"time":str(item.get("time","")),"car":str(item.get("car","")),"car_rank":int(item.get("car_rank",item.get("car_performance",0)) or 0),"video_url":str(item.get("video_url","")),"description":str(item.get("description","")),"official":bool(item.get("official",False)),"my_best_time":str(my_time or ""),"my_car":str(my_car or ""),"my_car_rank":int(my_rank or 0)})
+        member=self.bot.get_guild(int(guild_id)).get_member(int(user.user_id)) if self.bot.get_guild(int(guild_id)) else None
+        return web.json_response({"courses":list(ALU_TRACKS),"references":refs,"is_staff":bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))})
 
     async def create_gauntlet_reference(self, request: web.Request) -> web.Response:
-        user, guild_id, _ = await self.require_admin(request)
-        payload = await request.json()
-        course = str(payload.get("course","")).strip()
-        title = str(payload.get("title","")).strip()[:120]
-        video_url = str(payload.get("video_url","")).strip()[:500]
-        if course not in ALU_TRACKS or not title or not video_url:
-            raise web.HTTPBadRequest(text="Course, title and video URL are required.")
+        user,guild_id,_=await self.require_admin(request); payload=await request.json()
+        course=str(payload.get("course","")).strip(); title=str(payload.get("title","")).strip()[:120]; video_url=str(payload.get("video_url","")).strip()[:500]
+        if course not in ALU_TRACKS or not title or not video_url: raise web.HTTPBadRequest(text="Course, title and video URL are required.")
         from bson import ObjectId
-        doc = {"_id": ObjectId(), "guild_id": str(guild_id), "course": course, "title": title, "driver": str(payload.get("driver","")).strip()[:100], "time": str(payload.get("time","")).strip()[:30], "car": str(payload.get("car","")).strip()[:100], "video_url": video_url, "description": str(payload.get("description","")).strip()[:1000], "official": bool(payload.get("official",False)), "created_by": str(user.user_id), "created_at": time.time()}
-        await self.bot.db.gauntlet_references.insert_one(doc)
-        await self._audit(str(guild_id), str(user.user_id), "Gauntlet reference added")
-        return web.json_response({"ok": True, "id": str(doc["_id"])})
+        try: car_rank=int(payload.get("car_rank",0) or 0)
+        except (TypeError,ValueError): car_rank=0
+        doc={"_id":ObjectId(),"guild_id":str(guild_id),"course":course,"title":title,"driver":str(payload.get("driver","")).strip()[:100],"time":str(payload.get("time","")).strip()[:30],"car":str(payload.get("car","")).strip()[:100],"car_rank":max(0,car_rank),"video_url":video_url,"description":str(payload.get("description","")).strip()[:1000],"official":bool(payload.get("official",False)),"created_by":str(user.user_id),"created_at":time.time()}
+        await self.bot.db.gauntlet_references.insert_one(doc); await self._audit(str(guild_id),str(user.user_id),"Gauntlet reference added")
+        return web.json_response({"ok":True,"id":str(doc["_id"])})
+
+    async def gauntlet_matches(self, request: web.Request) -> web.Response:
+        user,guild_id,_=await self.require_guild_member(request); uid=str(user.user_id); active=[]; recent=[]
+        async for item in self.bot.db.active_challenges.find({"guild_id":str(guild_id),"$or":[{"challenger_id":uid},{"opponent_id":uid}],"status":{"$in":["active","processing"]}}).sort("created_at",-1).limit(10):
+            oppid=str(item.get("opponent_id") if str(item.get("challenger_id"))==uid else item.get("challenger_id")); opp=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{oppid}"}) or {}
+            active.append({"id":str(item.get("_id","")),"status":str(item.get("status","active")),"role":"challenger" if str(item.get("challenger_id"))==uid else "defender","opponent_id":oppid,"opponent":str(opp.get("game_id") or opp.get("username") or oppid),"courses":item.get("defense_courses") or [],"created_at":item.get("created_at") or item.get("started_at") or time.time()})
+        cursor=self.bot.db.matches.find({"guild_id":str(guild_id),"reverted":{"$ne":True},"$or":[{"challenger_id":uid},{"opponent_id":uid}]}).sort("timestamp",-1).limit(20)
+        async for match in cursor:
+            challenger=str(match.get("challenger_id","")); opponent=str(match.get("opponent_id","")); other=opponent if challenger==uid else challenger
+            won=str(match.get("w_id",""))==uid; lost=str(match.get("l_id",""))==uid
+            if not(won or lost): continue
+            opp=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{other}"}) or {}
+            recent.append({"id":str(match.get("_id","")),"opponent":str(opp.get("game_id") or opp.get("username") or other),"result":"WIN" if won else "LOSS","courses":int(match.get("courses_beat",0) or 0),"timestamp":match.get("timestamp") or 0})
+        return web.json_response({"active":active,"recent":recent})
 
     async def gauntlet_leaderboard(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
