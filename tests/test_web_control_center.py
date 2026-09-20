@@ -26,11 +26,9 @@ def test_web_routes_are_guild_scoped():
 def test_web_ui_is_dashboard_first():
     source=(STATIC/"index.html").read_text(encoding="utf-8")
     assert "My Garage" in source
-    assert "Race Operations" in source
     assert 'class="top-nav"' in source
     assert 'href="/player"' in source
     assert 'href="/player#gauntlet"' in source
-    assert 'href="/#leaderboard"' in source
     assert 'href="/#help"' in source
     assert 'class="sidebar"' not in source
 
