@@ -177,6 +177,38 @@ class WebControlCenter:
             self.site = None
             self.runner = None
 
+    async def gauntlet_registration_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("gauntlet-registration.html")
+
+    async def gauntlet_defense_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("gauntlet-defense.html")
+
+    async def gauntlet_matches_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("gauntlet-matches.html")
+
+    async def gauntlet_career_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("gauntlet-career.html")
+
+    async def tournament_registration_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("tournament-registration.html")
+
+    async def tournament_matches_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("tournament-matches.html")
+
+    async def tournament_results_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("tournament-results.html")
+
+    async def tournament_clubs_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("tournament-clubs.html")
+
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("clubs.html")
