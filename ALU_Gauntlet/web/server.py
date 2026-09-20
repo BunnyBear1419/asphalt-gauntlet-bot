@@ -631,6 +631,8 @@ class WebControlCenter:
             raise web.HTTPNotFound(text="Tournament or club not found.")
         if str(club.get("leader_id")) != str(user.user_id):
             raise web.HTTPForbidden(text="Only the club leader can set the tournament lineup.")
+        if tournament.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Tournament lineups are locked once the tournament starts.")
         reg = await self.bot.db.tournament_club_registrations.find_one({"tournament_id": tournament_id, "club_id": club_id})
         if not reg:
             raise web.HTTPNotFound(text="This club is not registered for the tournament.")
@@ -724,6 +726,8 @@ class WebControlCenter:
         bracket = t.get("bracket") or {}
         match_id = str(payload.get("match_id", "")).strip()
         action = str(payload.get("action", "approve")).strip().casefold()
+        if action not in {"approve", "reject"}:
+            raise web.HTTPBadRequest(text="Action must be approve or reject.")
         groups = bracket.get("rounds") or bracket.get("winners") or []
         match = next((m for group in groups for m in group.get("matches", []) if str(m.get("id")) == match_id), None)
         if not match:
@@ -803,8 +807,8 @@ class WebControlCenter:
         t = await self.bot.db.tournaments.find_one({"_id": oid})
         if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
             raise web.HTTPNotFound(text="Tournament not found.")
-        if t.get("status") not in {"registration_open", "open", "live"}:
-            raise web.HTTPConflict(text="Check-in is closed.")
+        if t.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Check-in is closed once the tournament is live or completed.")
         tid = str(oid)
         if int(t.get("team_size", 1)) > 1:
             checkin_payload = await request.json()
@@ -855,6 +859,8 @@ class WebControlCenter:
             raise web.HTTPNotFound(text="Tournament not found.")
         if t.get("status") not in {"registration_open", "open"}:
             raise web.HTTPConflict(text="Only a tournament still in registration can be started.")
+        if t.get("format") != "single_elimination":
+            raise web.HTTPConflict(text="This tournament format does not yet have a complete live state-transition workflow.")
         players = []
         if int(t.get("team_size", 1)) > 1:
             async for row in self.bot.db.tournament_club_registrations.find(
