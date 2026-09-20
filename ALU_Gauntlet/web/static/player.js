@@ -235,3 +235,46 @@ if(saveProfile)saveProfile.addEventListener("click",async()=>{
 });
 
 const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.addEventListener("click",async()=>{const status=$("#asphalt-link-message"),guildId=$("#guild")?.value;if(!guildId)return;const gameName=$("#asphalt-link-name")?.value.trim()||"",gameId=$("#asphalt-link-id")?.value.trim()||"";if(!gameName||!gameId){if(status)status.textContent="Enter both your Asphalt Game Name and Game ID.";return;}asphaltButton.disabled=true;if(status)status.textContent="Submitting for staff verification…";try{const d=await api("/api/player/asphalt?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:gameName,game_id:gameId})});if(status)status.textContent=d.message||"Submitted.";await profile();}catch(e){if(status)status.textContent=e.message||"Unable to connect Asphalt account."}finally{asphaltButton.disabled=false;}});
+
+
+// Player dropdown + esports career dashboard.
+(function initPlayerHub(){
+ const menu=document.querySelector("#player-menu"), trigger=document.querySelector("#player-menu-trigger"), dropdown=document.querySelector("#player-menu-dropdown");
+ if(menu&&trigger&&dropdown){
+   const close=()=>{dropdown.hidden=true;trigger.setAttribute("aria-expanded","false");};
+   trigger.addEventListener("click",e=>{e.stopPropagation();dropdown.hidden=!dropdown.hidden;trigger.setAttribute("aria-expanded",String(!dropdown.hidden));});
+   document.addEventListener("click",e=>{if(!menu.contains(e.target))close();});
+   dropdown.querySelectorAll("a").forEach(a=>a.addEventListener("click",close));
+ }
+ async function loadCareer(){
+   const guildId=document.querySelector("#guild")?.value;
+   if(!guildId)return;
+   try{
+     const d=await api("/api/player/career?guild_id="+encodeURIComponent(guildId));
+     const c=d.career||{};
+     setText("menu-user-name",d.player?.username||"Driver");
+     setText("career-season",c.season??"—");
+     setText("career-rank",c.rank?"#"+c.rank:"—");
+     setText("career-elo",Number(c.elo||0).toLocaleString());
+     setText("career-record",(c.wins??0)+"-"+(c.losses??0));
+     const wr=Number(c.played||0)?Math.round(Number(c.wins||0)/Number(c.played||0)*100):0;
+     setText("career-winrate",wr+"%"); setText("career-streak",c.streak??0);
+     setText("career-gauntlet-rank",c.rank?"#"+c.rank:"—");
+     setText("career-gauntlet-status",c.registered?"REGISTERED":"NOT REGISTERED");
+     setText("career-gauntlet-title",c.registered?"Season "+c.season+" Gauntlet":"Gauntlet Registration");
+     setText("career-gauntlet-copy",c.registered?("Competitive record "+(c.wins??0)+"-"+(c.losses??0)+" • "+Number(c.elo||0).toLocaleString()+" ELO"):"Register for the current Gauntlet season to compete.");
+     const list=document.querySelector("#career-tournaments"), rows=d.tournaments||[];
+     setText("career-tournament-count",rows.length);
+     if(list){list.textContent=""; if(!rows.length){const p=document.createElement("p");p.className="empty-state";p.textContent="No tournament history yet.";list.append(p);} else rows.forEach(t=>{
+       const row=document.createElement("a"); row.className="career-tournament"; row.href="/tournaments";
+       const main=document.createElement("div"); const name=document.createElement("strong"); name.textContent=t.name; const meta=document.createElement("small"); meta.textContent=t.format+" • "+t.status; main.append(name,meta);
+       const result=document.createElement("div"); result.className="career-tournament-result"; const rank=document.createElement("strong"); rank.textContent=t.placement||"Active"; const rec=document.createElement("small"); rec.textContent=t.record+" record"; result.append(rank,rec);
+       row.append(main,result); list.append(row);
+     });}
+   }catch(e){const list=document.querySelector("#career-tournaments");if(list){list.textContent="";const p=document.createElement("p");p.className="empty-state";p.textContent="Career history unavailable.";list.append(p);}}
+ }
+ const g=document.querySelector("#guild"); if(g)g.addEventListener("change",loadCareer);
+ const originalProfile=profile;
+ window.profile=async function(){await originalProfile();await loadCareer();};
+ document.addEventListener("DOMContentLoaded",loadCareer);
+})();
