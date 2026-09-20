@@ -101,7 +101,8 @@ class WebControlCenter:
         self.app.router.add_get("/gauntlet/registration", self.gauntlet_registration_page)
         self.app.router.add_get("/gauntlet/defense", self.gauntlet_defense_page)
         self.app.router.add_get("/gauntlet/matches", self.gauntlet_matches_page)
-        self.app.router.add_get("/gauntlet/career", self.gauntlet_career_page)
+        self.app.router.add_get("/gauntlet/leaderboard", self.gauntlet_leaderboard_page)
+        self.app.router.add_get("/gauntlet/career", self.gauntlet_leaderboard_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/tournaments/registration", self.tournament_registration_page)
         self.app.router.add_get("/tournaments/matches", self.tournament_matches_page)
@@ -147,6 +148,7 @@ class WebControlCenter:
         self.app.router.add_put("/api/season", self.save_season)
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
+        self.app.router.add_get("/api/gauntlet/leaderboard", self.gauntlet_leaderboard)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/player/career", self.player_career)
@@ -208,6 +210,86 @@ class WebControlCenter:
     async def tournament_clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("tournament-clubs.html")
+
+    async def gauntlet_leaderboard_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("gauntlet-leaderboard.html")
+
+    async def gauntlet_leaderboard(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        guild_id = str(request.query.get("guild_id") or (user.guild_ids[0] if user.guild_ids else ""))
+        if guild_id not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPForbidden(text="You are not a member of that server.")
+        state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+        season_number = int(state.get("season_number", 1) or 1)
+        drivers = {}
+        async for driver in self.bot.db.drivers.find({
+            "guild_id": guild_id,
+            "season_registered": True,
+            "season_number": season_number,
+        }):
+            uid = str(driver.get("user_id") or "")
+            if not uid:
+                continue
+            drivers[uid] = {
+                "user_id": uid,
+                "name": str(driver.get("game_id") or driver.get("username") or uid),
+                "elo": int(driver.get("elo", 1000) or 1000),
+                "garage_pi": int(driver.get("garage_pi", 0) or 0),
+                "played": 0,
+                "wins": 0,
+            }
+
+        start_at = float(state.get("starts_at", 0) or 0)
+        end_at = float(state.get("ends_at", 0) or 0)
+        if start_at and end_at and end_at > start_at:
+            cursor = self.bot.db.matches.find({
+                "guild_id": guild_id,
+                "timestamp": {"$gte": start_at, "$lt": end_at},
+                "reverted": {"$ne": True},
+            }, {"w_id": 1, "l_id": 1, "challenger_id": 1, "opponent_id": 1})
+            async for match in cursor:
+                for key in ("w_id", "l_id"):
+                    uid = str(match.get(key) or "")
+                    if uid in drivers:
+                        drivers[uid]["played"] += 1
+                        if key == "w_id":
+                            drivers[uid]["wins"] += 1
+
+        rows = list(drivers.values())
+
+        def division_for_pi(pi):
+            from ..core.core import get_division_for_pi
+            return get_division_for_pi(pi).get("name", "Unranked")
+
+        for row in rows:
+            row["division"] = division_for_pi(row["garage_pi"])
+
+        rows.sort(key=lambda x: (-x["elo"], x["name"].casefold()))
+        divisions = {}
+        for row in rows:
+            divisions.setdefault(row["division"], []).append(row)
+
+        archives = []
+        async for archive in self.bot.db.season_history.find({"guild_id": guild_id}).sort("season_number", -1).limit(20):
+            archives.append({
+                "season": int(archive.get("season_number", 0) or 0),
+                "player_count": int(archive.get("player_count", len(archive.get("standings", []))) or 0),
+                "closed_at": archive.get("closed_at"),
+            })
+
+        return web.json_response({
+            "season": season_number,
+            "active": bool(state.get("season_active", False)),
+            "starts_at": start_at,
+            "ends_at": end_at,
+            "divisions": {key: value for key, value in divisions.items()},
+            "all": rows,
+            "top_overall": rows[:5],
+            "most_active": sorted(rows, key=lambda x: (-x["played"], -x["wins"], -x["elo"], x["name"].casefold()))[:5],
+            "most_wins": sorted(rows, key=lambda x: (-x["wins"], -x["played"], -x["elo"], x["name"].casefold()))[:5],
+            "past_seasons": archives,
+        })
 
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
