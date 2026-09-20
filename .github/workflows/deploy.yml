@@ -53,6 +53,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Build homepage hero JPG
+        run: |
+          set -euo pipefail
+          HERO_SRC="ALU_Gauntlet/web/static/assets/home-hero-4k.svg"
+          HERO_JPG="ALU_Gauntlet/web/static/assets/home-hero-4k.jpg"
+          if command -v magick >/dev/null 2>&1; then
+            magick "$HERO_SRC" -background "#01050d" -alpha remove -alpha off -quality 94 "$HERO_JPG"
+          elif command -v convert >/dev/null 2>&1; then
+            convert "$HERO_SRC" -background "#01050d" -alpha remove -alpha off -quality 94 "$HERO_JPG"
+          else
+            sudo apt-get update
+            sudo apt-get install -y imagemagick
+            convert "$HERO_SRC" -background "#01050d" -alpha remove -alpha off -quality 94 "$HERO_JPG"
+          fi
+          file "$HERO_JPG"
+          identify "$HERO_JPG"
+
       - name: Determine rollback revision
         id: revision
         env:
