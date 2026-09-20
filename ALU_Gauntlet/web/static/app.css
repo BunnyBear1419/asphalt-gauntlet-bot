@@ -616,3 +616,32 @@ body{background:radial-gradient(circle at 65% 30%,#071a3b 0,#02060d 48%,#010308 
 /* Centered RSL trademark footer */
 .rsl-footer-mark{display:flex;align-items:center;justify-content:center;gap:9px;margin:18px auto 0;padding:6px 0 2px;color:#91a5c3;font-size:10px;font-weight:600;letter-spacing:.08em;line-height:1;opacity:.9}
 .rsl-footer-mark img{width:30px;height:23px;object-fit:cover;display:block;mix-blend-mode:screen;opacity:.95}
+
+
+/* Compact top navigation with native Gauntlet and Tournament dropdowns */
+.top-nav nav{align-items:stretch}
+.top-nav-dropdown{height:80px;position:relative;display:flex;align-items:stretch;flex:none}
+.top-nav-dropdown-trigger{height:80px;min-width:145px;padding:0 16px;display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;color:#e1e9fa;border-right:1px solid #10234b;font-size:14px;font-weight:600;position:relative;list-style:none;cursor:pointer}
+.top-nav-dropdown-trigger::-webkit-details-marker{display:none}
+.top-nav-dropdown-trigger::marker{content:""}
+.top-nav-dropdown-trigger i{font-style:normal;font-size:23px;color:#d9e4fa}
+.top-nav-dropdown-trigger b{font-size:12px;color:#25dfff;margin-left:2px;transition:transform .18s ease}
+.top-nav-dropdown[open] .top-nav-dropdown-trigger b{transform:rotate(180deg)}
+.top-nav-dropdown-trigger.active{color:#fff;background:linear-gradient(180deg,#26075b,#111438)}
+.top-nav-dropdown-trigger.active:after{content:"";position:absolute;height:4px;left:18px;right:18px;bottom:0;background:#25dfff;box-shadow:0 0 16px #25dfff}
+.top-nav-dropdown-menu{position:absolute;z-index:250;top:80px;left:0;min-width:245px;padding:7px;background:linear-gradient(145deg,#081a35,#030a18);border:1px solid #1c527f;box-shadow:0 18px 45px #000b,0 0 24px #25dfff15}
+.top-nav-dropdown-menu a{display:flex!important;align-items:center;gap:10px!important;min-width:0!important;width:100%;height:auto!important;padding:11px 12px!important;border:0!important;border-radius:4px;color:#dce8fb!important;font-size:13px!important;font-weight:700!important;justify-content:flex-start!important}
+.top-nav-dropdown-menu a:hover{background:linear-gradient(90deg,#102b4b,#111533);color:#fff!important}
+.top-nav-dropdown-menu a i{font-style:normal;font-size:16px;color:#25dfff}
+.top-nav-dropdown-menu a span{flex:1}
+@media(max-width:900px){
+ .top-nav-dropdown-trigger{min-width:120px;padding:0 10px}
+ .top-nav-dropdown-menu{min-width:220px}
+}
+@media(max-width:700px){
+ .top-nav nav a span,.top-nav-dropdown-trigger span{display:none}
+ .top-nav nav a{min-width:58px;padding:0 8px}
+ .top-nav-dropdown-trigger{min-width:58px;padding:0 8px}
+ .top-nav-dropdown-trigger b{display:none}
+ .top-nav-dropdown-menu{left:auto;right:0}
+}
