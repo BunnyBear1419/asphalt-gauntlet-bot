@@ -205,15 +205,24 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
             match.update({"result_status":"verified","verified_by":str(user_id),"verified_at":discord.utils.utcnow().isoformat(),"status":"completed"})
             target=match.get("winner_to")
             if target:
-                for group in groups:
-                    for nxt in group.get("matches",[]):
-                        if nxt.get("id")==target:
-                            slots=nxt.setdefault("player_slots",[None,None])
-                            if winner not in slots:
-                                slots[0 if slots[0] is None else 1]=winner
-                            if all(slots):
-                                nxt["status"]="ready"
-                            break
+                target_match = next(
+                    (nxt for group in groups for nxt in group.get("matches", []) if str(nxt.get("id")) == str(target)),
+                    None,
+                )
+                if target_match is None:
+                    return False, "Bracket advancement target is invalid."
+                slots = list(target_match.get("player_slots") or [None, None])
+                while len(slots) < 2:
+                    slots.append(None)
+                if winner in [str(x) for x in slots if x is not None]:
+                    return False, "Winner has already advanced to the target match."
+                if all(slots):
+                    return False, "Bracket advancement target is already occupied."
+                empty_index = slots.index(None)
+                slots[empty_index] = winner
+                target_match["player_slots"] = slots
+                if all(slots):
+                    target_match["status"] = "ready"
             else:
                 if str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
                     t["status"]="completed"
