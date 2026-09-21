@@ -161,6 +161,7 @@ class WebControlCenter:
         # Serve every checked-in dashboard image through one predictable route.
         # The previous allow-list only covered the newer SVGs, so older JPG/WEBP
         # artwork could exist in the repository but still return a 404 in production.
+        self.app.router.add_get("/assets/icons/{filename}", self.asset_icon)
         self.app.router.add_get("/assets/{filename}", self.asset)
         self.app.router.add_static("/static/", WEB_DIR, show_index=False)
 
@@ -1176,6 +1177,15 @@ class WebControlCenter:
         if not transition.modified_count:
             raise web.HTTPConflict(text="Tournament start was already completed by another staff action.")
         return web.json_response({"ok": True, "message": "Tournament started.", "bracket": bracket})
+
+    async def asset_icon(self, request):
+        filename = request.match_info["filename"]
+        if "/" in filename or not filename.endswith(".svg"):
+            raise web.HTTPNotFound()
+        path = WEB_DIR / "assets" / "icons" / filename
+        if not path.is_file():
+            raise web.HTTPNotFound()
+        return web.FileResponse(path)
 
     async def asset(self, request: web.Request) -> web.Response:
         """Serve dashboard artwork with the correct image MIME type."""
