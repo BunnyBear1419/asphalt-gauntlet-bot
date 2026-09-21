@@ -12,7 +12,7 @@ EXTENSIONS = [
     "ALU_Gauntlet.cogs.competition", "ALU_Gauntlet.cogs.staff", "ALU_Gauntlet.cogs.season",
     "ALU_Gauntlet.cogs.administration", "ALU_Gauntlet.cogs.help", "ALU_Gauntlet.cogs.system",
     "ALU_Gauntlet.cogs.operations", "ALU_Gauntlet.cogs.dashboard_setup_bridge",
-    "ALU_Gauntlet.cogs.tournament", "ALU_Gauntlet.cogs.asphalt_account",
+    "ALU_Gauntlet.cogs.tournament", "ALU_Gauntlet.cogs.notifications", "ALU_Gauntlet.cogs.asphalt_account",
 ]
 
 
@@ -36,7 +36,7 @@ async def _ensure_database_indexes():
         [("tournament_id", 1), ("match_id", 1)],
         unique=True,
         name="uniq_tournament_action_lock",
-    )
+    )\n    await db.notification_deliveries.create_index(\n        [("event_id", 1), ("user_id", 1), ("phase", 1)],\n        unique=True,\n        name="uniq_notification_delivery",\n    )
 
 
 async def _wait_for_database(timeout=60):
