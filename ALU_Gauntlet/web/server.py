@@ -139,35 +139,52 @@ class WebControlCenter:
 </div>
 <script>
 (function(){
-  window.rslGoogleTranslateInit=function(){
-    if(window.google&&google.translate&&google.translate.TranslateElement){
-      new google.translate.TranslateElement({pageLanguage:"en",includedLanguages:"en,es,fr,de,pt,ja,ko,zh-CN",autoDisplay:false}, "google_translate_element");
-    }
-  };
   const codes={en:"English",es:"Español",fr:"Français",de:"Deutsch",pt:"Português",ja:"日本語",ko:"한국어","zh-CN":"中文（简体）"};
-  const readLanguage=()=>{
+  const readCookie=()=>{
     const match=document.cookie.match(/(?:^|; )googtrans=\/en\/([^;]+)/);
     return match ? decodeURIComponent(match[1]) : "en";
   };
-  const setCookie=(value)=>{
-    document.cookie="googtrans="+value+";path=/;max-age=31536000;SameSite=Lax";
+  const setCookie=(code)=>{
+    document.cookie="googtrans=/en/"+code+";path=/;max-age=31536000;SameSite=Lax";
   };
   const clearCookie=()=>{
     document.cookie="googtrans=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";
+  };
+  const syncAccountLanguage=async()=>{
+    try{
+      const response=await fetch("/api/language",{credentials:"same-origin"});
+      if(!response.ok)return false;
+      const data=await response.json();
+      const code=codes[data.language]?data.language:"en";
+      if(readCookie()!==code){
+        if(code==="en")clearCookie();else setCookie(code);
+        window.location.reload();
+        return true;
+      }
+      return false;
+    }catch(_){return false;}
   };
   const init=()=>{
     const trigger=document.getElementById("rsl-language-trigger");
     const menu=document.getElementById("rsl-language-menu");
     const label=document.getElementById("rsl-language-label");
     if(!trigger||!menu)return;
-    const current=readLanguage();
+    const current=readCookie();
     if(label)label.textContent=codes[current]||"English";
     menu.querySelectorAll(".rsl-language-option").forEach(option=>{
       option.classList.toggle("is-active",option.dataset.code===current);
-      option.addEventListener("click",()=>{
+      option.addEventListener("click",async()=>{
         const code=option.dataset.code;
-        if(code==="en") clearCookie();
-        else setCookie("/en/"+code);
+        try{
+          const response=await fetch("/api/language",{
+            method:"POST",
+            credentials:"same-origin",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({language:code})
+          });
+          if(!response.ok)throw new Error("language save failed");
+        }catch(_){}
+        if(code==="en")clearCookie();else setCookie(code);
         localStorage.setItem("rsl-language",code);
         window.location.reload();
       });
@@ -176,12 +193,14 @@ class WebControlCenter:
     trigger.addEventListener("click",e=>{e.stopPropagation();menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden));});
     document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==trigger)close();});
     document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+    syncAccountLanguage();
   };
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
 </script>
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
+
         if "</body>" in body:\n            body = body.replace("</body>", language_markup + "</body>", 1)\n\n        if "</nav></header>" in body:
             body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
         elif "</header>" in body:
