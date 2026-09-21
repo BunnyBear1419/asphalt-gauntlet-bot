@@ -1031,3 +1031,8 @@ body{background:var(--flat-bg)}
     height:54px!important;
   }
 }
+
+
+/* Shohan's Lab Companion navigation link */
+.companion-nav-link{color:#00f5c8!important}
+.companion-nav-link:hover{color:#00f5c8!important;filter:brightness(1.12)}
