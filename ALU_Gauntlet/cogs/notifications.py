@@ -117,8 +117,7 @@ class NotificationCog(commands.Cog):
             if not self._wants(record, event):
                 continue
             selected_days = self._lead_days(record, event)
-            if abs(selected_days - float(lead_days)) > 0.001:
-                continue
+            if float(lead_days) > 0 and abs(selected_days - float(lead_days)) > 0.001:
                 continue
             user_id = str(record.get("_id", ""))
             if not user_id.isdigit():
