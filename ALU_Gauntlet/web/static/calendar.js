@@ -5,14 +5,15 @@
   const dayKey=d=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+day};
   const eventDate=e=>new Date((Number(e.start)||0)*1000);
   const filtered=()=>state.events.filter(e=>state.filter==="all"||e.type===state.filter);
+  const notificationDays=e=>Number((state.notifications.event_lead_days||{})[String(e.id)] ?? state.notifications[e.type+"_lead_days"] ?? 1);
   const notificationEnabled=e=>{
     const subs=state.notifications.subscribed_event_ids||[], muted=state.notifications.muted_event_ids||[];
     return !muted.includes(String(e.id)) && (subs.includes(String(e.id)) || Boolean(state.notifications[e.type+"_notifications"]));
   };
-  async function toggleEventNotification(e){
+  async function toggleEventNotification(e, leadDays){
     const id=String(e.id), enabled=!notificationEnabled(e);
     try{
-      const r=await fetch("/api/notifications/event",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({event_id:id,enabled})});
+      const r=await fetch("/api/notifications/event",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({event_id:id,enabled,lead_days:Number(leadDays)})});
       if(!r.ok)throw new Error(await r.text()||"Unable to save notification.");
       const d=await r.json();
       state.notifications.subscribed_event_ids=d.enabled
@@ -21,6 +22,7 @@
       state.notifications.muted_event_ids=d.enabled
         ? (state.notifications.muted_event_ids||[]).filter(x=>String(x)!==id)
         : [...new Set([...(state.notifications.muted_event_ids||[]),id])];
+      state.notifications.event_lead_days={...(state.notifications.event_lead_days||{}),[id]:Number(leadDays)};
       render();
       showEvent(e);
     }catch(err){alert(err.message||"Unable to save notification preference.");}
@@ -62,8 +64,8 @@
     if(!e)return;
     const old=document.querySelector(".calendar-modal");if(old)old.remove();
     const d=eventDate(e);
-    const modal=document.createElement("div");modal.className="calendar-modal";modal.innerHTML=`<div class="calendar-modal-card" role="dialog" aria-modal="true" aria-label="Calendar event details"><button class="calendar-modal-close" type="button" aria-label="Close">×</button><span class="eyebrow">${esc(e.type==="gauntlet"?"GAUNTLET":"TOURNAMENT")}</span><h2>${esc(e.title)}</h2><p><strong>${esc(fmtDate(d))}</strong> at <strong>${esc(fmtTime(d))}</strong><br>${esc(e.guild_name||"RSL")} • ${esc(e.status||"scheduled")}</p><button class="calendar-notify-button ${notificationEnabled(e)?"is-enabled":""}" type="button">${notificationEnabled(e)?"🔔 Notifications ON":"🔕 Notify me for this event"}</button></div>`;
-    document.body.appendChild(modal);const close=()=>modal.remove();modal.querySelector(".calendar-modal-close").onclick=close;modal.querySelector(".calendar-notify-button").onclick=()=>toggleEventNotification(e);modal.addEventListener("click",x=>{if(x.target===modal)close()});
+    const modal=document.createElement("div");modal.className="calendar-modal";modal.innerHTML=`<div class="calendar-modal-card" role="dialog" aria-modal="true" aria-label="Calendar event details"><button class="calendar-modal-close" type="button" aria-label="Close">×</button><span class="eyebrow">${esc(e.type==="gauntlet"?"GAUNTLET":"TOURNAMENT")}</span><h2>${esc(e.title)}</h2><p><strong>${esc(fmtDate(d))}</strong> at <strong>${esc(fmtTime(d))}</strong><br>${esc(e.guild_name||"RSL")} • ${esc(e.status||"scheduled")}</p><label class="calendar-notify-timing"><span>Remind me</span><select id="calendar-event-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option></select></label><button class="calendar-notify-button ${notificationEnabled(e)?"is-enabled":""}" type="button">${notificationEnabled(e)?"🔔 Notifications ON":"🔕 Notify me for this event"}</button></div>`;
+    document.body.appendChild(modal);const close=()=>modal.remove();const timing=modal.querySelector("#calendar-event-days");if(timing)timing.value=String(notificationDays(e));modal.querySelector(".calendar-modal-close").onclick=close;modal.querySelector(".calendar-notify-button").onclick=()=>toggleEventNotification(e,timing?.value||1);modal.addEventListener("click",x=>{if(x.target===modal)close()});
   }
   async function load(){
     try{
