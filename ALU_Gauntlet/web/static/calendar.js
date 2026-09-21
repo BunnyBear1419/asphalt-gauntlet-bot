@@ -1,10 +1,31 @@
 (() => {
-  const state={date:new Date(),filter:"all",events:[],lastSync:0};
+  const state={date:new Date(),filter:"all",events:[],lastSync:0,notifications:{gauntlet_notifications:false,tournament_notifications:false,subscribed_event_ids:[],muted_event_ids:[]}};
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const dayKey=d=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+day};
   const eventDate=e=>new Date((Number(e.start)||0)*1000);
   const filtered=()=>state.events.filter(e=>state.filter==="all"||e.type===state.filter);
+  const notificationEnabled=e=>{
+    const subs=state.notifications.subscribed_event_ids||[], muted=state.notifications.muted_event_ids||[];
+    return !muted.includes(String(e.id)) && (subs.includes(String(e.id)) || Boolean(state.notifications[e.type+"_notifications"]));
+  };
+  async function toggleEventNotification(e){
+    const id=String(e.id), enabled=!notificationEnabled(e);
+    try{
+      const r=await fetch("/api/notifications/event",{method:"PUT",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({event_id:id,enabled})});
+      if(!r.ok)throw new Error(await r.text()||"Unable to save notification.");
+      const d=await r.json();
+      state.notifications.subscribed_event_ids=d.enabled
+        ? [...new Set([...(state.notifications.subscribed_event_ids||[]),id])]
+        : (state.notifications.subscribed_event_ids||[]).filter(x=>String(x)!==id);
+      state.notifications.muted_event_ids=d.enabled
+        ? (state.notifications.muted_event_ids||[]).filter(x=>String(x)!==id)
+        : [...new Set([...(state.notifications.muted_event_ids||[]),id])];
+      render();
+      showEvent(e);
+    }catch(err){alert(err.message||"Unable to save notification preference.");}
+  }
+
   const fmtTime=d=>d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
   const fmtDate=d=>d.toLocaleDateString([], {month:"short",day:"numeric",year:"numeric"});
   const monthLabel=()=>state.date.toLocaleDateString([], {month:"long",year:"numeric"});
@@ -41,14 +62,14 @@
     if(!e)return;
     const old=document.querySelector(".calendar-modal");if(old)old.remove();
     const d=eventDate(e);
-    const modal=document.createElement("div");modal.className="calendar-modal";modal.innerHTML=`<div class="calendar-modal-card" role="dialog" aria-modal="true" aria-label="Calendar event details"><button class="calendar-modal-close" type="button" aria-label="Close">×</button><span class="eyebrow">${esc(e.type==="gauntlet"?"GAUNTLET":"TOURNAMENT")}</span><h2>${esc(e.title)}</h2><p><strong>${esc(fmtDate(d))}</strong> at <strong>${esc(fmtTime(d))}</strong><br>${esc(e.guild_name||"RSL")} • ${esc(e.status||"scheduled")}</p></div>`;
-    document.body.appendChild(modal);const close=()=>modal.remove();modal.querySelector(".calendar-modal-close").onclick=close;modal.addEventListener("click",x=>{if(x.target===modal)close()});
+    const modal=document.createElement("div");modal.className="calendar-modal";modal.innerHTML=`<div class="calendar-modal-card" role="dialog" aria-modal="true" aria-label="Calendar event details"><button class="calendar-modal-close" type="button" aria-label="Close">×</button><span class="eyebrow">${esc(e.type==="gauntlet"?"GAUNTLET":"TOURNAMENT")}</span><h2>${esc(e.title)}</h2><p><strong>${esc(fmtDate(d))}</strong> at <strong>${esc(fmtTime(d))}</strong><br>${esc(e.guild_name||"RSL")} • ${esc(e.status||"scheduled")}</p><button class="calendar-notify-button ${notificationEnabled(e)?"is-enabled":""}" type="button">${notificationEnabled(e)?"🔔 Notifications ON":"🔕 Notify me for this event"}</button></div>`;
+    document.body.appendChild(modal);const close=()=>modal.remove();modal.querySelector(".calendar-modal-close").onclick=close;modal.querySelector(".calendar-notify-button").onclick=()=>toggleEventNotification(e);modal.addEventListener("click",x=>{if(x.target===modal)close()});
   }
   async function load(){
     try{
       const r=await fetch("/api/calendar",{credentials:"same-origin",cache:"no-store"});
       if(!r.ok)throw new Error("Calendar request failed");
-      const data=await r.json();state.events=Array.isArray(data.events)?data.events:[];state.lastSync=Date.now();
+      const data=await r.json();state.events=Array.isArray(data.events)?data.events:[];try{const n=await fetch("/api/notifications",{credentials:"same-origin",cache:"no-store"});if(n.ok)state.notifications=await n.json()}catch(_){}state.lastSync=Date.now();
       $("calendar-sync").textContent="Live • updated "+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
       render();
     }catch(e){$("calendar-sync").textContent="Sync unavailable";$("calendar-agenda-list").innerHTML='<div class="calendar-empty">Calendar data could not be loaded.</div>'}
