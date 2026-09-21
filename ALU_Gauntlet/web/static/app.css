@@ -1169,3 +1169,5 @@ body{top:0!important}
 
 .notification-timing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.notification-timing{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border:1px solid #173654;border-radius:8px;background:#08182b;color:#91a9c4;font-size:10px}.notification-timing select{border:1px solid #1d4569;border-radius:6px;background:#0d2239;color:#e5f1ff;padding:7px 8px;font-size:10px}.notification-timing-note{margin:9px 0 0;color:#657f9e;font-size:9px;line-height:1.4}
 @media(max-width:700px){.notification-timing-grid{grid-template-columns:1fr}}
+
+.notification-custom-days{display:none;width:70px;box-sizing:border-box;border:1px solid #1d4569;border-radius:6px;background:#0d2239;color:#e5f1ff;padding:7px 8px;font-size:10px}.notification-timing select:has(option[value="custom"]){max-width:150px}
