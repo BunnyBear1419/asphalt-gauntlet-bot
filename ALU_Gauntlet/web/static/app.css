@@ -1108,3 +1108,13 @@ body{background:var(--flat-bg)}
 .workspace main{margin-top:0!important;padding-top:0!important}
 .hero-banner{margin-top:0!important}
 .page-hero{margin-top:0!important}
+
+
+/* FINAL FULL-PAGE GAP RESET — eliminate outer whitespace around the site. */
+html,body{margin:0!important;padding:0!important}
+body{min-height:100vh!important}
+.app-frame{margin:0!important;padding-top:70px!important;padding-bottom:0!important}
+.workspace,.workspace main,.dashboard-shell{margin-top:0!important;margin-bottom:0!important;padding-top:0!important}
+.hero-banner{margin-top:0!important}
+.dashboard-grid{margin-top:0!important}
+footer{margin-bottom:0!important;padding-bottom:8px!important}
