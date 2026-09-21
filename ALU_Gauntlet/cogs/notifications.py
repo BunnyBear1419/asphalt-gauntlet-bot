@@ -84,6 +84,20 @@ class NotificationCog(commands.Cog):
         return events
 
     @staticmethod
+    def _lead_days(record, event):
+        event_id = str(event["id"])
+        overrides = record.get("event_lead_days") or {}
+        if event_id in overrides:
+            try:
+                return float(overrides[event_id])
+            except (TypeError, ValueError):
+                pass
+        try:
+            return float(record.get(f'{event["type"]}_lead_days', 1) or 1)
+        except (TypeError, ValueError):
+            return 1.0
+
+    @staticmethod
     def _wants(record, event):
         event_id = str(event["id"])
         if event_id in {str(x) for x in (record.get("muted_event_ids") or [])}:
@@ -92,10 +106,9 @@ class NotificationCog(commands.Cog):
             return True
         return bool(record.get(f'{event["type"]}_notifications', False))
 
-    async def _notify_event(self, event, phase, now):
+    async def _notify_event(self, event, lead_days, now):
         target = float(event["timestamp"])
-        # Phase 1 is a one-hour heads-up; phase 0 is the event itself.
-        lead_seconds = 3600 if phase == "1h" else 0
+        lead_seconds = max(0.0, float(lead_days)) * 86400.0
         target_time = target - lead_seconds
         if abs(now - target_time) > 90:
             return
@@ -103,20 +116,24 @@ class NotificationCog(commands.Cog):
         async for record in self.bot.db.notification_preferences.find({}):
             if not self._wants(record, event):
                 continue
+            selected_days = self._lead_days(record, event)
+            if abs(selected_days - float(lead_days)) > 0.001:
+                continue
+                continue
             user_id = str(record.get("_id", ""))
             if not user_id.isdigit():
                 continue
-            delivery_id = f"{user_id}:{event['id']}:{phase}"
+            delivery_id = f"{user_id}:{event['id']}:{lead_days:g}"
             claimed = await self.bot.db.notification_deliveries.update_one(
                 {"_id": delivery_id},
-                {"$setOnInsert": {"created_at": now, "event_id": event["id"], "user_id": user_id, "phase": phase}},
+                {"$setOnInsert": {"created_at": now, "event_id": event["id"], "user_id": user_id, "lead_days": float(lead_days)}},
                 upsert=True,
             )
             if not claimed.upserted_id:
                 continue
             try:
                 user = self.bot.get_user(int(user_id)) or await self.bot.fetch_user(int(user_id))
-                when = "starts in about 1 hour" if phase == "1h" else "is happening now"
+                when = "is happening now" if lead_days <= 0 else (f"is coming up in {lead_days:g} day" + ("." if lead_days == 1 else "s."))
                 icon = "🏎️" if event["type"] == "gauntlet" else "🏆"
                 embed = discord.Embed(
                     title=f"{icon} RSL Calendar Reminder",
@@ -138,8 +155,14 @@ class NotificationCog(commands.Cog):
         try:
             events = await self._calendar_events()
             for event in events:
-                await self._notify_event(event, "1h", now)
-                await self._notify_event(event, "0", now)
+                for record in await self.bot.db.notification_preferences.find({}).to_list(length=None):
+                    if not self._wants(record, event):
+                        continue
+                    lead_days = self._lead_days(record, event)
+                    # Send the selected lead-time reminder and the event-time reminder.
+                    await self._notify_event(event, lead_days, now)
+                    if lead_days > 0:
+                        await self._notify_event(event, 0, now)
         except Exception:
             # Keep the background scheduler alive if one malformed event or
             # transient database/Discord failure occurs.
