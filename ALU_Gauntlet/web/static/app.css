@@ -849,3 +849,59 @@ body{background:var(--flat-bg)}
   background:#0d2239!important;
   border-radius:8px;
 }
+
+
+/* =========================================================
+   RSL TOURNAMENTS — FLAT ILLUSTRATION PAGE SYSTEM
+   ========================================================= */
+.tournament-hero{
+  background:#0a1a2d!important;
+  background-image:none!important;
+  border:1px solid #1d4569!important;
+  border-radius:14px;
+  box-shadow:none!important;
+}
+.tournament-card{
+  background:#0a1a2d!important;
+  background-image:none!important;
+  border:1px solid #1d4569!important;
+  border-radius:12px;
+  box-shadow:none!important;
+}
+.tournament-card-art{
+  background:#0d2239!important;
+  border-bottom:3px solid #28d7ff;
+}
+.tournament-card-art span{
+  filter:none!important;
+  text-shadow:none!important;
+}
+.tournament-card-actions .qa,
+.tournament-hero-action{
+  background:#2b7fff!important;
+  border:2px solid #28d7ff!important;
+  border-radius:8px;
+  box-shadow:none!important;
+}
+.tournament-meta span{
+  background:#0d2239!important;
+  border:1px solid #1d4569;
+  border-radius:8px;
+}
+.tournament-detail .glass-panel{
+  background:#0a1a2d!important;
+  background-image:none!important;
+  border:1px solid #1d4569!important;
+  border-radius:10px;
+  box-shadow:none!important;
+}
+.review-row{
+  background:#0d2239!important;
+  border-color:#1d4569!important;
+  border-radius:8px;
+}
+.tournament-empty{
+  background:#0d2239!important;
+  border:1px solid #1d4569;
+  border-radius:10px;
+}
