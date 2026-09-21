@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Racing Syndicate League • Calendar</title>
+<link rel="stylesheet" href="/static/app.css?v=20260921-calendar1">
+<link rel="stylesheet" href="/static/calendar.css?v=20260921-calendar1">
+</head>
+<body class="alu-dashboard">
+<header class="top-nav">
+  <a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a>
+  <nav aria-label="Primary navigation">
+    <a href="/"><i>🏠</i><span>Home</span></a>
+    <details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><i>🏎️</i><span>Gauntlet</span><b>⌄</b></summary><div class="top-nav-dropdown-menu">
+      <a href="/gauntlet/registration"><i>✅</i><span>Registration</span></a>
+      <a href="/gauntlet/defense"><i>🛡️</i><span>Defense</span></a>
+      <a href="/gauntlet/matches"><i>⚔️</i><span>Challenges &amp; Matches</span></a>
+      <a href="/gauntlet/leaderboard"><i>🏆</i><span>Leaderboards</span></a>
+      <a href="/gauntlet/references"><i>🎥</i><span>References</span></a>
+    </div></details>
+    <details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><i>🏆</i><span>Tournaments</span><b>⌄</b></summary><div class="top-nav-dropdown-menu">
+      <a href="/tournaments"><i>🏠</i><span>Tournament Center</span></a>
+      <a href="/tournaments/registration"><i>✅</i><span>Registration</span></a>
+      <a href="/tournaments/matches"><i>🛡️</i><span>Brackets &amp; Matches</span></a>
+      <a href="/tournaments/results"><i>📊</i><span>Results &amp; Rankings</span></a>
+      <a href="/tournaments/clubs"><i>👥</i><span>Club Tournaments</span></a>
+    </div></details>
+    <a class="calendar-nav-link active" href="/calendar"><i>📅</i><span>Calendar</span></a>
+    <a href="/clubs"><i>👥</i><span>Clubs</span></a>
+    <a href="/help"><i>❓</i><span>Help</span></a>
+    <a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><span>Companion</span></a>
+  </nav>
+  <div class="top-user-area"><a class="auth-link" href="/logout">Sign Out</a><div class="top-profile"><div class="top-avatar">🏎</div><div><strong id="user-name">Driver</strong><small>Player</small></div><span class="chevron">⌄</span></div></div>
+</header>
+<div class="app-frame"><div class="workspace"><main class="calendar-page">
+<section class="calendar-hero">
+  <div><span class="eyebrow">RSL EVENT SCHEDULE</span><h1>📅 CALENDAR</h1><p>Gauntlet seasons and tournaments stay on one live schedule.</p></div>
+  <div class="calendar-live"><span class="calendar-live-dot"></span><span id="calendar-sync">Syncing…</span></div>
+</section>
+<section class="calendar-toolbar glass-panel">
+  <div class="calendar-nav">
+    <button id="calendar-prev" type="button" aria-label="Previous month">←</button>
+    <h2 id="calendar-month" aria-live="polite">Loading…</h2>
+    <button id="calendar-next" type="button" aria-label="Next month">→</button>
+    <button id="calendar-today" class="calendar-today" type="button">Today</button>
+  </div>
+  <div class="calendar-filters" role="group" aria-label="Calendar filters">
+    <button class="calendar-filter is-active" data-filter="all" type="button">All</button>
+    <button class="calendar-filter" data-filter="gauntlet" type="button">🏎️ Gauntlet</button>
+    <button class="calendar-filter" data-filter="tournament" type="button">🏆 Tournaments</button>
+  </div>
+</section>
+<section class="calendar-layout">
+  <div class="calendar-board glass-panel">
+    <div class="calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+    <div id="calendar-grid" class="calendar-grid" role="grid" aria-label="Event calendar"></div>
+  </div>
+  <aside class="calendar-agenda glass-panel">
+    <div class="panel-heading"><h2>Upcoming Events</h2><small id="event-count">Loading…</small></div>
+    <div id="calendar-agenda-list" class="calendar-agenda-list"><div class="calendar-empty">Loading events…</div></div>
+    <div class="calendar-legend">
+      <span><i class="legend-dot legend-gauntlet"></i>Gauntlet</span>
+      <span><i class="legend-dot legend-tournament"></i>Tournament</span>
+      <span><i class="legend-dot legend-registration"></i>Registration close</span>
+    </div>
+  </aside>
+</section>
+</main></div></div>
+<script src="/static/calendar.js?v=20260921-calendar1"></script>
+</body>
+</html>
