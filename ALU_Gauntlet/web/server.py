@@ -118,7 +118,71 @@ class WebControlCenter:
 </div>
 <a class="rsl-login-button" id="rsl-login-button" href="/login" hidden>🔐 Login</a>
 '''
-        language_markup = r'''\n<div id="google_translate_element" class="rsl-google-translate" aria-hidden="true"></div>\n<div class="rsl-language-switcher" id="rsl-language-switcher">\n  <button class="rsl-language-trigger" id="rsl-language-trigger" type="button" aria-haspopup="true" aria-expanded="false">\n    <span class="rsl-language-globe" aria-hidden="true">◎</span>\n    <span id="rsl-language-label">English</span>\n    <span class="rsl-language-chevron">⌃</span>\n  </button>\n  <div class="rsl-language-menu" id="rsl-language-menu" hidden>\n    <button type="button" class="rsl-language-option is-active" data-code="en">English</button>\n    <button type="button" class="rsl-language-option" data-code="es">Español</button>\n    <button type="button" class="rsl-language-option" data-code="fr">Français</button>\n    <button type="button" class="rsl-language-option" data-code="de">Deutsch</button>\n    <button type="button" class="rsl-language-option" data-code="pt">Português</button>\n    <button type="button" class="rsl-language-option" data-code="ja">日本語</button>\n    <button type="button" class="rsl-language-option" data-code="ko">한국어</button>\n    <button type="button" class="rsl-language-option" data-code="zh-CN">中文（简体）</button>\n  </div>\n</div>\n<script>\n(function(){\n  window.rslGoogleTranslateInit=function(){\n    if(window.google&&google.translate&&google.translate.TranslateElement){\n      new google.translate.TranslateElement({pageLanguage:"en",includedLanguages:"en,es,fr,de,pt,ja,ko,zh-CN",autoDisplay:false}, "google_translate_element");\n    }\n  };\n  const codes={en:"English",es:"Español",fr:"Français",de:"Deutsch",pt:"Português",ja:"日本語",ko:"한국어","zh-CN":"中文（简体）"};\n  const readLanguage=()=>{\n    const match=document.cookie.match(/(?:^|; )googtrans=\\/en\\/([^;]+)/);\n    return match ? decodeURIComponent(match[1]) : "en";\n  };\n  const setCookie=(value)=>{\n    document.cookie="googtrans="+value+";path=/;max-age=31536000;SameSite=Lax";\n  };\n  const clearCookie=()=>{\n    document.cookie="googtrans=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";\n  };\n  const init=()=>{\n    const trigger=document.getElementById("rsl-language-trigger");\n    const menu=document.getElementById("rsl-language-menu");\n    const label=document.getElementById("rsl-language-label");\n    if(!trigger||!menu)return;\n    const current=readLanguage();\n    if(label)label.textContent=codes[current]||"English";\n    menu.querySelectorAll(".rsl-language-option").forEach(option=>{\n      option.classList.toggle("is-active",option.dataset.code===current);\n      option.addEventListener("click",()=>{\n        const code=option.dataset.code;\n        if(code==="en") clearCookie();\n        else setCookie("/en/"+code);\n        localStorage.setItem("rsl-language",code);\n        window.location.reload();\n      });\n    });\n    const close=()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");};\n    trigger.addEventListener("click",e=>{e.stopPropagation();menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden));});\n    document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==trigger)close();});\n    document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});\n  };\n  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();\n})();\n</script>\n<script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>\n'''\n        if "</body>" in body:\n            body = body.replace("</body>", language_markup + "</body>", 1)\n\n        if "</nav></header>" in body:
+        language_markup = r'''
+<div id="google_translate_element" class="rsl-google-translate" aria-hidden="true"></div>
+<div class="rsl-language-switcher" id="rsl-language-switcher">
+  <button class="rsl-language-trigger" id="rsl-language-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+    <span class="rsl-language-globe" aria-hidden="true">◎</span>
+    <span id="rsl-language-label">English</span>
+    <span class="rsl-language-chevron">⌃</span>
+  </button>
+  <div class="rsl-language-menu" id="rsl-language-menu" hidden>
+    <button type="button" class="rsl-language-option is-active" data-code="en">English</button>
+    <button type="button" class="rsl-language-option" data-code="es">Español</button>
+    <button type="button" class="rsl-language-option" data-code="fr">Français</button>
+    <button type="button" class="rsl-language-option" data-code="de">Deutsch</button>
+    <button type="button" class="rsl-language-option" data-code="pt">Português</button>
+    <button type="button" class="rsl-language-option" data-code="ja">日本語</button>
+    <button type="button" class="rsl-language-option" data-code="ko">한국어</button>
+    <button type="button" class="rsl-language-option" data-code="zh-CN">中文（简体）</button>
+  </div>
+</div>
+<script>
+(function(){
+  window.rslGoogleTranslateInit=function(){
+    if(window.google&&google.translate&&google.translate.TranslateElement){
+      new google.translate.TranslateElement({pageLanguage:"en",includedLanguages:"en,es,fr,de,pt,ja,ko,zh-CN",autoDisplay:false}, "google_translate_element");
+    }
+  };
+  const codes={en:"English",es:"Español",fr:"Français",de:"Deutsch",pt:"Português",ja:"日本語",ko:"한국어","zh-CN":"中文（简体）"};
+  const readLanguage=()=>{
+    const match=document.cookie.match(/(?:^|; )googtrans=\/en\/([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : "en";
+  };
+  const setCookie=(value)=>{
+    document.cookie="googtrans="+value+";path=/;max-age=31536000;SameSite=Lax";
+  };
+  const clearCookie=()=>{
+    document.cookie="googtrans=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";
+  };
+  const init=()=>{
+    const trigger=document.getElementById("rsl-language-trigger");
+    const menu=document.getElementById("rsl-language-menu");
+    const label=document.getElementById("rsl-language-label");
+    if(!trigger||!menu)return;
+    const current=readLanguage();
+    if(label)label.textContent=codes[current]||"English";
+    menu.querySelectorAll(".rsl-language-option").forEach(option=>{
+      option.classList.toggle("is-active",option.dataset.code===current);
+      option.addEventListener("click",()=>{
+        const code=option.dataset.code;
+        if(code==="en") clearCookie();
+        else setCookie("/en/"+code);
+        localStorage.setItem("rsl-language",code);
+        window.location.reload();
+      });
+    });
+    const close=()=>{menu.hidden=true;trigger.setAttribute("aria-expanded","false");};
+    trigger.addEventListener("click",e=>{e.stopPropagation();menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden));});
+    document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==trigger)close();});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+})();
+</script>
+<script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
+'''
+        if "</body>" in body:\n            body = body.replace("</body>", language_markup + "</body>", 1)\n\n        if "</nav></header>" in body:
             body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
         elif "</header>" in body:
             body = body.replace("</header>", profile_markup + "</header>", 1)
