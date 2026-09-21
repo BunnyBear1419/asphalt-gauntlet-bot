@@ -269,6 +269,8 @@ class WebControlCenter:
         self.app.router.add_get("/logout", self.logout)
         self.app.router.add_get("/healthz", self.healthz)
         self.app.router.add_get("/api/me", self.me)
+        self.app.router.add_get("/api/language", self.get_language)
+        self.app.router.add_post("/api/language", self.set_language)
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_get("/api/news", self.news)
         self.app.router.add_post("/api/news", self.create_news)
@@ -1541,6 +1543,29 @@ class WebControlCenter:
         user = await self.require_user(request)
         return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "avatar": user.avatar, "staff": user.staff})
 
+
+    async def get_language(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        record = await self.bot.db.web_user_preferences.find_one({"_id": str(user.user_id)}) or {}
+        language = str(record.get("language", "en")).strip() or "en"
+        return web.json_response({"language": language})
+
+    async def set_language(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid language request.") from exc
+        language = str(payload.get("language", "en")).strip()
+        allowed = {"en", "es", "fr", "de", "pt", "ja", "ko", "zh-CN"}
+        if language not in allowed:
+            raise web.HTTPBadRequest(text="Unsupported language.")
+        await self.bot.db.web_user_preferences.update_one(
+            {"_id": str(user.user_id)},
+            {"$set": {"language": language, "updated_at": time.time()}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "language": language})
 
     async def news(self, request: web.Request) -> web.Response:
         """Return news scoped to the signed-in user; staff may manage drafts for one server."""
