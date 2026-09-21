@@ -1118,3 +1118,18 @@ body{min-height:100vh!important}
 .hero-banner{margin-top:0!important}
 .dashboard-grid{margin-top:0!important}
 footer{margin-bottom:0!important;padding-bottom:8px!important}
+
+
+/* FINAL ZERO-GAP PAGE LAYOUT — hero flush under header, content flush to hero, no outer bottom whitespace. */
+html,body{margin:0!important;padding:0!important}
+.top-nav{height:80px!important}
+.app-frame{margin:0!important;padding-top:80px!important;padding-bottom:0!important;min-height:0!important}
+.workspace{margin:0!important;padding:0!important;width:100%!important}
+.workspace main{margin:0!important;padding:0!important}
+.hero-banner{margin:0!important;padding:0!important;display:block!important}
+.dashboard-grid{margin:0!important;padding:0!important}
+.dashboard-shell{margin:0!important;padding:0!important}
+.dashboard-intro{margin-top:0!important}
+.feature-row,.lower-grid{margin-top:0!important}
+.bottom-banner{margin:0!important}
+footer{margin:0!important;padding:0!important;min-height:0!important}
