@@ -92,7 +92,119 @@
 #news .home-section-heading .home-eyebrow,
 #help .home-help-copy > .home-eyebrow{font-weight:900;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 </style>
-<style>.nav-icon{display:inline-flex;align-items:center;justify-content:center;width:1.35em;margin-right:6px;font-style:normal;line-height:1}.top-nav-dropdown-trigger .nav-icon{margin-right:5px}.top-nav-dropdown-menu .nav-icon{width:1.2em}</style></head>
+<style>.nav-icon{display:inline-flex;align-items:center;justify-content:center;width:1.35em;margin-right:6px;font-style:normal;line-height:1}.top-nav-dropdown-trigger .nav-icon{margin-right:5px}.top-nav-dropdown-menu .nav-icon{width:1.2em}</style>
+<style>
+/* RSL HOME — FLAT ILLUSTRATION TREATMENT */
+.home-page{background:#06101f}
+.home-main{padding-top:104px}
+.home-hero{
+  border:2px solid #1d4569;
+  border-radius:14px;
+  box-shadow:none;
+  background:#0a1a2d;
+}
+.home-hero:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,transparent 48%,rgba(6,16,31,.38));
+  pointer-events:none;
+}
+.hero-action{
+  clip-path:none;
+  border:2px solid #28d7ff;
+  border-radius:8px;
+  box-shadow:none;
+}
+.hero-action-gauntlet{background:#2b7fff}
+.hero-action-tournaments{background:#0a1a2d}
+.hero-action:hover{transform:translateY(-2px);filter:none;box-shadow:none}
+.home-feature-card{
+  min-height:250px;
+  border:1px solid #1d4569;
+  border-radius:12px;
+  background:#0a1a2d;
+  box-shadow:none;
+}
+.home-feature-card:before{
+  height:4px;
+  background:#28d7ff;
+}
+.home-feature-card:after{
+  width:34px;
+  height:4px;
+  background:#28d7ff;
+  box-shadow:none;
+}
+.home-feature-icon{
+  width:82px;
+  flex-basis:82px;
+  height:82px;
+  border:1px solid #1d4569;
+  border-radius:10px;
+  background:#0d2239;
+  color:#28d7ff;
+  font-size:0;
+  text-shadow:none;
+  filter:none;
+  position:relative;
+}
+.home-feature-icon:after{
+  content:"";
+  width:30px;
+  height:30px;
+  border:3px solid #28d7ff;
+  border-radius:7px;
+  transform:rotate(45deg);
+}
+.home-feature-content h2{
+  font-style:normal;
+  font-weight:700;
+}
+.home-feature-content p{font-size:13px;color:#91a9c4}
+.home-news-list{margin-top:14px}
+.home-news-item{
+  border:1px solid #1d4569;
+  border-radius:8px;
+  background:#0d2239;
+  padding:12px 14px;
+  box-shadow:none;
+}
+.home-news-item:hover{
+  transform:none;
+  border-color:#28d7ff;
+  box-shadow:none;
+  background:#102941;
+}
+.news-live{
+  border-radius:999px;
+  border-color:#18e19e;
+  padding:6px 10px;
+}
+.home-help-card{
+  border:1px solid #1d4569;
+  border-radius:12px;
+  background:#0a1a2d;
+  box-shadow:none;
+}
+.home-help-card:before{background:#28d7ff}
+.home-help-card:hover{
+  transform:translateY(-2px);
+  box-shadow:none;
+}
+.home-help-icon{
+  background:#0d2239;
+  border:1px solid #1d4569;
+  box-shadow:none;
+}
+.home-help-icon:before{border-color:#28d7ff}
+.home-help-icon svg{
+  stroke:#28d7ff;
+  filter:none;
+}
+.rsl-footer-mark{opacity:.85}
+</style>
+</head>
 <body class="home-page">
 <header class="top-nav">
 <a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League"><img src="/assets/rsl-top-logo.png?v=20260920-rmark4" alt="RSL R logo"></a>
