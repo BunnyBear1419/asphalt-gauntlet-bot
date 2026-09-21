@@ -845,6 +845,9 @@ window.rslGoogleTranslateInit=function(){
         return web.json_response({
             "gauntlet_notifications": bool(record.get("gauntlet_notifications", False)),
             "tournament_notifications": bool(record.get("tournament_notifications", False)),
+            "gauntlet_lead_days": float(record.get("gauntlet_lead_days", 1) or 1),
+            "tournament_lead_days": float(record.get("tournament_lead_days", 1) or 1),
+            "event_lead_days": {str(k): float(v) for k, v in (record.get("event_lead_days") or {}).items()},
             "subscribed_event_ids": [str(x) for x in (record.get("subscribed_event_ids") or [])],
             "muted_event_ids": [str(x) for x in (record.get("muted_event_ids") or [])],
         })
@@ -893,17 +896,27 @@ window.rslGoogleTranslateInit=function(){
             raise web.HTTPBadRequest(text="Event ID is required.")
         # Event subscriptions are opt-in overrides. A user can keep an entire
         # category off and still subscribe to one calendar event.
+        lead_days = payload.get("lead_days")
+        set_fields = {"updated_at": time.time()}
+        if lead_days is not None:
+            try:
+                lead_days = float(lead_days)
+            except (TypeError, ValueError):
+                raise web.HTTPBadRequest(text="Event notification timing must be a number of days.")
+            if not 0 <= lead_days <= 30:
+                raise web.HTTPBadRequest(text="Event notification timing must be between 0 and 30 days.")
+            set_fields[f"event_lead_days.{event_id}"] = lead_days
         if enabled:
             update = {
                 "$addToSet": {"subscribed_event_ids": event_id},
                 "$pull": {"muted_event_ids": event_id},
-                "$set": {"updated_at": time.time()},
+                "$set": set_fields,
             }
         else:
             update = {
                 "$pull": {"subscribed_event_ids": event_id},
                 "$addToSet": {"muted_event_ids": event_id},
-                "$set": {"updated_at": time.time()},
+                "$set": set_fields,
             }
         await self.bot.db.notification_preferences.update_one(
             {"_id": str(user.user_id)}, update, upsert=True
