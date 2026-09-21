@@ -327,6 +327,7 @@ window.rslGoogleTranslateInit=function(){
         self.app.router.add_get("/api/notifications", self.notification_preferences)
         self.app.router.add_put("/api/notifications/category", self.update_notification_category)
         self.app.router.add_put("/api/notifications/event", self.update_notification_event)
+        self.app.router.add_put("/api/notifications/timing", self.update_notification_timing)
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_get("/api/news", self.news)
         self.app.router.add_post("/api/news", self.create_news)
@@ -862,6 +863,26 @@ window.rslGoogleTranslateInit=function(){
             upsert=True,
         )
         return web.json_response({"ok": True, "category": category, "enabled": enabled})
+
+    async def update_notification_timing(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        scope = str(payload.get("scope", "")).strip().lower()
+        lead_days = payload.get("lead_days", 1)
+        try:
+            lead_days = float(lead_days)
+        except (TypeError, ValueError):
+            raise web.HTTPBadRequest(text="Notification timing must be a number of days.")
+        if not 0 <= lead_days <= 30:
+            raise web.HTTPBadRequest(text="Notification timing must be between 0 and 30 days.")
+        if scope not in {"gauntlet", "tournament"}:
+            raise web.HTTPBadRequest(text="Unsupported notification category.")
+        await self.bot.db.notification_preferences.update_one(
+            {"_id": str(user.user_id)},
+            {"$set": {f"{scope}_lead_days": lead_days, "updated_at": time.time()}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "scope": scope, "lead_days": lead_days})
 
     async def update_notification_event(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
