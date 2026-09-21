@@ -969,3 +969,9 @@ body{background:var(--flat-bg)}
 .top-nav-dropdown-trigger{list-style:none}
 .top-nav-dropdown-trigger::-webkit-details-marker{display:none}
 @media(max-width:760px){.top-nav nav>a span,.top-nav-dropdown-trigger span:not(.nav-chevron){display:none}.top-nav-dropdown-menu>a span{display:inline}.nav-icon-img{width:19px;height:19px;flex-basis:19px}}
+
+
+/* RSL TRANSPARENT SHIELD HEADER */
+.top-brand.top-logo-mark{background:transparent!important;border:0!important;box-shadow:none!important}
+.top-brand.top-logo-mark img{object-fit:contain!important;mix-blend-mode:normal!important;width:100%;height:100%;padding:4px;box-sizing:border-box}
+.top-brand.top-logo-mark:hover{border:0!important;box-shadow:none!important}
