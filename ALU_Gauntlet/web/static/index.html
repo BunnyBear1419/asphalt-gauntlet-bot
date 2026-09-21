@@ -207,6 +207,119 @@
 
 .home-hero-media{display:block;width:100%;height:100%}
 .home-hero-media>img{width:100%;height:100%;object-fit:cover;display:block}
+
+
+/* Partner banner — Shohan's Lab */
+.partner-banner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:32px;
+  width:100%;
+  max-width:1400px;
+  min-height:190px;
+  margin:28px auto 0;
+  padding:28px 42px;
+  box-sizing:border-box;
+  border:1px solid #164b4a;
+  border-radius:12px;
+  background:#080f13;
+  position:relative;
+  overflow:hidden;
+  text-decoration:none;
+  color:#fff;
+}
+.partner-banner:before{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:24px;
+  width:110px;
+  height:3px;
+  transform:translateX(-50%);
+  background:#00f5c8;
+  box-shadow:0 0 18px #00f5c8,0 0 34px #00f5c855;
+}
+.partner-banner:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.018) 0,rgba(255,255,255,.018) 1px,transparent 1px,transparent 4px);
+}
+.partner-banner-copy{
+  position:relative;
+  z-index:1;
+  flex:1;
+  text-align:center;
+}
+.partner-banner-kicker{
+  margin:0 0 4px;
+  color:#e9f7ff;
+  font-family:Rajdhani,Arial,sans-serif;
+  font-size:clamp(28px,3vw,46px);
+  font-weight:600;
+  line-height:.95;
+  letter-spacing:.02em;
+}
+.partner-banner-title{
+  margin:0;
+  color:#00f5c8;
+  font-family:Rajdhani,Arial,sans-serif;
+  font-size:clamp(42px,5vw,72px);
+  font-weight:700;
+  line-height:.95;
+  text-shadow:0 0 10px #00f5c899,0 0 26px #00f5c844;
+}
+.partner-banner-byline{
+  margin:12px 0 0;
+  color:#e7edf1;
+  font-size:18px;
+}
+.partner-banner-byline span{
+  color:#138cff;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.partner-banner-description{
+  margin:7px 0 0;
+  color:#6f7d85;
+  font-size:14px;
+  letter-spacing:.03em;
+}
+.partner-banner-action{
+  position:relative;
+  z-index:1;
+  flex:0 0 auto;
+  min-width:190px;
+  padding:13px 22px;
+  border:1px solid #00f5c8;
+  border-radius:6px;
+  background:#07151a;
+  color:#eaffff;
+  text-align:center;
+  font-family:Rajdhani,Arial,sans-serif;
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:.08em;
+  box-shadow:0 0 18px #00f5c81c;
+  transition:transform .18s ease,background .18s ease,box-shadow .18s ease;
+}
+.partner-banner:hover .partner-banner-action{
+  transform:translateY(-2px);
+  background:#0b2225;
+  box-shadow:0 0 26px #00f5c83b;
+}
+@media(max-width:760px){
+  .partner-banner{
+    flex-direction:column;
+    gap:18px;
+    padding:26px 18px 32px;
+    min-height:0;
+  }
+  .partner-banner-action{width:100%;min-width:0}
+}
+
 </style>
 </head>
 <body class="home-page">
@@ -243,6 +356,17 @@
 <span class="home-help-arrow">OPEN HELP CENTER →</span></div>
 </div></a>
 <div class="home-news-modal" id="home-news-modal" hidden><div class="home-news-modal-backdrop" data-close-news></div><article class="home-news-modal-card"><button type="button" class="home-news-close" data-close-news aria-label="Close">×</button><span id="news-modal-category" class="home-eyebrow"></span><h2 id="news-modal-title"></h2><small id="news-modal-meta"></small><div id="news-modal-body"></div></article></div>
+
+
+<a class="partner-banner" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Visit Asphalt United Companion by Shohan's Lab">
+  <div class="partner-banner-copy">
+    <p class="partner-banner-kicker">Asphalt United</p>
+    <h2 class="partner-banner-title">Companion</h2>
+    <p class="partner-banner-byline">By <span>Shohan's Lab</span></p>
+    <p class="partner-banner-description">Tools, trackers, and utilities built for players.</p>
+  </div>
+  <span class="partner-banner-action">VISIT COMPANION →</span>
+</a>
 
 <footer class="rsl-footer-mark" aria-label="Racing Syndicate League trademark">
   <img src="/static/assets/rsl-footer-mark.png?v=20260921-rslfooter-png1" alt="" aria-hidden="true">
