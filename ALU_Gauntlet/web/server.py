@@ -177,6 +177,9 @@ class WebControlCenter:
     }catch(_){return false;}
   };
   const init=()=>{
+    const switcher=document.getElementById("rsl-language-switcher");
+    const footer=document.querySelector("footer");
+    if(switcher&&footer) footer.appendChild(switcher);
     const trigger=document.getElementById("rsl-language-trigger");
     const menu=document.getElementById("rsl-language-menu");
     const label=document.getElementById("rsl-language-label");
