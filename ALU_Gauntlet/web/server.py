@@ -240,13 +240,17 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        if "</body>" in body:\n            body = body.replace("</body>", language_markup + search_script + "</body>", 1)
+        if "</body>" in body:
+            body = body.replace("</body>", language_markup + search_script + "</body>", 1)
 
         # Add the shared calendar destination to every page without duplicating it in page templates.
         if '<a href="/calendar"' not in body and "</nav>" in body:
             body = body.replace("</nav>", '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a></nav>', 1)
 
-        if "</header>" in body and 'id="rsl-search-trigger"' not in body:\n            body = body.replace("</header>", search_markup + "</header>", 1)\n\n        if "</nav></header>" in body:
+        if "</header>" in body and 'id="rsl-search-trigger"' not in body:
+            body = body.replace("</header>", search_markup + "</header>", 1)
+
+        if "</nav></header>" in body:
             body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
         elif "</header>" in body:
             body = body.replace("</header>", profile_markup + "</header>", 1)
