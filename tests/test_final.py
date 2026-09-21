@@ -31,7 +31,7 @@ def test_production_safety_features_remain_available():
     assert not failed, failed
 
 def test_cogs_package_is_present():
-    expected = {"player.py", "defense.py", "challenges.py", "competition.py", "staff.py", "season.py", "administration.py", "help.py", "system.py", "operations.py", "dashboard_setup_bridge.py", "tournament.py", "asphalt_account.py"}
+    expected = {"player.py", "defense.py", "challenges.py", "competition.py", "staff.py", "season.py", "administration.py", "help.py", "system.py", "operations.py", "dashboard_setup_bridge.py", "tournament.py", "asphalt_account.py", "notifications.py"}
     actual = {p.name for p in (ROOT / "ALU_Gauntlet" / "cogs").glob("*.py") if p.name != "__init__.py"}
     assert actual == expected
 
