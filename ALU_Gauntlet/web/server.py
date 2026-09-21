@@ -137,11 +137,21 @@ class WebControlCenter:
     <button type="button" class="rsl-language-option" data-code="de">Deutsch</button>
     <button type="button" class="rsl-language-option" data-code="ms">Bahasa Melayu</button>
     <button type="button" class="rsl-language-option" data-code="hi">हिन्दी</button>
+    <button type="button" class="rsl-language-option" data-code="ja">日本語</button>
+    <button type="button" class="rsl-language-option" data-code="ko">한국어</button>
+    <button type="button" class="rsl-language-option" data-code="it">Italiano</button>
+    <button type="button" class="rsl-language-option" data-code="tr">Türkçe</button>
+    <button type="button" class="rsl-language-option" data-code="nl">Nederlands</button>
+    <button type="button" class="rsl-language-option" data-code="pl">Polski</button>
+    <button type="button" class="rsl-language-option" data-code="th">ไทย</button>
+    <button type="button" class="rsl-language-option" data-code="vi">Tiếng Việt</button>
+    <button type="button" class="rsl-language-option" data-code="id">Bahasa Indonesia</button>
+    <button type="button" class="rsl-language-option" data-code="uk">Українська</button>
   </div>
 </div>
 <script>
 (function(){
-  const codes={en:"English","zh-CN":"中文（普通话）",es:"Español",ar:"العربية",pt:"Português",ru:"Русский",fr:"Français",de:"Deutsch",ms:"Bahasa Melayu",hi:"हिन्दी"};
+  const codes={en:"English","zh-CN":"中文（普通话）",es:"Español",ar:"العربية",pt:"Português",ru:"Русский",fr:"Français",de:"Deutsch",ms:"Bahasa Melayu",hi:"हिन्दी",ja:"日本語",ko:"한국어",it:"Italiano",tr:"Türkçe",nl:"Nederlands",pl:"Polski",th:"ไทย",vi:"Tiếng Việt",id:"Bahasa Indonesia",uk:"Українська"};
   const readCookie=()=>{
     const match=document.cookie.match(/(?:^|; )googtrans=\/en\/([^;]+)/);
     return match ? decodeURIComponent(match[1]) : "en";
@@ -205,7 +215,7 @@ window.rslGoogleTranslateInit=function(){
   if(window.google&&window.google.translate&&window.google.translate.TranslateElement){
     new window.google.translate.TranslateElement({
       pageLanguage:"en",
-      includedLanguages:"en,zh-CN,es,ar,pt,ru,fr,de,ms,hi",
+      includedLanguages:"en,zh-CN,es,ar,pt,ru,fr,de,ms,hi,ja,ko,it,tr,nl,pl,th,vi,id,uk",
       autoDisplay:false
     },"google_translate_element");
   }
