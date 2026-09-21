@@ -310,8 +310,8 @@ async function loadNotificationPreferences(){
     const d=await api("/api/notifications");
     gauntlet.checked=Boolean(d.gauntlet_notifications);
     tournament.checked=Boolean(d.tournament_notifications);
-    if(gauntletDays)gauntletDays.value=String(d.gauntlet_lead_days ?? 1);
-    if(tournamentDays)tournamentDays.value=String(d.tournament_lead_days ?? 1);
+    if(gauntletDays){const v=Number(d.gauntlet_lead_days ?? 1);gauntletDays.value=[0,1,2,3,7,14,30].includes(v)?String(v):"custom";const x=$("#gauntlet-notification-custom");if(x)x.value=String(v);}
+    if(tournamentDays){const v=Number(d.tournament_lead_days ?? 1);tournamentDays.value=[0,1,2,3,7,14,30].includes(v)?String(v):"custom";const x=$("#tournament-notification-custom");if(x)x.value=String(v);}
   }catch(e){if(status)status.textContent="Notification settings unavailable."}
 }
 async function saveNotificationCategory(category, enabled){
@@ -337,5 +337,23 @@ async function saveNotificationTiming(scope, leadDays){
     setTimeout(()=>{if(status)status.textContent=""},1800);
   }catch(e){if(status)status.textContent=e.message||"Unable to save reminder timing."}
 }
-$("#gauntlet-notification-days")?.addEventListener("change",e=>saveNotificationTiming("gauntlet",e.target.value));
-$("#tournament-notification-days")?.addEventListener("change",e=>saveNotificationTiming("tournament",e.target.value));
+function getNotificationDays(scope){
+  const select=$("#"+scope+"-notification-days");
+  if(select?.value==="custom"){
+    const input=$("#"+scope+"-notification-custom");
+    const value=Math.max(0,Math.min(365,Number(input?.value||0)));
+    if(input)input.value=String(value);
+    return value;
+  }
+  return Number(select?.value||0);
+}
+function updateCustomVisibility(scope){
+  const select=$("#"+scope+"-notification-days"), input=$("#"+scope+"-notification-custom");
+  if(!select||!input)return;
+  input.style.display=select.value==="custom"?"block":"none";
+}
+$("#gauntlet-notification-days")?.addEventListener("change",e=>{updateCustomVisibility("gauntlet");saveNotificationTiming("gauntlet",getNotificationDays("gauntlet"));});
+$("#tournament-notification-days")?.addEventListener("change",e=>{updateCustomVisibility("tournament");saveNotificationTiming("tournament",getNotificationDays("tournament"));});
+$("#gauntlet-notification-custom")?.addEventListener("change",()=>saveNotificationTiming("gauntlet",getNotificationDays("gauntlet")));
+$("#tournament-notification-custom")?.addEventListener("change",()=>saveNotificationTiming("tournament",getNotificationDays("tournament")));
+document.addEventListener("DOMContentLoaded",()=>{updateCustomVisibility("gauntlet");updateCustomVisibility("tournament");});
