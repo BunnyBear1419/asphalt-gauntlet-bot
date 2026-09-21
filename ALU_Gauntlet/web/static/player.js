@@ -304,11 +304,14 @@ const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.add
 
 async function loadNotificationPreferences(){
   const gauntlet=$("#gauntlet-notifications"), tournament=$("#tournament-notifications"), status=$("#notification-save-status");
+  const gauntletDays=$("#gauntlet-notification-days"), tournamentDays=$("#tournament-notification-days");
   if(!gauntlet||!tournament)return;
   try{
     const d=await api("/api/notifications");
     gauntlet.checked=Boolean(d.gauntlet_notifications);
     tournament.checked=Boolean(d.tournament_notifications);
+    if(gauntletDays)gauntletDays.value=String(d.gauntlet_lead_days ?? 1);
+    if(tournamentDays)tournamentDays.value=String(d.tournament_lead_days ?? 1);
   }catch(e){if(status)status.textContent="Notification settings unavailable."}
 }
 async function saveNotificationCategory(category, enabled){
@@ -325,3 +328,14 @@ async function saveNotificationCategory(category, enabled){
 $("#gauntlet-notifications")?.addEventListener("change",e=>saveNotificationCategory("gauntlet",e.target.checked));
 $("#tournament-notifications")?.addEventListener("change",e=>saveNotificationCategory("tournament",e.target.checked));
 document.addEventListener("DOMContentLoaded",loadNotificationPreferences);
+
+async function saveNotificationTiming(scope, leadDays){
+  const status=$("#notification-save-status");
+  try{
+    await api("/api/notifications/timing",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({scope,lead_days:Number(leadDays)})});
+    if(status)status.textContent=(scope==="gauntlet"?"Gauntlet":"Tournament")+" reminder timing saved ✓";
+    setTimeout(()=>{if(status)status.textContent=""},1800);
+  }catch(e){if(status)status.textContent=e.message||"Unable to save reminder timing."}
+}
+$("#gauntlet-notification-days")?.addEventListener("change",e=>saveNotificationTiming("gauntlet",e.target.value));
+$("#tournament-notification-days")?.addEventListener("change",e=>saveNotificationTiming("tournament",e.target.value));
