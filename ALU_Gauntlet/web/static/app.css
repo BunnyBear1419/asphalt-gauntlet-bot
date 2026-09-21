@@ -728,3 +728,59 @@ body{background:radial-gradient(circle at 65% 30%,#071a3b 0,#02060d 48%,#010308 
     transform:none;
   }
 }
+
+/* =========================================================
+   RSL FLAT ILLUSTRATION VISUAL FOUNDATION
+   ========================================================= */
+:root{
+  --flat-bg:#06101f;
+  --flat-panel:#0a1a2d;
+  --flat-panel-2:#0d2239;
+  --flat-line:#1d4569;
+  --flat-accent:#28d7ff;
+  --flat-blue:#2b7fff;
+  --flat-text:#f2f7ff;
+  --flat-muted:#91a9c4;
+}
+body{background:var(--flat-bg)}
+.glass-panel,.card,.feature,.welcome-panel,.season-panel,
+.career-section,.career-card,.tournament-card,.bracket-match,
+.player-directory-card,.club-card-large{
+  background:var(--flat-panel);
+  background-image:none;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.22);
+}
+.glass-panel::before,.card::before,.feature::before,
+.welcome-panel::before,.season-panel::before{display:none!important}
+.feature{
+  clip-path:none;
+  border-color:var(--flat-line);
+  box-shadow:inset 0 -3px 0 var(--flat-accent),0 6px 18px rgba(0,0,0,.2);
+}
+.feature-picture{opacity:.32;transform:none}
+.feature-picture:before{display:none}
+.feature-picture:after{background:linear-gradient(180deg,rgba(10,26,45,.15),rgba(10,26,45,.9))}
+.qa,.wide-action{
+  border-radius:8px;
+  box-shadow:none;
+  background:var(--flat-panel-2);
+}
+.qa:hover,.wide-action:hover{transform:translateY(-1px)}
+.top-nav{
+  background:#071426;
+  box-shadow:0 5px 18px rgba(0,0,0,.25);
+  border-bottom:2px solid var(--flat-accent);
+}
+.top-brand,.top-profile,.player-menu-trigger{
+  background:#09192c;
+  box-shadow:none;
+}
+.top-nav-dropdown-menu,.player-menu-dropdown{
+  background:#0a1a2d;
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+  border-radius:10px;
+}
+.page-hero{background:#071426;border-bottom:1px solid var(--flat-line)}
+.table-wrap{border-radius:10px;box-shadow:none;background:var(--flat-panel)}
+.toolbar select,.toolbar input{border-radius:8px;background:#08182b}
