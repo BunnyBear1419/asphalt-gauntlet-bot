@@ -1025,6 +1025,13 @@ window.rslGoogleTranslateInit=function(){
         now = datetime.now(timezone.utc).isoformat()
         registration_deadline = str(payload.get("registration_deadline", "")).strip() or None
         start_time = str(payload.get("start_time", "")).strip() or None
+        end_time = str(payload.get("end_time", "")).strip() or None
+        if start_time and end_time:
+            try:
+                if datetime.fromisoformat(end_time).astimezone() <= datetime.fromisoformat(start_time).astimezone():
+                    raise web.HTTPBadRequest(text="Tournament end time must be after the start time.")
+            except ValueError:
+                raise web.HTTPBadRequest(text="Invalid tournament start or end time.")
         tournament = {
             "guild_id": guild_id,
             "name": name,
@@ -1035,7 +1042,7 @@ window.rslGoogleTranslateInit=function(){
             "bracket": bracket,
             "bracket_version": 1,
             "gauntlet_only": bool(payload.get("gauntlet_only", False)),
-            "registration_deadline": registration_deadline,            "start_time": start_time,
+            "registration_deadline": registration_deadline,            "start_time": start_time,            "end_time": end_time,
             "status": "registration_open",
             "created_by": str(user.user_id),
             "created_at": now,
