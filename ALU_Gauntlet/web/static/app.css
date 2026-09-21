@@ -1132,11 +1132,11 @@ html,body{margin:0!important;padding:0!important}
 .dashboard-intro{margin-top:0!important}
 .feature-row,.lower-grid{margin-top:0!important}
 .bottom-banner{margin:0!important}
-footer{margin:0!important;padding:0!important;min-height:42px!important;position:relative!important}
+footer{margin:0!important;padding:0!important;min-height:42px!important;position:relative!important;z-index:100!important}
 
 
 /* Site language selector — bottom-right, matching the compact footer-style control. */
-.rsl-language-switcher{position:absolute;right:22px;bottom:0;z-index:10;font-family:inherit;text-align:center;height:42px;display:flex;align-items:center}
+.rsl-language-switcher{position:absolute;right:22px;bottom:0;z-index:1200;font-family:inherit;text-align:center;height:42px;display:flex;align-items:center}
 .rsl-language-trigger{justify-content:center}
 .rsl-language-menu{right:50%;transform:translateX(50%)}
 .rsl-language-trigger{display:flex;align-items:center;gap:9px;min-width:132px;padding:8px 10px;border:0;background:transparent;color:#9aa8bb;font:inherit;font-size:14px;cursor:pointer}
@@ -1145,7 +1145,7 @@ footer{margin:0!important;padding:0!important;min-height:42px!important;position
 .rsl-language-globe:before{content:"";position:absolute;left:4px;right:4px;top:8px;border-top:1px solid currentColor}
 .rsl-language-globe:after{content:"";position:absolute;top:2px;bottom:2px;left:7px;width:6px;border-left:1px solid currentColor;border-right:1px solid currentColor;border-radius:50%}
 .rsl-language-chevron{font-size:14px;line-height:1;transform:translateY(1px)}
-.rsl-language-menu{position:absolute;right:0;bottom:42px;min-width:150px;padding:6px;border:1px solid #1d4569;border-radius:8px;background:#07152a;box-shadow:0 12px 30px #000b}
+.rsl-language-menu{position:absolute;right:0;bottom:42px;z-index:1201;min-width:150px;padding:6px;border:1px solid #1d4569;border-radius:8px;background:#07152a;box-shadow:0 12px 30px #000b}
 .rsl-language-option{display:block;width:100%;padding:9px 10px;border:0;border-radius:5px;background:transparent;color:#a9b8ca;text-align:left;font:inherit;font-size:13px;cursor:pointer}
 .rsl-language-option:hover:not(:disabled),.rsl-language-option.is-active{background:#0d2239;color:#fff}
 .rsl-language-option:disabled{opacity:.48;cursor:not-allowed}
