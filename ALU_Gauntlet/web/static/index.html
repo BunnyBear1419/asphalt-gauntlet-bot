@@ -203,6 +203,9 @@
   filter:none;
 }
 .rsl-footer-mark{opacity:.85}
+
+.home-hero-media{display:block;width:100%;height:100%}
+.home-hero-media>img{width:100%;height:100%;object-fit:cover;display:block}
 </style>
 </head>
 <body class="home-page">
@@ -210,7 +213,7 @@
 
 <main class="home-main">
 <section class="home-hero" aria-label="Racing Syndicate League">
-<img src="/static/assets/home-hero-rsl.svg?v=20260921-rslhero1" alt="Racing Syndicate League — Race, Compete, Unite">
+<picture class="home-hero-media"><source srcset="/static/assets/home-hero-rsl.jpeg?v=20260921-rslhero-jpeg1" type="image/jpeg"><img src="/static/assets/home-hero-rsl.svg?v=20260921-rslhero1" alt="Racing Syndicate League — Race, Compete, Unite"></picture>
 <div class="hero-actions" aria-label="Featured actions">
 <a class="hero-action hero-action-gauntlet" href="/gauntlet/registration">JOIN GAUNTLET →</a>
 <a class="hero-action hero-action-tournaments" href="/tournaments">VIEW TOURNAMENTS →</a>
