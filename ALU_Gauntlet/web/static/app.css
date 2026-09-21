@@ -955,3 +955,17 @@ body{background:var(--flat-bg)}
   border-top:3px solid #28d7ff;
 }
 .help-card a{color:#28d7ff}
+
+
+/* RSL CUSTOM FLAT NAVIGATION ICON SYSTEM */
+.nav-icon-img{width:20px;height:20px;display:block;flex:0 0 20px;object-fit:contain;filter:none}
+.top-nav nav>a,.top-nav-dropdown-trigger,.top-nav-dropdown-menu>a{display:inline-flex;align-items:center;gap:8px}
+.top-nav-dropdown-trigger{cursor:pointer}
+.nav-chevron{font-size:12px;line-height:1;opacity:.75;margin-left:1px}
+.top-nav-dropdown-menu>a .nav-icon-img{width:18px;height:18px;flex-basis:18px}
+.top-nav-dropdown-menu>a{min-height:42px}
+.top-nav-dropdown-menu>a:hover .nav-icon-img,.top-nav nav>a:hover .nav-icon-img,.top-nav-dropdown-trigger:hover .nav-icon-img{transform:translateY(-1px)}
+.nav-icon-img{transition:transform .16s ease,filter .16s ease}
+.top-nav-dropdown-trigger{list-style:none}
+.top-nav-dropdown-trigger::-webkit-details-marker{display:none}
+@media(max-width:760px){.top-nav nav>a span,.top-nav-dropdown-trigger span:not(.nav-chevron){display:none}.top-nav-dropdown-menu>a span{display:inline}.nav-icon-img{width:19px;height:19px;flex-basis:19px}}
