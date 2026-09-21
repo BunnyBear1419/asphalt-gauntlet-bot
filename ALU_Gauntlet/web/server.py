@@ -240,9 +240,22 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        # Add the shared calendar destination to every page without duplicating it in page templates.
+        # Add Calendar immediately before the Companion link on every page.
+        # Keep the navigation order stable: Clubs → Help → Calendar → Companion.
         if '<a href="/calendar"' not in body and "</nav>" in body:
-            body = body.replace("</nav>", '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a></nav>', 1)
+            companion_marker = '<a class="companion-nav-link"'
+            if companion_marker in body:
+                body = body.replace(
+                    companion_marker,
+                    '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a>' + companion_marker,
+                    1,
+                )
+            else:
+                body = body.replace(
+                    "</nav>",
+                    '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a></nav>',
+                    1,
+                )
 
         if "</header>" in body and 'id="rsl-search-trigger"' not in body:
             body = body.replace("</header>", search_markup + "</header>", 1)
