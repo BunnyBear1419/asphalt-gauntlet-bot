@@ -876,7 +876,7 @@ window.rslGoogleTranslateInit=function(){
             lead_days = float(lead_days)
         except (TypeError, ValueError):
             raise web.HTTPBadRequest(text="Notification timing must be a number of days.")
-        if not 0 <= lead_days <= 30:
+        if not 0 <= lead_days <= 365:
             raise web.HTTPBadRequest(text="Notification timing must be between 0 and 30 days.")
         if scope not in {"gauntlet", "tournament"}:
             raise web.HTTPBadRequest(text="Unsupported notification category.")
@@ -903,7 +903,7 @@ window.rslGoogleTranslateInit=function(){
                 lead_days = float(lead_days)
             except (TypeError, ValueError):
                 raise web.HTTPBadRequest(text="Event notification timing must be a number of days.")
-            if not 0 <= lead_days <= 30:
+            if not 0 <= lead_days <= 365:
                 raise web.HTTPBadRequest(text="Event notification timing must be between 0 and 30 days.")
             set_fields[f"event_lead_days.{event_id}"] = lead_days
         if enabled:
