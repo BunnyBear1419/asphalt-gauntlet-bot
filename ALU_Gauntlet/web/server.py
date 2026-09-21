@@ -324,6 +324,9 @@ window.rslGoogleTranslateInit=function(){
         self.app.router.add_get("/api/me", self.me)
         self.app.router.add_get("/api/language", self.get_language)
         self.app.router.add_post("/api/language", self.set_language)
+        self.app.router.add_get("/api/notifications", self.notification_preferences)
+        self.app.router.add_put("/api/notifications/category", self.update_notification_category)
+        self.app.router.add_put("/api/notifications/event", self.update_notification_event)
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_get("/api/news", self.news)
         self.app.router.add_post("/api/news", self.create_news)
@@ -834,6 +837,57 @@ window.rslGoogleTranslateInit=function(){
             raise web.HTTPBadRequest(text="Unsupported member action.")
         await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
         return web.json_response({"ok": True, "message": "Member role updated."})
+
+    async def notification_preferences(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        record = await self.bot.db.notification_preferences.find_one({"_id": str(user.user_id)}) or {}
+        return web.json_response({
+            "gauntlet_notifications": bool(record.get("gauntlet_notifications", False)),
+            "tournament_notifications": bool(record.get("tournament_notifications", False)),
+            "subscribed_event_ids": [str(x) for x in (record.get("subscribed_event_ids") or [])],
+            "muted_event_ids": [str(x) for x in (record.get("muted_event_ids") or [])],
+        })
+
+    async def update_notification_category(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        category = str(payload.get("category", "")).strip().lower()
+        if category not in {"gauntlet", "tournament"}:
+            raise web.HTTPBadRequest(text="Unsupported notification category.")
+        enabled = bool(payload.get("enabled", False))
+        field = f"{category}_notifications"
+        await self.bot.db.notification_preferences.update_one(
+            {"_id": str(user.user_id)},
+            {"$set": {field: enabled, "updated_at": time.time()}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "category": category, "enabled": enabled})
+
+    async def update_notification_event(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        event_id = str(payload.get("event_id", "")).strip()[:180]
+        enabled = bool(payload.get("enabled", False))
+        if not event_id:
+            raise web.HTTPBadRequest(text="Event ID is required.")
+        # Event subscriptions are opt-in overrides. A user can keep an entire
+        # category off and still subscribe to one calendar event.
+        if enabled:
+            update = {
+                "$addToSet": {"subscribed_event_ids": event_id},
+                "$pull": {"muted_event_ids": event_id},
+                "$set": {"updated_at": time.time()},
+            }
+        else:
+            update = {
+                "$pull": {"subscribed_event_ids": event_id},
+                "$addToSet": {"muted_event_ids": event_id},
+                "$set": {"updated_at": time.time()},
+            }
+        await self.bot.db.notification_preferences.update_one(
+            {"_id": str(user.user_id)}, update, upsert=True
+        )
+        return web.json_response({"ok": True, "event_id": event_id, "enabled": enabled})
 
     async def calendar_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
@@ -1702,7 +1756,7 @@ window.rslGoogleTranslateInit=function(){
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid language request.") from exc
         language = str(payload.get("language", "en")).strip()
-        allowed = {"en", "zh-CN", "es", "ar", "pt", "ru", "fr", "de", "ms", "hi"}
+        allowed = {"en", "zh-CN", "es", "ar", "pt", "ru", "fr", "de", "ms", "hi", "ja", "ko", "it", "tr", "nl", "pl", "th", "vi", "id", "uk"}
         if language not in allowed:
             raise web.HTTPBadRequest(text="Unsupported language.")
         await self.bot.db.web_user_preferences.update_one(
