@@ -89,6 +89,96 @@ class WebControlCenter:
             raise web.HTTPServiceUnavailable(
                 text=f"Web page '{filename}' is temporarily unavailable."
             ) from exc
+
+        # Keep the account/profile control consistent across every web page.
+        # The navigation itself is intentionally kept in each page so existing
+        # page-specific layouts remain untouched; this adds only the right-side
+        # authenticated account menu.
+        profile_markup = r'''
+<div class="rsl-profile-nav" id="rsl-profile-nav" hidden>
+  <button class="rsl-profile-trigger" id="rsl-profile-trigger" type="button"
+          aria-haspopup="true" aria-expanded="false">
+    <span class="rsl-profile-avatar" id="rsl-profile-avatar">👤</span>
+    <span class="rsl-profile-label" id="rsl-profile-label">Profile</span>
+    <span class="rsl-profile-chevron">⌄</span>
+  </button>
+  <div class="rsl-profile-menu" id="rsl-profile-menu" hidden>
+    <div class="rsl-profile-menu-head">
+      <strong id="rsl-profile-menu-name">Profile</strong>
+      <small id="rsl-profile-menu-sub">Discord account</small>
+    </div>
+    <a href="/player#preferences">⚙️ <span>My Settings</span></a>
+    <a href="/player#profile-settings">👤 <span>My Profile</span></a>
+    <a href="/clubs">🏎️ <span>My Club</span></a>
+    <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
+    <a href="/player#career">🏆 <span>My Tournaments</span></a>
+    <div class="rsl-profile-divider"></div>
+    <a class="rsl-profile-logout" href="/logout">🔐 <span>Logout</span></a>
+  </div>
+</div>
+<a class="rsl-login-button" id="rsl-login-button" href="/login" hidden>🔐 Login</a>
+'''
+        if "</nav></header>" in body:
+            body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
+        elif "</header>" in body:
+            body = body.replace("</header>", profile_markup + "</header>", 1)
+
+        profile_script = r'''
+<script>
+(function () {
+  const nav = document.getElementById("rsl-profile-nav");
+  const login = document.getElementById("rsl-login-button");
+  const trigger = document.getElementById("rsl-profile-trigger");
+  const menu = document.getElementById("rsl-profile-menu");
+  if (!nav || !login) return;
+
+  const closeMenu = () => {
+    if (!menu || !trigger) return;
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+  };
+
+  fetch("/api/me", {credentials: "same-origin"})
+    .then(async response => {
+      if (!response.ok) throw new Error("not authenticated");
+      return response.json();
+    })
+    .then(me => {
+      const name = me.global_name || me.username || "Profile";
+      const avatar = me.avatar && me.id
+        ? "https://cdn.discordapp.com/avatars/" + encodeURIComponent(me.id) + "/" + encodeURIComponent(me.avatar) + ".png?size=64"
+        : "";
+      const label = document.getElementById("rsl-profile-label");
+      const menuName = document.getElementById("rsl-profile-menu-name");
+      const menuSub = document.getElementById("rsl-profile-menu-sub");
+      const avatarBox = document.getElementById("rsl-profile-avatar");
+      if (label) label.textContent = name;
+      if (menuName) menuName.textContent = name;
+      if (menuSub) menuSub.textContent = me.username ? "@" + me.username : "Discord account";
+      if (avatarBox && avatar) avatarBox.innerHTML = '<img src="' + avatar + '" alt="">';
+      nav.hidden = false;
+      login.hidden = true;
+    })
+    .catch(() => {
+      nav.hidden = true;
+      login.hidden = false;
+      closeMenu();
+    });
+
+  trigger?.addEventListener("click", e => {
+    e.stopPropagation();
+    const open = !menu.hidden;
+    menu.hidden = open;
+    trigger.setAttribute("aria-expanded", String(!open));
+  });
+  menu?.addEventListener("click", e => e.stopPropagation());
+  document.addEventListener("click", closeMenu);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
+})();
+</script>
+'''
+        if "</body>" in body:
+            body = body.replace("</body>", profile_script + "</body>", 1)
         return web.Response(text=body, content_type="text/html")
 
     def _configure_routes(self) -> None:
