@@ -230,6 +230,10 @@ window.rslGoogleTranslateInit=function(){
         if "</body>" in body:
             body = body.replace("</body>", language_markup + "</body>", 1)
 
+        # Add the shared calendar destination to every page without duplicating it in page templates.
+        if '<a href="/calendar"' not in body and "</nav>" in body:
+            body = body.replace("</nav>", '<a href="/calendar"><i>📅</i><span>Calendar</span></a></nav>', 1)
+
         if "</nav></header>" in body:
             body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
         elif "</header>" in body:
@@ -307,6 +311,7 @@ window.rslGoogleTranslateInit=function(){
         self.app.router.add_get("/gauntlet/references", self.gauntlet_references_page)
         self.app.router.add_get("/gauntlet/career", self.gauntlet_career_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
+        self.app.router.add_get("/calendar", self.calendar_page)
         self.app.router.add_get("/tournaments/registration", self.tournament_registration_page)
         self.app.router.add_get("/tournaments/matches", self.tournament_matches_page)
         self.app.router.add_get("/tournaments/results", self.tournament_results_page)
@@ -327,6 +332,7 @@ window.rslGoogleTranslateInit=function(){
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
         self.app.router.add_get("/api/tournaments", self.tournaments)
+        self.app.router.add_get("/api/calendar", self.calendar)
         self.app.router.add_get("/api/tournaments/{tournament_id}", self.tournament_detail)
         self.app.router.add_get("/api/clubs", self.clubs)
         self.app.router.add_post("/api/clubs", self.create_club)
@@ -828,6 +834,90 @@ window.rslGoogleTranslateInit=function(){
             raise web.HTTPBadRequest(text="Unsupported member action.")
         await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
         return web.json_response({"ok": True, "message": "Member role updated."})
+
+    async def calendar_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("calendar.html")
+
+    async def calendar(self, request: web.Request) -> web.Response:
+        """Return live Gauntlet season and tournament dates for the calendar UI."""
+        user = await self.require_user(request)
+        guild_ids = [str(x) for x in user.guild_ids]
+        events = []
+        seasons = []
+        for guild_id in guild_ids:
+            guild = self.bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
+            guild_name = getattr(guild, "name", guild_id) or guild_id
+            state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+            season_number = int(state.get("season_number", 1) or 1)
+            start_at = float(state.get("starts_at", 0) or 0)
+            end_at = float(state.get("ends_at", 0) or 0)
+            if start_at:
+                seasons.append({
+                    "guild_id": guild_id,
+                    "guild_name": guild_name,
+                    "season": season_number,
+                    "starts_at": start_at,
+                    "ends_at": end_at,
+                    "active": bool(state.get("season_active", False)),
+                })
+                events.append({
+                    "id": f"season-start-{guild_id}-{season_number}",
+                    "type": "gauntlet",
+                    "kind": "start",
+                    "title": f"Gauntlet Season {season_number} Starts",
+                    "guild_id": guild_id,
+                    "guild_name": guild_name,
+                    "start": start_at,
+                    "end": start_at,
+                    "season": season_number,
+                    "status": "active" if state.get("season_active") else "scheduled",
+                })
+            if end_at:
+                events.append({
+                    "id": f"season-end-{guild_id}-{season_number}",
+                    "type": "gauntlet",
+                    "kind": "end",
+                    "title": f"Gauntlet Season {season_number} Ends",
+                    "guild_id": guild_id,
+                    "guild_name": guild_name,
+                    "start": end_at,
+                    "end": end_at,
+                    "season": season_number,
+                    "status": "active" if state.get("season_active") else "scheduled",
+                })
+            async for item in self.bot.db.tournaments.find({"guild_id": guild_id}).sort("start_time", 1):
+                tid = str(item.get("_id"))
+                start_raw = item.get("start_time")
+                end_raw = item.get("end_time") or item.get("completed_at")
+                registration_raw = item.get("registration_deadline")
+                def iso_ts(value):
+                    if not value:
+                        return None
+                    try:
+                        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+                    except Exception:
+                        return None
+                start_ts = iso_ts(start_raw)
+                end_ts = iso_ts(end_raw)
+                reg_ts = iso_ts(registration_raw)
+                base = {
+                    "id": tid,
+                    "type": "tournament",
+                    "title": str(item.get("name", "Tournament")),
+                    "guild_id": guild_id,
+                    "guild_name": guild_name,
+                    "season": None,
+                    "status": str(item.get("status", "registration_open")),
+                }
+                if start_ts:
+                    events.append({**base, "kind": "start", "start": start_ts, "end": start_ts})
+                if end_ts:
+                    events.append({**base, "id": tid + "-end", "kind": "end", "start": end_ts, "end": end_ts})
+                if reg_ts:
+                    events.append({**base, "id": tid + "-registration", "kind": "registration", "title": str(item.get("name", "Tournament")) + " Registration Closes", "start": reg_ts, "end": reg_ts})
+        events.sort(key=lambda x: (float(x.get("start") or 0), str(x.get("title", ""))))
+        return web.json_response({"events": events, "seasons": seasons, "server_time": time.time()})
 
     async def tournaments_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
