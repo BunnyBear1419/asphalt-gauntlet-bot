@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#28d7ff"/><stop offset="1" stop-color="#1878ff"/></linearGradient></defs>
+<path d="M256 18 445 72v154c0 119-70 204-189 251C137 430 67 345 67 226V72z" fill="#06101f" stroke="url(#g)" stroke-width="18"/>
+<path d="M125 105h262" stroke="#28d7ff" stroke-width="8" opacity=".9"/>
+<path d="M135 173c30-46 71-64 121-64s91 18 121 64c-33-15-62-22-121-22s-88 7-121 22z" fill="#1878ff"/>
+<path d="M151 171c12-22 34-36 55-36h100c21 0 43 14 55 36" fill="none" stroke="#28d7ff" stroke-width="8" stroke-linecap="round"/>
+<path d="M126 205h260l-38 63-50-21-42 28-42-28-50 21z" fill="#f2f7ff"/>
+<text x="256" y="270" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="105" font-style="italic" font-weight="900" fill="#fff">RSL</text>
+<path d="M137 320h238v94H137z" fill="#0d2239"/>
+<path d="M150 332h34v34h-34zm68 0h34v34h-34zm68 0h34v34h-34zm-102 34h34v34h-34zm68 0h34v34h-34zm68 0h34v34h-34zm-102 34h34v34h-34zm68 0h34v34h-34z" fill="#28d7ff"/>
+<path d="M112 425c39 32 87 54 144 72 57-18 105-40 144-72" fill="none" stroke="url(#g)" stroke-width="16" stroke-linecap="round"/>
+</svg>
