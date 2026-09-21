@@ -1181,7 +1181,7 @@ body{top:0!important}
 
 
 /* Global site search */
-.rsl-search-trigger{position:absolute!important;right:178px!important;top:50%!important;transform:translateY(-50%)!important;width:42px!important;height:42px!important;box-sizing:border-box!important;border:1px solid rgba(40,215,255,.75)!important;border-radius:10px!important;background:#0a1a2d!important;color:#fff!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0!important;cursor:pointer!important;z-index:99999!important;pointer-events:auto!important}
+.rsl-search-trigger{position:absolute!important;right:220px!important;top:50%!important;transform:translateY(-50%)!important;width:42px!important;height:42px!important;box-sizing:border-box!important;border:1px solid rgba(40,215,255,.75)!important;border-radius:10px!important;background:#0a1a2d!important;color:#fff!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0!important;cursor:pointer!important;z-index:99999!important;pointer-events:auto!important}
 .rsl-search-trigger img{width:20px;height:20px;display:block}
 .rsl-search-trigger span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .rsl-search-trigger:hover{border-color:#28d7ff;box-shadow:0 0 16px rgba(40,215,255,.22)}
@@ -1201,5 +1201,5 @@ body{top:0!important}
 .rsl-search-result:hover{border-color:rgba(40,215,255,.5);background:rgba(10,35,62,.8)}
 .rsl-search-result strong{display:block;color:#fff;margin-bottom:4px}
 .rsl-search-result span{display:block;color:#9eb0c5;font-size:13px;line-height:1.45}
-@media(max-width:800px){.rsl-search-trigger{right:138px!important;width:38px!important;height:38px!important}.rsl-profile-label{display:none}}
-@media(max-width:560px){.rsl-search-trigger{right:62px!important;width:36px!important;height:36px!important}.rsl-search-dialog{border-radius:12px}.rsl-search-overlay{padding:8vh 10px 20px}}
+@media(max-width:800px){.rsl-search-trigger{right:160px!important;width:38px!important;height:38px!important}.rsl-profile-label{display:none}}
+@media(max-width:560px){.rsl-search-trigger{right:70px!important;width:36px!important;height:36px!important}.rsl-search-dialog{border-radius:12px}.rsl-search-overlay{padding:8vh 10px 20px}}
