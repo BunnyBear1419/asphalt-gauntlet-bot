@@ -193,7 +193,7 @@ class WebControlCenter:
         self.app.router.add_get("/gauntlet/matches", self.gauntlet_matches_page)
         self.app.router.add_get("/gauntlet/leaderboard", self.gauntlet_leaderboard_page)
         self.app.router.add_get("/gauntlet/references", self.gauntlet_references_page)
-        self.app.router.add_get("/gauntlet/career", self.gauntlet_leaderboard_page)
+        self.app.router.add_get("/gauntlet/career", self.gauntlet_career_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/tournaments/registration", self.tournament_registration_page)
         self.app.router.add_get("/tournaments/matches", self.tournament_matches_page)
