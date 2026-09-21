@@ -232,7 +232,7 @@ window.rslGoogleTranslateInit=function(){
 
         # Add the shared calendar destination to every page without duplicating it in page templates.
         if '<a href="/calendar"' not in body and "</nav>" in body:
-            body = body.replace("</nav>", '<a href="/calendar"><i>📅</i><span>Calendar</span></a></nav>', 1)
+            body = body.replace("</nav>", '<a href="/calendar"><i class="nav-calendar-icon" aria-hidden="true"></i><span>Calendar</span></a></nav>', 1)
 
         if "</nav></header>" in body:
             body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
