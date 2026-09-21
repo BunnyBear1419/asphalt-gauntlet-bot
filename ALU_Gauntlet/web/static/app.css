@@ -622,8 +622,8 @@ body{background:radial-gradient(circle at 65% 30%,#071a3b 0,#02060d 48%,#010308 
 .top-nav nav{align-items:stretch}
 
 /* Reserve the far-right header space for Search + Profile and keep the main menu left-aligned. */
-.top-nav>nav{transform:translateX(-55px)!important;}
-@media(max-width:1050px){.top-nav>nav{transform:translateX(-25px)!important;}}
+.top-nav>nav{transform:translateX(calc(-50% - 55px))!important;}
+@media(max-width:1050px){.top-nav>nav{transform:translateX(calc(-50% - 25px))!important;}}
 @media(max-width:760px){.top-nav>nav{transform:none!important;}}
 .top-nav-dropdown{height:80px;position:relative;display:flex;align-items:stretch;flex:none}
 .top-nav-dropdown-trigger{height:80px;min-width:145px;padding:0 16px;display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;color:#e1e9fa;border-right:1px solid #10234b;font-size:14px;font-weight:600;position:relative;list-style:none;cursor:pointer}
