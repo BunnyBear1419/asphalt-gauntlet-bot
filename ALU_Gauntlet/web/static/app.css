@@ -1148,3 +1148,12 @@ footer{margin:0!important;padding:0!important;min-height:0!important}
 .rsl-language-option:hover:not(:disabled),.rsl-language-option.is-active{background:#0d2239;color:#fff}
 .rsl-language-option:disabled{opacity:.48;cursor:not-allowed}
 @media(max-width:760px){.rsl-language-switcher{right:10px;bottom:10px}.rsl-language-trigger{min-width:118px;font-size:12px}.rsl-language-menu{min-width:135px}}
+
+
+/* Keep the Google translation engine invisible; the RSL language control is the only UI shown. */
+#google_translate_element,.rsl-google-translate{display:none!important}
+body{top:0!important}
+.goog-te-banner-frame.skiptranslate{display:none!important}
+.goog-te-balloon-frame{display:none!important}
+.goog-tooltip{display:none!important}
+.goog-text-highlight{background:transparent!important;box-shadow:none!important}
