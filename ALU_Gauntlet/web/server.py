@@ -8,6 +8,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 import mimetypes
+import html
+import re
 from typing import Any
 
 from aiohttp import web
@@ -118,7 +120,7 @@ class WebControlCenter:
 </div>
 <a class="rsl-login-button" id="rsl-login-button" href="/login" hidden>🔐 Login</a>
 '''
-        language_markup = r'''
+        search_markup = r'''\n<button class="rsl-search-trigger" id="rsl-search-trigger" type="button" aria-label="Search site" aria-expanded="false"><img src="/assets/icons/search.svg" alt=""><span>Search</span></button>\n<div class="rsl-search-overlay" id="rsl-search-overlay" hidden>\n  <div class="rsl-search-dialog" role="dialog" aria-modal="true" aria-labelledby="rsl-search-title">\n    <div class="rsl-search-head"><strong id="rsl-search-title">Search Racing Syndicate League</strong><button type="button" class="rsl-search-close" id="rsl-search-close" aria-label="Close search">×</button></div>\n    <div class="rsl-search-input-wrap"><img src="/assets/icons/search.svg" alt=""><input id="rsl-search-input" type="search" placeholder="Search the site…" autocomplete="off"></div>\n    <div class="rsl-search-results" id="rsl-search-results"><p>Type to search pages, features and racing information.</p></div>\n  </div>\n</div>\n'''\n\n        language_markup = r'''
 <div id="google_translate_element" class="rsl-google-translate" aria-hidden="true"></div>
 <div class="rsl-language-switcher" id="rsl-language-switcher">
   <button class="rsl-language-trigger" id="rsl-language-trigger" type="button" aria-haspopup="true" aria-expanded="false">
@@ -227,19 +229,18 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        if "</body>" in body:
-            body = body.replace("</body>", language_markup + "</body>", 1)
+        if "</body>" in body:\n            body = body.replace("</body>", language_markup + search_script + "</body>", 1)
 
         # Add the shared calendar destination to every page without duplicating it in page templates.
         if '<a href="/calendar"' not in body and "</nav>" in body:
             body = body.replace("</nav>", '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a></nav>', 1)
 
-        if "</nav></header>" in body:
+        if "</header>" in body and 'id="rsl-search-trigger"' not in body:\n            body = body.replace("</header>", search_markup + "</header>", 1)\n\n        if "</nav></header>" in body:
             body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
         elif "</header>" in body:
             body = body.replace("</header>", profile_markup + "</header>", 1)
 
-        profile_script = r'''
+        search_script = r'''\n<script>\n(function(){\n  const trigger=document.getElementById("rsl-search-trigger"), overlay=document.getElementById("rsl-search-overlay"), input=document.getElementById("rsl-search-input"), close=document.getElementById("rsl-search-close"), results=document.getElementById("rsl-search-results");\n  if(!trigger||!overlay||!input||!close||!results)return;\n  const hide=()=>{overlay.hidden=true;trigger.setAttribute("aria-expanded","false");};\n  const show=()=>{overlay.hidden=false;trigger.setAttribute("aria-expanded","true");setTimeout(()=>input.focus(),20);};\n  trigger.addEventListener("click",show); close.addEventListener("click",hide);\n  overlay.addEventListener("click",e=>{if(e.target===overlay)hide();});\n  document.addEventListener("keydown",e=>{if(e.key==="Escape")hide();if(e.key==="/"&&document.activeElement!==input){e.preventDefault();show();}});\n  let timer; input.addEventListener("input",()=>{clearTimeout(timer);const q=input.value.trim();if(q.length<2){results.innerHTML="<p>Type at least 2 characters to search.</p>";return;}timer=setTimeout(async()=>{results.innerHTML="<p>Searching…</p>";try{const r=await fetch("/api/search?q="+encodeURIComponent(q),{credentials:"same-origin"});const d=await r.json();results.innerHTML=d.results.length?d.results.map(x=>'<a class="rsl-search-result" href="'+x.url+'"><strong>'+x.title+'</strong><span>'+x.snippet+'</span></a>').join(""):"<p>No matching pages found.</p>";}catch(_){results.innerHTML="<p>Search is temporarily unavailable.</p>";}},180);});\n})();\n</script>\n'''\n\n        profile_script = r'''
 <script>
 (function () {
   const nav = document.getElementById("rsl-profile-nav");
@@ -322,6 +323,7 @@ window.rslGoogleTranslateInit=function(){
         self.app.router.add_get("/logout", self.logout)
         self.app.router.add_get("/healthz", self.healthz)
         self.app.router.add_get("/api/me", self.me)
+        self.app.router.add_get("/api/search", self.site_search)
         self.app.router.add_get("/api/language", self.get_language)
         self.app.router.add_post("/api/language", self.set_language)
         self.app.router.add_get("/api/notifications", self.notification_preferences)
@@ -1691,7 +1693,7 @@ window.rslGoogleTranslateInit=function(){
         await self.require_user(request)
         return await self._page_response("player.html")
 
-    async def healthz(self, request: web.Request) -> web.Response:
+    async def site_search(self, request: web.Request) -> web.Response:\n        await self.require_user(request)\n        query = request.query.get("q", "").strip()\n        if len(query) < 2:\n            return web.json_response({"results": []})\n        terms = [x.lower() for x in re.findall(r"[\\w]+", query) if len(x) > 1][:8]\n        pages = [\n            ("Home", "/", "index.html"), ("Help Center", "/help", "help.html"),\n            ("Player", "/player", "player.html"), ("Calendar", "/calendar", "calendar.html"),\n            ("Clubs", "/clubs", "clubs.html"), ("Tournaments", "/tournaments", "tournaments.html"),\n            ("Tournament Registration", "/tournaments/registration", "tournament-registration.html"),\n            ("Tournament Matches", "/tournaments/matches", "tournament-matches.html"),\n            ("Tournament Results", "/tournaments/results", "tournament-results.html"),\n            ("Club Tournaments", "/tournaments/clubs", "tournament-clubs.html"),\n            ("Gauntlet Registration", "/gauntlet/registration", "gauntlet-registration.html"),\n            ("Gauntlet Defense", "/gauntlet/defense", "gauntlet-defense.html"),\n            ("Gauntlet Challenges & Matches", "/gauntlet/matches", "gauntlet-matches.html"),\n            ("Gauntlet Leaderboards", "/gauntlet/leaderboard", "gauntlet-leaderboard.html"),\n            ("Gauntlet References", "/gauntlet/references", "gauntlet-references.html"),\n            ("My Gauntlet Career", "/gauntlet/career", "gauntlet-career.html"),\n        ]\n        results = []\n        for title, path, filename in pages:\n            try:\n                raw = (WEB_DIR / filename).read_text(encoding="utf-8")\n            except OSError:\n                continue\n            text = re.sub(r"(?is)<(script|style).*?>.*?</\\1>", " ", raw)\n            text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", text))\n            text = re.sub(r"\\s+", " ", text).strip()\n            haystack = (title + " " + text).lower()\n            if all(term in haystack for term in terms):\n                pos = min((haystack.find(term) for term in terms if haystack.find(term) >= 0), default=0)\n                start = max(0, pos - 90)\n                snippet = text[start:start + 220]\n                if start > 0:\n                    snippet = "…" + snippet\n                if start + 220 < len(text):\n                    snippet += "…"\n                results.append({"title": title, "url": path, "snippet": snippet})\n        return web.json_response({"query": query, "results": results[:12]})\n\n    async def healthz(self, request: web.Request) -> web.Response:
         ready = bool(getattr(self.bot, "is_ready", lambda: False)())
         db = getattr(self.bot, "db", None)
         db_ok = False
