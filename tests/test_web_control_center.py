@@ -29,7 +29,8 @@ def test_web_ui_is_simplified_control_center():
     assert "NEWS &amp; ANNOUNCEMENTS" in source
     assert "HELP CENTER" in source
     assert 'class="top-nav"' in source
-    assert 'href="/player#gauntlet"' in source
+    assert 'href="/gauntlet/registration"' in source
+    assert "JOIN GAUNTLET" in source
     assert 'href="/help"' in source
     assert 'class="sidebar"' not in source
 
