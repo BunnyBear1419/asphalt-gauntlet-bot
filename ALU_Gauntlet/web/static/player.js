@@ -300,3 +300,28 @@ const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.add
  window.profile=async function(){await originalProfile();await loadCareer();};
  document.addEventListener("DOMContentLoaded",loadCareer);
 })();
+
+
+async function loadNotificationPreferences(){
+  const gauntlet=$("#gauntlet-notifications"), tournament=$("#tournament-notifications"), status=$("#notification-save-status");
+  if(!gauntlet||!tournament)return;
+  try{
+    const d=await api("/api/notifications");
+    gauntlet.checked=Boolean(d.gauntlet_notifications);
+    tournament.checked=Boolean(d.tournament_notifications);
+  }catch(e){if(status)status.textContent="Notification settings unavailable."}
+}
+async function saveNotificationCategory(category, enabled){
+  const status=$("#notification-save-status");
+  try{
+    const d=await api("/api/notifications/category",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({category,enabled})});
+    if(status)status.textContent=(category==="gauntlet"?"Gauntlet":"Tournament")+" notifications "+(d.enabled?"ON":"OFF")+" ✓";
+    setTimeout(()=>{if(status)status.textContent=""},1800);
+  }catch(e){
+    const input=$("#"+category+"-notifications"); if(input)input.checked=!enabled;
+    if(status)status.textContent=e.message||"Unable to save notification setting.";
+  }
+}
+$("#gauntlet-notifications")?.addEventListener("change",e=>saveNotificationCategory("gauntlet",e.target.checked));
+$("#tournament-notifications")?.addEventListener("change",e=>saveNotificationCategory("tournament",e.target.checked));
+document.addEventListener("DOMContentLoaded",loadNotificationPreferences);
