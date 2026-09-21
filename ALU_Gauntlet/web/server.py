@@ -1741,7 +1741,7 @@ window.rslGoogleTranslateInit=function(){
         query = request.query.get("q", "").strip()
         if len(query) < 2:
             return web.json_response({"results": []})
-        terms = [x.lower() for x in re.findall(r"[\\w]+", query) if len(x) > 1][:8]
+        terms = [x.lower() for x in re.findall(r"[\w]+", query) if len(x) > 1][:8]
         pages = [
             ("Home", "/", "index.html"), ("Help Center", "/help", "help.html"),
             ("Player", "/player", "player.html"), ("Calendar", "/calendar", "calendar.html"),
@@ -1763,7 +1763,7 @@ window.rslGoogleTranslateInit=function(){
                 raw = (WEB_DIR / filename).read_text(encoding="utf-8")
             except OSError:
                 continue
-            text = re.sub(r"(?is)<(script|style).*?>.*?</\\1>", " ", raw)
+            text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", raw)
             text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", text))
             text = re.sub(r"\\s+", " ", text).strip()
             haystack = (title + " " + text).lower()
