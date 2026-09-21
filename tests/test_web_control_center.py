@@ -25,7 +25,7 @@ def test_web_routes_are_guild_scoped():
 
 def test_web_ui_is_simplified_control_center():
     source=(STATIC/"index.html").read_text(encoding="utf-8")
-    assert "ABOUT ME" in source
+    assert "ABOUT US" in source
     assert "NEWS &amp; ANNOUNCEMENTS" in source
     assert "HELP CENTER" in source
     assert 'class="top-nav"' in source
