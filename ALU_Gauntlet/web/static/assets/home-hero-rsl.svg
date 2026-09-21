@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 535">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#020914"/><stop offset=".55" stop-color="#06152b"/><stop offset="1" stop-color="#020711"/></linearGradient>
+<linearGradient id="cyan" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#28d7ff"/><stop offset="1" stop-color="#1878ff"/></linearGradient>
+<radialGradient id="glow"><stop stop-color="#1878ff" stop-opacity=".5"/><stop offset="1" stop-color="#1878ff" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="1600" height="535" fill="url(#bg)"/>
+<circle cx="1250" cy="290" r="300" fill="url(#glow)"/>
+<g opacity=".65" stroke="#1878ff" stroke-width="5">
+<path d="M0 115 430 0M0 220 510 0M730 0 420 535M1600 60 1030 535M1600 210 1220 535M1600 430 1390 535"/>
+</g>
+<g opacity=".8" fill="#28d7ff"><path d="M1010 60 1140 0 1080 110zM1330 40l150-40-100 110zM920 440l170-80-80 110z"/></g>
+<g opacity=".7" fill="#1878ff"><path d="M1060 140l90-55-50 90zM1450 240l150-80-105 110zM850 420l120-65-70 90z"/></g>
+<g opacity=".8" fill="#fff">
+<path d="M1160 120h45v45h-45zM1250 120h45v45h-45zM1340 120h45v45h-45zM1205 165h45v45h-45zM1295 165h45v45h-45zM1250 210h45v45h-45z"/>
+</g>
+<text x="85" y="70" fill="#28d7ff" font-family="Arial,Helvetica,sans-serif" font-size="20" font-style="italic" font-weight="700" letter-spacing="4">RACING SYNDICATE LEAGUE</text>
+<path d="M85 86h280" stroke="#28d7ff" stroke-width="3"/>
+<text x="85" y="185" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="86" font-style="italic" font-weight="900" letter-spacing="-2">RACE.</text>
+<text x="85" y="280" fill="url(#cyan)" font-family="Arial,Helvetica,sans-serif" font-size="86" font-style="italic" font-weight="900" letter-spacing="-2">COMPETE.</text>
+<text x="85" y="375" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="86" font-style="italic" font-weight="900" letter-spacing="-2">UNITE.</text>
+<path d="M90 398h8v58h-8z" fill="#28d7ff"/>
+<text x="120" y="422" fill="#f2f7ff" font-family="Arial,Helvetica,sans-serif" font-size="19">The competitive home for Gauntlet seasons, tournaments, clubs,</text>
+<text x="120" y="451" fill="#f2f7ff" font-family="Arial,Helvetica,sans-serif" font-size="19">rankings &amp; your driver career!</text>
+<g transform="translate(1110 50) scale(.72)">
+<path d="M256 18 445 72v154c0 119-70 204-189 251C137 430 67 345 67 226V72z" fill="#06101f" stroke="url(#cyan)" stroke-width="18"/>
+<path d="M125 105h262" stroke="#28d7ff" stroke-width="8"/>
+<path d="M135 173c30-46 71-64 121-64s91 18 121 64c-33-15-62-22-121-22s-88 7-121 22z" fill="#1878ff"/>
+<path d="M151 171c12-22 34-36 55-36h100c21 0 43 14 55 36" fill="none" stroke="#28d7ff" stroke-width="8"/>
+<path d="M126 205h260l-38 63-50-21-42 28-42-28-50 21z" fill="#f2f7ff"/>
+<text x="256" y="270" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="105" font-style="italic" font-weight="900" fill="#fff">RSL</text>
+<path d="M137 320h238v94H137z" fill="#0d2239"/>
+<path d="M150 332h34v34h-34zm68 0h34v34h-34zm68 0h34v34h-34zm-102 34h34v34h-34zm68 0h34v34h-34zm68 0h34v34h-34zm-102 34h34v34h-34zm68 0h34v34h-34z" fill="#28d7ff"/>
+<path d="M112 425c39 32 87 54 144 72 57-18 105-40 144-72" fill="none" stroke="url(#cyan)" stroke-width="16"/>
+</g>
+<path d="M1060 465h450" stroke="#28d7ff" stroke-width="3" opacity=".7"/>
+</svg>
