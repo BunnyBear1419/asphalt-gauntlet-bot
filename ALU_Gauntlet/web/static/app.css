@@ -905,3 +905,53 @@ body{background:var(--flat-bg)}
   border:1px solid #1d4569;
   border-radius:10px;
 }
+
+
+/* =========================================================
+   RSL CLUBS + HELP — FLAT ILLUSTRATION PAGE SYSTEM
+   ========================================================= */
+.dashboard-shell{
+  background:#06101f!important;
+}
+.hero-banner{
+  background:#0a1a2d!important;
+  border:1px solid #1d4569!important;
+  border-radius:14px;
+  box-shadow:none!important;
+}
+.hero-overlay{
+  background:linear-gradient(90deg,rgba(6,16,31,.94),rgba(6,16,31,.35))!important;
+}
+.club-create-panel,
+.club-card,
+.club-card-large{
+  background:#0a1a2d!important;
+  background-image:none!important;
+  border:1px solid #1d4569!important;
+  border-radius:12px;
+  box-shadow:none!important;
+}
+.primary-action,.club-create-panel .qa{
+  background:#2b7fff!important;
+  border:2px solid #28d7ff!important;
+  border-radius:8px;
+  box-shadow:none!important;
+}
+.help-main{max-width:1200px}
+.help-hero{
+  background:#0a1a2d!important;
+  background-image:none!important;
+  border:1px solid #1d4569!important;
+  border-radius:14px;
+  box-shadow:none!important;
+}
+.help-hero h1{font-style:normal}
+.help-grid{gap:16px}
+.help-card{
+  background:#0a1a2d!important;
+  border:1px solid #1d4569!important;
+  border-radius:10px;
+  box-shadow:none!important;
+  border-top:3px solid #28d7ff;
+}
+.help-card a{color:#28d7ff}
