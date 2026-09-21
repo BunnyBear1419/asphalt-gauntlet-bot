@@ -36,7 +36,12 @@ async def _ensure_database_indexes():
         [("tournament_id", 1), ("match_id", 1)],
         unique=True,
         name="uniq_tournament_action_lock",
-    )\n    await db.notification_deliveries.create_index(\n        [("event_id", 1), ("user_id", 1), ("phase", 1)],\n        unique=True,\n        name="uniq_notification_delivery",\n    )
+    )
+    await db.notification_deliveries.create_index(
+        [("event_id", 1), ("user_id", 1), ("phase", 1)],
+        unique=True,
+        name="uniq_notification_delivery",
+    )
 
 
 async def _wait_for_database(timeout=60):
