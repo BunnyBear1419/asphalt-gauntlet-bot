@@ -198,6 +198,17 @@ class WebControlCenter:
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
 </script>
+<script>
+window.rslGoogleTranslateInit=function(){
+  if(window.google&&window.google.translate&&window.google.translate.TranslateElement){
+    new window.google.translate.TranslateElement({
+      pageLanguage:"en",
+      includedLanguages:"en,es,fr,de,pt,ja,ko,zh-CN",
+      autoDisplay:false
+    },"google_translate_element");
+  }
+};
+</script>
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
