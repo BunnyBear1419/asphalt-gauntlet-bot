@@ -1475,7 +1475,7 @@ class WebControlCenter:
 
     async def me(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "staff": user.staff})
+        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "avatar": user.avatar, "staff": user.staff})
 
 
     async def news(self, request: web.Request) -> web.Response:
