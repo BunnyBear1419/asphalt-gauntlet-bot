@@ -28,7 +28,22 @@ async function profile(){
     const played=Number(p.career_played||0); const winRate=played?Math.round((Number(wins)||0)/played*100):0; setText("win-rate",winRate+"%");
     try{const lb=await api("/api/leaderboard?guild_id="+id+"&limit=100"); const me=(lb.players||[]).find(x=>String(x.user_id)===String(p.user_id||"")); setText("profile-rank",me?.competition_rank?"#"+me.competition_rank:"—")}catch(e){setText("profile-rank","—")}
     setText("profile-defense-state",defense); setText("profile-season-state",season);
-    setText("profile-name",p.username||"Driver"); setText("user-name",p.username||"Driver"); setText("welcome-name",p.username||"Driver");
+    // The website profile identity is always the signed-in Discord account.
+    // Use Discord's display name and avatar rather than the Asphalt/game identity.
+    const discordMe=await api("/api/me");
+    const discordName=discordMe.global_name||discordMe.username||"Driver";
+    setText("profile-name",discordName); setText("user-name",discordName); setText("welcome-name",discordName);
+    setText("profile-discord-name",discordName);
+    const discordAvatar=discordMe.id && discordMe.avatar
+      ? `https://cdn.discordapp.com/avatars/${encodeURIComponent(discordMe.id)}/${encodeURIComponent(discordMe.avatar)}.png?size=128`
+      : (discordMe.id ? `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(discordMe.id)%7n)}.png` : "");
+    document.querySelectorAll(".profile-avatar, .player-avatar").forEach(box=>{
+      if(!discordAvatar) return;
+      box.textContent="";
+      const img=document.createElement("img");
+      img.src=discordAvatar; img.alt=discordName+" Discord avatar";
+      box.appendChild(img);
+    });
     setText("season-status",p.season_number?"● Active ●":"● Not Registered ●");
     const tz=$("#timezone");
     if(tz && prefs.timezone)tz.value=prefs.timezone;
