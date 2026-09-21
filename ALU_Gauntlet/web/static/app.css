@@ -1100,3 +1100,11 @@ body{background:var(--flat-bg)}
     right:8px!important;
   }
 }
+
+
+/* FINAL CONTENT SPACING — keep hero/content tight against the top menu. */
+.app-frame{padding-top:70px!important}
+.dashboard-shell{margin-top:0!important;padding-top:0!important}
+.workspace main{margin-top:0!important;padding-top:0!important}
+.hero-banner{margin-top:0!important}
+.page-hero{margin-top:0!important}
