@@ -128,18 +128,20 @@ class WebControlCenter:
   </button>
   <div class="rsl-language-menu" id="rsl-language-menu" hidden>
     <button type="button" class="rsl-language-option is-active" data-code="en">English</button>
+    <button type="button" class="rsl-language-option" data-code="zh-CN">中文（普通话）</button>
     <button type="button" class="rsl-language-option" data-code="es">Español</button>
+    <button type="button" class="rsl-language-option" data-code="ar">العربية</button>
+    <button type="button" class="rsl-language-option" data-code="pt">Português</button>
+    <button type="button" class="rsl-language-option" data-code="ru">Русский</button>
     <button type="button" class="rsl-language-option" data-code="fr">Français</button>
     <button type="button" class="rsl-language-option" data-code="de">Deutsch</button>
-    <button type="button" class="rsl-language-option" data-code="pt">Português</button>
-    <button type="button" class="rsl-language-option" data-code="ja">日本語</button>
-    <button type="button" class="rsl-language-option" data-code="ko">한국어</button>
-    <button type="button" class="rsl-language-option" data-code="zh-CN">中文（简体）</button>
+    <button type="button" class="rsl-language-option" data-code="ms">Bahasa Melayu</button>
+    <button type="button" class="rsl-language-option" data-code="hi">हिन्दी</button>
   </div>
 </div>
 <script>
 (function(){
-  const codes={en:"English",es:"Español",fr:"Français",de:"Deutsch",pt:"Português",ja:"日本語",ko:"한국어","zh-CN":"中文（简体）"};
+  const codes={en:"English","zh-CN":"中文（普通话）",es:"Español",ar:"العربية",pt:"Português",ru:"Русский",fr:"Français",de:"Deutsch",ms:"Bahasa Melayu",hi:"हिन्दी"};
   const readCookie=()=>{
     const match=document.cookie.match(/(?:^|; )googtrans=\/en\/([^;]+)/);
     return match ? decodeURIComponent(match[1]) : "en";
@@ -203,7 +205,7 @@ window.rslGoogleTranslateInit=function(){
   if(window.google&&window.google.translate&&window.google.translate.TranslateElement){
     new window.google.translate.TranslateElement({
       pageLanguage:"en",
-      includedLanguages:"en,es,fr,de,pt,ja,ko,zh-CN",
+      includedLanguages:"en,zh-CN,es,ar,pt,ru,fr,de,ms,hi",
       autoDisplay:false
     },"google_translate_element");
   }
@@ -1590,7 +1592,7 @@ window.rslGoogleTranslateInit=function(){
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid language request.") from exc
         language = str(payload.get("language", "en")).strip()
-        allowed = {"en", "es", "fr", "de", "pt", "ja", "ko", "zh-CN"}
+        allowed = {"en", "zh-CN", "es", "ar", "pt", "ru", "fr", "de", "ms", "hi"}
         if language not in allowed:
             raise web.HTTPBadRequest(text="Unsupported language.")
         await self.bot.db.web_user_preferences.update_one(
