@@ -113,7 +113,7 @@ class WebControlCenter:
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
     <a href="/player#career">🏆 <span>My Tournaments</span></a>
     <div class="rsl-profile-divider"></div>
-    <a class="rsl-profile-logout" href="/logout">🔐 <span>Logout</span></a>
+    <a class="rsl-profile-logout" href="/logout">🔐 <span>Sign Out</span></a>
   </div>
 </div>
 <a class="rsl-login-button" id="rsl-login-button" href="/login" hidden>🔐 Login</a>
