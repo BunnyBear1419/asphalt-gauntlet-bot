@@ -1075,3 +1075,6 @@ body{background:var(--flat-bg)}
   .rsl-profile-trigger{padding:7px 9px}
   .rsl-profile-menu{position:fixed;right:10px;top:62px}
 }
+
+/* Discord identity avatars on player profile cards. */
+.player-avatar img,.profile-avatar img{width:100%;height:100%;display:block;object-fit:cover;border-radius:50%;}
