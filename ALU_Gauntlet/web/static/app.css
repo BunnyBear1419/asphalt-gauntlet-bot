@@ -1172,4 +1172,4 @@ body{top:0!important}
 
 .notification-custom-days{display:none;width:70px;box-sizing:border-box;border:1px solid #1d4569;border-radius:6px;background:#0d2239;color:#e5f1ff;padding:7px 8px;font-size:10px}.notification-timing select:has(option[value="custom"]){max-width:150px}
 
-.nav-calendar-icon{width:18px;height:18px;display:inline-block;position:relative;box-sizing:border-box;border:1.5px solid currentColor;border-radius:3px;opacity:.9}.nav-calendar-icon:before{content:"";position:absolute;left:2px;right:2px;top:4px;border-top:1.5px solid currentColor}.nav-calendar-icon:after{content:"";position:absolute;left:4px;top:-3px;width:8px;height:5px;border-left:1.5px solid currentColor;border-right:1.5px solid currentColor}
+
