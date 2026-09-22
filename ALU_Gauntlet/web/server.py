@@ -407,7 +407,7 @@ window.rslGoogleTranslateInit=function(){
         def esc(value: Any) -> str:
             return html.escape(str(value or ""), quote=True)
         body = re.sub(r"<title>.*?</title>", f"<title>{title}</title>", body, count=1, flags=re.I | re.S)
-        body = body.replace("/assets/rsl-shield.png", logo).replace("/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1", logo)
+        body = body.replace("/assets/rsl-shield.png", logo).replace("/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1", "/assets/rsl-mini-header.png")
         # The website uses PNG icons only. Legacy SVG references are rewritten before the page is sent.
         svg_map = {
             "/assets/hero.jpg": "/assets/hero.jpg",
