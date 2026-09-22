@@ -89,9 +89,9 @@
       <a class="admin-tool" href="#branding" data-jump="branding"><strong>🎨 Website Branding</strong><span>Name, logo, colors, favicon, tagline and terminology.</span></a>
       <a class="admin-tool" href="#media" data-jump="media"><strong>🖼️ Images &amp; Media</strong><span>Upload persistent community artwork and assign it to the site.</span></a>
       <a class="admin-tool" href="#links" data-jump="links"><strong>🔗 Community Links</strong><span>Discord, social, support, Cash App and companion destinations.</span></a>
-      <a class="admin-tool" href="/setup"><strong>👥 Members &amp; Roles</strong><span>Choose server channels, admin roles, player roles and timezone.</span></a>
-      <a class="admin-tool" href="/gauntlet/leaderboard"><strong>🏁 Gauntlet Management</strong><span>Open the live Gauntlet management and player competition views.</span></a>
-      <a class="admin-tool" href="/tournaments"><strong>🏆 Tournament Management</strong><span>Open the Tournament Center for events, brackets and results.</span></a>
+      <a class="admin-tool admin-guild-link" data-path="/setup"><strong>👥 Members &amp; Roles</strong><span>Choose server channels, admin roles, player roles and timezone.</span></a>
+      <a class="admin-tool admin-guild-link" data-path="/gauntlet/leaderboard"><strong>🏁 Gauntlet Management</strong><span>Open the live Gauntlet management and player competition views.</span></a>
+      <a class="admin-tool admin-guild-link" data-path="/tournaments"><strong>🏆 Tournament Management</strong><span>Open the Tournament Center for events, brackets and results.</span></a>
       <a class="admin-tool" href="/clubs"><strong>🏎️ Club Management</strong><span>Open clubs and community roster management.</span></a>
       <a class="admin-tool" href="#system" data-jump="system"><strong>🔧 Diagnostics</strong><span>Run health checks, command sync and configuration backup.</span></a>
       <a class="admin-tool" href="#system" data-jump="system"><strong>📋 Audit Log</strong><span>Review recent web administration actions for this guild.</span></a>
@@ -193,9 +193,9 @@
       <a class="admin-tool" href="/players"><strong>👥 Players</strong><span>Player directory and staff management.</span></a>
       <a class="admin-tool" href="/gauntlet/leaderboard"><strong>🏁 Gauntlet</strong><span>Leaderboards and competition data.</span></a>
       <a class="admin-tool" href="/tournaments"><strong>🏆 Tournaments</strong><span>Tournament center, registration and results.</span></a>
-      <a class="admin-tool" href="/tournaments/clubs"><strong>🏎️ Club Tournaments</strong><span>Club tournament workflows.</span></a>
-      <a class="admin-tool" href="/clubs"><strong>🏎️ Clubs</strong><span>Official community clubs.</span></a>
-      <a class="admin-tool" href="/news-admin"><strong>📰 News</strong><span>Publish and edit community news.</span></a>
+      <a class="admin-tool admin-guild-link" data-path="/tournaments/clubs"><strong>🏎️ Club Tournaments</strong><span>Club tournament workflows.</span></a>
+      <a class="admin-tool admin-guild-link" data-path="/clubs"><strong>🏎️ Clubs</strong><span>Official community clubs.</span></a>
+      <a class="admin-tool admin-guild-link" data-path="/news-admin"><strong>📰 News</strong><span>Publish and edit community news.</span></a>
     </div>
   </div>
 </section>
@@ -263,7 +263,7 @@ function fillForm(){
  $("preview-link").href="/?guild_id="+encodeURIComponent(guildId);
  $("setup-link").href="/setup?guild_id="+encodeURIComponent(guildId);
  $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
- $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);
+ $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);document.querySelectorAll(".admin-guild-link").forEach(a=>a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId));
 }
 async function loadBranding(){const d=await api("/api/admin/branding"+q());branding=d.branding;fillForm();await loadAudit()}
 function buildBranding(){
