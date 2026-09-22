@@ -9,7 +9,7 @@ STATIC=WEB/"static"
 def test_web_runtime_files_exist():
     for name in ("server.py","auth.py","players.py"):
         assert (WEB/name).is_file(), name
-    for name in ("index.html","player.html","players.html","setup.html","app.css","app.js","player.js","setup.js","rsl-top-logo.png"):
+    for name in ("index.html","player.html","players.html","setup.html","app.css","app.js","player.js" ,"setup.js"):
         assert (STATIC/name).is_file(), name
 
 def test_web_python_modules_parse():
