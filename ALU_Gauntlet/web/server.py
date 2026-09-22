@@ -44,7 +44,7 @@ SETUP_CHANNELS = (
 SETUP_ROLES = (("admin_role_id", "Staff / admin role"), ("player_role_id", "Player role"))
 
 DEFAULT_WEB_BRANDING = {
-    "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Compete. Race. Dominate.","favicon_url":"/assets/rsl-shield.svg","logo_url":"/assets/rsl-shield.svg","mobile_logo_url":"/assets/rsl-shield.svg"},
+    "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Compete. Race. Dominate.","favicon_url":"/assets/rsl-shield.png","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
     "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
     "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
     "links": {"discord":"https://discord.gg/fmFk8Ejf2H","website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","cashapp":"https://cash.app/","support":"","companion":"https://alu.shohanlab.com/"},
@@ -401,13 +401,30 @@ window.rslGoogleTranslateInit=function(){
         name = html.escape(str(identity.get("name") or "Racing Syndicate League"))
         short = html.escape(str(identity.get("short_name") or "RSL"))
         title = html.escape(str(identity.get("site_title") or name))
-        logo = html.escape(str(identity.get("logo_url") or "/assets/rsl-shield.svg"), quote=True)
+        logo = html.escape(str(identity.get("logo_url") or "/assets/rsl-shield.png"), quote=True)
         hero = html.escape(str(images.get("hero_url") or "/assets/hero.jpg"), quote=True)
         welcome = html.escape(str(images.get("welcome_url") or "/assets/hero.jpg"), quote=True)
         def esc(value: Any) -> str:
             return html.escape(str(value or ""), quote=True)
         body = re.sub(r"<title>.*?</title>", f"<title>{title}</title>", body, count=1, flags=re.I | re.S)
         body = body.replace("/assets/rsl-shield.svg", logo).replace("/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1", logo)
+        # The website uses PNG icons only. Legacy SVG references are rewritten before the page is sent.
+        svg_map = {
+            "/assets/hero-4k-final.svg": "/assets/hero.jpg",
+            "/assets/gauntlet-4k-final.svg": "/assets/gauntlet.jpg",
+            "/assets/garage-4k-final.svg": "/assets/garage.jpg",
+            "/assets/competition-4k-final.svg": "/assets/competition.jpg",
+            "/assets/profile-settings-4k-final.svg": "/assets/profile-settings.jpg",
+            "/assets/home-hero-rsl.svg": "/assets/home-hero-rsl.jpeg",
+            "/assets/home-hero-4k.svg": "/assets/home-hero-4k.jpg",
+            "/assets/rsl-logo.svg": "/assets/rsl-top-logo.png",
+            "/assets/rsl-logo-4k.svg": "/assets/rsl-top-logo.png",
+            "/assets/rsl-top-logo.svg": "/assets/rsl-top-logo.png",
+            "/assets/rsl-shield.svg": "/assets/rsl-shield.png",
+        }
+        for old_path, new_path in svg_map.items():
+            body = body.replace(old_path, new_path)
+        body = re.sub(r'(/assets/icons/[A-Za-z0-9_-]+)\\.svg', r'\\1.png', body)
         body = body.replace("/assets/hero.jpg", hero)
         body = body.replace("Racing Syndicate League", name).replace("RSL", short)
         body = body.replace("https://discord.gg/fmFk8Ejf2H", esc(links.get("discord")))
@@ -501,6 +518,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     raise web.HTTPBadRequest(text=f"{section}.{key} is too long.")
                 if section in {"links","images"} and value and not (value.startswith("https://") or value.startswith("http://") or value.startswith("/")):
                     raise web.HTTPBadRequest(text=f"{section}.{key} must be an http(s) URL or site-relative path.")
+                if section in {"images","identity"} and key.endswith("_url") and value and value.startswith("/") and not value.lower().endswith(".png"):
+                    raise web.HTTPBadRequest(text=f"{section}.{key} must use a PNG asset.")
                 clean[section][key]=value
         await self.bot.db.settings.update_one({"_id":guild_id},{"$set":{"web_branding":clean}},upsert=True)
         await self._audit(guild_id,user.user_id,"Web white-label branding updated")
@@ -527,8 +546,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPBadRequest(text="Send an image in the 'file' field.")
         filename = Path(field.filename or "brand-image").name[:120]
         content_type = str(field.headers.get("Content-Type","") or "")
-        if content_type not in {"image/png","image/jpeg","image/webp","image/gif","image/svg+xml","image/x-icon"}:
-            raise web.HTTPBadRequest(text="Supported image types: PNG, JPEG, WEBP, GIF, SVG and ICO.")
+        if content_type != "image/png":
+            raise web.HTTPBadRequest(text="Only PNG images are accepted.")
         data = await field.read()
         if not data or len(data)>8*1024*1024:
             raise web.HTTPRequestEntityTooLarge(max_size=8*1024*1024, actual_size=len(data or b""))
@@ -1873,7 +1892,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def asset_icon(self, request):
         filename = request.match_info["filename"]
-        if "/" in filename or not filename.endswith(".svg"):
+        if "/" in filename or not filename.endswith(".png"):
             raise web.HTTPNotFound()
         path = WEB_DIR / "assets" / "icons" / filename
         if not path.is_file():
@@ -1886,7 +1905,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if not filename or "/" in filename or "\\" in filename:
             raise web.HTTPNotFound(text="Asset not found.")
         path = WEB_DIR / "assets" / filename
-        if not path.is_file() or path.suffix.lower() not in {".svg", ".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        if not path.is_file() or path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
             raise web.HTTPNotFound(text="Asset not found.")
         content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         if not content_type.startswith("image/"):
