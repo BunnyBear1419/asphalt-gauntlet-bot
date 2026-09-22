@@ -138,9 +138,9 @@
 </section>
 
 <section class="admin-section" id="section-media">
-  <div class="admin-card"><h2>Images &amp; Media</h2><p>Upload PNG, JPEG, WEBP, GIF, SVG or ICO assets. Files are stored in MongoDB and scoped to the selected guild; the upload limit is 8 MB per asset.</p>
+  <div class="admin-card"><h2>Images &amp; Media</h2><p>Upload PNG assets. PNG is the standard image format for logos, icons and transparent community artwork. Files are stored in MongoDB and scoped to the selected guild; the upload limit is 8 MB per asset.</p>
     <div class="admin-grid">
-      <div class="admin-field full"><label>Upload Asset</label><input id="asset-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon"></div>
+      <div class="admin-field full"><label>Upload Asset</label><input id="asset-file" type="file" accept="image/png"></div>
       <div class="admin-field"><label>Assign Uploaded Asset To</label><select id="asset-target"><option value="logo_url">Main Logo</option><option value="favicon_url">Favicon</option><option value="hero_url">Hero Banner</option><option value="welcome_url">Welcome Image</option><option value="gauntlet_url">Gauntlet Image</option><option value="tournament_url">Tournament Image</option><option value="club_url">Club Image</option><option value="login_url">Login Image</option><option value="background_url">Site Background</option></select></div>
     </div>
     <div class="admin-actions"><button class="admin-btn primary" id="upload-asset">Upload &amp; Assign</button><span class="admin-status" id="upload-status"></span></div>
