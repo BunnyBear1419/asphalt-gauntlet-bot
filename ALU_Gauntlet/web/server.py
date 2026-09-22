@@ -65,7 +65,7 @@ class WebControlCenter:
         self.port = port
         self.auth = DiscordOAuth(bot)
         self.players = PlayerService(bot)
-        self.app = web.Application(middlewares=[self._error_middleware])
+        self.app = web.Application(middlewares=[self._error_middleware], client_max_size=8 * 1024 * 1024)
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
         self._configure_routes()
