@@ -391,6 +391,11 @@ window.rslGoogleTranslateInit=function(){
             for key, value in list(merged[section].items()):
                 if isinstance(value, str) and value.lower().endswith(".svg"):
                     merged[section][key] = value[:-4] + ".png"
+        # Replace the old shield favicon with the dedicated transparent 128x128 RSL favicon.
+        # Custom guild-uploaded favicons are left untouched.
+        favicon = str(merged["identity"].get("favicon_url") or "")
+        if favicon.split("?", 1)[0].rstrip("/").endswith("/rsl-shield.png"):
+            merged["identity"]["favicon_url"] = "/assets/rsl-favicon.png?v=20260922-favicon1"
         return merged
 
     async def _branding_for_request(self, request: web.Request) -> dict[str, Any]:
