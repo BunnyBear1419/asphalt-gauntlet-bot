@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Tools</title>
+<link rel="stylesheet" href="/static/app.css?v=20260921-admin1">
+<style>
+.admin-page{min-height:100vh;background:radial-gradient(circle at 70% 5%,#10285b 0,#020817 48%,#01050d 100%);padding:28px 24px 70px}
+.admin-shell{max-width:1500px;margin:0 auto}
+.admin-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:22px 0 18px;border-bottom:1px solid #174a79}
+.admin-kicker{font-size:10px;letter-spacing:.2em;color:#25dfff;font-weight:800}
+.admin-head h1{margin:5px 0 0;font-size:38px;line-height:1}
+.admin-head p{margin:8px 0 0;color:#91a5c3;font-size:12px}
+.admin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.admin-toolbar select{min-width:270px;background:#061226;color:#fff;border:1px solid #174a79;padding:11px 13px;border-radius:7px}
+.admin-layout{display:grid;grid-template-columns:235px minmax(0,1fr);gap:18px;margin-top:20px}
+.admin-side{border:1px solid #174a79;background:#061226;padding:10px;height:max-content;position:sticky;top:96px}
+.admin-side button{display:block;width:100%;border:0;background:transparent;color:#9eb0c8;text-align:left;padding:11px 12px;border-radius:6px;font-weight:700;cursor:pointer}
+.admin-side button:hover,.admin-side button.active{background:#0d2239;color:#25dfff}
+.admin-content{min-width:0}
+.admin-section{display:none}
+.admin-section.active{display:block}
+.admin-card{border:1px solid #174a79;background:linear-gradient(145deg,#06152f,#030c1b);padding:20px;margin-bottom:18px;box-shadow:0 10px 26px #0005}
+.admin-card h2{margin:0 0 5px;font-size:21px}.admin-card>p{margin:0 0 18px;color:#91a5c3;font-size:11px}
+.admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.admin-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.admin-field{display:flex;flex-direction:column;gap:6px}.admin-field.full{grid-column:1/-1}
+.admin-field label{font-size:10px;color:#8fa6c4;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.admin-field input,.admin-field select,.admin-field textarea{width:100%;border:1px solid #174a79;background:#020b1b;color:#eef5ff;border-radius:6px;padding:10px 11px;outline:none}
+.admin-field input:focus,.admin-field textarea:focus{border-color:#25dfff;box-shadow:0 0 0 2px #25dfff12}
+.admin-field textarea{min-height:76px;resize:vertical}
+.admin-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
+.admin-btn{border:1px solid #25dfff;background:#071a31;color:#fff;border-radius:6px;padding:10px 14px;font-weight:800;cursor:pointer}
+.admin-btn.primary{background:linear-gradient(90deg,#1878ff,#25dfff);border-color:#25dfff}
+.admin-btn:hover{filter:brightness(1.12)}
+.admin-status{min-height:18px;margin-top:10px;color:#91a5c3;font-size:11px}
+.admin-status.ok{color:#16dca0}.admin-status.error{color:#ff8d9a}
+.admin-preview{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:stretch}
+.admin-logo-preview{min-height:170px;display:grid;place-items:center;background:#020817;border:1px dashed #174a79;padding:15px}
+.admin-logo-preview img{max-width:100%;max-height:140px;object-fit:contain}
+.admin-hero-preview{min-height:170px;background:#020817 center/cover no-repeat;border:1px solid #174a79;position:relative;overflow:hidden}
+.admin-hero-preview:after{content:"LIVE BRAND PREVIEW";position:absolute;left:15px;bottom:12px;font-size:9px;letter-spacing:.14em;font-weight:900;color:#fff;background:#0009;padding:8px}
+.admin-tools-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.admin-tool{border:1px solid #174a79;background:#061226;padding:16px;text-decoration:none;display:block;min-height:110px}
+.admin-tool:hover{border-color:#25dfff;transform:translateY(-1px)}
+.admin-tool strong{display:block;color:#fff;font-size:14px}.admin-tool span{display:block;color:#8198b5;font-size:10px;line-height:1.45;margin-top:6px}
+.admin-check{display:flex;justify-content:space-between;gap:15px;border-bottom:1px solid #123452;padding:10px 0;font-size:11px}.admin-check:last-child{border-bottom:0}
+.admin-check b.ok{color:#16dca0}.admin-check b.bad{color:#ff8d9a}
+.admin-log{max-height:320px;overflow:auto;border:1px solid #174a79;background:#020817;padding:10px}
+.admin-log-row{padding:9px;border-bottom:1px solid #102b49;color:#aebdd2;font-size:10px}.admin-log-row:last-child{border-bottom:0}
+@media(max-width:900px){.admin-layout{grid-template-columns:1fr}.admin-side{position:static;display:grid;grid-template-columns:repeat(2,1fr)}.admin-tools-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.admin-page{padding:18px 12px 50px}.admin-head{align-items:flex-start;flex-direction:column}.admin-head h1{font-size:30px}.admin-grid,.admin-grid.three,.admin-preview{grid-template-columns:1fr}.admin-tools-grid{grid-template-columns:1fr}.admin-side{grid-template-columns:1fr}.admin-toolbar,.admin-toolbar select{width:100%}}
+</style>
+</head>
+<body>
+<div class="admin-page">
+<div class="admin-shell">
+<header class="top-nav">
+  <a class="top-brand top-logo-mark" href="/" aria-label="Admin home"><img src="/assets/rsl-shield.svg" alt="RSL"></a>
+  <nav aria-label="Primary navigation">
+    <a href="/"><img class="nav-icon-img" src="/assets/icons/home.svg" alt=""><span>Home</span></a>
+    <a href="/help"><img class="nav-icon-img" src="/assets/icons/help.svg" alt=""><span>Help</span></a>
+  </nav>
+</header>
+<div class="admin-head" style="padding-top:112px">
+  <div><div class="admin-kicker">WEB ADMINISTRATION</div><h1>Admin Tools</h1><p>Manage your community website, branding, links, media, diagnostics and server controls from one place.</p></div>
+  <div class="admin-toolbar">
+    <select id="guild-select" aria-label="Select server"></select>
+    <a class="admin-btn" id="preview-link" href="/" target="_blank" rel="noopener">Preview Website ↗</a>
+  </div>
+</div>
+
+<div class="admin-layout">
+<aside class="admin-side">
+  <button class="active" data-section="overview">◈ Overview</button>
+  <button data-section="branding">🎨 Website Branding</button>
+  <button data-section="media">🖼️ Images &amp; Media</button>
+  <button data-section="links">🔗 Community Links</button>
+  <button data-section="settings">⚙️ Site Settings</button>
+  <button data-section="management">🧩 Management</button>
+  <button data-section="system">🛠️ Sync &amp; System</button>
+</aside>
+
+<main class="admin-content">
+<section class="admin-section active" id="section-overview">
+  <div class="admin-card"><h2 id="overview-title">Community Administration</h2><p>Everything below is scoped to the selected Discord server. Branding is stored with that guild configuration so multiple communities can use the same deployment without sharing their appearance.</p>
+    <div class="admin-tools-grid">
+      <a class="admin-tool" href="#branding" data-jump="branding"><strong>🎨 Website Branding</strong><span>Name, logo, colors, favicon, tagline and terminology.</span></a>
+      <a class="admin-tool" href="#media" data-jump="media"><strong>🖼️ Images &amp; Media</strong><span>Upload persistent community artwork and assign it to the site.</span></a>
+      <a class="admin-tool" href="#links" data-jump="links"><strong>🔗 Community Links</strong><span>Discord, social, support, Cash App and companion destinations.</span></a>
+      <a class="admin-tool" href="/setup"><strong>👥 Members &amp; Roles</strong><span>Choose server channels, admin roles, player roles and timezone.</span></a>
+      <a class="admin-tool" href="/gauntlet/leaderboard"><strong>🏁 Gauntlet Management</strong><span>Open the live Gauntlet management and player competition views.</span></a>
+      <a class="admin-tool" href="/tournaments"><strong>🏆 Tournament Management</strong><span>Open the Tournament Center for events, brackets and results.</span></a>
+      <a class="admin-tool" href="/clubs"><strong>🏎️ Club Management</strong><span>Open clubs and community roster management.</span></a>
+      <a class="admin-tool" href="#system" data-jump="system"><strong>🔧 Diagnostics</strong><span>Run health checks, command sync and configuration backup.</span></a>
+      <a class="admin-tool" href="#system" data-jump="system"><strong>📋 Audit Log</strong><span>Review recent web administration actions for this guild.</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-section" id="section-branding">
+  <div class="admin-card"><h2>Website Branding</h2><p>Rebrand the deployment without changing code. The selected guild's configuration is applied at request time.</p>
+    <div class="admin-grid">
+      <div class="admin-field"><label>Community / Guild Name</label><input id="identity-name"></div>
+      <div class="admin-field"><label>Short Name</label><input id="identity-short_name"></div>
+      <div class="admin-field"><label>Site Title</label><input id="identity-site_title"></div>
+      <div class="admin-field"><label>Tagline</label><input id="identity-tagline"></div>
+      <div class="admin-field full"><label>Main Logo URL</label><input id="identity-logo_url" placeholder="https://... or /assets/..."></div>
+      <div class="admin-field"><label>Mobile Logo URL</label><input id="identity-mobile_logo_url"></div>
+      <div class="admin-field"><label>Favicon URL</label><input id="identity-favicon_url"></div>
+    </div>
+  </div>
+  <div class="admin-card"><h2>Theme Colors</h2><p>Use six-digit hex colors. The site applies these as runtime brand tokens.</p>
+    <div class="admin-grid three">
+      <div class="admin-field"><label>Primary</label><input id="color-primary" type="color"><input id="color-primary-text"></div>
+      <div class="admin-field"><label>Secondary</label><input id="color-secondary" type="color"><input id="color-secondary-text"></div>
+      <div class="admin-field"><label>Accent</label><input id="color-accent" type="color"><input id="color-accent-text"></div>
+      <div class="admin-field"><label>Background</label><input id="color-background" type="color"><input id="color-background-text"></div>
+      <div class="admin-field"><label>Surface</label><input id="color-surface" type="color"><input id="color-surface-text"></div>
+      <div class="admin-field"><label>Text</label><input id="color-text" type="color"><input id="color-text-text"></div>
+      <div class="admin-field"><label>Muted Text</label><input id="color-muted" type="color"><input id="color-muted-text"></div>
+    </div>
+  </div>
+  <div class="admin-card"><h2>Terminology &amp; Navigation</h2><p>Change the words your community sees while keeping the underlying routes and features intact.</p>
+    <div class="admin-grid">
+      <div class="admin-field"><label>Gauntlet Label</label><input id="term-gauntlet"></div>
+      <div class="admin-field"><label>Tournament Label</label><input id="term-tournaments"></div>
+      <div class="admin-field"><label>Club Label</label><input id="term-clubs"></div>
+      <div class="admin-field"><label>Player Label</label><input id="term-players"></div>
+      <div class="admin-field"><label>Season Label</label><input id="term-season"></div>
+      <div class="admin-field"><label>Matches Label</label><input id="term-matches"></div>
+      <div class="admin-field"><label>Help Label</label><input id="term-support"></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn primary" id="save-branding">Save Branding</button><span class="admin-status" id="save-status"></span></div>
+  </div>
+  <div class="admin-card"><h2>Live Preview</h2><div class="admin-preview"><div class="admin-logo-preview"><img id="preview-logo" alt="Logo preview"></div><div class="admin-hero-preview" id="preview-hero"></div></div></div>
+</section>
+
+<section class="admin-section" id="section-media">
+  <div class="admin-card"><h2>Images &amp; Media</h2><p>Upload PNG, JPEG, WEBP, GIF, SVG or ICO assets. Files are stored in MongoDB and scoped to the selected guild; the upload limit is 8 MB per asset.</p>
+    <div class="admin-grid">
+      <div class="admin-field full"><label>Upload Asset</label><input id="asset-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,image/x-icon"></div>
+      <div class="admin-field"><label>Assign Uploaded Asset To</label><select id="asset-target"><option value="logo_url">Main Logo</option><option value="favicon_url">Favicon</option><option value="hero_url">Hero Banner</option><option value="welcome_url">Welcome Image</option><option value="gauntlet_url">Gauntlet Image</option><option value="tournament_url">Tournament Image</option><option value="club_url">Club Image</option><option value="login_url">Login Image</option><option value="background_url">Site Background</option></select></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn primary" id="upload-asset">Upload &amp; Assign</button><span class="admin-status" id="upload-status"></span></div>
+  </div>
+  <div class="admin-card"><h2>Image URLs</h2><p>Every media slot can also use an external HTTPS URL or a site-relative path.</p>
+    <div class="admin-grid">
+      <div class="admin-field"><label>Hero Banner</label><input id="image-hero_url"></div>
+      <div class="admin-field"><label>Welcome</label><input id="image-welcome_url"></div>
+      <div class="admin-field"><label>Gauntlet</label><input id="image-gauntlet_url"></div>
+      <div class="admin-field"><label>Tournaments</label><input id="image-tournament_url"></div>
+      <div class="admin-field"><label>Clubs</label><input id="image-club_url"></div>
+      <div class="admin-field"><label>Login</label><input id="image-login_url"></div>
+      <div class="admin-field full"><label>Site Background</label><input id="image-background_url"></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn primary" id="save-media">Save Media</button><span class="admin-status" id="media-status"></span></div>
+  </div>
+</section>
+
+<section class="admin-section" id="section-links">
+  <div class="admin-card"><h2>Community Links</h2><p>Set the destinations used by your community-facing buttons and navigation.</p>
+    <div class="admin-grid">
+      <div class="admin-field"><label>Discord</label><input id="link-discord"></div>
+      <div class="admin-field"><label>Website</label><input id="link-website"></div>
+      <div class="admin-field"><label>YouTube</label><input id="link-youtube"></div>
+      <div class="admin-field"><label>Twitch</label><input id="link-twitch"></div>
+      <div class="admin-field"><label>Facebook</label><input id="link-facebook"></div>
+      <div class="admin-field"><label>Instagram</label><input id="link-instagram"></div>
+      <div class="admin-field"><label>X / Twitter</label><input id="link-x"></div>
+      <div class="admin-field"><label>Cash App</label><input id="link-cashapp"></div>
+      <div class="admin-field"><label>Support</label><input id="link-support"></div>
+      <div class="admin-field"><label>Companion</label><input id="link-companion"></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn primary" id="save-links">Save Links</button><span class="admin-status" id="links-status"></span></div>
+  </div>
+</section>
+
+<section class="admin-section" id="section-settings">
+  <div class="admin-card"><h2>Site Settings</h2><p>Existing server configuration remains available here so branding and operational setup stay together.</p>
+    <div class="admin-tools-grid">
+      <a class="admin-tool" id="setup-link" href="/setup"><strong>Server Setup</strong><span>Channels, roles and timezone pickers.</span></a>
+      <a class="admin-tool" id="news-link" href="/news-admin"><strong>News &amp; Announcements</strong><span>Create and manage community news.</span></a>
+      <a class="admin-tool" href="/calendar"><strong>Calendar</strong><span>Review the live event calendar.</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-section" id="section-management">
+  <div class="admin-card"><h2>Management Centers</h2><p>Open the existing live areas of the website. Admin authorization is still enforced by each route.</p>
+    <div class="admin-tools-grid">
+      <a class="admin-tool" href="/players"><strong>👥 Players</strong><span>Player directory and staff management.</span></a>
+      <a class="admin-tool" href="/gauntlet/leaderboard"><strong>🏁 Gauntlet</strong><span>Leaderboards and competition data.</span></a>
+      <a class="admin-tool" href="/tournaments"><strong>🏆 Tournaments</strong><span>Tournament center, registration and results.</span></a>
+      <a class="admin-tool" href="/tournaments/clubs"><strong>🏎️ Club Tournaments</strong><span>Club tournament workflows.</span></a>
+      <a class="admin-tool" href="/clubs"><strong>🏎️ Clubs</strong><span>Official community clubs.</span></a>
+      <a class="admin-tool" href="/news-admin"><strong>📰 News</strong><span>Publish and edit community news.</span></a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-section" id="section-system">
+  <div class="admin-card"><h2>Sync, Diagnostics &amp; Maintenance</h2><p>Administrative operations are scoped to the selected guild and recorded in the audit log.</p>
+    <div class="admin-actions">
+      <button class="admin-btn primary" id="run-diagnostics">Run Diagnostics</button>
+      <button class="admin-btn" id="force-sync">Force Discord Sync</button>
+      <a class="admin-btn" id="backup-link" href="/api/admin/backup" target="_blank">Download Configuration Backup</a>
+    </div>
+    <div id="diagnostic-results" class="admin-status"></div>
+  </div>
+  <div class="admin-card"><h2>Audit Log</h2><div class="admin-log" id="audit-log"><div class="admin-log-row">Loading audit events…</div></div></div>
+  <div class="admin-card"><h2>Maintenance &amp; Tests</h2><div class="admin-tools-grid">
+    <a class="admin-tool" href="/healthz" target="_blank"><strong>Health Check</strong><span>Open the live production health endpoint.</span></a>
+    <a class="admin-tool" href="/setup"><strong>Server Setup</strong><span>Operational channel, role and timezone configuration.</span></a>
+    <a class="admin-tool" href="/help"><strong>Help Center</strong><span>Verify the public player-facing experience.</span></a>
+  </div></div>
+</section>
+</main>
+</div>
+</div>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+let guildId="", branding=null;
+const sections=[...document.querySelectorAll(".admin-section")];
+document.querySelectorAll(".admin-side button").forEach(b=>b.addEventListener("click",()=>showSection(b.dataset.section)));
+document.querySelectorAll("[data-jump]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();showSection(a.dataset.jump)}));
+function showSection(name){
+  sections.forEach(s=>s.classList.toggle("active",s.id==="section-"+name));
+  document.querySelectorAll(".admin-side button").forEach(b=>b.classList.toggle("active",b.dataset.section===name));
+  history.replaceState(null,"","#"+name);
+}
+if(location.hash) showSection(location.hash.slice(1));
+function setStatus(id,msg,ok=true){const el=$(id);if(!el)return;el.textContent=msg;el.className="admin-status "+(ok?"ok":"error");}
+function q(){return guildId?"?guild_id="+encodeURIComponent(guildId):""}
+async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origin",...opts});let d={};try{d=await r.json()}catch(_){}if(!r.ok)throw new Error(d.error||await r.text()||"Request failed");return d}
+async function loadGuilds(){
+ const d=await api("/api/admin/guilds"); const select=$("guild-select");
+ select.innerHTML=d.guilds.map(g=>'<option value="'+g.id+'">'+escapeHtml(g.name)+' • '+g.member_count+' members</option>').join("");
+ if(!d.guilds.length) throw new Error("No administrator servers are available.");
+ guildId=d.guilds[0].id;
+ select.value=guildId;
+ await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});
+ select.addEventListener("change",async()=>{guildId=select.value;await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});await loadBranding();});
+ await loadBranding();
+}
+function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function setVal(id,v){if($(id))$(id).value=v??""}
+function getVal(id){return $(id)?.value?.trim()||""}
+function fillColor(key,v){setVal("color-"+key,v);setVal("color-"+key+"-text",v);$("color-"+key).addEventListener("input",()=>setVal("color-"+key+"-text",$("color-"+key).value));$("color-"+key+"-text").addEventListener("input",()=>{let x=$("color-"+key+"-text").value.trim();if(/^#[0-9a-fA-F]{6}$/.test(x))$("color-"+key).value=x})}
+function fillForm(){
+ const b=branding,i=b.identity,c=b.colors,m=b.images,l=b.links,t=b.terminology;
+ Object.keys(i).forEach(k=>setVal("identity-"+k,i[k]));
+ ["primary","secondary","accent","background","surface","text","muted"].forEach(k=>fillColor(k,c[k]));
+ Object.keys(m).forEach(k=>setVal("image-"+k,m[k]));
+ Object.keys(l).forEach(k=>setVal("link-"+k,l[k]));
+ Object.keys(t).forEach(k=>setVal("term-"+k,t[k]));
+ $("preview-logo").src=i.logo_url||"";
+ $("preview-hero").style.backgroundImage="url('"+(m.hero_url||"")+"')";
+ $("overview-title").textContent=(i.name||"Community")+" Administration";
+ $("preview-link").href="/?guild_id="+encodeURIComponent(guildId);
+ $("setup-link").href="/setup?guild_id="+encodeURIComponent(guildId);
+ $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
+ $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);
+}
+async function loadBranding(){const d=await api("/api/admin/branding"+q());branding=d.branding;fillForm();await loadAudit()}
+function buildBranding(){
+ const b=JSON.parse(JSON.stringify(branding));
+ Object.keys(b.identity).forEach(k=>b.identity[k]=getVal("identity-"+k));
+ ["primary","secondary","accent","background","surface","text","muted"].forEach(k=>b.colors[k]=getVal("color-"+k+"-text")||getVal("color-"+k));
+ Object.keys(b.images).forEach(k=>b.images[k]=getVal("image-"+k));
+ Object.keys(b.links).forEach(k=>b.links[k]=getVal("link-"+k));
+ Object.keys(b.terminology).forEach(k=>b.terminology[k]=getVal("term-"+k));
+ delete b._guild; return b;
+}
+async function save(which){
+ try{
+  branding=buildBranding();
+  await api("/api/admin/branding"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({branding})});
+  fillForm();setStatus(which+"-status","Saved successfully.");
+ }catch(e){setStatus(which+"-status",e.message,false)}
+}
+$("save-branding").onclick=()=>save("save");$("save-media").onclick=()=>save("media");$("save-links").onclick=()=>save("links");
+$("upload-asset").onclick=async()=>{
+ try{
+  const file=$("asset-file").files[0];if(!file)throw new Error("Choose an image first.");
+  const fd=new FormData();fd.append("file",file);
+  const d=await api("/api/admin/upload-asset"+q(),{method:"POST",body:fd});
+  const target=$("asset-target").value;
+  if(target==="logo_url"||target==="favicon_url"){const k=target==="logo_url"?"identity-logo_url":"identity-favicon_url";setVal(k,d.url)}else setVal("image-"+target,d.url);
+  branding=buildBranding();await api("/api/admin/branding"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({branding})});
+  await loadBranding();setStatus("upload-status","Uploaded and assigned "+target+".");
+ }catch(e){setStatus("upload-status",e.message,false)}
+};
+$("run-diagnostics").onclick=async()=>{try{const d=await api("/api/admin/diagnostics"+q());$("diagnostic-results").innerHTML=d.checks.map(x=>'<div class="admin-check"><span>'+escapeHtml(x.name)+'</span><b class="'+(x.ok?"ok":"bad")+'">'+(x.ok?"PASS":"FAIL")+(x.detail?" — "+escapeHtml(x.detail):"")+"</b></div>").join("")}catch(e){$("diagnostic-results").textContent=e.message}};
+$("force-sync").onclick=async()=>{try{const d=await api("/api/admin/sync"+q(),{method:"POST"});setStatus("diagnostic-results","Discord command sync complete: "+d.synced+" commands.")}catch(e){setStatus("diagnostic-results",e.message,false)}};
+async function loadAudit(){try{const d=await api("/api/admin/audit"+q());$("audit-log").innerHTML=d.events.length?d.events.map(x=>'<div class="admin-log-row"><strong>'+escapeHtml(x.action)+'</strong><br><small>'+escapeHtml(x.source)+' • '+escapeHtml(x.user_id)+'</small></div>').join(""):'<div class="admin-log-row">No audit events yet.</div>'}catch(e){$("audit-log").innerHTML='<div class="admin-log-row">'+escapeHtml(e.message)+'</div>'}}
+loadGuilds().catch(e=>{document.querySelector(".admin-content").innerHTML='<div class="admin-card"><h2>Admin Tools unavailable</h2><p>'+escapeHtml(e.message)+'</p></div>'});
+})();
+</script>
+</body>
+</html>
