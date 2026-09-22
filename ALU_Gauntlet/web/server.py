@@ -138,11 +138,11 @@ class WebControlCenter:
 <a class="rsl-login-button" id="rsl-login-button" href="/login" hidden>🔐 Login</a>
 '''
         search_markup = r'''
-<button class="rsl-search-trigger" id="rsl-search-trigger" type="button" aria-label="Search site" aria-expanded="false"><img src="/assets/icons/search.svg" alt=""><span>Search</span></button>
+<button class="rsl-search-trigger" id="rsl-search-trigger" type="button" aria-label="Search site" aria-expanded="false"><img src="/assets/icons/search.png" alt=""><span>Search</span></button>
 <div class="rsl-search-overlay" id="rsl-search-overlay" hidden>
   <div class="rsl-search-dialog" role="dialog" aria-modal="true" aria-labelledby="rsl-search-title">
     <div class="rsl-search-head"><strong id="rsl-search-title">Search Racing Syndicate League</strong><button type="button" class="rsl-search-close" id="rsl-search-close" aria-label="Close search">×</button></div>
-    <div class="rsl-search-input-wrap"><img src="/assets/icons/search.svg" alt=""><input id="rsl-search-input" type="search" placeholder="Search the site…" autocomplete="off"></div>
+    <div class="rsl-search-input-wrap"><img src="/assets/icons/search.png" alt=""><input id="rsl-search-input" type="search" placeholder="Search the site…" autocomplete="off"></div>
     <div class="rsl-search-results" id="rsl-search-results"><p>Type to search pages, features and racing information.</p></div>
   </div>
 </div>
@@ -262,7 +262,7 @@ window.rslGoogleTranslateInit=function(){
         # Replace the complete legacy Companion anchor; replacing only its opening
         # tag would leave the old href/attributes visible as plain text.
         companion_markup = r'''<details class="top-nav-dropdown companion-nav-dropdown">
-<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.svg" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
+<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
 <div class="top-nav-dropdown-menu companion-nav-info-menu">
   <a class="companion-info-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Asphalt United Companion by Shohan's Lab">
     <span class="companion-info-link-icon">↗</span>
@@ -282,11 +282,11 @@ window.rslGoogleTranslateInit=function(){
 </div></details>'''
         legacy_companion = re.compile(r'<a class="companion-nav-link"[^>]*>.*?</a>', re.S)
         if legacy_companion.search(body):
-            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a>'
+            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
             replacement = (calendar_markup if '<a href="/calendar"' not in body else '') + companion_markup
             body = legacy_companion.sub(replacement, body, count=1)
         elif '<a href="/calendar"' not in body and "</nav>" in body:
-            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a>'
+            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + "</nav>", 1)
 
         if "</header>" in body and 'id="rsl-search-trigger"' not in body:
@@ -407,24 +407,24 @@ window.rslGoogleTranslateInit=function(){
         def esc(value: Any) -> str:
             return html.escape(str(value or ""), quote=True)
         body = re.sub(r"<title>.*?</title>", f"<title>{title}</title>", body, count=1, flags=re.I | re.S)
-        body = body.replace("/assets/rsl-shield.svg", logo).replace("/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1", logo)
+        body = body.replace("/assets/rsl-shield.png", logo).replace("/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1", logo)
         # The website uses PNG icons only. Legacy SVG references are rewritten before the page is sent.
         svg_map = {
-            "/assets/hero-4k-final.svg": "/assets/hero.jpg",
-            "/assets/gauntlet-4k-final.svg": "/assets/gauntlet.jpg",
-            "/assets/garage-4k-final.svg": "/assets/garage.jpg",
-            "/assets/competition-4k-final.svg": "/assets/competition.jpg",
-            "/assets/profile-settings-4k-final.svg": "/assets/profile-settings.jpg",
-            "/assets/home-hero-rsl.svg": "/assets/home-hero-rsl.jpeg",
-            "/assets/home-hero-4k.svg": "/assets/home-hero-4k.jpg",
-            "/assets/rsl-logo.svg": "/assets/rsl-top-logo.png",
-            "/assets/rsl-logo-4k.svg": "/assets/rsl-top-logo.png",
-            "/assets/rsl-top-logo.svg": "/assets/rsl-top-logo.png",
-            "/assets/rsl-shield.svg": "/assets/rsl-shield.png",
+            "/assets/hero.jpg": "/assets/hero.jpg",
+            "/assets/gauntlet.jpg": "/assets/gauntlet.jpg",
+            "/assets/garage.jpg": "/assets/garage.jpg",
+            "/assets/competition.jpg": "/assets/competition.jpg",
+            "/assets/profile-settings.jpg": "/assets/profile-settings.jpg",
+            "/assets/home-hero-rsl.jpeg": "/assets/home-hero-rsl.jpeg",
+            "/assets/home-hero-4k.jpg": "/assets/home-hero-4k.jpg",
+            "/assets/rsl-top-logo.png": "/assets/rsl-top-logo.png",
+            "/assets/rsl-top-logo.png": "/assets/rsl-top-logo.png",
+            "/assets/rsl-top-logo.png": "/assets/rsl-top-logo.png",
+            "/assets/rsl-shield.png": "/assets/rsl-shield.png",
         }
         for old_path, new_path in svg_map.items():
             body = body.replace(old_path, new_path)
-        body = re.sub(r'(/assets/icons/[A-Za-z0-9_-]+)\\.svg', r'\\1.png', body)
+        body = re.sub(r'(/assets/icons/[A-Za-z0-9_-]+)\\.png', r'\\1.png', body)
         body = body.replace("/assets/hero.jpg", hero)
         body = body.replace("Racing Syndicate League", name).replace("RSL", short)
         body = body.replace("https://discord.gg/fmFk8Ejf2H", esc(links.get("discord")))
