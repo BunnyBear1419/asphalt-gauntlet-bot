@@ -1349,3 +1349,28 @@ body{top:0!important}
    newest/opened dropdown remain visible without changing the existing navigation design. */
 .top-nav-dropdown[open]:has(+ .top-nav-dropdown[open]) > .top-nav-dropdown-menu{display:none!important;}
 .top-nav-dropdown[open]:has(+ .top-nav-dropdown[open]) > .top-nav-dropdown-trigger{border-bottom-color:transparent!important;}
+
+
+/* Canonical dropdown icon alignment: every submenu item uses one fixed icon column,
+   so image icons and text glyph icons start at exactly the same positions. */
+.top-nav-dropdown-menu>a{
+  display:grid!important;
+  grid-template-columns:22px minmax(0,1fr)!important;
+  align-items:center!important;
+  column-gap:8px!important;
+}
+.top-nav-dropdown-menu>a>.nav-icon-img,
+.top-nav-dropdown-menu>a>.nav-icon-glyph{
+  width:18px!important;
+  height:18px!important;
+  min-width:18px!important;
+  max-width:18px!important;
+  flex:0 0 18px!important;
+  margin:0!important;
+  justify-self:center!important;
+}
+.top-nav-dropdown-menu>a>.nav-icon-glyph{
+  display:inline-flex!important;
+  line-height:1!important;
+  font-size:18px!important;
+}
