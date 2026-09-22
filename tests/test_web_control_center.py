@@ -30,7 +30,8 @@ def test_web_ui_is_simplified_control_center():
     assert "HELP CENTER" in source
     assert 'class="top-nav"' in source
     assert 'href="/gauntlet/registration"' in source
-    assert "JOIN GAUNTLET" in source
+    # The current homepage design intentionally has no hero action buttons.
+    assert "JOIN GAUNTLET" not in source
     assert 'href="/help"' in source
     assert 'class="sidebar"' not in source
 
