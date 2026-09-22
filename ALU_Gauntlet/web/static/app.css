@@ -1342,3 +1342,10 @@ body{top:0!important}
 /* Always-visible text icons for the two competition submenu entries. */
 .nav-icon-glyph{display:inline-flex!important;align-items:center;justify-content:center;width:18px;height:18px;flex:0 0 18px;color:#28d7ff;font-size:18px;line-height:1;font-family:"Segoe UI Symbol","Noto Sans Symbols 2",sans-serif;font-style:normal;text-align:center;}
 .top-nav-dropdown-menu a .nav-icon-glyph{margin-right:2px;}
+
+
+/* Keep sibling top navigation dropdowns visually exclusive. Native <details> can leave
+   both menus open when clicked quickly; modern browsers support :has(), which lets the
+   newest/opened dropdown remain visible without changing the existing navigation design. */
+.top-nav-dropdown[open]:has(+ .top-nav-dropdown[open]) > .top-nav-dropdown-menu{display:none!important;}
+.top-nav-dropdown[open]:has(+ .top-nav-dropdown[open]) > .top-nav-dropdown-trigger{border-bottom-color:transparent!important;}
