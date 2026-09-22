@@ -240,12 +240,17 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        # Add Calendar immediately before the Companion link on every page.
+        # Add Calendar immediately before the Companion dropdown on every page.
         # Keep the navigation order stable: Clubs → Help → Calendar → Companion.
-        companion_marker = '<a class="companion-nav-link"'
+        # Replace the complete legacy Companion anchor; replacing only its opening
+        # tag would leave the old href/attributes visible as plain text.
         companion_markup = r'''<details class="top-nav-dropdown companion-nav-dropdown">
 <summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.svg" alt=""><span>Companion</span><span class="nav-chevron">⌄</span></summary>
 <div class="top-nav-dropdown-menu companion-nav-info-menu">
+  <a class="companion-info-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Asphalt United Companion by Shohan's Lab">
+    <span class="companion-info-link-icon">↗</span>
+    <span><strong>Click to View</strong><small>Open Asphalt United Companion by Shohan's Lab.</small></span>
+  </a>
   <div class="companion-info-item"><span class="companion-info-icon">🚗</span><span><strong>Car Upgrade Calculator</strong><small>Plan your upgrades &amp; optimize your build.</small></span></div>
   <div class="companion-info-item"><span class="companion-info-icon">🔄</span><span><strong>Comparator</strong><small>Compare between cars.</small></span></div>
   <div class="companion-info-item"><span class="companion-info-icon">🎯</span><span><strong>Priority</strong><small>Manage your priorities.</small></span></div>
@@ -258,10 +263,11 @@ window.rslGoogleTranslateInit=function(){
   <div class="companion-info-item"><span class="companion-info-icon">🎟️</span><span><strong>Event Calculator</strong><small>Plan limited-time Spotlight events — stage-by-stage reward simulation.</small></span></div>
   <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
 </div></details>'''
-        if companion_marker in body:
+        legacy_companion = re.compile(r'<a class="companion-nav-link"[^>]*>.*?</a>', re.S)
+        if legacy_companion.search(body):
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a>'
             replacement = (calendar_markup if '<a href="/calendar"' not in body else '') + companion_markup
-            body = body.replace(companion_marker, replacement, 1)
+            body = legacy_companion.sub(replacement, body, count=1)
         elif '<a href="/calendar"' not in body and "</nav>" in body:
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + "</nav>", 1)
