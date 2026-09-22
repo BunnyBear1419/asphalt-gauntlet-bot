@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Racing Syndicate League • Home</title>
-<link rel="stylesheet" href="/static/app.css?v=20260921-homewidth1">
+<link rel="stylesheet" href="/static/app.css?v=20260921-homewidth1"><link rel="stylesheet" href="/static/calendar.css?v=20260922-homecalendar1">
 <style>
 .home-section-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.home-section-heading h2{margin:7px 0 0;font-size:28px;line-height:1.05}.news-live{font-size:9px;color:#18e19e;border:1px solid #18e19e;padding:7px 10px;letter-spacing:.1em}.home-news-list{display:grid;gap:10px;margin-top:18px}.home-news-item{border:1px solid #174a79;background:linear-gradient(135deg,#07172f,#030a17);padding:14px 16px;cursor:pointer;transition:.18s}.home-news-item:hover{transform:translateX(3px);border-color:#25dfff;box-shadow:0 0 22px #25dfff12}.home-news-item strong{display:block;font-size:15px}.home-news-item small{display:block;color:#7f9bbb;font-size:9px;margin-top:5px}.home-news-item p{margin:7px 0 0;color:#aebdd2;font-size:10px;line-height:1.45}.news-loading,.news-empty{color:#7188a7;font-size:10px;padding:18px 0}.home-news-modal{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px}.home-news-modal[hidden]{display:none}.home-news-modal-backdrop{position:absolute;inset:0;background:#000b;backdrop-filter:blur(5px)}.home-news-modal-card{position:relative;z-index:1;max-width:780px;width:100%;max-height:82vh;overflow:auto;border:1px solid #25dfff;background:linear-gradient(145deg,#071936,#020916);padding:34px;box-shadow:0 0 50px #25dfff18}.home-news-modal-card h2{font-size:34px;margin:8px 0}.home-news-modal-card small{color:#8198b5}.home-news-modal-card #news-modal-body{margin-top:22px;color:#c6d2e3;line-height:1.7;white-space:pre-wrap}.home-news-close{position:absolute;right:12px;top:8px;border:0;background:transparent;color:#fff;font-size:28px;cursor:pointer}
 .home-page{min-height:100vh;background:radial-gradient(circle at 70% 10%,#11194a 0,#020817 45%,#01050d 100%)}
@@ -386,6 +386,19 @@
 .top-discord-link{position:absolute;left:84px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #1d4569;border-radius:8px;background:#0a1a2d;color:#5865f2;z-index:1100;text-decoration:none;transition:.18s ease}.top-discord-link svg{width:22px;height:22px;fill:currentColor}.top-discord-link:hover{color:#fff;border-color:#5865f2;background:#111d3a;box-shadow:0 0 18px #5865f255;transform:translateY(-50%) scale(1.04)}
 @media(max-width:760px){.top-cashapp-link{left:108px;width:34px;height:34px}.top-cashapp-link span{font-size:20px}.top-discord-link{left:68px;width:34px;height:34px}.top-discord-link svg{width:19px;height:19px}}
 </style>
+<style>
+/* Full-width live calendar directly beneath the homepage hero. */
+.home-calendar{width:100%;max-width:none;margin:16px 0 0;padding:0}
+.home-calendar .calendar-toolbar{margin-top:0;width:100%;box-sizing:border-box}
+.home-calendar .calendar-layout{width:100%;margin-top:12px}
+.home-calendar .calendar-board,.home-calendar .calendar-agenda{min-width:0}
+.home-calendar-status{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:8px 2px;color:#7893b0;font-size:9px}
+.home-calendar-status>span{display:inline-flex;align-items:center;gap:7px}
+.home-calendar-status a{color:#28d7ff;text-decoration:none;font-weight:800;letter-spacing:.06em}
+.home-calendar-status a:hover{text-decoration:underline}
+@media(max-width:1000px){.home-calendar .calendar-layout{grid-template-columns:1fr}}
+@media(max-width:700px){.home-calendar-status{align-items:flex-start;flex-direction:column}}
+</style>
 </head>
 <body class="home-page">
 <header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a><a class="top-cashapp-link" href="https://cash.app/" target="_blank" rel="noopener noreferrer" aria-label="Cash App" title="Cash App"><span aria-hidden="true">$</span></a><a class="top-discord-link" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join our Discord" title="Join our Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></a><nav aria-label="Primary navigation"><a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.png" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.png" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><span class="nav-icon-glyph" aria-hidden="true">⚔</span><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>References</span></a></div></details><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.png" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><span class="nav-icon-glyph" aria-hidden="true">📊</span><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Club Tournaments</span></a></div></details><a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a><a href="/help"><img class="nav-icon-img" src="/assets/icons/help.png" alt=""><span>Help</span></a><a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span>Companion</span></a></nav></header>
@@ -410,9 +423,37 @@
 </div>
 </section>
 
-
-
-
+<section class="home-calendar" aria-label="Racing Syndicate League calendar">
+  <div class="calendar-toolbar glass-panel">
+    <div class="calendar-nav">
+      <button id="calendar-prev" type="button" aria-label="Previous month">←</button>
+      <h2 id="calendar-month" aria-live="polite">Loading…</h2>
+      <button id="calendar-next" type="button" aria-label="Next month">→</button>
+      <button id="calendar-today" class="calendar-today" type="button">Today</button>
+    </div>
+    <div class="calendar-filters" role="group" aria-label="Calendar filters">
+      <button class="calendar-filter is-active" data-filter="all" type="button">All</button>
+      <button class="calendar-filter" data-filter="gauntlet" type="button">🏎️ Gauntlet</button>
+      <button class="calendar-filter" data-filter="tournament" type="button">🏆 Tournaments</button>
+    </div>
+  </div>
+  <div class="calendar-layout">
+    <div class="calendar-board glass-panel">
+      <div class="calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div id="calendar-grid" class="calendar-grid" role="grid" aria-label="Event calendar"></div>
+    </div>
+    <aside class="calendar-agenda glass-panel">
+      <div class="panel-heading"><h2>Upcoming Events</h2><small id="event-count">Loading…</small></div>
+      <div id="calendar-agenda-list" class="calendar-agenda-list"><div class="calendar-empty">Loading events…</div></div>
+      <div class="calendar-legend">
+        <span><i class="legend-dot legend-gauntlet"></i>Gauntlet</span>
+        <span><i class="legend-dot legend-tournament"></i>Tournament</span>
+        <span><i class="legend-dot legend-registration"></i>Registration close</span>
+      </div>
+    </aside>
+  </div>
+  <div class="home-calendar-status"><span class="calendar-live-dot"></span><span id="calendar-sync">Syncing…</span><a href="/calendar">OPEN FULL CALENDAR →</a></div>
+</section>
 
 <section class="home-grid">
 <article class="home-card home-info-card home-feature-card" id="about">
@@ -470,5 +511,6 @@
 })();
 </script>
 <script src="/static/home-news.js?v=20260920-1"></script>
+<script src="/static/calendar.js?v=20260922-homecalendar1"></script>
 </body>
 </html>
