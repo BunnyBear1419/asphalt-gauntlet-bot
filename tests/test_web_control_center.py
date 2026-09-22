@@ -25,9 +25,13 @@ def test_web_routes_are_guild_scoped():
 
 def test_web_ui_is_simplified_control_center():
     source=(STATIC/"index.html").read_text(encoding="utf-8")
-    assert "ABOUT US" in source
-    assert "NEWS &amp; ANNOUNCEMENTS" in source
-    assert "HELP CENTER" in source
+    assert "WHAT'S HAPPENING" in source
+    assert "Join the RSL Discord" in source
+    assert "Racing Syndicate League" in source
+    assert "VIEW GAUNTLET" in source
+    assert "VIEW TOURNAMENTS" in source
+    assert "VIEW CALENDAR" in source
+    assert "HELP" in source
     assert 'class="top-nav"' in source
     assert 'href="/gauntlet/registration"' in source
     # The current homepage design intentionally has no hero action buttons.
