@@ -333,29 +333,60 @@
 </style>
 
 <style>
-/* DISCORD COMMUNITY CTA PREVIEW */
-.discord-cta{margin:0 0 18px!important;min-height:82px}.discord-cta-icon{width:52px;height:52px;flex-basis:52px}
-.top-cashapp-link{position:absolute;left:132px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #00d64f;border-radius:8px;background:#00c244;color:#fff;z-index:1100;text-decoration:none;transition:.18s ease;box-shadow:0 0 0 rgba(0,210,72,0)}.top-cashapp-link:hover{background:#00d84f;border-color:#39ff7a;box-shadow:0 0 18px #00d84f55;transform:translateY(-50%) scale(1.04)}.top-cashapp-link span{font:900 23px/1 Arial,Helvetica,sans-serif;transform:translateY(-1px)}
-.top-discord-link{position:absolute;left:84px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid #1d4569;border-radius:8px;background:#0a1a2d;color:#5865f2;z-index:1100;text-decoration:none;transition:.18s ease}
-.top-discord-link svg{width:22px;height:22px;fill:currentColor}
-.top-discord-link:hover{color:#fff;border-color:#5865f2;background:#111d3a;box-shadow:0 0 18px #5865f255;transform:translateY(-50%) scale(1.04)}
-.discord-cta{display:flex;align-items:center;gap:24px;width:100%;box-sizing:border-box;margin:18px 0 0;padding:22px 28px;border:1px solid #5865f2;border-radius:12px;background:linear-gradient(100deg,#101a3b,#0a1a2d 55%,#07152a);color:#fff;text-decoration:none;box-shadow:0 8px 28px #0006;transition:.18s ease}
+/* DISCORD COMMUNITY STATUS BOX */
+.discord-cta{
+  display:flex;align-items:center;gap:24px;width:100%;box-sizing:border-box;
+  margin:16px 0 18px;padding:14px 28px;
+  border:1px solid #5865f2;border-radius:12px;
+  background:linear-gradient(100deg,#101a3b,#0a1a2d 55%,#07152a);
+  color:#fff;text-decoration:none;box-shadow:0 8px 28px #0006;
+  transition:.18s ease;
+}
 .discord-cta:hover{border-color:#7d87ff;box-shadow:0 10px 34px #5865f230;transform:translateY(-1px)}
-.discord-cta-icon{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;border:1px solid #5865f2;border-radius:12px;background:#151f46}
-.discord-cta-icon svg{width:34px;height:34px;fill:#fff}
-.discord-cta-copy{flex:1;min-width:0}
-.discord-cta-kicker{display:block;color:#9ca6ff;font-size:10px;font-weight:800;letter-spacing:.12em;margin-bottom:4px}
-.discord-cta h2{margin:0 0 5px;font-size:25px;color:#fff}
-.discord-cta p{margin:0;color:#9db0c8;font-size:12px;line-height:1.5}
-.discord-cta-button{flex:0 0 auto;padding:12px 18px;border:1px solid #5865f2;border-radius:7px;background:#5865f2;color:#fff;font-weight:800;font-size:12px;letter-spacing:.06em}
-@media(max-width:760px){.top-cashapp-link{left:108px;width:34px;height:34px}.top-cashapp-link span{font-size:20px}.top-discord-link{left:68px;width:34px;height:34px}.top-discord-link svg{width:19px;height:19px}.discord-cta{gap:14px;padding:18px}.discord-cta-icon{width:46px;height:46px;flex-basis:46px}.discord-cta-icon svg{width:27px;height:27px}.discord-cta h2{font-size:20px}.discord-cta-button{padding:10px 12px;font-size:10px}}
+.discord-cta-icon{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:transparent}
+.discord-cta-icon svg{width:52px;height:52px;fill:#7d87ff;filter:drop-shadow(0 0 8px #5865f255)}
+.discord-cta-copy{flex:1;min-width:230px}
+.discord-cta-kicker{display:block;color:#fff;font-size:21px;font-weight:800;letter-spacing:.02em;margin:0 0 3px;text-transform:uppercase}
+.discord-cta h2{margin:0 0 2px;font-size:0}
+.discord-cta p{margin:0;color:#aebdd2;font-size:12px;line-height:1.4}
+.discord-cta-stats{display:flex;align-items:center;gap:28px;padding:0 28px;border-left:1px solid #27466b;border-right:1px solid #27466b}
+.discord-stat{display:flex;align-items:center;gap:10px;min-width:135px}
+.discord-stat-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:1px solid #27466b;border-radius:8px;background:#071a2d}
+.discord-stat-icon svg{width:25px;height:25px;fill:none;stroke:#28d7ff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.discord-stat-online .discord-stat-icon svg{stroke:#28d7ff}
+.discord-online-dot{width:18px;height:18px;border-radius:50%;background:#00e65b;box-shadow:0 0 14px #00e65b88}
+.discord-stat-label{display:block;color:#e9f2ff;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.discord-stat-value{display:block;color:#fff;font-size:24px;font-weight:800;line-height:1.05;margin-top:2px}
+.discord-cta-button{flex:0 0 auto;padding:13px 22px;border:1px solid #28d7ff;border-radius:7px;background:#087cff;color:#fff;font-weight:800;font-size:12px;letter-spacing:.06em;box-shadow:0 0 18px #087cff33}
+@media(max-width:900px){
+  .discord-cta{gap:16px;padding:14px 18px}
+  .discord-cta-stats{gap:14px;padding:0 14px}
+  .discord-stat{min-width:115px}
+  .discord-cta-kicker{font-size:17px}
+}
+@media(max-width:700px){
+  .discord-cta{flex-wrap:wrap}
+  .discord-cta-icon{width:46px;height:46px;flex-basis:46px}
+  .discord-cta-icon svg{width:42px;height:42px}
+  .discord-cta-copy{min-width:calc(100% - 70px)}
+  .discord-cta-stats{width:100%;justify-content:center;border-left:0;border-right:0;border-top:1px solid #27466b;padding:12px 0 0}
+  .discord-cta-button{margin-left:auto}
+}
+@media(max-width:430px){
+  .discord-cta{padding:14px}
+  .discord-cta-stats{gap:8px}
+  .discord-stat{min-width:0}
+  .discord-stat-value{font-size:20px}
+  .discord-stat-label{font-size:8px}
+  .discord-cta-button{width:100%;text-align:center}
+}
 </style>
 </head>
 <body class="home-page">
 <header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a><a class="top-cashapp-link" href="https://cash.app/" target="_blank" rel="noopener noreferrer" aria-label="Cash App" title="Cash App"><span aria-hidden="true">$</span></a><a class="top-discord-link" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join our Discord" title="Join our Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></a><nav aria-label="Primary navigation"><a href="/"><img class="nav-icon-img" src="/assets/icons/home.svg" alt=""><span>Home</span></a><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.svg" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.svg" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.svg" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><img class="nav-icon-img" src="/assets/icons/matches.svg" alt=""><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.svg" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.svg" alt=""><span>References</span></a></div></details><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.svg" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.svg" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.svg" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.svg" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><img class="nav-icon-img" src="/assets/icons/results.svg" alt=""><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.svg" alt=""><span>Club Tournaments</span></a></div></details><a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.svg" alt=""><span>Clubs</span></a><a href="/help"><img class="nav-icon-img" src="/assets/icons/help.svg" alt=""><span>Help</span></a><a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.svg" alt=""><span>Companion</span></a></nav></header>
 
 <main class="home-main">
-<a class="discord-cta" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer"><div class="discord-cta-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></div><div class="discord-cta-copy"><span class="discord-cta-kicker">THE ACTION IS ON DISCORD</span><h2>Join the RSL Discord</h2><p>Race, compete, organize matches, join tournaments, build your club and stay connected with the community.</p></div><span class="discord-cta-button">JOIN DISCORD →</span></a>
+
 
 <section class="home-hero" aria-label="Racing Syndicate League">
 <picture class="home-hero-media"><source srcset="/static/assets/home-hero-rsl.jpeg?v=20260921-rslhero-jpeg1" type="image/jpeg"><img src="/static/assets/home-hero-rsl.svg?v=20260921-rslhero1" alt="Racing Syndicate League — Race, Compete, Unite"></picture>
@@ -364,6 +395,16 @@
 <a class="hero-action hero-action-tournaments" href="/tournaments">VIEW TOURNAMENTS →</a>
 </div>
 </section>
+<a class="discord-cta" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join the RSL Discord">
+<div class="discord-cta-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></div>
+<div class="discord-cta-copy"><span class="discord-cta-kicker">JOIN THE RSL DISCORD</span><p>Race with the community, participate in events, and stay up to date.</p></div>
+<div class="discord-cta-stats" aria-label="Discord community statistics">
+<div class="discord-stat discord-stat-online"><div class="discord-stat-icon" aria-hidden="true"><span class="discord-online-dot"></span></div><div><span class="discord-stat-label">Online Members</span><span class="discord-stat-value" id="discord-online-members">—</span></div></div>
+<div class="discord-stat"><div class="discord-stat-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="11" cy="10" r="4"/><circle cx="21" cy="10" r="4"/><path d="M4 25c0-5 3-8 7-8s7 3 7 8M14 25c0-5 3-8 7-8s7 3 7 8"/></svg></div><div><span class="discord-stat-label">Server Members</span><span class="discord-stat-value" id="discord-server-members">—</span></div></div>
+</div>
+<span class="discord-cta-button">JOIN DISCORD →</span>
+</a>
+
 
 
 
@@ -406,6 +447,22 @@
   <span>™ RSL 2026</span>
 </footer>
 </main>
+<script>
+(async function(){
+  const online=document.getElementById('discord-online-members');
+  const total=document.getElementById('discord-server-members');
+  if(!online||!total) return;
+  try{
+    const r=await fetch('/api/discord-stats',{credentials:'same-origin'});
+    if(!r.ok) return;
+    const d=await r.json();
+    if(d.available){
+      online.textContent=Number(d.online_members||0).toLocaleString();
+      total.textContent=Number(d.server_members||0).toLocaleString();
+    }
+  }catch(_){}
+})();
+</script>
 <script src="/static/home-news.js?v=20260920-1"></script>
 </body>
 </html>
