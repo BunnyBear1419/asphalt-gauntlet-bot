@@ -1337,3 +1337,8 @@ body{top:0!important}
   line-height:1.4!important;
   font-weight:500!important;
 }
+
+
+/* Always-visible text icons for the two competition submenu entries. */
+.nav-icon-glyph{display:inline-flex!important;align-items:center;justify-content:center;width:18px;height:18px;flex:0 0 18px;color:#28d7ff;font-size:18px;line-height:1;font-family:"Segoe UI Symbol","Noto Sans Symbols 2",sans-serif;font-style:normal;text-align:center;}
+.top-nav-dropdown-menu a .nav-icon-glyph{margin-right:2px;}
