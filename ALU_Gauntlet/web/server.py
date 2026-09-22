@@ -382,6 +382,7 @@ window.rslGoogleTranslateInit=function(){
         self.app.router.add_get("/healthz", self.healthz)
         self.app.router.add_get("/api/me", self.me)
         self.app.router.add_get("/api/search", self.site_search)
+        self.app.router.add_get("/api/discord-stats", self.discord_stats)
         self.app.router.add_get("/api/language", self.get_language)
         self.app.router.add_post("/api/language", self.set_language)
         self.app.router.add_get("/api/notifications", self.notification_preferences)
@@ -1792,6 +1793,33 @@ window.rslGoogleTranslateInit=function(){
                     snippet += "…"
                 results.append({"title": title, "url": path, "snippet": snippet})
         return web.json_response({"query": query, "results": results[:12]})
+
+    async def discord_stats(self, request: web.Request) -> web.Response:
+        """Return public Discord server counts for the homepage community banner."""
+        await self.require_user(request)
+        guilds = list(getattr(self.bot, "guilds", []) or [])
+        if not guilds:
+            return web.json_response({"online_members": 0, "server_members": 0, "available": False})
+        # Prefer the largest connected guild, which is normally the main RSL community.
+        guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0))
+        members = list(getattr(guild, "members", []) or [])
+        online = 0
+        for member in members:
+            try:
+                if getattr(member, "bot", False):
+                    continue
+                status = getattr(member, "status", None)
+                if str(status) not in {"offline", "invisible"}:
+                    online += 1
+            except Exception:
+                continue
+        total = int(getattr(guild, "member_count", 0) or len(members))
+        return web.json_response({
+            "online_members": online,
+            "server_members": total,
+            "server_name": str(getattr(guild, "name", "") or ""),
+            "available": True,
+        })
 
     async def healthz(self, request: web.Request) -> web.Response:
         ready = bool(getattr(self.bot, "is_ready", lambda: False)())
