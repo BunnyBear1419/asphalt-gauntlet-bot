@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import random
 import time
@@ -41,6 +42,18 @@ SETUP_CHANNELS = (
     ("match_results_channel_id", "Match-results channel"),
 )
 SETUP_ROLES = (("admin_role_id", "Staff / admin role"), ("player_role_id", "Player role"))
+
+DEFAULT_WEB_BRANDING = {
+    "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Compete. Race. Dominate.","favicon_url":"/assets/rsl-shield.svg","logo_url":"/assets/rsl-shield.svg","mobile_logo_url":"/assets/rsl-shield.svg"},
+    "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
+    "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
+    "links": {"discord":"https://discord.gg/fmFk8Ejf2H","website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","cashapp":"https://cash.app/","support":"","companion":"https://alu.shohanlab.com/"},
+    "navigation": {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"},
+    "terminology": {"gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","players":"Drivers","season":"Season","matches":"Matches","support":"Help Center"},
+}
+BRANDING_COLOR_KEYS = ("primary","secondary","accent","background","surface","text","muted")
+BRANDING_IMAGE_KEYS = ("hero_url","welcome_url","gauntlet_url","tournament_url","club_url","login_url","background_url")
+BRANDING_LINK_KEYS = ("discord","website","youtube","twitch","facebook","instagram","x","cashapp","support","companion")
 
 
 class WebControlCenter:
@@ -82,7 +95,7 @@ class WebControlCenter:
                 content_type="text/plain",
             )
 
-    async def _page_response(self, filename: str) -> web.Response:
+    async def _page_response(self, filename: str, request: web.Request | None = None) -> web.Response:
         path = WEB_DIR / filename
         try:
             body = path.read_text(encoding="utf-8")
@@ -91,6 +104,9 @@ class WebControlCenter:
             raise web.HTTPServiceUnavailable(
                 text=f"Web page '{filename}' is temporarily unavailable."
             ) from exc
+
+        branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
+        body = self._apply_web_branding(body, branding)
 
         # Keep the account/profile control consistent across every web page.
         # The navigation itself is intentionally kept in each page so existing
@@ -114,6 +130,7 @@ class WebControlCenter:
     <a href="/clubs">🏎️ <span>My Club</span></a>
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
     <a href="/player#career">🏆 <span>My Tournaments</span></a>
+    <a class="rsl-admin-tools-link" id="rsl-admin-tools-link" href="/admin" hidden>🛠️ <span>Admin Tools</span></a>
     <div class="rsl-profile-divider"></div>
     <a class="rsl-profile-logout" href="/logout">🔐 <span>Sign Out</span></a>
   </div>
@@ -331,6 +348,8 @@ window.rslGoogleTranslateInit=function(){
       if (menuName) menuName.textContent = name;
       if (menuSub) menuSub.textContent = me.username ? "@" + me.username : "Discord account";
       if (avatarBox && avatar) avatarBox.innerHTML = '<img src="' + avatar + '" alt="">';
+      const adminLink = document.getElementById("rsl-admin-tools-link");
+      if (adminLink) adminLink.hidden = !me.admin;
       nav.hidden = false;
       login.hidden = true;
     })
@@ -356,12 +375,226 @@ window.rslGoogleTranslateInit=function(){
             body = body.replace("</body>", profile_script + "</body>", 1)
         return web.Response(text=body, content_type="text/html")
 
+    def _merge_branding(self, raw: dict[str, Any] | None) -> dict[str, Any]:
+        raw = raw or {}
+        merged = json.loads(json.dumps(DEFAULT_WEB_BRANDING))
+        for section in ("identity", "colors", "images", "links", "navigation", "terminology"):
+            values = raw.get(section)
+            if isinstance(values, dict):
+                merged[section].update({str(k): v for k, v in values.items()})
+        return merged
+
+    async def _branding_for_request(self, request: web.Request) -> dict[str, Any]:
+        user = await self.require_user(request)
+        memberships = {str(x) for x in getattr(user, "guild_ids", [])}
+        candidates = [request.query.get("guild_id", "").strip(), request.cookies.get("rsl_guild_id", "").strip(), *memberships]
+        chosen = next((gid for gid in candidates if gid in memberships and any(str(getattr(g, "id", "")) == gid for g in getattr(self.bot, "guilds", []))), None)
+        if not chosen:
+            return self._merge_branding({})
+        settings = await self.bot.db.settings.find_one({"_id": chosen}) or {}
+        raw = settings.get("web_branding") if isinstance(settings.get("web_branding"), dict) else {}
+        return self._merge_branding(raw)
+
+    def _apply_web_branding(self, body: str, branding: dict[str, Any]) -> str:
+        identity, colors, images = branding["identity"], branding["colors"], branding["images"]
+        links, nav, terms = branding["links"], branding["navigation"], branding["terminology"]
+        name = html.escape(str(identity.get("name") or "Racing Syndicate League"))
+        short = html.escape(str(identity.get("short_name") or "RSL"))
+        title = html.escape(str(identity.get("site_title") or name))
+        logo = html.escape(str(identity.get("logo_url") or "/assets/rsl-shield.svg"), quote=True)
+        hero = html.escape(str(images.get("hero_url") or "/assets/hero.jpg"), quote=True)
+        welcome = html.escape(str(images.get("welcome_url") or "/assets/hero.jpg"), quote=True)
+        def esc(value: Any) -> str:
+            return html.escape(str(value or ""), quote=True)
+        body = re.sub(r"<title>.*?</title>", f"<title>{title}</title>", body, count=1, flags=re.I | re.S)
+        body = body.replace("/assets/rsl-shield.svg", logo).replace("/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1", logo)
+        body = body.replace("/assets/hero.jpg", hero)
+        body = body.replace("Racing Syndicate League", name).replace("RSL", short)
+        body = body.replace("https://discord.gg/fmFk8Ejf2H", esc(links.get("discord")))
+        body = body.replace("https://cash.app/", esc(links.get("cashapp")))
+        body = body.replace("https://alu.shohanlab.com/", esc(links.get("companion")))
+        defaults = {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"}
+        for key, value in nav.items():
+            if value:
+                body = body.replace(f"<span>{defaults.get(key, key)}</span>", f"<span>{html.escape(str(value))}</span>")
+        for key in ("gauntlet","tournaments","clubs"):
+            value = terms.get(key)
+            if value:
+                body = body.replace(f">{defaults[key]}<", f">{html.escape(str(value))}<")
+        css = f"""<style id="rsl-tenant-branding">
+:root{{--brand-primary:{esc(colors.get('primary') or '#25dfff')};--brand-secondary:{esc(colors.get('secondary') or '#1878ff')};--brand-accent:{esc(colors.get('accent') or '#ffd22d')};--brand-bg:{esc(colors.get('background') or '#020817')};--brand-surface:{esc(colors.get('surface') or '#061226')};--brand-text:{esc(colors.get('text') or '#f5f7ff')};--brand-muted:{esc(colors.get('muted') or '#91a5c3')};--brand-hero:url('{hero}');--brand-welcome:url('{welcome}');}}
+body{{background-color:var(--brand-bg);color:var(--brand-text)}}
+.top-nav{{border-bottom-color:var(--brand-primary)!important}}
+.top-nav nav a.active:after{{background:var(--brand-primary)!important}}
+.hero-banner{{background-image:var(--brand-hero)!important}}
+.welcome-panel:after{{background-image:linear-gradient(90deg,#06152f00,#06152f11),var(--brand-welcome)!important}}
+.hero-action-gauntlet{{background:linear-gradient(90deg,var(--brand-secondary),var(--brand-primary))!important;border-color:var(--brand-primary)!important}}
+.hero-action,.home-info-card,.home-help-card{{border-color:var(--brand-primary)!important}}
+.rsl-profile-trigger,.rsl-profile-menu{{border-color:var(--brand-primary)!important}}
+</style>"""
+        if images.get("background_url"):
+            css += f'<style id="rsl-tenant-background">body{{background-image:url("{esc(images["background_url"])}")!important;background-size:cover;background-attachment:fixed}}</style>'
+        if identity.get("favicon_url"):
+            css += f'<link rel="icon" href="{esc(identity["favicon_url"])}">'
+        if identity.get("tagline"):
+            css += f'<meta name="description" content="{html.escape(str(identity["tagline"]), quote=True)}">'
+        return body.replace("</head>", css + "</head>", 1)
+
+    async def _admin_guilds_data(self, user: Any) -> list[dict[str, Any]]:
+        rows = []
+        member_guild_ids = {str(x) for x in getattr(user, "guild_ids", [])}
+        for guild in getattr(self.bot, "guilds", []):
+            gid = str(getattr(guild, "id", ""))
+            if gid not in member_guild_ids:
+                continue
+            allowed = user.user_id in self.auth.allowed_staff_ids
+            member = guild.get_member(int(user.user_id))
+            if member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
+                allowed = True
+            if not allowed and member:
+                settings = await self.bot.db.settings.find_one({"_id": gid}) or {}
+                role_id = str(settings.get("admin_role_id", "")).strip()
+                allowed = bool(role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])))
+            if allowed:
+                rows.append({"id":gid,"name":str(getattr(guild,"name",gid)),"member_count":int(getattr(guild,"member_count",0) or 0)})
+        return rows
+
+    async def admin_page(self, request: web.Request) -> web.StreamResponse:
+        user = await self.require_user(request)
+        if not await self._admin_guilds_data(user):
+            raise web.HTTPForbidden(text="Administrator access is required for this server.")
+        return await self._page_response("admin.html", request)
+
+    async def admin_guilds(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        rows = await self._admin_guilds_data(user)
+        if not rows:
+            raise web.HTTPForbidden(text="Administrator access is required for this server.")
+        return web.json_response({"guilds":rows})
+
+    async def admin_branding(self, request: web.Request) -> web.Response:
+        _, guild_id, guild = await self.require_admin(request)
+        settings = await self.bot.db.settings.find_one({"_id":guild_id}) or {}
+        branding = self._merge_branding(settings.get("web_branding"))
+        branding["_guild"] = {"id":guild_id,"name":str(getattr(guild,"name",guild_id))}
+        return web.json_response({"branding":branding})
+
+    async def save_admin_branding(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
+        incoming = payload.get("branding", payload)
+        if not isinstance(incoming, dict):
+            raise web.HTTPBadRequest(text="Branding must be an object.")
+        clean = self._merge_branding(incoming)
+        for key in BRANDING_COLOR_KEYS:
+            value = str(clean["colors"].get(key, "")).strip()
+            if not re.fullmatch(r"#[0-9a-fA-F]{6}", value):
+                raise web.HTTPBadRequest(text=f"Invalid {key} color.")
+            clean["colors"][key] = value
+        for section, keys in (("identity",("name","short_name","site_title","tagline","favicon_url","logo_url","mobile_logo_url")),("images",BRANDING_IMAGE_KEYS),("links",BRANDING_LINK_KEYS),("navigation",tuple(DEFAULT_WEB_BRANDING["navigation"])),("terminology",tuple(DEFAULT_WEB_BRANDING["terminology"]))):
+            for key in keys:
+                value = str(clean[section].get(key,"")).strip()
+                if len(value)>1000:
+                    raise web.HTTPBadRequest(text=f"{section}.{key} is too long.")
+                if section in {"links","images"} and value and not (value.startswith("https://") or value.startswith("http://") or value.startswith("/")):
+                    raise web.HTTPBadRequest(text=f"{section}.{key} must be an http(s) URL or site-relative path.")
+                clean[section][key]=value
+        await self.bot.db.settings.update_one({"_id":guild_id},{"$set":{"web_branding":clean}},upsert=True)
+        await self._audit(guild_id,user.user_id,"Web white-label branding updated")
+        return web.json_response({"ok":True,"branding":clean,"guild_id":guild_id})
+
+    async def select_admin_guild(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        gid = str(payload.get("guild_id","")).strip()
+        rows = await self._admin_guilds_data(user)
+        if gid not in {row["id"] for row in rows}:
+            raise web.HTTPForbidden(text="You do not have administrator access to that server.")
+        response = web.json_response({"ok":True,"guild_id":gid})
+        response.set_cookie("rsl_guild_id",gid,max_age=2592000,path="/",secure=request.secure,httponly=False,samesite="Lax")
+        return response
+
+    async def upload_brand_asset(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        if request.content_length and request.content_length > 8*1024*1024:
+            raise web.HTTPRequestEntityTooLarge(max_size=8*1024*1024, actual_size=request.content_length)
+        reader = await request.multipart()
+        field = await reader.next()
+        if field is None or field.name != "file":
+            raise web.HTTPBadRequest(text="Send an image in the 'file' field.")
+        filename = Path(field.filename or "brand-image").name[:120]
+        content_type = str(field.headers.get("Content-Type","") or "")
+        if content_type not in {"image/png","image/jpeg","image/webp","image/gif","image/svg+xml","image/x-icon"}:
+            raise web.HTTPBadRequest(text="Supported image types: PNG, JPEG, WEBP, GIF, SVG and ICO.")
+        data = await field.read()
+        if not data or len(data)>8*1024*1024:
+            raise web.HTTPRequestEntityTooLarge(max_size=8*1024*1024, actual_size=len(data or b""))
+        asset_id = hashlib.sha256(f"{guild_id}:{filename}:{time.time()}".encode()+data).hexdigest()[:32]
+        await self.bot.db.web_brand_assets.insert_one({"_id":asset_id,"guild_id":guild_id,"filename":filename,"content_type":content_type,"data":data,"created_at":time.time(),"created_by":str(user.user_id)})
+        url=f"/assets/tenant/{guild_id}/{asset_id}"
+        await self._audit(guild_id,user.user_id,f"Web brand asset uploaded: {filename}")
+        return web.json_response({"ok":True,"asset_id":asset_id,"url":url,"filename":filename,"content_type":content_type})
+
+    async def serve_brand_asset(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        guild_id = str(request.match_info["guild_id"])
+        if guild_id not in {str(x) for x in getattr(user,"guild_ids",[])}:
+            raise web.HTTPForbidden(text="You are not a member of this server.")
+        asset_id = str(request.match_info["asset_id"])
+        asset = await self.bot.db.web_brand_assets.find_one({"_id":asset_id,"guild_id":guild_id})
+        if not asset:
+            raise web.HTTPNotFound(text="Brand asset not found.")
+        return web.Response(body=asset.get("data") or b"",content_type=str(asset.get("content_type") or "application/octet-stream"),headers={"Cache-Control":"public, max-age=3600"})
+
+    async def admin_diagnostics(self, request: web.Request) -> web.Response:
+        _, guild_id, guild = await self.require_admin(request)
+        checks=[{"name":"Discord connection","ok":guild is not None},{"name":"MongoDB","ok":False}]
+        try:
+            await self.bot.db.command("ping"); checks[-1]["ok"]=True
+        except Exception as exc:
+            checks[-1]["detail"]=str(exc)[:200]
+        settings = await self.bot.db.settings.find_one({"_id":guild_id}) or {}
+        checks.append({"name":"Branding configuration","ok":bool(self._merge_branding(settings.get("web_branding"))["identity"]["name"])})
+        return web.json_response({"ok":all(x["ok"] for x in checks),"checks":checks,"guild":{"id":guild_id,"name":guild.name,"members":getattr(guild,"member_count",0)}})
+
+    async def admin_audit(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        rows=[]
+        cursor=self.bot.db.system_events.find({"guild_id":guild_id}).sort("_id",-1).limit(50)
+        async for row in cursor:
+            rows.append({"id":str(row.get("_id","")),"source":str(row.get("source","")),"user_id":str(row.get("user_id","")),"action":str(row.get("action",""))})
+        return web.json_response({"events":rows})
+
+    async def admin_sync(self, request: web.Request) -> web.Response:
+        user, guild_id, guild = await self.require_admin(request)
+        tree=getattr(self.bot,"tree",None)
+        if tree is None:
+            raise web.HTTPServiceUnavailable(text="Discord command tree is unavailable.")
+        try:
+            synced=await tree.sync(guild=guild)
+        except Exception as exc:
+            log.exception("Web admin command sync failed for guild %s",guild_id)
+            raise web.HTTPBadGateway(text=f"Discord command sync failed: {exc}") from exc
+        await self._audit(guild_id,user.user_id,f"Web force sync: {len(synced)} commands")
+        return web.json_response({"ok":True,"synced":len(synced)})
+
+    async def admin_backup(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        settings=await self.bot.db.settings.find_one({"_id":guild_id}) or {}
+        backup={"exported_at":datetime.now(timezone.utc).isoformat(),"guild_id":guild_id,"settings":{k:v for k,v in settings.items() if k!="_id"},"web_branding":self._merge_branding(settings.get("web_branding"))}
+        await self._audit(guild_id,user.user_id,"Web configuration backup exported")
+        return web.json_response(backup,headers={"Content-Disposition":f'attachment; filename="guild-{guild_id}-web-config.json"'})
+
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/help", self.help_page)
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/setup", self.setup_page)
         self.app.router.add_get("/news-admin", self.news_admin_page)
+        self.app.router.add_get("/admin", self.admin_page)
         self.app.router.add_get("/player", self.player_page)
         self.app.router.add_get("/gauntlet/registration", self.gauntlet_registration_page)
         self.app.router.add_get("/gauntlet/defense", self.gauntlet_defense_page)
@@ -381,6 +614,16 @@ window.rslGoogleTranslateInit=function(){
         self.app.router.add_get("/logout", self.logout)
         self.app.router.add_get("/healthz", self.healthz)
         self.app.router.add_get("/api/me", self.me)
+        self.app.router.add_get("/api/admin/guilds", self.admin_guilds)
+        self.app.router.add_get("/api/admin/branding", self.admin_branding)
+        self.app.router.add_put("/api/admin/branding", self.save_admin_branding)
+        self.app.router.add_post("/api/admin/select-guild", self.select_admin_guild)
+        self.app.router.add_post("/api/admin/upload-asset", self.upload_brand_asset)
+        self.app.router.add_get("/assets/tenant/{guild_id}/{asset_id}", self.serve_brand_asset)
+        self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
+        self.app.router.add_get("/api/admin/audit", self.admin_audit)
+        self.app.router.add_post("/api/admin/sync", self.admin_sync)
+        self.app.router.add_get("/api/admin/backup", self.admin_backup)
         self.app.router.add_get("/api/search", self.site_search)
         self.app.router.add_get("/api/discord-stats", self.discord_stats)
         self.app.router.add_get("/api/language", self.get_language)
@@ -462,43 +705,43 @@ window.rslGoogleTranslateInit=function(){
 
     async def gauntlet_registration_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("gauntlet-registration.html")
+        return await self._page_response("gauntlet-registration.html", request)
 
     async def gauntlet_defense_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("gauntlet-defense.html")
+        return await self._page_response("gauntlet-defense.html", request)
 
     async def gauntlet_matches_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("gauntlet-matches.html")
+        return await self._page_response("gauntlet-matches.html", request)
 
     async def gauntlet_career_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("gauntlet-career.html")
+        return await self._page_response("gauntlet-career.html", request)
 
     async def tournament_registration_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("tournament-registration.html")
+        return await self._page_response("tournament-registration.html", request)
 
     async def tournament_matches_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("tournament-matches.html")
+        return await self._page_response("tournament-matches.html", request)
 
     async def tournament_results_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("tournament-results.html")
+        return await self._page_response("tournament-results.html", request)
 
     async def tournament_clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("tournament-clubs.html")
+        return await self._page_response("tournament-clubs.html", request)
 
     async def gauntlet_leaderboard_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("gauntlet-leaderboard.html")
+        return await self._page_response("gauntlet-leaderboard.html", request)
 
     async def gauntlet_references_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("gauntlet-references.html")
+        return await self._page_response("gauntlet-references.html", request)
 
     async def gauntlet_references(self, request: web.Request) -> web.Response:
         """Return references with the signed-in driver's best known run and car rating."""
@@ -663,7 +906,7 @@ window.rslGoogleTranslateInit=function(){
 
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("clubs.html")
+        return await self._page_response("clubs.html", request)
 
     async def clubs(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
@@ -986,7 +1229,7 @@ window.rslGoogleTranslateInit=function(){
 
     async def calendar_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("calendar.html")
+        return await self._page_response("calendar.html", request)
 
     async def calendar(self, request: web.Request) -> web.Response:
         """Return live Gauntlet season and tournament dates for the calendar UI."""
@@ -1070,7 +1313,7 @@ window.rslGoogleTranslateInit=function(){
 
     async def tournaments_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("tournaments.html")
+        return await self._page_response("tournaments.html", request)
 
     async def tournaments(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
@@ -1732,25 +1975,25 @@ window.rslGoogleTranslateInit=function(){
             response.del_cookie(SESSION_COOKIE, path="/")
             return response
         try:
-            return await self._page_response("index.html")
+            return await self._page_response("index.html", request)
         except Exception:
             log.exception("Unable to serve the web dashboard")
             raise web.HTTPServiceUnavailable(text="The Racing Syndicate League web dashboard is temporarily unavailable.")
 
     async def players_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
-        return await self._page_response("players.html")
+        return await self._page_response("players.html", request)
     async def setup_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
-        return await self._page_response("setup.html")
+        return await self._page_response("setup.html", request)
 
     async def news_admin_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
-        return await self._page_response("news-admin.html")
+        return await self._page_response("news-admin.html", request)
 
     async def player_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
-        return await self._page_response("player.html")
+        return await self._page_response("player.html", request)
 
     async def site_search(self, request: web.Request) -> web.Response:
         await self.require_user(request)
@@ -1904,7 +2147,23 @@ window.rslGoogleTranslateInit=function(){
 
     async def me(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "avatar": user.avatar, "staff": user.staff})
+        admin = bool(user.user_id in self.auth.allowed_staff_ids)
+        if not admin:
+            for gid in [str(x) for x in getattr(user, "guild_ids", [])]:
+                guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == gid), None)
+                if guild is None:
+                    continue
+                member = guild.get_member(int(user.user_id))
+                if member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
+                    admin = True
+                    break
+                if member:
+                    settings = await self.bot.db.settings.find_one({"_id": gid}) or {}
+                    role_id = str(settings.get("admin_role_id", "")).strip()
+                    if role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])):
+                        admin = True
+                        break
+        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "avatar": user.avatar, "staff": user.staff, "admin": admin})
 
 
     async def get_language(self, request: web.Request) -> web.Response:
@@ -2603,4 +2862,4 @@ window.rslGoogleTranslateInit=function(){
 
     async def help_page(self, request: web.Request) -> web.Response:
         """Render the public Help Center page."""
-        return await self._page_response("help.html")
+        return await self._page_response("help.html", request)
