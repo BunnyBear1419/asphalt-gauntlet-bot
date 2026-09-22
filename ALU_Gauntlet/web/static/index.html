@@ -9,7 +9,7 @@
 .home-section-heading{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}.home-section-heading h2{margin:7px 0 0;font-size:28px;line-height:1.05}.news-live{font-size:9px;color:#18e19e;border:1px solid #18e19e;padding:7px 10px;letter-spacing:.1em}.home-news-list{display:grid;gap:10px;margin-top:18px}.home-news-item{border:1px solid #174a79;background:linear-gradient(135deg,#07172f,#030a17);padding:14px 16px;cursor:pointer;transition:.18s}.home-news-item:hover{transform:translateX(3px);border-color:#25dfff;box-shadow:0 0 22px #25dfff12}.home-news-item strong{display:block;font-size:15px}.home-news-item small{display:block;color:#7f9bbb;font-size:9px;margin-top:5px}.home-news-item p{margin:7px 0 0;color:#aebdd2;font-size:10px;line-height:1.45}.news-loading,.news-empty{color:#7188a7;font-size:10px;padding:18px 0}.home-news-modal{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px}.home-news-modal[hidden]{display:none}.home-news-modal-backdrop{position:absolute;inset:0;background:#000b;backdrop-filter:blur(5px)}.home-news-modal-card{position:relative;z-index:1;max-width:780px;width:100%;max-height:82vh;overflow:auto;border:1px solid #25dfff;background:linear-gradient(145deg,#071936,#020916);padding:34px;box-shadow:0 0 50px #25dfff18}.home-news-modal-card h2{font-size:34px;margin:8px 0}.home-news-modal-card small{color:#8198b5}.home-news-modal-card #news-modal-body{margin-top:22px;color:#c6d2e3;line-height:1.7;white-space:pre-wrap}.home-news-close{position:absolute;right:12px;top:8px;border:0;background:transparent;color:#fff;font-size:28px;cursor:pointer}
 .home-page{min-height:100vh;background:radial-gradient(circle at 70% 10%,#11194a 0,#020817 45%,#01050d 100%)}
 .home-main{max-width:1500px;margin:0 auto;padding:112px 28px 48px}
-.home-hero{position:relative;border:1px solid #214d78;overflow:hidden;background:#030b19;aspect-ratio:2170/650;box-shadow:0 0 40px #168cff12}
+.home-hero{position:relative;border:1px solid #214d78;overflow:hidden;background:#030b19;aspect-ratio:2170/725;box-shadow:0 0 40px #168cff12}
 .home-hero{width:100%;max-width:none;margin-left:auto;margin-right:auto}
 .home-hero>img{width:100%;height:100%;object-fit:cover;display:block}
 .hero-actions{position:absolute;z-index:3;left:5.05%;top:84%;display:flex;gap:1.15%;width:40.4%;height:8.2%}
@@ -349,62 +349,21 @@
 .discord-cta p{margin:0;color:#9db0c8;font-size:12px;line-height:1.5}
 .discord-cta-button{flex:0 0 auto;padding:12px 18px;border:1px solid #5865f2;border-radius:7px;background:#5865f2;color:#fff;font-weight:800;font-size:12px;letter-spacing:.06em}
 @media(max-width:760px){.top-cashapp-link{left:108px;width:34px;height:34px}.top-cashapp-link span{font-size:20px}.top-discord-link{left:68px;width:34px;height:34px}.top-discord-link svg{width:19px;height:19px}.discord-cta{gap:14px;padding:18px}.discord-cta-icon{width:46px;height:46px;flex-basis:46px}.discord-cta-icon svg{width:27px;height:27px}.discord-cta h2{font-size:20px}.discord-cta-button{padding:10px 12px;font-size:10px}}
-
-/* HOME LANDING REFINEMENT */
-.home-main{max-width:none!important;width:100%!important;box-sizing:border-box!important;margin:0!important;padding:10px 28px 0!important}
-.home-hero{width:calc(100% + 56px)!important;max-width:none!important;margin-left:-28px!important;margin-right:-28px!important;aspect-ratio:2170/544!important;border-radius:0!important;border-left:0!important;border-right:0!important}
-.home-hero-media,.home-hero-media>img{width:100%!important;height:100%!important;display:block!important}
-.home-hero-media>img{object-fit:cover!important}
-.hero-actions{display:none!important}
-.discord-cta{
-  display:flex!important;align-items:center!important;gap:20px!important;
-  width:100%!important;box-sizing:border-box!important;margin:18px 0 0!important;
-  min-height:86px!important;padding:16px 20px!important;border:1px solid #5865f2!important;
-  border-radius:12px!important;background:linear-gradient(100deg,#101a3b,#0a1a2d 55%,#07152a)!important;
-}
-.discord-cta-copy{flex:1 1 auto!important;min-width:180px!important}
-.discord-cta h2{margin:0 0 4px!important;font-size:23px!important}
-.discord-cta p{margin:0!important}
-.discord-cta-stat{
-  flex:0 0 118px!important;min-width:118px!important;padding:9px 14px!important;
-  border-left:1px solid #29466d!important;display:flex!important;flex-direction:column!important;
-}
-.discord-stat-label{font-size:8px!important;letter-spacing:.1em!important;color:#91a9c4!important;font-weight:800!important}
-.discord-cta-stat strong{font-size:22px!important;line-height:1.1!important;color:#fff!important;margin-top:4px!important}
-.discord-cta-button{white-space:nowrap!important}
-.home-help-card{width:calc(100% + 56px)!important;margin-left:-28px!important;margin-right:-28px!important;border-radius:0!important;min-height:150px!important}
-.home-help-content{justify-content:center!important;text-align:center!important}
-.home-help-copy{text-align:center!important}
-@media(max-width:760px){
- .home-main{padding:10px 14px 0!important}
- .home-hero{width:calc(100% + 28px)!important;margin-left:-14px!important;margin-right:-14px!important;aspect-ratio:2170/620!important}
- .discord-cta{flex-wrap:wrap!important;gap:12px!important;padding:16px!important}
- .discord-cta-copy{flex:1 1 100%!important}
- .discord-cta-stat{flex:1 1 120px!important}
- .discord-cta-button{flex:1 1 100%!important;text-align:center!important}
- .home-help-card{width:calc(100% + 28px)!important;margin-left:-14px!important;margin-right:-14px!important}
-}
-
 </style>
 </head>
 <body class="home-page">
 <header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a><a class="top-cashapp-link" href="https://cash.app/" target="_blank" rel="noopener noreferrer" aria-label="Cash App" title="Cash App"><span aria-hidden="true">$</span></a><a class="top-discord-link" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join our Discord" title="Join our Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></a><nav aria-label="Primary navigation"><a href="/"><img class="nav-icon-img" src="/assets/icons/home.svg" alt=""><span>Home</span></a><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.svg" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.svg" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.svg" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><img class="nav-icon-img" src="/assets/icons/matches.svg" alt=""><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.svg" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.svg" alt=""><span>References</span></a></div></details><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.svg" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.svg" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.svg" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.svg" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><img class="nav-icon-img" src="/assets/icons/results.svg" alt=""><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.svg" alt=""><span>Club Tournaments</span></a></div></details><a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.svg" alt=""><span>Clubs</span></a><a href="/help"><img class="nav-icon-img" src="/assets/icons/help.svg" alt=""><span>Help</span></a><a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.svg" alt=""><span>Companion</span></a></nav></header>
 
 <main class="home-main">
-
+<a class="discord-cta" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer"><div class="discord-cta-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></div><div class="discord-cta-copy"><span class="discord-cta-kicker">THE ACTION IS ON DISCORD</span><h2>Join the RSL Discord</h2><p>Race, compete, organize matches, join tournaments, build your club and stay connected with the community.</p></div><span class="discord-cta-button">JOIN DISCORD →</span></a>
 
 <section class="home-hero" aria-label="Racing Syndicate League">
-<div class="home-hero-media"><img src="/static/assets/home-hero-rsl.jpeg?v=20260921-rslhero-jpeg1" alt="Racing Syndicate League — Race, Compete, Unite"></div>
-
+<picture class="home-hero-media"><source srcset="/static/assets/home-hero-rsl.jpeg?v=20260921-rslhero-jpeg1" type="image/jpeg"><img src="/static/assets/home-hero-rsl.svg?v=20260921-rslhero1" alt="Racing Syndicate League — Race, Compete, Unite"></picture>
+<div class="hero-actions" aria-label="Featured actions">
+<a class="hero-action hero-action-gauntlet" href="/gauntlet/registration">JOIN GAUNTLET →</a>
+<a class="hero-action hero-action-tournaments" href="/tournaments">VIEW TOURNAMENTS →</a>
+</div>
 </section>
-<a class="discord-cta" id="discord-community" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join the RSL Discord">
-  <div class="discord-cta-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8 2 1.8 2-.8 2-1.8 2Z"/></svg></div>
-  <div class="discord-cta-copy"><span class="discord-cta-kicker">RACING SYNDICATE LEAGUE</span><h2>Join the RSL Discord</h2><p>Race, compete, organize matches, join tournaments, build your club and stay connected with the community.</p></div>
-  <div class="discord-cta-stat"><span class="discord-stat-label">ONLINE MEMBERS</span><strong id="discord-online-members">—</strong></div>
-  <div class="discord-cta-stat"><span class="discord-stat-label">SERVER MEMBERS</span><strong id="discord-server-members">—</strong></div>
-  <span class="discord-cta-button">JOIN DISCORD →</span>
-</a>
-
 
 
 
@@ -447,19 +406,6 @@
   <span>™ RSL 2026</span>
 </footer>
 </main>
-<script>
-(async()=>{
-  try{
-    const r=await fetch("/api/discord-stats",{credentials:"same-origin"});
-    if(!r.ok)return;
-    const d=await r.json();
-    const online=document.getElementById("discord-online-members");
-    const total=document.getElementById("discord-server-members");
-    if(online && Number.isFinite(Number(d.online_members))) online.textContent=Number(d.online_members).toLocaleString();
-    if(total && Number.isFinite(Number(d.server_members))) total.textContent=Number(d.server_members).toLocaleString();
-  }catch(_){}
-})();
-</script>
 <script src="/static/home-news.js?v=20260920-1"></script>
 </body>
 </html>
