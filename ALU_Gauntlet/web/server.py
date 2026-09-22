@@ -259,8 +259,10 @@ window.rslGoogleTranslateInit=function(){
   <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
 </div></details>'''
         if companion_marker in body:
-            body = body.replace(companion_marker, companion_markup, 1)
-        if '<a href="/calendar"' not in body and "</nav>" in body:
+            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a>'
+            replacement = (calendar_markup if '<a href="/calendar"' not in body else '') + companion_markup
+            body = body.replace(companion_marker, replacement, 1)
+        elif '<a href="/calendar"' not in body and "</nav>" in body:
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.svg" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + "</nav>", 1)
 
