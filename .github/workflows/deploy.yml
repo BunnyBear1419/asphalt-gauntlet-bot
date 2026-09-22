@@ -272,14 +272,14 @@ jobs:
               ok=false
             fi
 
-            for asset in hero-4k-final.svg gauntlet-4k-final.svg garage-4k-final.svg competition-4k-final.svg profile-settings-4k-final.svg; do
+            for asset in rsl-shield.png rsl-top-logo.png rsl-footer-mark.png; do
               ASSET_HTTP=$(curl -sS -o "asset-$asset" -w "%{http_code}" "https://asph.discloud.app/assets/$asset" || true)
-              echo "Artwork $asset HTTP status: $ASSET_HTTP"
+              echo "PNG artwork $asset HTTP status: $ASSET_HTTP"
               if [ "$ASSET_HTTP" != "200" ]; then
-                echo "Dashboard artwork asset failed: $asset"
+                echo "PNG artwork asset failed: $asset"
                 ok=false
-              elif ! grep -q '<svg' "asset-$asset"; then
-                echo "Dashboard artwork asset is not valid SVG: $asset"
+              elif ! file "asset-$asset" | grep -qi 'PNG image'; then
+                echo "Asset is not a valid PNG: $asset"
                 ok=false
               fi
             done
