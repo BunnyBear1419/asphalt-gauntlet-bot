@@ -9,7 +9,7 @@ STATIC=WEB/"static"
 def test_web_runtime_files_exist():
     for name in ("server.py","auth.py","players.py"):
         assert (WEB/name).is_file(), name
-    for name in ("index.html","player.html","players.html","setup.html","app.css","app.js","player.js","setup.js","racing.svg"):
+    for name in ("index.html","player.html","players.html","setup.html","app.css","app.js","player.js","setup.js","racing.png"):
         assert (STATIC/name).is_file(), name
 
 def test_web_python_modules_parse():
@@ -68,7 +68,7 @@ def test_dashboard_image_assets_are_served_with_image_mime_types():
     assert 'self.app.router.add_get("/assets/{filename}", self.asset)' in source
     assert 'mimetypes.guess_type(path.name)[0]' in source
     assets=WEB/"static"/"assets"
-    expected={"hero-4k-final.svg","gauntlet-4k-final.svg","garage-4k-final.svg","competition-4k-final.svg","profile-settings-4k-final.svg","home-reference.svg"}
+    expected={"rsl-shield.png","rsl-top-logo.png","rsl-footer-mark.png"}
     assert expected.issubset({p.name for p in assets.iterdir()})
 
 
