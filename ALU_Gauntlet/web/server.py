@@ -382,6 +382,15 @@ window.rslGoogleTranslateInit=function(){
             values = raw.get(section)
             if isinstance(values, dict):
                 merged[section].update({str(k): v for k, v in values.items()})
+
+        # Website branding is PNG-only. Older guild records may still contain
+        # legacy .svg asset paths, so normalize those paths when branding is
+        # loaded. This also makes the Admin Tools fields immediately show the
+        # current PNG paths and prevents old SVG values from being re-saved.
+        for section in ("identity", "images"):
+            for key, value in list(merged[section].items()):
+                if isinstance(value, str) and value.lower().endswith(".svg"):
+                    merged[section][key] = value[:-4] + ".png"
         return merged
 
     async def _branding_for_request(self, request: web.Request) -> dict[str, Any]:
