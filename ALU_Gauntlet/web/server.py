@@ -2009,6 +2009,20 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPServiceUnavailable(text="The Racing Syndicate League web dashboard is temporarily unavailable.")
 
     async def players_page(self, request: web.Request) -> web.StreamResponse:
+        # The Players page is staff-only, but the page URL itself does not need
+        # to force users to manually append ?guild_id=. Resolve the selected
+        # admin server from the existing guild cookie, or fall back to the
+        # first server where the signed-in user has admin access.
+        if not request.query.get("guild_id", "").strip():
+            cookie_guild_id = request.cookies.get("rsl_guild_id", "").strip()
+            if cookie_guild_id:
+                request = request.clone(rel_url=request.rel_url.with_query({**request.query, "guild_id": cookie_guild_id}))
+            else:
+                user = await self.require_user(request)
+                rows = await self._admin_guilds_data(user)
+                if not rows:
+                    raise web.HTTPForbidden(text="Administrator access is required for this server.")
+                request = request.clone(rel_url=request.rel_url.with_query({**request.query, "guild_id": rows[0]["id"]}))
         await self.require_admin(request)
         return await self._page_response("players.html", request)
     async def setup_page(self, request: web.Request) -> web.StreamResponse:
