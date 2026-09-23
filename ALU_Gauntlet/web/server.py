@@ -373,7 +373,15 @@ window.rslGoogleTranslateInit=function(){
     <div class="rsl-footer-copyline">© 2026 {footer_name}™ <span aria-hidden="true"> / </span> {footer_tagline}</div>
   </div>
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
-     <div class="rsl-footer-legal-links"></div>
+     <div class="rsl-footer-legal-links">
+       <a href="/legal">Legal Center</a><span aria-hidden="true">|</span>
+       <a href="https://cash.app/" target="_blank" rel="noopener noreferrer">Creator Donation</a><span aria-hidden="true">|</span>
+       <a href="/legal#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
+       <a href="/legal#security">Security</a><span aria-hidden="true">|</span>
+       <a href="/legal#accessibility">Website Accessibility</a><span aria-hidden="true">|</span>
+       <a href="/legal#cookies">Manage Cookies</a><span aria-hidden="true">|</span>
+       <a href="/legal#privacy-choices"><span class="rsl-footer-privacy-icon" aria-hidden="true">✓×</span> Your Privacy Choices</a>
+     </div>
    </nav>
 </footer>
 '''
