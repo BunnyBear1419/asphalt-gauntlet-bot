@@ -808,9 +808,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     "club_url": (1400, 800),
                     "login_url": (1400, 800),
                     "background_url": (1920, 1080),
-                    "discord_icon": (38, 38),
-                    "cashapp_icon": (38, 38),
-                    "custom_icon": (38, 38),
+                    "discord_icon": (36, 36),
+                    "cashapp_icon": (36, 36),
+                    "custom_icon": (36, 36),
                 }
                 target_size = target_sizes.get(upload_target)
                 if target_size:
