@@ -1679,3 +1679,87 @@ body:has(.legal-main) .rsl-global-help-card{width:100%;max-width:none;box-sizing
   .rsl-global-help-card .home-help-icon{width:86px;height:86px;min-width:86px}
   .rsl-global-help-card .home-help-icon svg{width:56px;height:56px}
 }
+
+
+/* Canonical site-wide Help Center card. Standalone so Home-card styles cannot create duplicate/broken layout. */
+.rsl-global-help-card{
+  display:block!important;
+  position:relative!important;
+  width:100%!important;
+  max-width:none!important;
+  min-height:170px!important;
+  box-sizing:border-box!important;
+  margin:24px 0 30px!important;
+  padding:30px!important;
+  border:1px solid #168cff!important;
+  border-radius:0!important;
+  background:linear-gradient(145deg,#071a35,#020916)!important;
+  text-decoration:none!important;
+  color:inherit!important;
+  text-align:center!important;
+  overflow:hidden!important;
+  box-shadow:0 14px 40px #0008,0 0 24px #168cff0d!important;
+}
+.rsl-global-help-card:before{
+  content:""!important;
+  position:absolute!important;
+  left:20%!important;
+  right:20%!important;
+  top:0!important;
+  height:3px!important;
+  background:linear-gradient(90deg,transparent,#16cfff,transparent)!important;
+}
+.rsl-global-help-card:after{
+  content:""!important;
+  position:absolute!important;
+  right:0!important;
+  bottom:0!important;
+  width:54px!important;
+  height:4px!important;
+  background:#16cfff!important;
+  box-shadow:-18px -18px 0 #16cfff55!important;
+}
+.rsl-global-help-card .home-help-content{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:28px!important;
+  width:100%!important;
+  max-width:1000px!important;
+  margin:0 auto!important;
+  text-align:left!important;
+}
+.rsl-global-help-card .home-help-icon{
+  width:108px!important;
+  height:108px!important;
+  min-width:108px!important;
+  margin:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:1px solid #168cff!important;
+  border-radius:50%!important;
+  background:linear-gradient(145deg,#061b35,#020a16)!important;
+  box-shadow:0 0 28px #168cff28!important;
+  position:relative!important;
+}
+.rsl-global-help-card .home-help-icon svg{
+  width:64px!important;
+  height:64px!important;
+  fill:none!important;
+  stroke:#25dfff!important;
+  stroke-width:2.5!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+.rsl-global-help-card .home-help-copy{min-width:0!important;text-align:left!important}
+.rsl-global-help-card .home-help-copy h2{margin:8px 0 10px!important;color:#fff!important;font-size:30px!important}
+.rsl-global-help-card .home-help-copy p{max-width:850px!important;margin:0!important;color:#aebdd2!important;line-height:1.6!important}
+.rsl-global-help-card .home-help-arrow{display:inline-block!important;margin-top:18px!important;color:#25dfff!important;font-weight:800!important;letter-spacing:.08em!important}
+@media(max-width:760px){
+  .rsl-global-help-card{padding:22px!important;min-height:140px!important}
+  .rsl-global-help-card .home-help-content{gap:18px!important}
+  .rsl-global-help-card .home-help-icon{width:86px!important;height:86px!important;min-width:86px!important}
+  .rsl-global-help-card .home-help-icon svg{width:56px!important;height:56px!important}
+  .rsl-global-help-card .home-help-copy h2{font-size:24px!important}
+}
