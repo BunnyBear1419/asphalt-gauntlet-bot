@@ -225,6 +225,15 @@ class WebControlCenter:
                         "description": seo_description,
                         "publisher": {"@id": website_url + "#organization"},
                     },
+                    {
+                        "@type": "WebPage",
+                        "@id": website_url + canonical_path + "#webpage",
+                        "url": website_url + canonical_path,
+                        "name": seo_title,
+                        "description": seo_description,
+                        "isPartOf": {"@id": website_url + "#website"},
+                        "about": {"@id": website_url + "#organization"},
+                    },
                 ],
             }
             # Add BreadcrumbList structured data for public Gauntlet and Tournament subpages.
