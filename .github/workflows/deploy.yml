@@ -473,7 +473,7 @@ jobs:
           echo "Rollback health verification failed."
           exit 1
 
-      - name: Mark deployment recovered after rollback
+      - name: Mark deployment failed after successful recovery
         if: steps.smoke.outcome == 'failure'
         run: |
           echo "Deployment smoke test failed, but the previous known-good revision was restored and verified successfully."
