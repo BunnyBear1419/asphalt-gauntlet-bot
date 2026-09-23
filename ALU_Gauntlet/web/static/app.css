@@ -1921,24 +1921,7 @@ body:has(.legal-main) .rsl-global-discord-cta{margin-top:15px!important}
 body:has(.legal-main) .rsl-global-discord-cta{margin-bottom:10px!important}
 
 
-/* Final 38x38 navigation icon sizing */
-.nav-icon-img{
-  width:38px!important;
-  height:38px!important;
-  min-width:38px!important;
-  min-height:38px!important;
-  max-width:38px!important;
-  max-height:38px!important;
-  object-fit:contain!important;
-  display:block!important;
-  flex:0 0 38px!important;
-}
-.top-nav-dropdown-menu .nav-icon-img{
-  width:38px!important;
-  height:38px!important;
-  min-width:38px!important;
-  min-height:38px!important;
-  max-width:38px!important;
-  max-height:38px!important;
-  flex:0 0 38px!important;
-}
+
+/* Header social icons */
+.top-discord-link img,.top-cashapp-link img{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important;max-width:38px!important;max-height:38px!important;object-fit:contain!important;display:block!important}
+.top-discord-link svg{width:38px!important;height:38px!important}
