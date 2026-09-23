@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Private/account/admin/API areas
+Disallow: /admin
+Disallow: /news-admin
+Disallow: /setup
+Disallow: /player
+Disallow: /players
+Disallow: /api/
+Disallow: /assets/tenant/
+
+Sitemap: https://asph.discloud.app/sitemap.xml
