@@ -770,6 +770,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         data = await field.read()
         if not data or len(data) > 8 * 1024 * 1024:
             raise web.HTTPRequestEntityTooLarge(max_size=8 * 1024 * 1024, actual_size=len(data or b""))
+        # Some multipart readers can return a bytearray; Motor/PyMongo
+        # requires BSON encodable bytes for binary document fields.
+        data = bytes(data)
+        # Validate the PNG signature rather than trusting the browser MIME type.
+        if data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+            raise web.HTTPBadRequest(text="The selected file is not a valid PNG image.")
         asset_id = hashlib.sha256(f"{guild_id}:{filename}:{time.time()}".encode() + data).hexdigest()[:32]
         document = {
             "_id": asset_id,
