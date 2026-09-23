@@ -702,7 +702,12 @@ window.rslGoogleTranslateInit=function(){
         return merged
 
     async def _branding_for_request(self, request: web.Request) -> dict[str, Any]:
-        user = await self.require_user(request)
+        # Public pages must be renderable without a Discord session. If a
+        # visitor is signed in, preserve the existing guild-specific branding;
+        # otherwise fall back to the public RSL defaults.
+        user = await self.auth.get_session(request)
+        if user is None:
+            return self._merge_branding({})
         memberships = {str(x) for x in getattr(user, "guild_ids", [])}
         candidates = [request.query.get("guild_id", "").strip(), request.cookies.get("rsl_guild_id", "").strip(), *memberships]
         chosen = next((gid for gid in candidates if gid in memberships and any(str(getattr(g, "id", "")) == gid for g in getattr(self.bot, "guilds", []))), None)
@@ -2461,18 +2466,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return user
 
     async def index(self, request: web.Request) -> web.StreamResponse:
-        # The homepage is the most important production route. If a stale or
-        # malformed web session ever causes an unexpected authentication error,
-        # recover to the login page instead of exposing aiohttp's generic 500.
-        try:
-            await self.require_user(request)
-        except web.HTTPException:
-            raise
-        except Exception:
-            log.exception("Unexpected web authentication failure on /")
-            response = web.HTTPFound("/login")
-            response.del_cookie(SESSION_COOKIE, path="/")
-            return response
+        # The homepage is public. Discord authentication is only required when
+        # visitors enter account-specific, player, tournament, or staff areas.
         try:
             return await self._page_response("index.html", request)
         except Exception:
