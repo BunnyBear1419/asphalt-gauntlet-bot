@@ -232,6 +232,7 @@ function showSection(name){
 if(location.hash) showSection(location.hash.slice(1));
 function setStatus(id,msg,ok=true){const el=$(id);if(!el)return;el.textContent=msg;el.className="admin-status "+(ok?"ok":"error");}
 function q(){return guildId?"?guild_id="+encodeURIComponent(guildId):""}
+function uploadUrl(target){return "/api/admin/upload-asset"+q()+(q()?"&":"?")+"target="+encodeURIComponent(target)}
 async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origin",...opts});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){d={}}if(!r.ok)throw new Error(d.error||raw||"Request failed");return d}
 async function loadGuilds(){
  const d=await api("/api/admin/guilds"); const select=$("guild-select");
@@ -294,7 +295,7 @@ function renderCustomLinks(){
  }).join("");
  list.querySelectorAll("[data-remove-custom]").forEach(btn=>btn.onclick=()=>{branding.links.custom.splice(Number(btn.dataset.removeCustom),1);renderCustomLinks()});
  list.querySelectorAll("[data-upload-custom]").forEach(btn=>btn.onclick=()=>list.querySelector('[data-custom-file="'+btn.dataset.uploadCustom+'"]').click());
- list.querySelectorAll("[data-custom-file]").forEach(input=>input.onchange=async()=>{const index=Number(input.dataset.customFile),file=input.files[0];if(!file)return;try{const fd=new FormData();fd.append("file",file);const d=await api(" /api/admin/upload-asset".trim()+q()+"&target=custom_icon",{method:"POST",body:fd});branding.links.custom[index].icon=d.url;renderCustomLinks();setStatus("links-status","Icon uploaded and converted to PNG. Save Links to keep the new footer link.");}catch(e){setStatus("links-status",e.message,false)}});
+ list.querySelectorAll("[data-custom-file]").forEach(input=>input.onchange=async()=>{const index=Number(input.dataset.customFile),file=input.files[0];if(!file)return;try{const fd=new FormData();fd.append("file",file);const d=await api(uploadUrl("custom_icon"),{method:"POST",body:fd});branding.links.custom[index].icon=d.url;renderCustomLinks();setStatus("links-status","Icon uploaded and converted to PNG. Save Links to keep the new footer link.");}catch(e){setStatus("links-status",e.message,false)}});
 }
 function collectCustomLinks(){
  const list=$("custom-links-list"); const rows=[]; if(!list)return rows;
@@ -304,7 +305,7 @@ function collectCustomLinks(){
 function addCustomLink(){if(!branding.links.custom)branding.links.custom=[];if(branding.links.custom.length>=7){setStatus("links-status","You can add up to 7 footer links.",false);return}branding.links.custom.push({name:"",url:"",icon:"",enabled:true});renderCustomLinks();}
 $("add-footer-link").onclick=addCustomLink;
 async function uploadSpecialIcon(kind){$("file-"+kind+"-icon")?.click()}
-async function handleSpecialIcon(kind){const input=$("file-"+kind+"-icon"),file=input?.files?.[0];if(!file)return;try{const fd=new FormData();fd.append("file",file);const d=await api("/api/admin/upload-asset"+q()+"&target="+encodeURIComponent(kind+"_icon"),{method:"POST",body:fd});setVal("link-"+kind+"_icon",d.url);setStatus("links-status",(kind==="discord"?"Discord":"Donations")+" icon uploaded. Save Links to keep it.");}catch(e){setStatus("links-status",e.message,false)}}
+async function handleSpecialIcon(kind){const input=$("file-"+kind+"-icon"),file=input?.files?.[0];if(!file)return;try{const fd=new FormData();fd.append("file",file);const d=await api(uploadUrl(kind+"_icon"),{method:"POST",body:fd});setVal("link-"+kind+"_icon",d.url);setStatus("links-status",(kind==="discord"?"Discord":"Donations")+" icon uploaded. Save Links to keep it.");}catch(e){setStatus("links-status",e.message,false)}}
 $("upload-discord-icon").onclick=()=>uploadSpecialIcon("discord");
 $("upload-cashapp-icon").onclick=()=>uploadSpecialIcon("cashapp");
 $("file-discord-icon").onchange=()=>handleSpecialIcon("discord");
@@ -315,7 +316,7 @@ $("upload-asset").onclick=async()=>{
   const file=$("asset-file").files[0];if(!file)throw new Error("Choose an image first.");
   const fd=new FormData();fd.append("file",file);
   const target=$("asset-target").value;
-  const d=await api("/api/admin/upload-asset"+q()+"&target="+encodeURIComponent(target),{method:"POST",body:fd});
+  const d=await api(uploadUrl(target),{method:"POST",body:fd});
   if(target==="logo_url"||target==="favicon_url"){const k=target==="logo_url"?"identity-logo_url":"identity-favicon_url";setVal(k,d.url)}else setVal("image-"+target,d.url);
   branding=buildBranding();await api("/api/admin/branding"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({branding})});
   await loadBranding();setStatus("upload-status","Uploaded and assigned "+target+".");
