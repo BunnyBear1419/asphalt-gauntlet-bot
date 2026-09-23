@@ -778,7 +778,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
         original_name = Path(field.filename or "brand-image").name[:120]
         content_type = str(field.headers.get("Content-Type", "") or "").lower().split(";", 1)[0]
-        upload_target = str((await request.post()).get("target") or "").strip().lower()
+        upload_target = str(request.query.get("target") or "").strip().lower()
         data = await field.read()
         if not data:
             raise web.HTTPBadRequest(text="The selected image is empty.")
