@@ -362,11 +362,11 @@ window.rslGoogleTranslateInit=function(){
   </div>
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
     <a href="/legal">Legal Center</a><span aria-hidden="true">|</span>
-    <a href="/help#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
-    <a href="/help#security">Security</a><span aria-hidden="true">|</span>
-    <a href="/help#accessibility">Website Accessibility</a><span aria-hidden="true">|</span>
-    <a href="/help#cookies">Manage Cookies</a><span aria-hidden="true">|</span>
-    <a href="/help#privacy-choices"><span class="rsl-footer-privacy-icon" aria-hidden="true">✓×</span> Your Privacy Choices</a>
+    <a href="/legal#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
+    <a href="/legal#security">Security</a><span aria-hidden="true">|</span>
+    <a href="/legal#accessibility">Website Accessibility</a><span aria-hidden="true">|</span>
+    <a href="/legal#cookies">Manage Cookies</a><span aria-hidden="true">|</span>
+    <a href="/legal#privacy-choices"><span class="rsl-footer-privacy-icon" aria-hidden="true">✓×</span> Your Privacy Choices</a>
   </nav>
 </footer>
 '''
@@ -2113,7 +2113,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             return web.json_response({"results": []})
         terms = [x.lower() for x in re.findall(r"[\w]+", query) if len(x) > 1][:8]
         pages = [
-            ("Home", "/", "index.html"), ("Help Center", "/help", "help.html"),
+            ("Home", "/", "index.html"), ("Help Center", "/help", "help.html"), ("Legal Center", "/legal", "legal.html"),
             ("Player", "/player", "player.html"), ("Calendar", "/calendar", "calendar.html"),
             ("Clubs", "/clubs", "clubs.html"), ("Tournaments", "/tournaments", "tournaments.html"),
             ("Tournament Registration", "/tournaments/registration", "tournament-registration.html"),
