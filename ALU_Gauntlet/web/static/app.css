@@ -1429,6 +1429,12 @@ body{top:0!important}
   stroke-linecap:round;
   stroke-linejoin:round;
 }
+.rsl-footer-custom-social img{
+  width:26px;
+  height:26px;
+  object-fit:contain;
+  display:block;
+}
 .rsl-footer-social>span{
   font-family:Arial,Helvetica,sans-serif;
   font-size:24px;
