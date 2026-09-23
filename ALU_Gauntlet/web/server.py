@@ -47,13 +47,13 @@ DEFAULT_WEB_BRANDING = {
     "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Compete. Race. Dominate.","favicon_url":"/assets/rsl-favicon.png?v=20260922-favicon1","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
     "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
     "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
-    "links": {"discord":"https://discord.gg/fmFk8Ejf2H","website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","cashapp":"https://cash.app/","support":"","companion":"https://alu.shohanlab.com/"},
+    "links": {"site_logo":"/","discord":"https://discord.gg/fmFk8Ejf2H","website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","cashapp":"https://cash.app/","support":"","companion":"https://alu.shohanlab.com/","custom":[]},
     "navigation": {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"},
     "terminology": {"gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","players":"Drivers","season":"Season","matches":"Matches","support":"Help Center"},
 }
 BRANDING_COLOR_KEYS = ("primary","secondary","accent","background","surface","text","muted")
 BRANDING_IMAGE_KEYS = ("hero_url","welcome_url","gauntlet_url","tournament_url","club_url","login_url","background_url")
-BRANDING_LINK_KEYS = ("discord","website","youtube","twitch","facebook","instagram","x","cashapp","support","companion")
+BRANDING_LINK_KEYS = ("site_logo","discord","website","youtube","twitch","facebook","instagram","x","cashapp","support","companion")
 
 
 class WebControlCenter:
@@ -110,7 +110,8 @@ class WebControlCenter:
 
         # Normalize the shared top-left header controls so every page matches Home.
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
-        canonical_brand = '<a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a>'
+        site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
+        canonical_brand = f'<a class="top-brand top-logo-mark" href="{site_logo_href}" aria-label="{html.escape(str((branding.get("identity") or {}).get("name") or "Racing Syndicate League"), quote=True)} home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a>'
         canonical_discord = '<a class="top-discord-link" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join our Discord" title="Join our Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></a>'
         canonical_cashapp = '<a class="top-cashapp-link" href="https://cash.app/" target="_blank" rel="noopener noreferrer" aria-label="Cash App" title="Cash App"><span aria-hidden="true">$</span></a>'
         brand_re = re.compile(r'<a class="top-brand top-logo-mark"[^>]*>.*?</a>', re.S)
@@ -359,6 +360,23 @@ window.rslGoogleTranslateInit=function(){
             else:
                 social_items.append(f'<span class="rsl-footer-social is-placeholder" aria-label="{social_labels[key]}" title="{social_labels[key]}">{social_svgs[key]}</span>')
         social_markup = "".join(social_items)
+        custom_footer_items = []
+        custom_links = footer_links.get("custom") if isinstance(footer_links.get("custom"), list) else []
+        for index, item in enumerate(custom_links[:7], 1):
+            if not isinstance(item, dict):
+                continue
+            href = str(item.get("url") or "").strip()
+            name = str(item.get("name") or f"Link {index}").strip()[:80]
+            icon = str(item.get("icon") or "").strip()
+            if not href:
+                continue
+            safe_href = html.escape(href, quote=True)
+            safe_name = html.escape(name, quote=True)
+            icon_markup = f'<img src="{html.escape(icon, quote=True)}" alt="" aria-hidden="true">' if icon else '<span aria-hidden="true">↗</span>'
+            custom_footer_items.append(f'<a class="rsl-footer-social rsl-footer-custom-social" href="{safe_href}" target="_blank" rel="noopener noreferrer" aria-label="{safe_name}" title="{safe_name}">{icon_markup}</a>')
+        custom_social_markup = "".join(custom_footer_items)
+        if custom_social_markup:
+            social_markup += custom_social_markup
         footer_markup = f'''
 <footer class="rsl-footer" aria-label="{footer_name} footer">
   <div class="rsl-footer-social-row">
@@ -504,6 +522,11 @@ window.rslGoogleTranslateInit=function(){
         # legacy .svg asset paths, so normalize those paths when branding is
         # loaded. This also makes the Admin Tools fields immediately show the
         # current PNG paths and prevents old SVG values from being re-saved.
+        custom_links = merged["links"].get("custom")
+        if not isinstance(custom_links, list):
+            merged["links"]["custom"] = []
+        else:
+            merged["links"]["custom"] = [dict(item) for item in custom_links[:7] if isinstance(item, dict)]
         for section in ("identity", "images"):
             for key, value in list(merged[section].items()):
                 if isinstance(value, str) and value.lower().endswith(".svg"):
@@ -652,6 +675,32 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 if section in {"images","identity"} and key.endswith("_url") and value and value.startswith("/") and not value.lower().endswith(".png"):
                     raise web.HTTPBadRequest(text=f"{section}.{key} must use a PNG asset.")
                 clean[section][key]=value
+        custom = clean["links"].get("custom")
+        if not isinstance(custom, list):
+            custom = []
+        if len(custom) > 7:
+            raise web.HTTPBadRequest(text="A maximum of 7 custom footer links is allowed.")
+        clean_custom = []
+        for item in custom:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name","")).strip()[:80]
+            url = str(item.get("url","")).strip()[:1000]
+            icon = str(item.get("icon","")).strip()[:1000]
+            if url and not (url.startswith("https://") or url.startswith("http://") or url.startswith("/")):
+                raise web.HTTPBadRequest(text="Custom footer link URLs must be http(s) or site-relative paths.")
+            if icon and not (icon.startswith("https://") or icon.startswith("http://") or icon.startswith("/")):
+                raise web.HTTPBadRequest(text="Custom footer icon URLs must be http(s) or site-relative paths.")
+            if icon.startswith("/") and not icon.lower().endswith(".png"):
+                raise web.HTTPBadRequest(text="Custom footer icons must use PNG assets.")
+            if not name and not url and not icon:
+                continue
+            if not name:
+                name = "Footer Link"
+            if not url:
+                raise web.HTTPBadRequest(text="Each custom footer link needs a URL.")
+            clean_custom.append({"name":name,"url":url,"icon":icon})
+        clean["links"]["custom"] = clean_custom
         await self.bot.db.settings.update_one({"_id":guild_id},{"$set":{"web_branding":clean}},upsert=True)
         await self._audit(guild_id,user.user_id,"Web white-label branding updated")
         return web.json_response({"ok":True,"branding":clean,"guild_id":guild_id})
