@@ -274,8 +274,8 @@ class WebControlCenter:
         }
         if filename in noindex_pages:
             noindex_tag = '<meta name="robots" content="noindex, nofollow, noarchive">'
-            if re.search(r'<meta\s+name=["\\']robots["\\'][^>]*>', body, flags=re.I):
-                body = re.sub(r'<meta\s+name=["\\']robots["\\'][^>]*>', noindex_tag, body, count=1, flags=re.I)
+            if re.search(r"<meta\s+name=["\']robots["\'][^>]*>", body, flags=re.I):
+                body = re.sub(r"<meta\s+name=["\']robots["\'][^>]*>", noindex_tag, body, count=1, flags=re.I)
             else:
                 body = body.replace("</head>", noindex_tag + "</head>", 1)
 
