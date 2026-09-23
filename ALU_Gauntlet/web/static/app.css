@@ -1374,3 +1374,192 @@ body{top:0!important}
   line-height:1!important;
   font-size:18px!important;
 }
+
+/* RSL shared footer — centered, minimal, HubSpot-inspired layout. */
+.rsl-footer{
+  width:100%;
+  box-sizing:border-box;
+  margin:42px 0 0;
+  padding:34px 28px 28px;
+  border-top:1px solid #27313f;
+  background:linear-gradient(180deg,#090d13 0%,#06090e 100%);
+  color:#dce6f5;
+  text-align:center;
+}
+.rsl-footer-social-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:28px;
+  max-width:1500px;
+  margin:0 auto 26px;
+}
+.rsl-footer-rule{
+  height:1px;
+  flex:1 1 260px;
+  max-width:430px;
+  background:#3a414c;
+}
+.rsl-footer-socials{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:28px;
+}
+.rsl-footer-social{
+  width:28px;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#cbd3df;
+  text-decoration:none;
+  transition:color .16s ease,transform .16s ease;
+}
+.rsl-footer-social:hover{
+  color:#28d7ff;
+  transform:translateY(-1px);
+}
+.rsl-footer-social svg{
+  width:26px;
+  height:26px;
+  fill:currentColor;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.rsl-footer-social>span{
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:24px;
+  font-weight:700;
+  line-height:1;
+}
+.rsl-footer-social .rsl-footer-cash{
+  width:28px;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:7px;
+  background:#dce6f5;
+  color:#111820;
+  font-size:19px;
+}
+.rsl-footer-brand{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.rsl-footer-brand>img{
+  width:330px;
+  max-width:72vw;
+  height:92px;
+  object-fit:contain;
+  display:block;
+  margin:0 auto 8px;
+}
+.rsl-footer-brand-name{
+  display:none;
+}
+.rsl-footer-copy{
+  margin-top:4px;
+  color:#aab9ce;
+  font-size:14px;
+  letter-spacing:.01em;
+}
+.rsl-footer-tagline{
+  margin-top:10px;
+  color:#aab9ce;
+  font-size:14px;
+}
+.rsl-footer-legal{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  gap:0;
+  margin:28px auto 0;
+  max-width:1200px;
+  color:#dbe5f2;
+  font-size:13px;
+}
+.rsl-footer-legal a{
+  color:#dbe5f2;
+  text-decoration:underline;
+  text-underline-offset:2px;
+  margin:0 14px;
+}
+.rsl-footer-legal a:hover{
+  color:#28d7ff;
+}
+.rsl-footer-legal>span{
+  color:#667386;
+}
+.rsl-footer-privacy-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:42px;
+  height:20px;
+  padding:0 5px;
+  box-sizing:border-box;
+  margin-right:8px;
+  border-radius:10px;
+  background:#0b82ff;
+  color:#fff;
+  text-decoration:none!important;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:-.04em;
+  vertical-align:middle;
+}
+.rsl-footer .rsl-language-switcher{
+  position:static!important;
+  left:auto!important;
+  right:auto!important;
+  bottom:auto!important;
+  top:auto!important;
+  transform:none!important;
+  display:flex!important;
+  justify-content:center;
+  margin:24px auto 0;
+  z-index:2;
+}
+.rsl-footer .rsl-language-trigger{
+  min-width:240px;
+  justify-content:space-between;
+  border:1px solid #168cff!important;
+  border-radius:9px;
+  background:#081321!important;
+  color:#f2f7ff!important;
+  padding:11px 16px;
+  box-shadow:none;
+}
+.rsl-footer .rsl-language-menu{
+  top:auto!important;
+  bottom:calc(100% + 8px)!important;
+  left:50%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+}
+@media(max-width:700px){
+  .rsl-footer{padding:28px 16px 24px}
+  .rsl-footer-social-row{gap:12px}
+  .rsl-footer-socials{gap:16px}
+  .rsl-footer-rule{max-width:90px}
+  .rsl-footer-brand>img{width:280px;height:82px}
+  .rsl-footer-legal{line-height:2}
+  .rsl-footer-legal a{margin:0 8px}
+}
+@media(max-width:460px){
+  .rsl-footer-social-row{align-items:center}
+  .rsl-footer-socials{gap:10px}
+  .rsl-footer-social{width:25px;height:25px}
+  .rsl-footer-social svg{width:23px;height:23px}
+  .rsl-footer-social>span{font-size:21px}
+  .rsl-footer-rule{max-width:45px}
+  .rsl-footer-brand>img{width:250px;height:74px}
+  .rsl-footer .rsl-language-trigger{min-width:210px}
+}
