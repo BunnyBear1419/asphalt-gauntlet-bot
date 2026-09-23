@@ -242,7 +242,7 @@ class WebControlCenter:
                     "@id": website_url + page_path + "#breadcrumb",
                     "itemListElement": [
                         {"@type": "ListItem", "position": 1, "name": "Home", "item": website_url + "/"},
-                        {"@type": "ListItem", "position": 2, "name": section_name, "item": website_url + section_path},
+                        {"@type": "ListItem", "position": 2, "name": section_name, **({"item": website_url + section_path} if section_path != "/gauntlet" else {})},
                         {"@type": "ListItem", "position": 3, "name": page_name, "item": website_url + page_path},
                     ],
                 })
