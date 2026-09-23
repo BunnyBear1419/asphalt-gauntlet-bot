@@ -1672,60 +1672,18 @@ body{top:0!important}
 @media(max-width:700px){.rsl-global-discord-cta,.rsl-global-help-card{width:100%}.rsl-global-help-card .home-help-icon{width:68px;height:68px;min-width:68px}.rsl-global-help-card .home-help-icon svg{width:44px;height:44px}}
 
 
-/* Shared header social controls — identical to Home on every page. */
-.top-cashapp-link{position:absolute;left:154px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#00d64f;z-index:1100;text-decoration:none;transition:.18s ease}.top-cashapp-link:hover{background:transparent!important;border-color:transparent!important;box-shadow:none!important;transform:translateY(-50%) scale(1.04)}.top-cashapp-link span{font:900 40px/1 Arial,Helvetica,sans-serif;transform:translateY(-1px)}
-.top-discord-link{position:absolute;left:84px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#5865f2;box-shadow:none!important;z-index:1100;text-decoration:none;transition:.18s ease}.top-discord-link svg{width:34px;height:34px;fill:currentColor}.top-discord-link img,.top-cashapp-link img{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-width:36px!important;max-height:36px!important;object-fit:contain!important;display:block!important}.top-discord-link svg{width:36px!important;height:36px!important}
-
-
-/* FINAL FOOTER SOCIAL PACKING — only rendered links occupy space. */
-.rsl-footer-social-row{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:8px!important;
-  width:100%!important;
-}
-.rsl-footer-socials{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:8px!important;
-  flex:0 0 auto!important;
-  flex-wrap:wrap!important;
-}
-.rsl-footer-social{
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  flex:0 0 36px!important;
-  width:36px!important;
-  height:36px!important;
-  margin:0!important;
-}
-.rsl-footer-social img,
-.rsl-footer-social svg{
-  width:36px!important;
-  height:36px!important;
-  display:block!important;
-  object-fit:contain!important;
-}
-.rsl-footer-social-row .rsl-footer-rule{
-  flex:1 1 180px!important;
-  min-width:24px!important;
-  margin:0!important;
-}
-@media(max-width:700px){
-  .rsl-footer-social-row{gap:6px!important}
-  .rsl-footer-socials{gap:6px!important}
-  .rsl-footer-social-row .rsl-footer-rule{min-width:12px!important}
-}
-
-
-/* FINAL FOOTER SOCIAL CLUSTER — keep all social icons directly together. */
-.rsl-footer-social-row{display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important}
-.rsl-footer-social-row .rsl-footer-rule{display:none!important}
-.rsl-footer-socials{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;flex:0 0 auto!important;width:auto!important;margin:0!important;padding:0!important}
-.rsl-footer-social{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;min-width:36px!important;max-width:36px!important;margin:0!important;padding:0!important}
-.rsl-footer-social img,.rsl-footer-social svg{display:block!important;width:36px!important;height:36px!important;margin:0!important;padding:0!important;object-fit:contain!important}
-.rsl-footer-social>span{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;margin:0!important;padding:0!important}
-@media(max-width:700px){.rsl-footer-social-row{gap:4px!important}.rsl-footer-socials{gap:3px!important}}
+/* Shared header social controls — compact 34px icons. */
+.top-discord-link{position:absolute;left:84px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#5865f2;box-shadow:none!important;z-index:1100;text-decoration:none;transition:.18s ease}
+.top-cashapp-link{position:absolute;left:154px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#00d64f;z-index:1100;text-decoration:none;transition:.18s ease}
+.top-discord-link:hover,.top-cashapp-link:hover{background:transparent!important;border-color:transparent!important;box-shadow:none!important;transform:translateY(-50%) scale(1.04)}
+.top-discord-link img,.top-discord-link svg,.top-cashapp-link img{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;object-fit:contain!important;display:block!important;margin:0!important;padding:0!important}
+.top-cashapp-link span{font:900 34px/1 Arial,Helvetica,sans-serif;transform:translateY(-1px)}
+/* Footer social cluster: only rendered links occupy space. */
+.rsl-footer-social-row{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;margin:0 auto 26px!important;padding:0!important;gap:0!important}
+.rsl-footer-social-row .rsl-footer-rule{display:none!important;width:0!important;min-width:0!important;max-width:0!important}
+.rsl-footer-socials{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;width:max-content!important;max-width:100%!important;flex-wrap:nowrap!important;gap:2px!important;margin:0!important;padding:0!important}
+.rsl-footer-socials>*{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;max-width:34px!important;margin:0!important;padding:0!important;border:0!important;box-sizing:border-box!important}
+.rsl-footer-socials>* img,.rsl-footer-socials>* svg{display:block!important;width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;margin:0!important;padding:0!important;object-fit:contain!important}
+.rsl-footer-socials>* span{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:34px!important;height:34px!important;margin:0!important;padding:0!important}
+.rsl-footer-socials .rsl-footer-cash{width:30px!important;height:30px!important;margin:0 2px!important}
+@media(max-width:700px){.top-discord-link,.top-cashapp-link{width:52px;height:52px}.top-discord-link{left:70px}.top-cashapp-link{left:124px}.rsl-footer-socials{gap:1px!important}.rsl-footer-socials>*{flex-basis:32px!important;width:32px!important;height:32px!important;min-width:32px!important;max-width:32px!important}.rsl-footer-socials>* img,.rsl-footer-socials>* svg{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important}.rsl-footer-socials>* span{width:32px!important;height:32px!important}}
