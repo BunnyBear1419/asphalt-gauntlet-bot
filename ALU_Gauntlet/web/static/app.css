@@ -2033,3 +2033,31 @@ body{top:0!important}
 }
 
 
+
+
+/* Shared Help Center card styling — matches the Home page exactly. */
+.home-help-card{
+  display:block;width:100%;box-sizing:border-box;margin-top:24px;min-height:170px;padding:30px;
+  border:1px solid #168cff;background:linear-gradient(145deg,#071a35,#020916);
+  text-align:center;position:relative;overflow:hidden;box-shadow:0 14px 40px #0008,0 0 24px #168cff0d;
+  text-decoration:none;color:inherit;
+}
+.home-help-card:before{content:"";position:absolute;left:20%;right:20%;top:0;height:3px;background:linear-gradient(90deg,transparent,#16cfff,transparent)}
+.home-help-card:after{content:"";position:absolute;right:0;bottom:0;width:54px;height:4px;background:#16cfff;box-shadow:-18px -18px 0 #16cfff55}
+.home-help-content{display:flex;align-items:center;justify-content:center;gap:28px;text-align:left;max-width:1000px;margin:0 auto}
+.home-help-icon{width:108px;height:108px;min-width:108px;margin:0;display:flex;align-items:center;justify-content:center;border:1px solid #168cff;background:linear-gradient(145deg,#061b35,#020a16);box-shadow:0 0 28px #168cff28;border-radius:50%;position:relative}
+.home-help-icon:before{content:"";position:absolute;inset:-6px;border:1px solid #16cfff35;border-radius:50%}
+.home-help-icon svg{width:70px;height:70px;fill:none;stroke:#27cfff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 8px #168cff)}
+.home-help-copy{flex:1;min-width:0;text-align:center}
+.home-help-copy .home-eyebrow{display:block}
+.home-help-copy h2{margin:8px 0}
+.home-help-link{display:block;text-decoration:none;color:inherit;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}
+.home-help-link:hover{transform:translateY(-2px);box-shadow:0 18px 45px #0009,0 0 30px #168cff22}
+.home-help-arrow{display:inline-block;margin-top:18px;color:#25dfff;font-weight:800;letter-spacing:.08em}
+#help .home-help-copy > .home-eyebrow{font-weight:900;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+@media(max-width:760px){
+  .home-help-content{gap:18px}
+  .home-help-icon{width:86px;height:86px;min-width:86px}
+  .home-help-icon svg{width:56px;height:56px}
+  .home-help-card{min-height:140px}
+}
