@@ -220,6 +220,33 @@ class WebControlCenter:
                     },
                 ],
             }
+            # Add BreadcrumbList structured data for public Gauntlet and Tournament subpages.
+            breadcrumb_pages = {
+                "gauntlet-registration.html": ("Gauntlet", "/gauntlet/registration", "Registration"),
+                "gauntlet-defense.html": ("Gauntlet", "/gauntlet/defense", "Defense"),
+                "gauntlet-matches.html": ("Gauntlet", "/gauntlet/matches", "Matches"),
+                "gauntlet-leaderboard.html": ("Gauntlet", "/gauntlet/leaderboard", "Leaderboard"),
+                "gauntlet-references.html": ("Gauntlet", "/gauntlet/references", "References"),
+                "gauntlet-career.html": ("Gauntlet", "/gauntlet/career", "Career"),
+                "tournament-registration.html": ("Tournaments", "/tournaments/registration", "Registration"),
+                "tournament-matches.html": ("Tournaments", "/tournaments/matches", "Matches"),
+                "tournament-results.html": ("Tournaments", "/tournaments/results", "Results"),
+                "tournament-clubs.html": ("Tournaments", "/tournaments/clubs", "Clubs"),
+            }
+            breadcrumb = breadcrumb_pages.get(filename)
+            if breadcrumb:
+                section_name, page_path, page_name = breadcrumb
+                section_path = "/gauntlet" if filename.startswith("gauntlet-") else "/tournaments"
+                jsonld["@graph"].append({
+                    "@type": "BreadcrumbList",
+                    "@id": website_url + page_path + "#breadcrumb",
+                    "itemListElement": [
+                        {"@type": "ListItem", "position": 1, "name": "Home", "item": website_url + "/"},
+                        {"@type": "ListItem", "position": 2, "name": section_name, "item": website_url + section_path},
+                        {"@type": "ListItem", "position": 3, "name": page_name, "item": website_url + page_path},
+                    ],
+                })
+
             jsonld_tag = '<script type="application/ld+json">' + json.dumps(jsonld, ensure_ascii=False, separators=(",", ":")) + '</script>'
             body = re.sub(r'<script\s+type=["\']application/ld\+json["\']>.*?</script>', '', body, flags=re.I|re.S)
             body = body.replace("</head>", jsonld_tag + "</head>", 1)
