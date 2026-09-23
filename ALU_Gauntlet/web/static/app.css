@@ -1813,3 +1813,25 @@ body{top:0!important}
     bottom:0!important;
   }
 }
+
+
+/* Footer social row — no surrounding box; add clean separation from content above. */
+.rsl-footer-social-row{
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+  margin-top:28px!important;
+  padding-top:0!important;
+}
+.rsl-footer-socials{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.rsl-footer .rsl-language-switcher{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
