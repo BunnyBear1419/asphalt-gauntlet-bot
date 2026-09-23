@@ -29,7 +29,7 @@ def test_admin_control_center_contains_requested_tools():
     for text in (
         "Website Branding",
         "Images &amp; Media",
-        "Community Links",
+        "Links",
         "Site Settings",
         "Members &amp; Roles",
         "Gauntlet Management",
