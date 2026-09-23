@@ -1040,7 +1040,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def robots_txt(self, request: web.Request) -> web.Response:
         """Return crawler instructions for the public Racing Syndicate League site."""
-        body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /news-admin\nDisallow: /setup\nDisallow: /api/\nSitemap: https://asph.discloud.app/sitemap.xml\n"
+        body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /news-admin\nDisallow: /setup\nDisallow: /player\nDisallow: /players\nDisallow: /api/\nDisallow: /assets/tenant/\nSitemap: https://asph.discloud.app/sitemap.xml\n"
         return web.Response(text=body, content_type="text/plain")
 
     async def sitemap_xml(self, request: web.Request) -> web.Response:
