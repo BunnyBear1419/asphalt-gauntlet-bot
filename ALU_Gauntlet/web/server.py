@@ -985,6 +985,23 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         await self._audit(guild_id,user.user_id,"Web configuration backup exported")
         return web.json_response(backup,headers={"Content-Disposition":f'attachment; filename="guild-{guild_id}-web-config.json"'})
 
+    async def robots_txt(self, request: web.Request) -> web.Response:
+        """Return crawler instructions for the public Racing Syndicate League site."""
+        body = "User-agent: *\\nAllow: /\\nDisallow: /admin\\nDisallow: /news-admin\\nDisallow: /setup\\nDisallow: /api/\\nSitemap: https://asph.discloud.app/sitemap.xml\\n"
+        return web.Response(text=body, content_type="text/plain")
+
+    async def sitemap_xml(self, request: web.Request) -> web.Response:
+        """Return the public-page XML sitemap."""
+        urls = [
+            "/", "/help", "/legal", "/players", "/player",
+            "/gauntlet/registration", "/gauntlet/defense", "/gauntlet/matches",
+            "/gauntlet/leaderboard", "/gauntlet/references", "/gauntlet/career",
+            "/tournaments", "/calendar", "/clubs",
+        ]
+        entries = "".join(f"<url><loc>https://asph.discloud.app{path}</loc></url>" for path in urls)
+        body = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{entries}</urlset>'
+        return web.Response(text=body, content_type="application/xml")
+
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/robots.txt", self.robots_txt)
