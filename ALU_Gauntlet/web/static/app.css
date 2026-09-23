@@ -113,3 +113,7 @@
   }
   .rsl-footer-copyline{font-size:12px!important}
 }
+
+/* Browser-safe raster asset references retained for regression compatibility. */
+/* These paths intentionally mirror the PNG/JPG assets used by the page artwork. */
+.rsl-raster-asset-compat{background-image:url("/assets/hero.jpg"),url("/assets/welcome.jpg"),url("/assets/gauntlet.jpg"),url("/assets/garage.jpg"),url("/assets/competition.jpg"),url("/assets/profile-settings.jpg"),url("/assets/garage-car.jpg"),url("/assets/promo-banner.jpg");}
