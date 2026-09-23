@@ -179,6 +179,22 @@ jobs:
           echo "All Discloud deployment attempts failed."
           exit 1
 
+      - name: Restart Discloud app after upload
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+        run: |
+          set -euo pipefail
+          restart_http=$(curl -sS -o discloud-restart.json -w "%{http_code}" -X PUT \
+            -H "api-token: $DISCLOUD_TOKEN" \
+            -H "Accept: application/json" \
+            "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/restart" || true)
+          echo "Discloud restart HTTP status: $restart_http"
+          if [ "$restart_http" != "200" ]; then
+            cat discloud-restart.json || true
+            exit 1
+          fi
+          echo "Discloud restart requested successfully."
       # Use the exact curl/header pattern from production-health.yml. The prior
       # implementation used Python urllib for Discloud and received HTTP 403
       # while the production monitor using curl remained healthy.
