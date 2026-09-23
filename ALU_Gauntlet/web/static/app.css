@@ -1931,3 +1931,49 @@ body{top:0!important}
   .rsl-footer-social-row .rsl-footer-rule{margin:0 8px!important}
   .rsl-footer-socials{gap:4px!important}
 }
+
+
+/* Keep translator anchored to the legal-link row, at the far right. */
+.rsl-footer-legal{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  min-height:36px!important;
+  margin-top:12px!important;
+  padding:0 175px 0 0!important;
+  box-sizing:border-box!important;
+}
+.rsl-footer-legal-links{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex-wrap:wrap!important;
+  width:100%!important;
+}
+.rsl-footer .rsl-language-switcher{
+  position:absolute!important;
+  right:0!important;
+  top:50%!important;
+  bottom:auto!important;
+  transform:translateY(-50%)!important;
+  height:36px!important;
+  margin:0!important;
+}
+.rsl-footer .rsl-language-trigger{
+  min-width:150px!important;
+  height:36px!important;
+  padding:6px 4px!important;
+  justify-content:flex-end!important;
+}
+@media(max-width:760px){
+  .rsl-footer-legal{
+    padding:0 0 40px!important;
+  }
+  .rsl-footer .rsl-language-switcher{
+    top:auto!important;
+    bottom:0!important;
+    transform:none!important;
+  }
+}
