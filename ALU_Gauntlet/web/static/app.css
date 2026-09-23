@@ -1569,3 +1569,79 @@ body{top:0!important}
 .rsl-global-discord-cta{width:calc(100% - 56px);max-width:1240px;margin:16px auto 18px;box-sizing:border-box}
 .rsl-global-help-card{width:calc(100% - 56px);max-width:1240px;margin:24px auto 30px;box-sizing:border-box}
 @media(max-width:700px){.rsl-global-discord-cta,.rsl-global-help-card{width:calc(100% - 28px)}}
+
+
+
+/* Shared Home cards — also used by the site-wide Discord and Help cards. */
+.discord-cta{
+  display:flex;align-items:center;gap:24px;width:100%;box-sizing:border-box;
+  margin:16px 0 18px;padding:14px 28px;
+  border:1px solid #5865f2;border-radius:12px;
+  background:linear-gradient(100deg,#101a3b,#0a1a2d 55%,#07152a);
+  color:#fff;text-decoration:none;box-shadow:0 8px 28px #0006;
+  transition:.18s ease;
+}
+.discord-cta:hover{border-color:#7d87ff;box-shadow:0 10px 34px #5865f230;transform:translateY(-1px)}
+.discord-cta-icon{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:transparent}
+.discord-cta-icon svg{width:52px;height:52px;fill:#7d87ff;filter:drop-shadow(0 0 8px #5865f255)}
+.discord-cta-copy{flex:1;min-width:230px}
+.discord-cta-kicker{display:block;color:#fff;font-size:21px;font-weight:800;letter-spacing:.02em;margin:0 0 3px;text-transform:uppercase}
+.discord-cta h2{margin:0 0 2px;font-size:0}
+.discord-cta p{margin:0;color:#aebdd2;font-size:12px;line-height:1.4}
+.discord-cta-stats{display:flex;align-items:center;gap:28px;padding:0 28px;border-left:1px solid #27466b;border-right:1px solid #27466b}
+.discord-stat{display:flex;align-items:center;gap:10px;min-width:135px}
+.discord-stat-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:1px solid #27466b;border-radius:8px;background:#071a2d}
+.discord-stat-icon svg{width:25px;height:25px;fill:none;stroke:#28d7ff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.discord-stat-online .discord-stat-icon svg{stroke:#28d7ff}
+.discord-online-dot{width:18px;height:18px;border-radius:50%;background:#00e65b;box-shadow:0 0 14px #00e65b88}
+.discord-stat-label{display:block;color:#e9f2ff;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.discord-stat-value{display:block;color:#fff;font-size:24px;font-weight:800;line-height:1.05;margin-top:2px}
+.discord-cta-button{flex:0 0 auto;padding:13px 22px;border:1px solid #28d7ff;border-radius:7px;background:#087cff;color:#fff;font-weight:800;font-size:12px;letter-spacing:.06em;box-shadow:0 0 18px #087cff33}
+@media(max-width:900px){
+  .discord-cta{gap:16px;padding:14px 18px}
+  .discord-cta-stats{gap:14px;padding:0 14px}
+  .discord-stat{min-width:115px}
+  .discord-cta-kicker{font-size:17px}
+}
+@media(max-width:700px){
+  .discord-cta{flex-wrap:wrap}
+  .discord-cta-icon{width:46px;height:46px;flex-basis:46px}
+  .discord-cta-icon svg{width:42px;height:42px}
+  .discord-cta-copy{min-width:calc(100% - 70px)}
+  .discord-cta-stats{width:100%;justify-content:center;border-left:0;border-right:0;border-top:1px solid #27466b;padding:12px 0 0}
+  .discord-cta-button{margin-left:auto}
+}
+@media(max-width:430px){
+  .discord-cta{padding:14px}
+  .discord-cta-stats{gap:8px}
+  .discord-stat{min-width:0}
+  .discord-stat-value{font-size:20px}
+  .discord-stat-label{font-size:8px}
+  .discord-cta-button{width:100%;text-align:center}
+}
+
+.home-help-card:after{content:"";position:absolute;right:0;bottom:0;width:54px;height:4px;background:#16cfff;box-shadow:-18px -18px 0 #16cfff55}
+.home-help-card{position:relative;min-height:190px;width:100%;margin-top:22px;border-color:#168cff;text-align:center}
+.home-help-card .home-eyebrow{display:block}
+.home-help-card h2{margin-bottom:8px}
+.home-help-card p{max-width:900px;margin:0 auto}
+@media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-info-card{min-height:0}.home-help-card{min-height:130px}}
+.home-help-link{display:block;text-decoration:none;color:inherit;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}
+.home-help-link:hover{transform:translateY(-2px);box-shadow:0 0 28px #168cff25,0 14px 40px #0008}
+.home-help-arrow{display:inline-block;margin-top:14px;color:#25dfff;font-weight:800;letter-spacing:.08em}
+
+/* Final Home content layout: About Us + News side-by-side, Help Center full-width below. */
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+.home-info-card{min-height:300px;padding:28px 30px;border:1px solid #174a79;background:linear-gradient(145deg,#07172f,#020916);box-shadow:0 14px 40px #0008,0 0 0 1px #168cff0d inset;position:relative;overflow:hidden}
+.home-info-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:3px;background:linear-gradient(90deg,#08bfff,#1878ff,transparent)}
+.home-info-card:after{content:"";position:absolute;right:0;bottom:0;width:54px;height:4px;background:#16cfff;box-shadow:-18px -18px 0 #16cfff55}
+.home-info-card h2{font-size:30px;line-height:1.1;margin:9px 0 18px;color:#fff}
+.home-info-card p{color:#aebdd2;line-height:1.7;font-size:14px}
+.home-help-card{display:block;width:100%;box-sizing:border-box;margin-top:24px;min-height:170px;padding:30px;border:1px solid #168cff;background:linear-gradient(145deg,#071a35,#020916);text-align:center;position:relative;overflow:hidden;box-shadow:0 14px 40px #0008,0 0 24px #168cff0d;text-decoration:none;color:inherit}
+.home-help-card:before{content:"";position:absolute;left:20%;right:20%;top:0;height:3px;background:linear-gradient(90deg,transparent,#16cfff,transparent)}
+.home-help-card h2{font-size:30px;margin:9px 0 10px;color:#fff}
+.home-help-card p{max-width:850px;margin:0 auto;color:#aebdd2;line-height:1.6}
+.home-help-arrow{display:inline-block;margin-top:18px;color:#25dfff;font-weight:800;letter-spacing:.08em}
+.home-help-card:hover{transform:translateY(-2px);box-shadow:0 18px 45px #0009,0 0 30px #168cff22}
+@media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-info-card{min-height:0}.home-help-card{min-height:140px}}
+
