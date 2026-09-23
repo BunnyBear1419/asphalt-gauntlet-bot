@@ -361,7 +361,7 @@ window.rslGoogleTranslateInit=function(){
     <div class="rsl-footer-tagline">{footer_tagline}</div>
   </div>
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
-    <a href="/help#legal-center">Legal Center</a><span aria-hidden="true">|</span>
+    <a href="/legal">Legal Center</a><span aria-hidden="true">|</span>
     <a href="/help#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
     <a href="/help#security">Security</a><span aria-hidden="true">|</span>
     <a href="/help#accessibility">Website Accessibility</a><span aria-hidden="true">|</span>
@@ -687,6 +687,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/help", self.help_page)
+        self.app.router.add_get("/legal", self.legal_page)
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/setup", self.setup_page)
         self.app.router.add_get("/news-admin", self.news_admin_page)
@@ -2973,3 +2974,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def help_page(self, request: web.Request) -> web.Response:
         """Render the public Help Center page."""
         return await self._page_response("help.html", request)
+
+    async def legal_page(self, request: web.Request) -> web.Response:
+        """Render the public Legal Center page."""
+        return await self._page_response("legal.html", request)
