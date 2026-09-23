@@ -1834,7 +1834,7 @@ body:has(.legal-main) .rsl-global-help-card{width:100%;max-width:none;box-sizing
 .rsl-global-help-card{
   display:block!important;
   width:100%!important;max-width:none!important;min-height:230px!important;
-  margin:24px 0 34px!important;padding:32px!important;box-sizing:border-box!important;
+  margin:10px 0 18px!important;padding:32px!important;box-sizing:border-box!important;
   border:1px solid #168cff!important;border-radius:0!important;
   background:linear-gradient(145deg,#071a35,#020916)!important;
   color:inherit!important;text-decoration:none!important;text-align:center!important;
