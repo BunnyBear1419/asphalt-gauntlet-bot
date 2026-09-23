@@ -1919,3 +1919,26 @@ body:has(.legal-main) .rsl-global-discord-cta{margin-top:15px!important}
 
 /* Legal Center Discord-to-content spacing */
 body:has(.legal-main) .rsl-global-discord-cta{margin-bottom:10px!important}
+
+
+/* Final 38x38 navigation icon sizing */
+.nav-icon-img{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  max-width:38px!important;
+  max-height:38px!important;
+  object-fit:contain!important;
+  display:block!important;
+  flex:0 0 38px!important;
+}
+.top-nav-dropdown-menu .nav-icon-img{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  min-height:38px!important;
+  max-width:38px!important;
+  max-height:38px!important;
+  flex:0 0 38px!important;
+}
