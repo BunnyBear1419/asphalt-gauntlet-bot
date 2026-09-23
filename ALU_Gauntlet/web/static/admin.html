@@ -163,8 +163,8 @@
   <div class="admin-card"><h2>Links</h2><p>Control the site logo destination and the special Discord/Donation icons, then add your own footer links. Each custom link can use its own uploaded PNG icon.</p>
     <div class="admin-grid">
       <div class="admin-field full"><label>Site Logo (Top Left)</label><input id="link-site_logo" placeholder="https://... or /..."><small style="color:#8198b5">Controls where the top-left site logo goes.</small></div>
-      <div class="admin-field"><label>Discord Logo</label><input id="link-discord" placeholder="https://discord.gg/..."><small style="color:#8198b5">Used by both the top-left Discord icon and footer Discord icon.</small></div>
-      <div class="admin-field"><label>Donations Logo</label><input id="link-cashapp" placeholder="https://cash.app/..."><small style="color:#8198b5">Used by both the top-left donation icon and footer donation icon.</small></div>
+      <div class="admin-field"><label>Discord Logo</label><input id="link-discord" placeholder="https://discord.gg/..."><div style="display:flex;gap:8px;align-items:center"><input id="link-discord_icon" placeholder="Icon PNG URL or /assets/..." style="flex:1"><button class="admin-btn" type="button" id="upload-discord-icon">Upload PNG</button><input id="file-discord-icon" type="file" accept="image/png" hidden></div><label style="display:flex;align-items:center;gap:8px"><input id="link-discord_enabled" type="checkbox" checked> Show Discord icon</label><small style="color:#8198b5">Controls the top-left Discord icon and footer Discord icon.</small></div>
+      <div class="admin-field"><label>Donations Logo</label><input id="link-cashapp" placeholder="https://cash.app/..."><div style="display:flex;gap:8px;align-items:center"><input id="link-cashapp_icon" placeholder="Icon PNG URL or /assets/..." style="flex:1"><button class="admin-btn" type="button" id="upload-cashapp-icon">Upload PNG</button><input id="file-cashapp-icon" type="file" accept="image/png" hidden></div><label style="display:flex;align-items:center;gap:8px"><input id="link-cashapp_enabled" type="checkbox" checked> Show Donations icon</label><small style="color:#8198b5">Controls the top-left donation icon and footer donation icon.</small></div>
     </div>
   </div>
   <div class="admin-card">
@@ -252,7 +252,9 @@ function fillForm(){
  Object.keys(i).forEach(k=>setVal("identity-"+k,i[k]));
  ["primary","secondary","accent","background","surface","text","muted"].forEach(k=>fillColor(k,c[k]));
  Object.keys(m).forEach(k=>setVal("image-"+k,m[k]));
- Object.keys(l).filter(k=>k!=="custom").forEach(k=>setVal("link-"+k,l[k]));
+ Object.keys(l).filter(k=>k!=="custom" && !k.endsWith("_enabled")).forEach(k=>setVal("link-"+k,l[k]));
+ if($("link-discord_enabled")) $("link-discord_enabled").checked=l.discord_enabled!==false;
+ if($("link-cashapp_enabled")) $("link-cashapp_enabled").checked=l.cashapp_enabled!==false;
  renderCustomLinks();
  Object.keys(t).forEach(k=>setVal("term-"+k,t[k]));
  $("preview-logo").src=i.logo_url||"";
@@ -269,7 +271,9 @@ function buildBranding(){
  Object.keys(b.identity).forEach(k=>b.identity[k]=getVal("identity-"+k));
  ["primary","secondary","accent","background","surface","text","muted"].forEach(k=>b.colors[k]=getVal("color-"+k+"-text")||getVal("color-"+k));
  Object.keys(b.images).forEach(k=>b.images[k]=getVal("image-"+k));
- Object.keys(b.links).filter(k=>k!=="custom").forEach(k=>b.links[k]=getVal("link-"+k));
+ Object.keys(b.links).filter(k=>k!=="custom" && !k.endsWith("_enabled")).forEach(k=>b.links[k]=getVal("link-"+k));
+ b.links.discord_enabled=$("link-discord_enabled")?.checked!==false;
+ b.links.cashapp_enabled=$("link-cashapp_enabled")?.checked!==false;
  b.links.custom=collectCustomLinks();
  Object.keys(b.terminology).forEach(k=>b.terminology[k]=getVal("term-"+k));
  delete b._guild; return b;
@@ -299,6 +303,12 @@ function collectCustomLinks(){
 }
 function addCustomLink(){if(!branding.links.custom)branding.links.custom=[];if(branding.links.custom.length>=7){setStatus("links-status","You can add up to 7 footer links.",false);return}branding.links.custom.push({name:"",url:"",icon:"",enabled:true});renderCustomLinks();}
 $("add-footer-link").onclick=addCustomLink;
+async function uploadSpecialIcon(kind){$("file-"+kind+"-icon")?.click()}
+async function handleSpecialIcon(kind){const input=$("file-"+kind+"-icon"),file=input?.files?.[0];if(!file)return;try{const fd=new FormData();fd.append("file",file);const d=await api("/api/admin/upload-asset"+q(),{method:"POST",body:fd});setVal("link-"+kind+"_icon",d.url);setStatus("links-status",(kind==="discord"?"Discord":"Donations")+" icon uploaded. Save Links to keep it.");}catch(e){setStatus("links-status",e.message,false)}}
+$("upload-discord-icon").onclick=()=>uploadSpecialIcon("discord");
+$("upload-cashapp-icon").onclick=()=>uploadSpecialIcon("cashapp");
+$("file-discord-icon").onchange=()=>handleSpecialIcon("discord");
+$("file-cashapp-icon").onchange=()=>handleSpecialIcon("cashapp");
 $("save-branding").onclick=()=>save("save");$("save-media").onclick=()=>save("media");$("save-links").onclick=async()=>{branding.links.custom=collectCustomLinks();await save("links");};
 $("upload-asset").onclick=async()=>{
  try{
