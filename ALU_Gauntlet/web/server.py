@@ -137,8 +137,8 @@ class WebControlCenter:
             title_tag = f"<title>{html.escape(seo_title)}</title>"
             description_tag = f'<meta name="description" content="{html.escape(seo_description, quote=True)}">'
             body = re.sub(r"<title>.*?</title>", title_tag, body, count=1, flags=re.I|re.S) if re.search(r"<title>.*?</title>", body, flags=re.I|re.S) else body.replace("</head>", title_tag + "</head>", 1)
-            if re.search(r'<meta\\s+name=["\\']description["\\']', body, flags=re.I):
-                body = re.sub(r'<meta\\s+name=["\\']description["\\'][^>]*>', description_tag, body, count=1, flags=re.I)
+            if re.search(r'<meta\s+name=["\']description["\']', body, flags=re.I):
+                body = re.sub(r'<meta\s+name=["\']description["\'][^>]*>', description_tag, body, count=1, flags=re.I)
             else:
                 body = body.replace("</head>", description_tag + "</head>", 1)
 
@@ -168,8 +168,8 @@ class WebControlCenter:
             if canonical_path:
                 website_url = str((branding.get("links") or {}).get("website") or "https://asph.discloud.app").rstrip("/")
                 canonical_tag = f'<link rel="canonical" href="{html.escape(website_url + canonical_path, quote=True)}">'
-                if re.search(r'<link\\s+rel=["\\\']canonical["\\\']', body, flags=re.I):
-                    body = re.sub(r'<link\\s+rel=["\\\']canonical["\\\'][^>]*>', canonical_tag, body, count=1, flags=re.I)
+                if re.search(r'<link\s+rel=["\']canonical["\']', body, flags=re.I):
+                    body = re.sub(r'<link\s+rel=["\']canonical["\'][^>]*>', canonical_tag, body, count=1, flags=re.I)
                 else:
                     body = body.replace("</head>", canonical_tag + "</head>", 1)
 
@@ -179,8 +179,8 @@ class WebControlCenter:
             }
             if filename in noindex_pages:
                 noindex_tag = '<meta name="robots" content="noindex, nofollow, noarchive">'
-                if re.search(r'<meta\\s+name=["\\\']robots["\\\'][^>]*>', body, flags=re.I):
-                    body = re.sub(r'<meta\\s+name=["\\\']robots["\\\'][^>]*>', noindex_tag, body, count=1, flags=re.I)
+                if re.search(r'<meta\s+name=["\']robots["\'][^>]*>', body, flags=re.I):
+                    body = re.sub(r'<meta\s+name=["\']robots["\'][^>]*>', noindex_tag, body, count=1, flags=re.I)
                 else:
                     body = body.replace("</head>", noindex_tag + "</head>", 1)
 
@@ -198,7 +198,7 @@ class WebControlCenter:
                 f'<meta name="twitter:description" content="{html.escape(seo_description, quote=True)}">'
                 f'<meta name="twitter:image" content="{html.escape(social_image, quote=True)}">'
             )
-            body = re.sub(r'<meta\\s+(?:property|name)=["\\\'](?:og:|twitter:)[^>]*>', '', body, flags=re.I)
+            body = re.sub(r'<meta\s+(?:property|name)=["\'](?:og:|twitter:)[^>]*>', '', body, flags=re.I)
             body = body.replace("</head>", og_tags + "</head>", 1)
 
             # JSON-LD structured data describing the RSL website and organization.
