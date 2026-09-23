@@ -330,7 +330,7 @@ window.rslGoogleTranslateInit=function(){
         footer_links = branding.get("links") or {}
         footer_identity = branding.get("identity") or {}
         footer_name = html.escape(str(footer_identity.get("name") or "Racing Syndicate League"))
-        footer_tagline = html.escape(str(footer_identity.get("tagline") or "Race • Compete • Unite"))
+        footer_tagline = html.escape(str(footer_identity.get("tagline") or "Race, Compete, Unite"))
         footer_logo_value = str(footer_identity.get("logo_url") or "/assets/rsl-shield.png")
         if footer_logo_value.rstrip("?").endswith("/assets/rsl-shield.png"):
             footer_logo_value = "/static/assets/rsl-footer-mark.png?v=20260921-rslfooter-png1"
@@ -1998,3 +1998,1174 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     if all(ns):
                         target_match["status"] = "ready"
                 elif str(match.get("bracket", "winners")) == "winners" and (match.get("round") or 0) == len(groups):
+                    t["status"] = "completed"
+                    t["champion_id"] = winner_id
+                    t["completed_at"] = datetime.now(timezone.utc).isoformat()
+                message = "Result verified and winner advanced."
+            await self.bot.db.tournaments.update_one(
+                {"_id": oid},
+                {"$set": {
+                    "bracket": bracket,
+                    "status": t.get("status", "live"),
+                    "champion_id": t.get("champion_id"),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+        finally:
+            await self._release_tournament_action(str(oid), str(match_id))
+
+        cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        channel_id = cfg.get("match_results_channel_id")
+        channel = self.bot.get_channel(int(channel_id)) if channel_id else None
+        if channel is not None:
+            try:
+                await channel.send(
+                    "🏆 **Tournament Result " + ("Approved" if action != "reject" else "Rejected") +
+                    "** • " + str(t.get("name", "Tournament")) + " • " + match_id
+                )
+            except Exception:
+                log.exception("Unable to post tournament verification notice")
+        return web.json_response({
+            "ok": True,
+            "message": message,
+            "bracket": bracket,
+            "champion_id": t.get("champion_id"),
+        })
+
+    async def tournament_checkin(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str((await request.json()).get("tournament_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        t = await self.bot.db.tournaments.find_one({"_id": oid})
+        if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+            raise web.HTTPNotFound(text="Tournament not found.")
+        if t.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Check-in is closed once the tournament is live or completed.")
+        tid = str(oid)
+        if int(t.get("team_size", 1)) > 1:
+            checkin_payload = await request.json()
+            requested_club_id = str(checkin_payload.get("club_id", "")).strip()
+            reg_query = {"tournament_id": tid, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            if requested_club_id:
+                if not ObjectId.is_valid(requested_club_id):
+                    raise web.HTTPBadRequest(text="Invalid club ID.")
+                reg_query["club_id"] = requested_club_id
+            else:
+                # The frontend can omit club_id; resolve the caller's own club safely.
+                owned_clubs = [str(x["_id"]) async for x in self.bot.db.clubs.find({"guild_id": str(t["guild_id"]), "leader_id": str(user.user_id)}, {"_id": 1})]
+                if not owned_clubs:
+                    raise web.HTTPForbidden(text="Only a club leader can check in a team.")
+                reg_query["club_id"] = {"$in": owned_clubs}
+            reg = await self.bot.db.tournament_club_registrations.find_one(reg_query)
+            if not reg:
+                raise web.HTTPConflict(text="Your club must be registered before checking in.")
+            club = await self.bot.db.clubs.find_one({"_id": ObjectId(reg["club_id"])}) if ObjectId.is_valid(str(reg["club_id"])) else None
+            if not club or str(club.get("leader_id")) != str(user.user_id):
+                raise web.HTTPForbidden(text="Only the club leader can check in the club.")
+            lineup = reg.get("lineup") or []
+            if len(lineup) != int(t.get("team_size", 1)):
+                raise web.HTTPConflict(text="Save a complete tournament lineup before checking in.")
+            await self.bot.db.tournament_club_registrations.update_one(
+                {"_id": reg["_id"]},
+                {"$set": {"status": "checked_in", "checked_in_at": datetime.now(timezone.utc).isoformat()}},
+            )
+        else:
+            result = await self.bot.db.tournament_registrations.update_one(
+                {"tournament_id": tid, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}},
+                {"$set": {"status": "checked_in", "checked_in_at": datetime.now(timezone.utc).isoformat()}},
+            )
+            if not result.modified_count:
+                raise web.HTTPConflict(text="You must be registered before checking in.")
+        return web.json_response({"ok": True, "message": "You are checked in."})
+
+    async def tournament_start(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        from ALU_Gauntlet.core.tournament import generate_tournament_bracket
+        try:
+            oid = ObjectId(str((await request.json()).get("tournament_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        t = await self.bot.db.tournaments.find_one({"_id": oid, "guild_id": guild_id})
+        if not t:
+            raise web.HTTPNotFound(text="Tournament not found.")
+        if t.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Only a tournament still in registration can be started.")
+        if t.get("format") != "single_elimination":
+            raise web.HTTPConflict(text="This tournament format does not yet have a complete live state-transition workflow.")
+        players = []
+        if int(t.get("team_size", 1)) > 1:
+            async for row in self.bot.db.tournament_club_registrations.find(
+                {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
+            ).sort("registered_at", 1):
+                lineup = row.get("lineup") or []
+                if len(lineup) != int(t.get("team_size", 1)):
+                    raise web.HTTPConflict(text="Every registered club must save a complete tournament lineup before the tournament starts.")
+                players.append(str(row["club_id"]))
+        else:
+            async for row in self.bot.db.tournament_registrations.find(
+                {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
+            ).sort("registered_at", 1):
+                players.append(str(row["user_id"]))
+        if len(players) < 2:
+            raise web.HTTPConflict(text="At least 2 accepted entrants are required to start.")
+        if t.get("format") in {"single_elimination", "double_elimination"} and len(players) > int(t.get("max_players", 32)):
+            raise web.HTTPConflict(text="Too many entrants for this tournament.")
+        bracket = generate_tournament_bracket(t["format"], int(t["max_players"]))
+        if t["format"] == "single_elimination":
+            slots = players + [None] * (int(t["max_players"]) - len(players))
+            matches = bracket["rounds"][0]["matches"]
+            for i, match in enumerate(matches):
+                match["player_slots"] = [slots[i * 2], slots[i * 2 + 1]]
+                match["status"] = "ready" if all(match["player_slots"]) else "bye" if any(match["player_slots"]) else "waiting"
+            # Resolve byes immediately so a tournament with fewer entrants than
+            # the configured bracket size can still advance normally.
+            changed = True
+            while changed:
+                changed = False
+                for group in bracket.get("rounds", []):
+                    for match in group.get("matches", []):
+                        slots_now = [x for x in (match.get("player_slots") or []) if x]
+                        if match.get("status") == "bye" and len(slots_now) == 1:
+                            winner = str(slots_now[0])
+                            match["winner_id"] = winner
+                            match["status"] = "completed"
+                            match["result_status"] = "verified"
+                            target = match.get("winner_to")
+                            if target:
+                                for next_group in bracket.get("rounds", []):
+                                    for nxt in next_group.get("matches", []):
+                                        if nxt.get("id") == target:
+                                            next_slots = nxt.setdefault("player_slots", [None, None])
+                                            if winner not in next_slots:
+                                                next_slots[0 if next_slots[0] is None else 1] = winner
+                                            if all(next_slots):
+                                                nxt["status"] = "ready"
+                                            elif any(next_slots):
+                                                nxt["status"] = "bye"
+                                            changed = True
+                                            break
+                        elif match.get("status") == "bye" and not slots_now:
+                            match["status"] = "waiting"
+        started_at = datetime.now(timezone.utc).isoformat()
+        transition = await self.bot.db.tournaments.update_one(
+            {"_id": oid, "status": {"$in": ["registration_open", "open"]}},
+            {"$set": {"status": "live", "started_at": started_at, "bracket": bracket, "started_by": str(user.user_id), "updated_at": started_at}},
+        )
+        if not transition.modified_count:
+            raise web.HTTPConflict(text="Tournament start was already completed by another staff action.")
+        return web.json_response({"ok": True, "message": "Tournament started.", "bracket": bracket})
+
+    async def asset_icon(self, request):
+        filename = request.match_info["filename"]
+        if "/" in filename or not filename.endswith(".png"):
+            raise web.HTTPNotFound()
+        path = WEB_DIR / "assets" / "icons" / filename
+        if not path.is_file():
+            raise web.HTTPNotFound()
+        return web.FileResponse(path)
+
+    async def asset(self, request: web.Request) -> web.Response:
+        """Serve dashboard artwork with the correct image MIME type."""
+        filename = request.match_info.get("filename", "")
+        if not filename or "/" in filename or "\\" in filename:
+            raise web.HTTPNotFound(text="Asset not found.")
+        path = WEB_DIR / "assets" / filename
+        if not path.is_file() or path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+            raise web.HTTPNotFound(text="Asset not found.")
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        if not content_type.startswith("image/"):
+            raise web.HTTPNotFound(text="Asset not found.")
+        return web.FileResponse(
+            path,
+            headers={
+                "Content-Type": content_type,
+                "Cache-Control": "no-store, max-age=0",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    async def require_user(self, request: web.Request) -> Any:
+        if not self.auth.configured:
+            raise web.HTTPServiceUnavailable(text="Web authentication is not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET.")
+        user = await self.auth.get_session(request)
+        if user is None:
+            raise web.HTTPFound("/login")
+        return user
+
+    async def require_guild_member(self, request: web.Request) -> tuple[Any, str, Any]:
+        user = await self.require_user(request)
+        guild_id = request.query.get("guild_id", "").strip()
+        if not guild_id:
+            raise web.HTTPBadRequest(text="guild_id is required.")
+        if guild_id not in user.guild_ids:
+            raise web.HTTPForbidden(text="You are not a member of this Discord server.")
+        guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == guild_id), None)
+        if guild is None:
+            raise web.HTTPNotFound(text="The bot is not connected to this Discord server.")
+        return user, guild_id, guild
+
+    async def require_admin(self, request: web.Request) -> tuple[Any, str, Any]:
+        user, guild_id, guild = await self.require_guild_member(request)
+
+        # Re-check permissions against the live Discord member instead of
+        # trusting a cached OAuth session for up to 30 days. This prevents a
+        # removed admin role/permission from retaining web staff access.
+        if user.user_id in self.auth.allowed_staff_ids:
+            return user, guild_id, guild
+
+        member = guild.get_member(int(user.user_id))
+        if member is None:
+            try:
+                member = await guild.fetch_member(int(user.user_id))
+            except Exception:
+                member = None
+
+        live_admin = bool(
+            member
+            and (
+                member.guild_permissions.administrator
+                or member.guild_permissions.manage_guild
+            )
+        )
+        if not live_admin and member is not None:
+            settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            admin_role_id = str(settings.get("admin_role_id", "")).strip()
+            live_admin = bool(
+                admin_role_id
+                and any(str(role.id) == admin_role_id for role in getattr(member, "roles", []))
+            )
+
+        if not live_admin:
+            raise web.HTTPForbidden(text="Administrator access is required for this server.")
+        return user, guild_id, guild
+
+    async def require_staff(self, request: web.Request) -> Any:
+        user = await self.require_user(request)
+        if not user.staff:
+            raise web.HTTPForbidden(text="Staff access is required.")
+        return user
+
+    async def index(self, request: web.Request) -> web.StreamResponse:
+        # The homepage is the most important production route. If a stale or
+        # malformed web session ever causes an unexpected authentication error,
+        # recover to the login page instead of exposing aiohttp's generic 500.
+        try:
+            await self.require_user(request)
+        except web.HTTPException:
+            raise
+        except Exception:
+            log.exception("Unexpected web authentication failure on /")
+            response = web.HTTPFound("/login")
+            response.del_cookie(SESSION_COOKIE, path="/")
+            return response
+        try:
+            return await self._page_response("index.html", request)
+        except Exception:
+            log.exception("Unable to serve the web dashboard")
+            raise web.HTTPServiceUnavailable(text="The Racing Syndicate League web dashboard is temporarily unavailable.")
+
+    async def players_page(self, request: web.Request) -> web.StreamResponse:
+        # The Players page is staff-only, but the page URL itself does not need
+        # to force users to manually append ?guild_id=. Resolve the selected
+        # admin server from the existing guild cookie, or fall back to the
+        # first server where the signed-in user has admin access.
+        if not request.query.get("guild_id", "").strip():
+            cookie_guild_id = request.cookies.get("rsl_guild_id", "").strip()
+            if cookie_guild_id:
+                request = request.clone(rel_url=request.rel_url.with_query({**request.query, "guild_id": cookie_guild_id}))
+            else:
+                user = await self.require_user(request)
+                rows = await self._admin_guilds_data(user)
+                if not rows:
+                    raise web.HTTPForbidden(text="Administrator access is required for this server.")
+                request = request.clone(rel_url=request.rel_url.with_query({**request.query, "guild_id": rows[0]["id"]}))
+        await self.require_admin(request)
+        return await self._page_response("players.html", request)
+    async def setup_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_admin(request)
+        return await self._page_response("setup.html", request)
+
+    async def news_admin_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_admin(request)
+        return await self._page_response("news-admin.html", request)
+
+    async def player_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("player.html", request)
+
+    async def site_search(self, request: web.Request) -> web.Response:
+        await self.require_user(request)
+        query = request.query.get("q", "").strip()
+        if len(query) < 2:
+            return web.json_response({"results": []})
+        terms = [x.lower() for x in re.findall(r"[\w]+", query) if len(x) > 1][:8]
+        pages = [
+            ("Home", "/", "index.html"), ("Help Center", "/help", "help.html"), ("Legal Center", "/legal", "legal.html"),
+            ("Player", "/player", "player.html"), ("Calendar", "/calendar", "calendar.html"),
+            ("Clubs", "/clubs", "clubs.html"), ("Tournaments", "/tournaments", "tournaments.html"),
+            ("Tournament Registration", "/tournaments/registration", "tournament-registration.html"),
+            ("Tournament Matches", "/tournaments/matches", "tournament-matches.html"),
+            ("Tournament Results", "/tournaments/results", "tournament-results.html"),
+            ("Club Tournaments", "/tournaments/clubs", "tournament-clubs.html"),
+            ("Gauntlet Registration", "/gauntlet/registration", "gauntlet-registration.html"),
+            ("Gauntlet Defense", "/gauntlet/defense", "gauntlet-defense.html"),
+            ("Gauntlet Challenges & Matches", "/gauntlet/matches", "gauntlet-matches.html"),
+            ("Gauntlet Leaderboards", "/gauntlet/leaderboard", "gauntlet-leaderboard.html"),
+            ("Gauntlet References", "/gauntlet/references", "gauntlet-references.html"),
+            ("My Gauntlet Career", "/gauntlet/career", "gauntlet-career.html"),
+        ]
+        results = []
+        for title, path, filename in pages:
+            try:
+                raw = (WEB_DIR / filename).read_text(encoding="utf-8")
+            except OSError:
+                continue
+            text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", raw)
+            text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", text))
+            text = re.sub(r"\\s+", " ", text).strip()
+            haystack = (title + " " + text).lower()
+            if all(term in haystack for term in terms):
+                pos = min((haystack.find(term) for term in terms if haystack.find(term) >= 0), default=0)
+                start = max(0, pos - 90)
+                snippet = text[start:start + 220]
+                if start > 0:
+                    snippet = "…" + snippet
+                if start + 220 < len(text):
+                    snippet += "…"
+                results.append({"title": title, "url": path, "snippet": snippet})
+        return web.json_response({"query": query, "results": results[:12]})
+
+    async def discord_stats(self, request: web.Request) -> web.Response:
+        """Return public Discord server counts for the homepage community banner."""
+        await self.require_user(request)
+        guilds = list(getattr(self.bot, "guilds", []) or [])
+        if not guilds:
+            return web.json_response({"online_members": 0, "server_members": 0, "available": False})
+        # Prefer the largest connected guild, which is normally the main RSL community.
+        guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0))
+        members = list(getattr(guild, "members", []) or [])
+        online = 0
+        for member in members:
+            try:
+                if getattr(member, "bot", False):
+                    continue
+                status = getattr(member, "status", None)
+                if str(status) not in {"offline", "invisible"}:
+                    online += 1
+            except Exception:
+                continue
+        total = int(getattr(guild, "member_count", 0) or len(members))
+        return web.json_response({
+            "online_members": online,
+            "server_members": total,
+            "server_name": str(getattr(guild, "name", "") or ""),
+            "available": True,
+        })
+
+    async def healthz(self, request: web.Request) -> web.Response:
+        ready = bool(getattr(self.bot, "is_ready", lambda: False)())
+        db = getattr(self.bot, "db", None)
+        db_ok = False
+        if db is not None:
+            try:
+                await db.command("ping")
+                db_ok = True
+            except Exception:
+                db_ok = False
+        page_files = {
+            name: (WEB_DIR / name).is_file()
+            for name in ("index.html", "player.html", "players.html", "setup.html", "app.css", "app.js")
+        }
+        web_files_ok = all(page_files.values())
+        return web.json_response({
+            "ok": ready and db_ok and web_files_ok,
+            "bot_ready": ready,
+            "db_ok": db_ok,
+            "web_files_ok": web_files_ok,
+            "web_files": page_files,
+        })
+
+    async def login(self, request: web.Request) -> web.StreamResponse:
+        if not self.auth.configured:
+            return web.Response(status=503, text="Web authentication is not configured.", content_type="text/plain")
+        user = await self.auth.get_session(request)
+        if user:
+            raise web.HTTPFound("/")
+        state = await self.auth.create_state()
+        return web.Response(
+            text=f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign In • Racing Syndicate League</title><link rel="stylesheet" href="/static/app.css?v=20260918-2"></head><body class="alu-dashboard"><main style="min-height:100vh;display:grid;place-items:center;padding:32px"><section class="glass-panel" style="max-width:620px;width:100%;padding:42px;text-align:center"><div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div><h1>Sign In to Racing Syndicate League</h1><p class="server-sub">Use your Discord account to access your player profile, registration, matches and staff controls. Your secure web session will be remembered for up to 30 days and refreshed while you use the site.</p><a class="qa qa-purple" href="{self.auth.login_url(state)}">Continue with Discord →</a></section></main></body></html>""",
+            content_type="text/html",
+        )
+
+    async def callback(self, request: web.Request) -> web.StreamResponse:
+        if not self.auth.configured:
+            raise web.HTTPServiceUnavailable(text="Web authentication is not configured.")
+        state = request.query.get("state", "")
+        code = request.query.get("code", "")
+        if not state or not await self.auth.consume_state(state):
+            raise web.HTTPBadRequest(text="Invalid or expired OAuth state.")
+        if not code:
+            raise web.HTTPUnauthorized(text=request.query.get("error", "Authorization was cancelled."))
+        stage = "token exchange"
+        try:
+            tokens = await self.auth.exchange_code(code)
+            if not isinstance(tokens, dict):
+                raise web.HTTPServiceUnavailable(text="Discord returned an invalid OAuth token response.")
+            access_token = tokens.get("access_token")
+            if not access_token:
+                raise web.HTTPServiceUnavailable(text="Discord did not return an access token.")
+            stage = "Discord account lookup"
+            user = await self.auth.build_user(access_token)
+            stage = "web session creation"
+            session = await self.auth.create_session(user)
+        except web.HTTPException:
+            raise
+        except Exception as exc:
+            log.exception("Discord OAuth callback failed during %s", stage)
+            return web.Response(
+                status=503,
+                text=f"Discord sign-in failed during {stage}. {type(exc).__name__}: {exc}",
+                content_type="text/plain",
+                headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+            )
+        response = web.HTTPFound("/")
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Pragma"] = "no-cache"
+        self.auth.set_session_cookie(response, session)
+        return response
+
+    async def logout(self, request: web.Request) -> web.StreamResponse:
+        try:
+            await self.auth.destroy_session(request)
+        except Exception:
+            log.exception("Unable to remove web session during logout")
+        response = web.HTTPFound("/login")
+        response.del_cookie(SESSION_COOKIE, path="/")
+        return response
+
+    async def me(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        admin = bool(user.user_id in self.auth.allowed_staff_ids)
+        if not admin:
+            for gid in [str(x) for x in getattr(user, "guild_ids", [])]:
+                guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == gid), None)
+                if guild is None:
+                    continue
+                member = guild.get_member(int(user.user_id))
+                if member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
+                    admin = True
+                    break
+                if member:
+                    settings = await self.bot.db.settings.find_one({"_id": gid}) or {}
+                    role_id = str(settings.get("admin_role_id", "")).strip()
+                    if role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])):
+                        admin = True
+                        break
+        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "avatar": user.avatar, "staff": user.staff, "admin": admin})
+
+
+    async def get_language(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        record = await self.bot.db.web_user_preferences.find_one({"_id": str(user.user_id)}) or {}
+        language = str(record.get("language", "en")).strip() or "en"
+        return web.json_response({"language": language})
+
+    async def set_language(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid language request.") from exc
+        language = str(payload.get("language", "en")).strip()
+        allowed = {"en", "zh-CN", "es", "ar", "pt", "ru", "fr", "de", "ms", "hi", "ja", "ko", "it", "tr", "nl", "pl", "th", "vi", "id", "uk"}
+        if language not in allowed:
+            raise web.HTTPBadRequest(text="Unsupported language.")
+        await self.bot.db.web_user_preferences.update_one(
+            {"_id": str(user.user_id)},
+            {"$set": {"language": language, "updated_at": time.time()}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "language": language})
+
+    async def news(self, request: web.Request) -> web.Response:
+        """Return news scoped to the signed-in user; staff may manage drafts for one server."""
+        requested_guild = request.query.get("guild_id", "").strip()
+        include_drafts = False
+        if requested_guild:
+            user, guild_id, _ = await self.require_admin(request)
+            guild_ids = {guild_id}
+            include_drafts = True
+        else:
+            user = await self.require_user(request)
+            guild_ids = {str(x) for x in user.guild_ids}
+        query = {"guild_id": {"$in": list(guild_ids)}}
+        if not include_drafts:
+            query["published"] = True
+        cursor = self.bot.db.news_posts.find(query).sort("updated_at", -1).limit(100 if include_drafts else 12)
+        rows = []
+        async for row in cursor:
+            row["id"] = str(row.pop("_id"))
+            rows.append({k: row.get(k) for k in ("id","guild_id","title","category","excerpt","body","author_name","published_at","updated_at")})
+        return web.json_response({"news": rows})
+
+    async def _news_rows(self, guild_id: str) -> list[dict[str, Any]]:
+        rows = []
+        async for row in self.bot.db.news_posts.find({"guild_id": guild_id}).sort("updated_at", -1).limit(100):
+            row["id"] = str(row.pop("_id"))
+            rows.append({k: row.get(k) for k in ("id","guild_id","title","category","excerpt","body","author_id","author_name","published","published_at","created_at","updated_at")})
+        return rows
+
+    async def create_news(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        title = str(payload.get("title","")).strip()[:120]
+        body = str(payload.get("body","")).strip()[:10000]
+        if not title or not body:
+            raise web.HTTPBadRequest(text="Title and article body are required.")
+        now = datetime.now(timezone.utc).isoformat()
+        published = bool(payload.get("published", True))
+        doc = {
+            "guild_id": guild_id, "title": title,
+            "category": str(payload.get("category","Announcement")).strip()[:40] or "Announcement",
+            "excerpt": str(payload.get("excerpt","")).strip()[:300],
+            "body": body, "author_id": str(user.user_id),
+            "author_name": str(user.global_name or user.username or "Staff"),
+            "published": published, "published_at": now if published else None,
+            "created_at": now, "updated_at": now,
+        }
+        result = await self.bot.db.news_posts.insert_one(doc)
+        doc["id"] = str(result.inserted_id)
+        await self._audit(guild_id, str(user.user_id), f"News {'published' if published else 'drafted'}: {title}")
+        return web.json_response({"ok": True, "news": doc}, status=201)
+
+    async def update_news(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        try: oid = ObjectId(str(request.match_info["news_id"]))
+        except Exception: raise web.HTTPBadRequest(text="Invalid news article ID.")
+        existing = await self.bot.db.news_posts.find_one({"_id": oid, "guild_id": guild_id})
+        if not existing: raise web.HTTPNotFound(text="News article not found.")
+        payload = await request.json()
+        updates = {}
+        for key, limit in (("title",120),("category",40),("excerpt",300),("body",10000)):
+            if key in payload: updates[key] = str(payload.get(key,"")).strip()[:limit]
+        if ("title" in updates and not updates["title"]) or ("body" in updates and not updates["body"]):
+            raise web.HTTPBadRequest(text="Title and article body cannot be empty.")
+        if "published" in payload:
+            updates["published"] = bool(payload["published"])
+            updates["published_at"] = (datetime.now(timezone.utc).isoformat() if updates["published"] and not existing.get("published_at") else existing.get("published_at") if updates["published"] else None)
+        updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await self.bot.db.news_posts.update_one({"_id": oid, "guild_id": guild_id}, {"$set": updates})
+        await self._audit(guild_id, str(user.user_id), f"News updated: {existing.get('title', str(oid))}")
+        row = await self.bot.db.news_posts.find_one({"_id": oid, "guild_id": guild_id})
+        row["id"] = str(row.pop("_id"))
+        return web.json_response({"ok": True, "news": row})
+
+    async def delete_news(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        try: oid = ObjectId(str(request.match_info["news_id"]))
+        except Exception: raise web.HTTPBadRequest(text="Invalid news article ID.")
+        row = await self.bot.db.news_posts.find_one({"_id": oid, "guild_id": guild_id})
+        if not row: raise web.HTTPNotFound(text="News article not found.")
+        await self.bot.db.news_posts.delete_one({"_id": oid, "guild_id": guild_id})
+        await self._audit(guild_id, str(user.user_id), f"News deleted: {row.get('title', str(oid))}")
+        return web.json_response({"ok": True})
+    async def status(self, request: web.Request) -> web.Response:
+        await self.require_user(request)
+        ready = bool(getattr(self.bot, "is_ready", lambda: False)())
+        guilds = list(getattr(self.bot, "guilds", []) or [])
+        latency = getattr(self.bot, "latency", None)
+        return web.json_response({"bot": {"online": ready, "latency_ms": round(latency * 1000, 1) if latency is not None else None, "guild_count": len(guilds)}})
+
+    async def guilds(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        bot_guilds = {str(getattr(g, "id", "")): g for g in getattr(self.bot, "guilds", [])}
+        allowed = set(user.guild_ids) & set(bot_guilds)
+        result = [{"id": gid, "name": str(getattr(bot_guilds[gid], "name", gid)), "admin": gid in user.admin_guild_ids or user.user_id in self.auth.allowed_staff_ids} for gid in sorted(allowed)]
+        result.sort(key=lambda item: item["name"].casefold())
+        return web.json_response({"guilds": result})
+
+    async def player_me(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        player = await self.players.get_player(guild_id, user.user_id)
+        preferences = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        return web.json_response({
+            "player": player,
+            "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
+            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "platform", "driver_type", "links", "asphalt_connection")},
+        })
+
+    async def player_defense(self, request: web.Request) -> web.Response:
+        """Return the player's current/pending five-course defense state."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        profile = await self.players.get_player(guild_id, user.user_id) or {}
+        locked = profile.get("defense_locked") or {}
+        pending = profile.get("defense_review_payload") or {}
+        tracks = profile.get("pending_tracks") or profile.get("season_defense_tracks") or []
+        courses = locked.get("courses") or []
+        return web.json_response({
+            "locked": courses,
+            "pending": pending.get("courses") or [],
+            "pending_review": bool(profile.get("defense_review_pending")),
+            "pending_is_change": bool(profile.get("pending_is_change") or pending.get("is_change")),
+            "tracks": tracks,
+            "cooldown_remaining": max(0, int(86400 - (time.time() - float(profile.get("last_defense_change", 0))))) if profile.get("last_defense_change") else 0,
+        })
+
+    async def player_defense_action(self, request: web.Request) -> web.Response:
+        """Generate or stage a five-course defense using the same driver records as Discord."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        action = str(payload.get("action", "generate")).strip().casefold()
+        driver_id = f"{guild_id}_{user.user_id}"
+        profile = await self.bot.db.drivers.find_one({"_id": driver_id})
+        if not profile:
+            raise web.HTTPConflict(text="Register your driver for the current season before setting a defense.")
+        if profile.get("defense_review_pending"):
+            raise web.HTTPConflict(text="Your defense submission is already pending staff review.")
+        if action == "submit":
+            courses_in = payload.get("courses")
+            if not isinstance(courses_in, list) or len(courses_in) != 5:
+                raise web.HTTPBadRequest(text="Exactly five defense course results are required.")
+            pending_tracks = profile.get("pending_tracks") or profile.get("season_defense_tracks") or []
+            if len(pending_tracks) != 5:
+                raise web.HTTPConflict(text="Generate your five defense courses first.")
+            if bool(payload.get("is_change")) != bool(profile.get("pending_is_change")):
+                raise web.HTTPBadRequest(text="Defense submission state is out of date. Refresh and try again.")
+            from ..core.core import parse_lap_time
+            parsed, seen = [], set()
+            for i, item in enumerate(courses_in):
+                if not isinstance(item, dict):
+                    raise web.HTTPBadRequest(text=f"Course {i + 1} is invalid.")
+                car = str(item.get("car", "")).strip()
+                lap_time = str(item.get("lap_time", "")).strip()
+                proof_url = str(item.get("proof_url", "")).strip()
+                try:
+                    car_rank = int(item.get("car_rank"))
+                except (TypeError, ValueError):
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: car performance must be a whole number.")
+                ms = parse_lap_time(lap_time)
+                if ms <= 0:
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: lap time must use MM:SS.MS format.")
+                if not car or car.casefold() in seen:
+                    raise web.HTTPBadRequest(text="All five cars are required and must be different.")
+                if car_rank <= 0:
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: car performance must be positive.")
+                if not proof_url.lower().startswith(("http://", "https://")):
+                    raise web.HTTPBadRequest(text=f"Course {i + 1}: proof must be a valid image URL.")
+                seen.add(car.casefold())
+                parsed.append({"track": str(pending_tracks[i]), "car": car, "car_rank": car_rank, "lap_time": lap_time, "ms": ms, "proof_url": proof_url})
+            cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            channel_id = cfg.get("review_channel_id")
+            channel = self.bot.get_channel(int(channel_id)) if channel_id else None
+            if channel is None:
+                raise web.HTTPServiceUnavailable(text="Staff review channel is not configured.")
+            submitted_at = time.time()
+            submission_id = hashlib.sha256(f"{guild_id}:{user.user_id}:{submitted_at}".encode()).hexdigest()[:24]
+            is_change = bool(profile.get("pending_is_change"))
+            payload_doc = {"courses": parsed, "proof_url": parsed[0]["proof_url"], "is_change": is_change, "submitted_at": submitted_at, "submission_id": submission_id}
+            claim = await self.bot.db.drivers.update_one({"_id": driver_id, "defense_review_pending": {"$ne": True}}, {"$set": {"defense_review_pending": True, "defense_review_payload": payload_doc}})
+            if getattr(claim, "modified_count", 0) != 1:
+                raise web.HTTPConflict(text="Your defense submission is already pending staff review.")
+            embeds = [discord.Embed(title="🛡️ Gauntlet Defense Change Request" if is_change else "🛡️ New Gauntlet Defense Placement Verification", description="A web submission is awaiting staff verification.", color=3447003)]
+            embeds[0].add_field(name="Driver", value=f"<@{user.user_id}>", inline=False)
+            embeds[0].set_footer(text=f"ALU Defense Submission: {submission_id}")
+            for i, course in enumerate(parsed, 1):
+                emb = discord.Embed(title=f"🏁 Course {i}: {course['track']}", description=f"🚗 **Car:** {course['car']}\n📈 **Car Performance:** {course['car_rank']}\n⏱️ **Lap Time:** {course['lap_time']}", color=3447003)
+                emb.set_image(url=course["proof_url"])
+                embeds.append(emb)
+            try:
+                from ..cogs.defense import DefenseView
+                review_view = DefenseView(
+                    str(user.user_id),
+                    str(guild_id),
+                    parsed,
+                    parsed[0]["proof_url"],
+                    is_change=is_change,
+                )
+                message = await channel.send(embeds=embeds, view=review_view)
+            except Exception:
+                await self.bot.db.drivers.update_one({"_id": driver_id, "defense_review_payload.submission_id": submission_id}, {"$unset": {"defense_review_pending": "", "defense_review_payload": ""}})
+                raise web.HTTPServiceUnavailable(text="Staff review message could not be delivered; your submission was rolled back.")
+            await self.bot.db.drivers.update_one({"_id": driver_id, "defense_review_payload.submission_id": submission_id}, {"$set": {"defense_review_payload.review_channel_id": int(channel.id), "defense_review_payload.review_message_id": int(message.id), "defense_review_payload.delivery_status": "delivered"}})
+            return web.json_response({"ok": True, "message": "Defense submitted for staff review.", "submission_id": submission_id})
+
+        existing = profile.get("defense_locked") or {}
+        if action == "change":
+            if not has_5_course_defense(profile):
+                raise web.HTTPConflict(text="You do not have a valid five-course defense yet. Create your first defense instead.")
+            last_change = profile.get("last_defense_change")
+            if last_change and time.time() - float(last_change) < 86400:
+                remaining = int(86400 - (time.time() - float(last_change)))
+                raise web.HTTPConflict(text=f"Defense changes are on cooldown for another {remaining // 3600}h {(remaining % 3600) // 60}m.")
+            tracks = [c.get("track") for c in existing.get("courses", []) if c.get("track")]
+            if len(tracks) != 5:
+                tracks = profile.get("season_defense_tracks") or []
+        else:
+            tracks = profile.get("season_defense_tracks") or []
+        if len(tracks) != 5:
+            tracks = random.sample(ALU_TRACKS, 5)
+        await self.bot.db.drivers.update_one(
+            {"_id": driver_id},
+            {"$set": {"season_defense_tracks": tracks, "pending_tracks": tracks, "pending_is_change": action == "change"}}
+        )
+        return web.json_response({"ok": True, "action": action, "tracks": tracks, "message": "Five defense courses generated. Enter your results and proof, then submit for staff review."})
+
+    async def player_register(self, request: web.Request) -> web.Response:
+        """Submit a web registration through the same canonical Discord workflow."""
+        user, guild_id, guild = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        game_id = str(payload.get("game_id", "")).strip()
+        proof_url = str(payload.get("proof_url", "")).strip()
+        control_raw = str(payload.get("control", "")).strip().casefold()
+        if not game_id or len(game_id) > 100:
+            raise web.HTTPBadRequest(text="Game ID is required and must be 100 characters or fewer.")
+        try:
+            garage_pi = int(payload.get("garage_pi"))
+        except (TypeError, ValueError):
+            raise web.HTTPBadRequest(text="Garage PI must be a positive whole number.")
+        if garage_pi <= 0:
+            raise web.HTTPBadRequest(text="Garage PI must be a positive whole number.")
+        if not proof_url.lower().startswith(("http://", "https://")):
+            raise web.HTTPBadRequest(text="Proof must be a direct image URL beginning with http:// or https://.")
+        if "touch" in control_raw:
+            control_value, control_name = "touchdrive", "TouchDrive Auto Pilot"
+        elif "manual" in control_raw or "tilt" in control_raw or "tap" in control_raw:
+            control_value, control_name = "manual", "Manual Tilt / Tap Controls"
+        else:
+            raise web.HTTPBadRequest(text="Controls must be TouchDrive or Manual.")
+
+        cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        registration_channel_id = cfg.get("registration_channel_id")
+        if not registration_channel_id:
+            raise web.HTTPServiceUnavailable(text="Registration is not configured for this server.")
+
+        class _WebUser:
+            def __init__(self, user):
+                self.id = int(user.user_id)
+                self.mention = f"<@{self.id}>"
+
+        class _WebResponse:
+            def __init__(self, owner):
+                self.owner = owner
+                self.done = False
+            def is_done(self):
+                return self.done
+            async def send_message(self, content=None, **kwargs):
+                self.done = True
+                self.owner.message = str(content or "")
+
+        class _WebFollowup:
+            def __init__(self, owner):
+                self.owner = owner
+            async def send(self, content=None, **kwargs):
+                self.owner.message = str(content or "")
+
+        class _WebInteraction:
+            def __init__(self):
+                self.guild_id = int(guild_id)
+                self.channel_id = int(registration_channel_id)
+                self.user = _WebUser(user)
+                self.message = ""
+                self.response = _WebResponse(self)
+                self.followup = _WebFollowup(self)
+
+        class _ControlType:
+            name = control_name
+            value = control_value
+
+        class _Proof:
+            content_type = "image/*"
+            url = proof_url
+
+        interaction = _WebInteraction()
+        await submit_registration_application(interaction, game_id, garage_pi, _Proof(), _ControlType())
+        if interaction.message.startswith(("❌", "⚠️", "⏳")):
+            if interaction.message.startswith("⏳"):
+                raise web.HTTPConflict(text=interaction.message)
+            if interaction.message.startswith("⚠️"):
+                raise web.HTTPConflict(text=interaction.message)
+            raise web.HTTPBadRequest(text=interaction.message)
+        return web.json_response({"ok": True, "message": interaction.message})
+
+    async def player_profile(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        game_name = str(payload.get("game_name", "")).strip()[:100]
+        about = str(payload.get("about", "")).strip()[:500]
+        location = str(payload.get("location", "")).strip()[:100]
+        platform = str(payload.get("platform", "")).strip()[:40]
+        driver_type = str(payload.get("driver_type", "")).strip()[:30]
+        allowed_platforms = {"Android", "Nintendo", "macOS", "Steam", "Epic Games", "Windows", "Apple iOS", "Xbox", "Playstation"}
+        allowed_driver_types = {"Manual Driver", "Touch Driver"}
+        if platform and platform not in allowed_platforms:
+            raise web.HTTPBadRequest(text="Invalid platform.")
+        if driver_type and driver_type not in allowed_driver_types:
+            raise web.HTTPBadRequest(text="Invalid driver type.")
+        timezone = str(payload.get("timezone", "UTC")).strip()
+        if timezone not in {value for _, value in TIMEZONE_LABELS}:
+            raise web.HTTPBadRequest(text="Invalid timezone.")
+        links = payload.get("links", [])
+        if not isinstance(links, list):
+            raise web.HTTPBadRequest(text="Links must be a list.")
+        clean_links = []
+        for link in links[:5]:
+            value = str(link or "").strip()
+            if not value:
+                continue
+            if not value.lower().startswith(("http://", "https://")):
+                raise web.HTTPBadRequest(text="Profile links must begin with http:// or https://.")
+            if len(value) > 300:
+                raise web.HTTPBadRequest(text="Profile links must be 300 characters or fewer.")
+            clean_links.append(value)
+        preference_id = f"{guild_id}_{user.user_id}"
+        await self.bot.db.web_preferences.update_one(
+            {"_id": preference_id},
+            {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "platform": platform, "driver_type": driver_type, "timezone": timezone, "links": clean_links}},
+            upsert=True,
+        )
+        await self.bot.db.drivers.update_one(
+            {"_id": preference_id},
+            {"$set": {"game_name": game_name, "updated_at": time.time()}},
+        )
+        return web.json_response({"ok": True, "message": "Profile updated.", "profile": {"discord_name": user.global_name or user.username or "Driver", "game_name": game_name, "game_id": (await self.players.get_player(guild_id, user.user_id) or {}).get("game_id", ""), "about": about, "location": location, "timezone": timezone, "links": clean_links}})
+
+    async def player_asphalt(self, request: web.Request) -> web.Response:
+        """Link a player's Asphalt Legends identity to their Discord/web account."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        game_id = str(payload.get("game_id", "")).strip()[:100]
+        game_name = str(payload.get("game_name", "")).strip()[:100]
+        if not game_id or not game_name:
+            raise web.HTTPBadRequest(text="Asphalt Game Name and Game ID are required.")
+        existing = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        connection = existing.get("asphalt_connection") or {}
+        if connection.get("status") == "verified" and connection.get("game_id") != game_id:
+            raise web.HTTPConflict(text="Your Asphalt account is already verified. Ask staff to change the linked account.")
+        duplicate = await self.bot.db.web_preferences.find_one({"guild_id": guild_id, "asphalt_connection.game_id": game_id, "_id": {"$ne": f"{guild_id}_{user.user_id}"}})
+        if duplicate and (duplicate.get("asphalt_connection") or {}).get("status") == "verified":
+            raise web.HTTPConflict(text="That Asphalt Game ID is already linked to another Discord account.")
+        now = datetime.now(timezone.utc).isoformat()
+        connection = {"game_id": game_id, "game_name": game_name, "status": "pending", "submitted_at": connection.get("submitted_at") or now, "updated_at": now, "verified_at": connection.get("verified_at"), "verified_by": connection.get("verified_by")}
+        key = f"{guild_id}_{user.user_id}"
+        previous_prefs = existing
+        try:
+            await self.bot.db.web_preferences.update_one({"_id": key}, {"$set": {"guild_id": guild_id, "user_id": user.user_id, "asphalt_connection": connection}}, upsert=True)
+            await self.bot.db.drivers.update_one({"_id": key}, {"$set": {
+                "guild_id": guild_id,
+                "user_id": user.user_id,
+                "asphalt_verified": False,
+                "asphalt_game_id": None,
+                "asphalt_game_name": None,
+                "asphalt_verified_by": None,
+                "asphalt_verified_at": None,
+            }}, upsert=True)
+        except Exception:
+            try:
+                if previous_prefs:
+                    await self.bot.db.web_preferences.replace_one({"_id": key}, previous_prefs, upsert=True)
+                else:
+                    await self.bot.db.web_preferences.delete_one({"_id": key})
+            except Exception:
+                log.exception("Failed to compensate partial Asphalt submission for %s", key)
+            raise
+        cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        channel = self.bot.get_channel(int(cfg["review_channel_id"])) if cfg.get("review_channel_id") else None
+        if channel:
+            await channel.send(f"🏎️ Asphalt Account Link Pending Verification\nDiscord: <@{user.user_id}>\nGame Name: **{game_name}**\nGame ID: **{game_id}**\n\nStaff can verify with /asphalt verify.")
+        return web.json_response({"ok": True, "message": "Asphalt account submitted for staff verification.", "connection": connection})
+
+    async def player_preferences(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        allowed = {"web_notifications", "dm_notifications", "timezone"}
+        updates = {key: payload[key] for key in allowed if key in payload}
+        if "web_notifications" in updates:
+            updates["web_notifications"] = bool(updates["web_notifications"])
+        if "dm_notifications" in updates:
+            updates["dm_notifications"] = bool(updates["dm_notifications"])
+        if "timezone" in updates and updates["timezone"] not in {value for _, value in TIMEZONE_LABELS}:
+            raise web.HTTPBadRequest(text="Invalid timezone.")
+        if updates:
+            await self.bot.db.web_preferences.update_one({"_id": f"{guild_id}_{user.user_id}"}, {"$set": {**updates, "guild_id": guild_id, "user_id": user.user_id}}, upsert=True)
+        return web.json_response({"ok": True, "preferences": updates})
+
+    async def setup_options(self, request: web.Request) -> web.Response:
+        _, _, guild = await self.require_admin(request)
+        channels = [{"id": str(c.id), "name": c.name, "type": str(getattr(c, "type", "text"))} for c in guild.text_channels]
+        roles = [{"id": str(role.id), "name": role.name} for role in guild.roles if not role.is_default() and not role.managed]
+        return web.json_response({"channels": channels, "roles": roles, "timezones": [{"label": label, "value": value} for label, value in TIMEZONE_LABELS]})
+
+    async def setup_settings(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        return web.json_response({"settings": {key: settings.get(key) for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone": settings.get("timezone", "UTC")}})
+
+    async def save_setup_settings(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        allowed = {key for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone"}
+        clean = {key: str(payload[key]).strip() for key in allowed if payload.get(key)}
+        if clean.get("timezone") not in {None, *(value for _, value in TIMEZONE_LABELS)}:
+            raise web.HTTPBadRequest(text="Invalid timezone.")
+        if not clean:
+            raise web.HTTPBadRequest(text="Nothing to save.")
+        guild = next(g for g in self.bot.guilds if str(g.id) == guild_id)
+        for key in SETUP_CHANNELS:
+            value = clean.get(key[0])
+            if value:
+                try:
+                    valid = guild.get_channel(int(value))
+                except (TypeError, ValueError):
+                    valid = None
+                if valid is None:
+                    raise web.HTTPBadRequest(text=f"Invalid channel for {key[1]}.")
+        for key in SETUP_ROLES:
+            value = clean.get(key[0])
+            if value:
+                try:
+                    valid = guild.get_role(int(value))
+                except (TypeError, ValueError):
+                    valid = None
+                if valid is None:
+                    raise web.HTTPBadRequest(text=f"Invalid role for {key[1]}.")
+        await self.bot.db.settings.update_one({"_id": guild_id}, {"$set": clean}, upsert=True)
+        await self._audit(guild_id, user.user_id, "Web setup updated")
+        return web.json_response({"ok": True, "settings": clean})
+
+    async def season(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_member(request)
+        state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+        return web.json_response({"season": state})
+
+    async def save_season(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        if "automatic_season_end" in payload:
+            value = bool(payload["automatic_season_end"])
+            await self.bot.db.settings.update_one({"_id": guild_id}, {"$set": {"automatic_season_end": value}}, upsert=True)
+            await self._audit(guild_id, user.user_id, f"Web season automation {'enabled' if value else 'disabled'}")
+        return web.json_response({"ok": True})
+
+    async def _audit(self, guild_id: str, user_id: str, action: str) -> None:
+        await self.bot.db.system_events.insert_one({"guild_id": guild_id, "source": "web", "user_id": user_id, "action": action})
+
+    async def leaderboard(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_guild_member(request)
+        try:
+            limit = max(1, min(100, int(request.query.get("limit", "50"))))
+        except ValueError:
+            raise web.HTTPBadRequest(text="limit must be an integer.")
+        rows = await self.players.list_players(guild_id, limit=limit)
+        for player in rows:
+            uid = str(player.get("user_id", ""))
+            prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{uid}"}) or {}
+            connection = prefs.get("asphalt_connection") or {}
+            player["game_name"] = prefs.get("game_name", "") or connection.get("game_name", "")
+            player["asphalt_verified"] = connection.get("status") == "verified"
+        return web.json_response({"players": rows})
+
+    async def competition_snapshot(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's live competitive snapshot for the selected guild."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        player = await self.players.get_player(guild_id, str(user.user_id))
+        if player is None:
+            return web.json_response({"registered": False, "guild_id": guild_id})
+        elo = int(player.get("elo", 1000) or 1000)
+        season = await get_current_season_number(str(guild_id))
+        player_season = int(player.get("season_number", 0) or 0)
+        season_active = bool(player.get("season_registered")) and player_season == season
+        if season_active:
+            higher = await self.bot.db.drivers.count_documents({
+                "guild_id": str(guild_id),
+                "season_registered": True,
+                "season_number": season,
+                "elo": {"$gt": elo},
+            })
+            rank = higher + 1
+        else:
+            rank = None
+        played = int(player.get("career_played", 0) or 0)
+        wins = int(player.get("career_wins", 0) or 0)
+        prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        connection = prefs.get("asphalt_connection") or {}
+        return web.json_response({"registered": season_active, "profile_exists": True, "rank": rank, "elo": elo, "garage_pi": int(player.get("garage_pi", 0) or 0), "career_wins": wins, "career_losses": max(0, played - wins), "streak": int(player.get("streak", 0) or 0), "defense_locked": bool(player.get("defense_locked", False)), "season_number": season, "player_season_number": player_season, "asphalt_verified": connection.get("status") == "verified"})
+
+    async def competition_recent_matches(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's recent verified Gauntlet match results."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        cursor = self.bot.db.matches.find({
+            "guild_id": str(guild_id),
+            "reverted": {"$ne": True},
+            "$or": [{"challenger_id": str(user.user_id)}, {"opponent_id": str(user.user_id)}],
+        }).sort("timestamp", -1).limit(8)
+        rows = []
+        async for match in cursor:
+            challenger_id = str(match.get("challenger_id", ""))
+            opponent_id = str(match.get("opponent_id", ""))
+            opponent = opponent_id if challenger_id == str(user.user_id) else challenger_id
+            opponent_profile = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{opponent}"}) or {}
+            opponent_name = str(opponent_profile.get("game_id") or opponent_profile.get("username") or opponent)
+            won = str(match.get("w_id", "")) == str(user.user_id)
+            lost = str(match.get("l_id", "")) == str(user.user_id)
+            if not won and not lost:
+                continue
+            timestamp = match.get("timestamp")
+            try:
+                date_value = int(timestamp)
+            except (TypeError, ValueError):
+                try:
+                    date_value = int(datetime.fromisoformat(str(timestamp).replace("Z", "+00:00")).timestamp())
+                except Exception:
+                    date_value = int(time.time())
+            rows.append({
+                "match_id": str(match.get("_id", "")),
+                "opponent_id": opponent,
+                "opponent": opponent_name,
+                "result": "WIN" if won else "LOSS",
+                "courses": int(match.get("courses_beat", 0) or 0),
+                "date": date_value,
+            })
+        return web.json_response({"matches": rows})
+
+    async def player_career(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's tournament and Gauntlet career history."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        uid = str(user.user_id)
+        driver_id = f"{guild_id}_{uid}"
+        driver = await self.bot.db.drivers.find_one({"_id": driver_id}) or {}
+        season = await get_current_season_number(str(guild_id))
+        elo = int(driver.get("elo", 1000) or 1000)
+
+        higher = await self.bot.db.drivers.count_documents({
+            "guild_id": str(guild_id), "elo": {"$gt": elo}
+        })
+        career_rank = higher + 1
+
+        registrations = []
+        async for reg in self.bot.db.tournament_registrations.find({
+            "guild_id": str(guild_id), "user_id": uid
+        }).sort("registered_at", -1):
+            tid = str(reg.get("tournament_id", ""))
+            try:
+                from bson import ObjectId
+                tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tid)})
+            except Exception:
+                tournament = None
+            if not tournament:
+                continue
+            bracket = tournament.get("bracket") or {}
+            groups = bracket.get("rounds") or bracket.get("winners") or []
+            wins = losses = played = 0
+            placement = None
+            for group in groups:
+                for match in group.get("matches", []):
+                    slots = [str(x) for x in (match.get("player_slots") or []) if x]
+                    if uid not in slots:
+                        continue
+                    status = str(match.get("status", ""))
+                    winner = str(match.get("winner_id", ""))
+                    if status == "completed" and winner:
+                        played += 1
+                        if winner == uid:
+                            wins += 1
+                        else:
+                            losses += 1
+            if str(tournament.get("status")) == "completed" and losses and not wins:
+                placement = "Eliminated"
+            registrations.append({
+                "id": tid,
+                "name": str(tournament.get("name", "Tournament")),
+                "format": str(tournament.get("format", "tournament")).replace("_", " ").title(),
+                "status": str(tournament.get("status", "unknown")).replace("_", " ").title(),
+                "registered_at": str(reg.get("registered_at", "")),
+                "played": played, "wins": wins, "losses": losses,
+                "record": f"{wins}-{losses}", "placement": placement or ("Active" if str(tournament.get("status")) != "completed" else "Completed"),
+                "start_time": str(tournament.get("start_time", "")),
+            })
+
+        gauntlet = {
+            "season": season,
+            "registered": bool(driver.get("season_registered")) and int(driver.get("season_number", 0) or 0) == season,
+            "rank": career_rank,
+            "elo": elo,
+            "wins": int(driver.get("career_wins", 0) or 0),
+            "played": int(driver.get("career_played", 0) or 0),
+            "streak": int(driver.get("streak", 0) or 0),
+        }
+        gauntlet["losses"] = max(0, gauntlet["played"] - gauntlet["wins"])
+        return web.json_response({
+            "player": {"username": str(driver.get("username") or user.global_name or user.username or "Driver")},
+            "career": gauntlet,
+            "tournaments": registrations[:25],
+        })
+
+    async def player_list(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        try:
+            limit = max(1, min(100, int(request.query.get("limit", "50"))))
+        except ValueError:
+            raise web.HTTPBadRequest(text="limit must be an integer.")
+        players = await self.players.list_players(guild_id, search=request.query.get("search", ""), limit=limit)
+        for player in players:
+            uid = str(player.get("user_id", ""))
+            prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{uid}"}) or {}
+            connection = prefs.get("asphalt_connection") or {}
+            player["asphalt_connection"] = {
+                "game_id": connection.get("game_id", ""),
+                "game_name": connection.get("game_name", ""),
+                "status": connection.get("status", "not_linked"),
+            }
+            player["asphalt_verified"] = connection.get("status") == "verified"
+        return web.json_response({"players": players})
+
+    async def player_detail(self, request: web.Request) -> web.Response:
+        """Return a guild member's public profile for the player directory."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        user_id = str(request.match_info["user_id"]).strip()
+        player = await self.players.get_player(guild_id, user_id)
+        if player is None:
+            raise web.HTTPNotFound(text="Player not found.")
+        prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user_id}"}) or {}
+        connection = prefs.get("asphalt_connection") or {}
+        player["asphalt_connection"] = {
+            "game_id": connection.get("game_id", ""),
+            "game_name": connection.get("game_name", ""),
+            "status": connection.get("status", "not_linked"),
+        }
+        player["asphalt_verified"] = connection.get("status") == "verified"
+        return web.json_response({"player": player})
+
+    async def help_page(self, request: web.Request) -> web.Response:
+        """Render the public Help Center page."""
+        return await self._page_response("help.html", request)
+
+    async def legal_page(self, request: web.Request) -> web.Response:
+        """Render the public Legal Center page."""
+        return await self._page_response("legal.html", request)
