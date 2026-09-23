@@ -778,6 +778,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
         original_name = Path(field.filename or "brand-image").name[:120]
         content_type = str(field.headers.get("Content-Type", "") or "").lower().split(";", 1)[0]
+        upload_target = str((await request.post()).get("target") or "").strip().lower()
         data = await field.read()
         if not data:
             raise web.HTTPBadRequest(text="The selected image is empty.")
@@ -794,6 +795,27 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 image = ImageOps.exif_transpose(source)
                 if image.mode not in {"RGB", "RGBA"}:
                     image = image.convert("RGBA")
+
+                # Normalize uploads to sensible dimensions for their destination
+                # while preserving aspect ratio.
+                target_sizes = {
+                    "logo_url": (512, 512),
+                    "favicon_url": (128, 128),
+                    "hero_url": (1920, 900),
+                    "welcome_url": (1400, 800),
+                    "gauntlet_url": (1400, 800),
+                    "tournament_url": (1400, 800),
+                    "club_url": (1400, 800),
+                    "login_url": (1400, 800),
+                    "background_url": (1920, 1080),
+                    "discord_icon": (128, 128),
+                    "cashapp_icon": (128, 128),
+                    "custom_icon": (128, 128),
+                }
+                target_size = target_sizes.get(upload_target)
+                if target_size:
+                    image.thumbnail(target_size, Image.Resampling.LANCZOS)
+
                 output = BytesIO()
                 image.save(output, format="PNG", optimize=True)
                 png_data = output.getvalue()
