@@ -115,7 +115,8 @@ class WebControlCenter:
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
         canonical_brand = f'<a class="top-brand top-logo-mark" href="{site_logo_href}" aria-label="{html.escape(str((branding.get("identity") or {}).get("name") or "Racing Syndicate League"), quote=True)} home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a>'
-        link_settings = branding.get("links") or {}\n        brand_re = re.compile(r'<a class="top-brand top-logo-mark"[^>]*>.*?</a>', re.S)
+        link_settings = branding.get("links") or {}
+        brand_re = re.compile(r'<a class="top-brand top-logo-mark"[^>]*>.*?</a>', re.S)
         body, brand_count = brand_re.subn(canonical_brand, body, count=1)
         if brand_count:
             body = re.sub(r'<a class="top-cashapp-link"[^>]*>.*?</a>', "", body, flags=re.S)
