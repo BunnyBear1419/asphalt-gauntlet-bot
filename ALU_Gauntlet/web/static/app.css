@@ -1675,3 +1675,47 @@ body{top:0!important}
 /* Shared header social controls — identical to Home on every page. */
 .top-cashapp-link{position:absolute;left:154px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#00d64f;z-index:1100;text-decoration:none;transition:.18s ease}.top-cashapp-link:hover{background:transparent!important;border-color:transparent!important;box-shadow:none!important;transform:translateY(-50%) scale(1.04)}.top-cashapp-link span{font:900 40px/1 Arial,Helvetica,sans-serif;transform:translateY(-1px)}
 .top-discord-link{position:absolute;left:84px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#5865f2;box-shadow:none!important;z-index:1100;text-decoration:none;transition:.18s ease}.top-discord-link svg{width:40px;height:40px;fill:currentColor}.top-discord-link img,.top-cashapp-link img{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;max-width:36px!important;max-height:36px!important;object-fit:contain!important;display:block!important}.top-discord-link svg{width:36px!important;height:36px!important}
+
+
+/* FINAL FOOTER SOCIAL PACKING — only rendered links occupy space. */
+.rsl-footer-social-row{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  width:100%!important;
+}
+.rsl-footer-socials{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  flex:0 0 auto!important;
+  flex-wrap:wrap!important;
+}
+.rsl-footer-social{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:0 0 36px!important;
+  width:36px!important;
+  height:36px!important;
+  margin:0!important;
+}
+.rsl-footer-social img,
+.rsl-footer-social svg{
+  width:36px!important;
+  height:36px!important;
+  display:block!important;
+  object-fit:contain!important;
+}
+.rsl-footer-social-row .rsl-footer-rule{
+  flex:1 1 180px!important;
+  min-width:24px!important;
+  margin:0!important;
+}
+@media(max-width:700px){
+  .rsl-footer-social-row{gap:6px!important}
+  .rsl-footer-socials{gap:6px!important}
+  .rsl-footer-social-row .rsl-footer-rule{min-width:12px!important}
+}
