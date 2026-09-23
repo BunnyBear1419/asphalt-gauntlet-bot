@@ -708,7 +708,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     raise web.HTTPBadRequest(text=f"{section}.{key} is too long.")
                 if section in {"links","images"} and value and not (value.startswith("https://") or value.startswith("http://") or value.startswith("/")):
                     raise web.HTTPBadRequest(text=f"{section}.{key} must be an http(s) URL or site-relative path.")
-                if section in {"images","identity"} and key.endswith("_url") and value and value.startswith("/") and not self._is_png_asset_url(value):
+                if section in {"images","identity"} and key.endswith("_url") and value and value.startswith("/") and section == "identity" and not self._is_png_asset_url(value):
                     raise web.HTTPBadRequest(text=f"{section}.{key} must use a PNG asset.")
                 clean[section][key]=value
         custom = clean["links"].get("custom")
