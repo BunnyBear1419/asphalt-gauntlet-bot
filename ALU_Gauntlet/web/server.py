@@ -267,6 +267,18 @@ class WebControlCenter:
             body = re.sub(r'<script\s+type=["\']application/ld\+json["\']>.*?</script>', '', body, flags=re.I|re.S)
             body = body.replace("</head>", jsonld_tag + "</head>", 1)
 
+        # Keep private/account/admin pages out of search indexes even when they do not
+        # have public SEO metadata entries above.
+        noindex_pages = {
+            "admin.html", "news-admin.html", "setup.html", "player.html", "players.html"
+        }
+        if filename in noindex_pages:
+            noindex_tag = '<meta name="robots" content="noindex, nofollow, noarchive">'
+            if re.search(r'<meta\s+name=["\\']robots["\\'][^>]*>', body, flags=re.I):
+                body = re.sub(r'<meta\s+name=["\\']robots["\\'][^>]*>', noindex_tag, body, count=1, flags=re.I)
+            else:
+                body = body.replace("</head>", noindex_tag + "</head>", 1)
+
         # Normalize the shared top-left header controls so every page matches Home.
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
