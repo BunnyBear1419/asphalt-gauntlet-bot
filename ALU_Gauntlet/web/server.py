@@ -407,15 +407,15 @@ window.rslGoogleTranslateInit=function(){
 
             # Shared cards live outside page-specific <main> layouts and directly above the footer.
             if "rsl-global-discord-cta" not in body:
-                if re.search(r"<main\\b", body, flags=re.I):
-                    body = re.sub(r"(<main\\b[^>]*>)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
-                elif re.search(r"<footer\\b", body, flags=re.I):
-                    body = re.sub(r"(<footer\\b)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
+                if re.search(r"<main\b", body, flags=re.I):
+                    body = re.sub(r"(<main\b[^>]*>)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
+                elif re.search(r"<footer\b", body, flags=re.I):
+                    body = re.sub(r"(<footer\b)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
                 else:
                     body = body.replace("</header>", "</header>" + global_discord_markup, 1)
             if "rsl-global-help-card" not in body:
-                if re.search(r"<footer\\b", body, flags=re.I):
-                    body = re.sub(r"(<footer\\b)", global_help_markup + "\n\\1", body, count=1, flags=re.I)
+                if re.search(r"<footer\b", body, flags=re.I):
+                    body = re.sub(r"(<footer\b)", global_help_markup + "\n\\1", body, count=1, flags=re.I)
                 else:
                     body = body.replace("</body>", global_help_markup + "\n</body>", 1)
 
