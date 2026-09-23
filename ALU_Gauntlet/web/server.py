@@ -8,6 +8,7 @@ import random
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from io import BytesIO
 import mimetypes
 import html
 import re
@@ -15,6 +16,7 @@ from typing import Any
 
 from aiohttp import web
 import discord
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
@@ -750,41 +752,65 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return response
 
     async def upload_brand_asset(self, request: web.Request) -> web.Response:
+        """Accept common image formats and normalize every stored brand asset to PNG."""
         user, guild_id, _ = await self.require_admin(request)
-        if request.content_length and request.content_length > 8 * 1024 * 1024:
-            raise web.HTTPRequestEntityTooLarge(max_size=8 * 1024 * 1024, actual_size=request.content_length)
+        max_size = 8 * 1024 * 1024
+        if request.content_length and request.content_length > max_size:
+            raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=request.content_length)
         try:
             reader = await request.multipart()
             field = await reader.next()
         except Exception as exc:
             log.exception("Brand asset multipart parsing failed for guild %s", guild_id)
-            raise web.HTTPBadRequest(text=f"Invalid PNG upload: {str(exc)[:200]}") from exc
+            raise web.HTTPBadRequest(text=f"Invalid image upload: {str(exc)[:200]}") from exc
         if field is None or field.name != "file":
-            raise web.HTTPBadRequest(text="Send a PNG image in the 'file' field.")
-        filename = Path(field.filename or "brand-image.png").name[:120]
-        if not filename.lower().endswith(".png"):
-            raise web.HTTPBadRequest(text="Only .png files are accepted.")
+            raise web.HTTPBadRequest(text="Send an image in the 'file' field.")
+
+        original_name = Path(field.filename or "brand-image").name[:120]
         content_type = str(field.headers.get("Content-Type", "") or "").lower().split(";", 1)[0]
-        if content_type not in {"image/png", "application/octet-stream"}:
-            raise web.HTTPBadRequest(text="Only PNG images are accepted.")
         data = await field.read()
-        if not data or len(data) > 8 * 1024 * 1024:
-            raise web.HTTPRequestEntityTooLarge(max_size=8 * 1024 * 1024, actual_size=len(data or b""))
-        # Some multipart readers can return a bytearray; Motor/PyMongo
-        # requires BSON encodable bytes for binary document fields.
+        if not data:
+            raise web.HTTPBadRequest(text="The selected image is empty.")
+        if len(data) > max_size:
+            raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=len(data))
+        # Multipart readers may return bytearray; BSON requires bytes for binary fields.
         data = bytes(data)
-        # Validate the PNG signature rather than trusting the browser MIME type.
-        if data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
-            raise web.HTTPBadRequest(text="The selected file is not a valid PNG image.")
-        asset_id = hashlib.sha256(f"{guild_id}:{filename}:{time.time()}".encode() + data).hexdigest()[:32]
+
+        # Do not trust the filename or browser MIME type. Pillow decodes the actual
+        # image bytes, then we write a real PNG regardless of the original format.
+        try:
+            with Image.open(BytesIO(data)) as source:
+                source.load()
+                image = ImageOps.exif_transpose(source)
+                if image.mode not in {"RGB", "RGBA"}:
+                    image = image.convert("RGBA")
+                output = BytesIO()
+                image.save(output, format="PNG", optimize=True)
+                png_data = output.getvalue()
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
+            raise web.HTTPBadRequest(text="The selected file is not a supported image.") from exc
+        except Exception as exc:
+            log.exception("Brand asset image conversion failed for guild %s", guild_id)
+            raise web.HTTPBadRequest(text=f"Unable to convert the selected image to PNG: {str(exc)[:160]}") from exc
+
+        if not png_data:
+            raise web.HTTPBadRequest(text="The selected image could not be converted to PNG.")
+        if len(png_data) > max_size:
+            raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=len(png_data))
+
+        stem = Path(original_name).stem or "brand-image"
+        filename = f"{stem[:110]}.png"
+        asset_id = hashlib.sha256(f"{guild_id}:{filename}:{time.time()}".encode() + png_data).hexdigest()[:32]
         document = {
             "_id": asset_id,
             "guild_id": str(guild_id),
             "filename": filename,
             "content_type": "image/png",
-            "data": data,
+            "data": png_data,
             "created_at": time.time(),
             "created_by": str(user.user_id),
+            "source_filename": original_name,
+            "source_content_type": content_type,
         }
         try:
             await self.bot.db.web_brand_assets.insert_one(document)
@@ -793,10 +819,22 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPServiceUnavailable(text=f"Unable to save PNG upload: {str(exc)[:200]}") from exc
         url = f"/assets/tenant/{guild_id}/{asset_id}"
         try:
-            await self._audit(guild_id, user.user_id, f"Web brand asset uploaded: {filename}")
+            await self._audit(
+                guild_id,
+                user.user_id,
+                f"Web brand asset uploaded and normalized to PNG: {filename}",
+            )
         except Exception:
             log.exception("Brand asset audit logging failed for guild %s", guild_id)
-        return web.json_response({"ok": True, "asset_id": asset_id, "url": url, "filename": filename, "content_type": "image/png"})
+        return web.json_response({
+            "ok": True,
+            "asset_id": asset_id,
+            "url": url,
+            "filename": filename,
+            "content_type": "image/png",
+            "source_filename": original_name,
+            "source_content_type": content_type,
+        })
 
     async def serve_brand_asset(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
