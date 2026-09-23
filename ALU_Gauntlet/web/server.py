@@ -224,7 +224,7 @@ class WebControlCenter:
   const init=()=>{
     const switcher=document.getElementById("rsl-language-switcher");
     const footer=document.querySelector("footer");
-    if(switcher&&footer) footer.appendChild(switcher);
+    if(switcher){const legal=document.querySelector(".rsl-footer-legal");if(legal) legal.appendChild(switcher);else if(footer) footer.appendChild(switcher);}
     const trigger=document.getElementById("rsl-language-trigger");
     const menu=document.getElementById("rsl-language-menu");
     const label=document.getElementById("rsl-language-label");
@@ -330,7 +330,10 @@ window.rslGoogleTranslateInit=function(){
         footer_links = branding.get("links") or {}
         footer_identity = branding.get("identity") or {}
         footer_name = html.escape(str(footer_identity.get("name") or "Racing Syndicate League"))
-        footer_tagline = html.escape(str(footer_identity.get("tagline") or "Race • Compete • Unite"))
+        footer_tagline_value = str(footer_identity.get("tagline") or "Race, Compete, Unite").strip()
+        if footer_tagline_value == "Compete. Race. Dominate.":
+            footer_tagline_value = "Race, Compete, Unite"
+        footer_tagline = html.escape(footer_tagline_value)
         footer_logo_value = str(footer_identity.get("logo_url") or "/assets/rsl-shield.png")
         if footer_logo_value.rstrip("?").endswith("/assets/rsl-shield.png"):
             footer_logo_value = "/static/assets/rsl-footer-mark.png?v=20260921-rslfooter-png1"
@@ -370,7 +373,7 @@ window.rslGoogleTranslateInit=function(){
   <div class="rsl-footer-brand">
     <img src="{footer_logo}" alt="" aria-hidden="true">
     <div class="rsl-footer-brand-name">{footer_name}</div>
-    <div class="rsl-footer-copyline">© 2026 {footer_name}™ <span aria-hidden="true"> / </span> {footer_tagline}</div>
+    <div class="rsl-footer-copyline">© 2026 {footer_name}™ <span aria-hidden="true"> &nbsp;/&nbsp; </span> {footer_tagline}</div>
   </div>
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
      <div class="rsl-footer-legal-links">
