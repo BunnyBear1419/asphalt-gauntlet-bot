@@ -396,7 +396,7 @@ window.rslGoogleTranslateInit=function(){
   <span class="discord-cta-button">JOIN DISCORD →</span>
 </a>'''
             global_help_markup = r'''
-<a class="home-card home-help-card home-help-link rsl-global-help-card" href="/help" aria-label="Open Help Center">
+<a class="rsl-global-help-card" href="/help" aria-label="Open Help Center">
   <div class="home-help-content"><div class="home-help-icon" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="19" r="9"></circle><path d="M17 52c1-12 7-18 15-18s14 6 15 18"></path><path d="M13 28v-3c0-11 8-19 19-19s19 8 19 19v3"></path><path d="M12 27h7v10h-7zM45 27h7v10h-7z"></path><path d="M19 35c2 5 7 8 13 8s11-3 13-8"></path><path d="M52 34h4"></path></svg></div><div class="home-help-copy">
     <span class="home-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2>
     <p>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</p>
