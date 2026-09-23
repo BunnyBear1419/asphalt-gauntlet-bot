@@ -111,6 +111,13 @@ class WebControlCenter:
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
 
+        # Google Analytics 4 / Google tag
+        # Installed once at the shared page-response layer so all RSL web pages
+        # rendered through this service report to the same Analytics property.
+        google_tag = '<script async src="https://www.googletagmanager.com/gtag/js?id=G-YXZGNWY1PE"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-YXZGNWY1PE");</script>'
+        if 'G-YXZGNWY1PE' not in body:
+            body = body.replace("</head>", google_tag + "</head>", 1)
+
         # RSL SEO: give each public page its own search title and description.
         seo_pages = {
             "index.html": ("Racing Syndicate League • Asphalt Legends Unite Community", "Racing Syndicate League — Asphalt Legends Unite community racing, Gauntlet, tournaments, clubs, rankings, events, and competition management."),
