@@ -1429,11 +1429,22 @@ body{top:0!important}
   stroke-linecap:round;
   stroke-linejoin:round;
 }
+.rsl-footer-social img,
 .rsl-footer-custom-social img{
-  width:26px;
-  height:26px;
-  object-fit:contain;
-  display:block;
+  width:26px!important;
+  height:26px!important;
+  min-width:26px!important;
+  min-height:26px!important;
+  max-width:26px!important;
+  max-height:26px!important;
+  object-fit:contain!important;
+  display:block!important;
+  flex:0 0 26px!important;
+  border:0!important;
+  background:transparent!important;
+}
+.rsl-footer-custom-social img{
+  object-fit:contain!important;
 }
 .rsl-footer-social>span{
   font-family:Arial,Helvetica,sans-serif;
