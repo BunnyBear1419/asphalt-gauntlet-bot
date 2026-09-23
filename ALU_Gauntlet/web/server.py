@@ -114,7 +114,6 @@ class WebControlCenter:
         # RSL SEO: give each public page its own search title and description.
         seo_pages = {
             "index.html": ("Racing Syndicate League • Asphalt Legends Unite Community", "Racing Syndicate League — Asphalt Legends Unite community racing, Gauntlet, tournaments, clubs, rankings, events, and competition management."),
-            "gauntlet.html": ("Gauntlet • Racing Syndicate League", "RSL Gauntlet — organized Asphalt Legends Unite seasons, registration, defenses, matches, rankings, and competitive racing."),
             "gauntlet-career.html": ("Gauntlet Career • Racing Syndicate League", "View your Racing Syndicate League Gauntlet career, competitive record, ranking, and season progress."),
             "gauntlet-registration.html": ("Gauntlet Registration • Racing Syndicate League", "Register for Racing Syndicate League Gauntlet competition and prepare for the current Asphalt Legends Unite season."),
             "gauntlet-defense.html": ("Gauntlet Defense • Racing Syndicate League", "Manage your Racing Syndicate League Gauntlet defense and compete in organized Asphalt Legends Unite racing."),
@@ -145,7 +144,6 @@ class WebControlCenter:
             # Canonical URL: tell search engines which public URL represents this page.
             canonical_paths = {
                 "index.html": "/",
-                "gauntlet.html": "/gauntlet",
                 "gauntlet-career.html": "/gauntlet/career",
                 "gauntlet-registration.html": "/gauntlet/registration",
                 "gauntlet-defense.html": "/gauntlet/defense",
