@@ -1048,26 +1048,27 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         # Keep this list aligned with public routes only. Account/admin/API
         # endpoints and pages marked noindex are intentionally excluded.
         urls = [
-            ("/", "2026-09-23"),
-            ("/help", "2026-09-23"),
-            ("/legal", "2026-09-23"),
-            ("/gauntlet/registration", "2026-09-23"),
-            ("/gauntlet/defense", "2026-09-23"),
-            ("/gauntlet/matches", "2026-09-23"),
-            ("/gauntlet/leaderboard", "2026-09-23"),
-            ("/gauntlet/references", "2026-09-23"),
-            ("/gauntlet/career", "2026-09-23"),
-            ("/tournaments", "2026-09-23"),
-            ("/tournaments/registration", "2026-09-23"),
-            ("/tournaments/matches", "2026-09-23"),
-            ("/tournaments/results", "2026-09-23"),
-            ("/tournaments/clubs", "2026-09-23"),
-            ("/calendar", "2026-09-23"),
-            ("/clubs", "2026-09-23"),
+            "/",
+            "/help",
+            "/legal",
+            "/gauntlet/registration",
+            "/gauntlet/defense",
+            "/gauntlet/matches",
+            "/gauntlet/leaderboard",
+            "/gauntlet/references",
+            "/gauntlet/career",
+            "/tournaments",
+            "/tournaments/registration",
+            "/tournaments/matches",
+            "/tournaments/results",
+            "/tournaments/clubs",
+            "/calendar",
+            "/clubs",
         ]
+        website_url = str((self.branding.get("links") or {}).get("website") or "https://asph.discloud.app").rstrip("/")
         entries = "".join(
-            f"<url><loc>https://asph.discloud.app{path}</loc><lastmod>{lastmod}</lastmod></url>"
-            for path, lastmod in urls
+            f"<url><loc>{html.escape(website_url + path)}</loc></url>"
+            for path in urls
         )
         body = (
             '<?xml version="1.0" encoding="UTF-8"?>'
