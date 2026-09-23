@@ -307,12 +307,16 @@ window.rslGoogleTranslateInit=function(){
             calendar_markup = '' if '<a href="/calendar"' in body else '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
 
+        # Remove legacy page-specific account controls before adding the shared
+        # RSL Search + Profile controls. Older pages still contain a static
+        # "Sign Out" link and Driver/Player profile block, which must not be
+        # allowed to appear beside the current profile dropdown.
+        body = re.sub(r'<div class="top-user-area">.*?(?=</header>)', "", body, count=1, flags=re.S)
+
         if "</header>" in body and 'id="rsl-search-trigger"' not in body:
             body = body.replace("</header>", search_markup + "</header>", 1)
 
-        if "</nav></header>" in body:
-            body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
-        elif "</header>" in body:
+        if "</header>" in body and 'id="rsl-profile-nav"' not in body:
             body = body.replace("</header>", profile_markup + "</header>", 1)
 
         search_script = r'''
