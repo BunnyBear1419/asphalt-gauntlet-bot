@@ -316,7 +316,10 @@ window.rslGoogleTranslateInit=function(){
         footer_identity = branding.get("identity") or {}
         footer_name = html.escape(str(footer_identity.get("name") or "Racing Syndicate League"))
         footer_tagline = html.escape(str(footer_identity.get("tagline") or "Race • Compete • Unite"))
-        footer_logo = html.escape(str(footer_identity.get("logo_url") or "/assets/rsl-shield.png"), quote=True)
+        footer_logo_value = str(footer_identity.get("logo_url") or "/assets/rsl-shield.png")
+        if footer_logo_value.rstrip("?").endswith("/assets/rsl-shield.png"):
+            footer_logo_value = "/static/assets/rsl-footer-mark.png?v=20260921-rslfooter-png1"
+        footer_logo = html.escape(footer_logo_value, quote=True)
         footer_social = {
             "discord": str(footer_links.get("discord") or "").strip(),
             "cashapp": str(footer_links.get("cashapp") or "").strip(),
