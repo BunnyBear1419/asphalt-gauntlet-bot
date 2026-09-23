@@ -405,7 +405,7 @@ window.rslGoogleTranslateInit=function(){
 </a>'''
             if re.search(r"<main\b", body, flags=re.I):
                 body = re.sub(r"(<main\b[^>]*>)", global_discord_markup + r"\n\1", body, count=1, flags=re.I)
-                body = re.sub(r"</main>", global_help_markup + r"\\n</main>", body, count=1, flags=re.I)
+                body = re.sub(r"</main>", global_help_markup + r"\n</main>", body, count=1, flags=re.I)
             else:
                 body = body.replace("</header>", "</header>" + global_discord_markup, 1)
                 body = re.sub(r"<footer\b", global_help_markup + r"\n<footer", body, count=1, flags=re.I)
