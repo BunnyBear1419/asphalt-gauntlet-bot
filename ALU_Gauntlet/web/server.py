@@ -508,7 +508,7 @@ window.rslGoogleTranslateInit=function(){
             merged["links"]["custom"] = []
         else:
             normalized_custom = []
-            for item in custom_links[:7]:
+            for item in custom_links[:10]:
                 if not isinstance(item, dict):
                     continue
                 normalized_custom.append({
@@ -518,8 +518,6 @@ window.rslGoogleTranslateInit=function(){
                     "enabled": item.get("enabled") is not False,
                 })
             merged["links"]["custom"] = normalized_custom
-        merged["links"]["discord_enabled"] = merged["links"].get("discord_enabled") is not False
-        merged["links"]["cashapp_enabled"] = merged["links"].get("cashapp_enabled") is not False
         for section in ("identity", "images"):
             for key, value in list(merged[section].items()):
                 if isinstance(value, str) and value.lower().endswith(".svg"):
