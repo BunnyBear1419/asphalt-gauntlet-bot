@@ -111,6 +111,37 @@ class WebControlCenter:
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
 
+        # RSL SEO: give each public page its own search title and description.
+        seo_pages = {
+            "index.html": ("Racing Syndicate League • Asphalt Legends Unite Community", "Racing Syndicate League — Asphalt Legends Unite community racing, Gauntlet, tournaments, clubs, rankings, events, and competition management."),
+            "gauntlet.html": ("Gauntlet • Racing Syndicate League", "RSL Gauntlet — organized Asphalt Legends Unite seasons, registration, defenses, matches, rankings, and competitive racing."),
+            "gauntlet-career.html": ("Gauntlet Career • Racing Syndicate League", "View your Racing Syndicate League Gauntlet career, competitive record, ranking, and season progress."),
+            "gauntlet-registration.html": ("Gauntlet Registration • Racing Syndicate League", "Register for Racing Syndicate League Gauntlet competition and prepare for the current Asphalt Legends Unite season."),
+            "gauntlet-defense.html": ("Gauntlet Defense • Racing Syndicate League", "Manage your Racing Syndicate League Gauntlet defense and compete in organized Asphalt Legends Unite racing."),
+            "gauntlet-matches.html": ("Gauntlet Matches • Racing Syndicate League", "View and manage Racing Syndicate League Gauntlet matches, results, opponents, and competitive racing activity."),
+            "gauntlet-leaderboard.html": ("Gauntlet Leaderboard • Racing Syndicate League", "Racing Syndicate League Gauntlet leaderboard, rankings, ratings, and competitive season standings."),
+            "gauntlet-references.html": ("Gauntlet References • Racing Syndicate League", "Racing Syndicate League Gauntlet reference guides, competition information, and Asphalt Legends Unite resources."),
+            "tournaments.html": ("Tournaments • Racing Syndicate League", "Racing Syndicate League tournaments for organized Asphalt Legends Unite competition, brackets, teams, matches, and results."),
+            "tournament-registration.html": ("Tournament Registration • Racing Syndicate League", "Register for Racing Syndicate League tournaments and organized Asphalt Legends Unite competition."),
+            "tournament-matches.html": ("Tournament Matches • Racing Syndicate League", "View Racing Syndicate League tournament matches, opponents, schedules, and competition progress."),
+            "tournament-results.html": ("Tournament Results • Racing Syndicate League", "Racing Syndicate League tournament results, completed matches, brackets, and competition records."),
+            "tournament-clubs.html": ("Tournament Clubs • Racing Syndicate League", "Explore clubs and team competition within Racing Syndicate League tournaments."),
+            "clubs.html": ("Clubs • Racing Syndicate League", "Racing Syndicate League clubs — discover drivers, build teams, manage club profiles, and compete together."),
+            "calendar.html": ("Calendar • Racing Syndicate League", "Racing Syndicate League calendar for Gauntlet seasons, tournaments, events, matches, and community activities."),
+            "help.html": ("Help Center • Racing Syndicate League", "Racing Syndicate League Help Center — guides, rules, support, and information about Gauntlet, tournaments, clubs, and the website."),
+            "legal.html": ("Legal Center • Racing Syndicate League", "Racing Syndicate League legal information, privacy, security, accessibility, cookies, and website policies."),
+        }
+        seo = seo_pages.get(filename)
+        if seo:
+            seo_title, seo_description = seo
+            title_tag = f"<title>{html.escape(seo_title)}</title>"
+            description_tag = f'<meta name="description" content="{html.escape(seo_description, quote=True)}">'
+            body = re.sub(r"<title>.*?</title>", title_tag, body, count=1, flags=re.I|re.S) if re.search(r"<title>.*?</title>", body, flags=re.I|re.S) else body.replace("</head>", title_tag + "</head>", 1)
+            if re.search(r'<meta\\s+name=["\\']description["\\']', body, flags=re.I):
+                body = re.sub(r'<meta\\s+name=["\\']description["\\'][^>]*>', description_tag, body, count=1, flags=re.I)
+            else:
+                body = body.replace("</head>", description_tag + "</head>", 1)
+
         # Normalize the shared top-left header controls so every page matches Home.
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
