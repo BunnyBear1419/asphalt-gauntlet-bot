@@ -108,6 +108,18 @@ class WebControlCenter:
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
 
+        # Normalize the shared top-left header controls so every page matches Home.
+        # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
+        canonical_brand = '<a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a>'
+        canonical_discord = '<a class="top-discord-link" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join our Discord" title="Join our Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></a>'
+        canonical_cashapp = '<a class="top-cashapp-link" href="https://cash.app/" target="_blank" rel="noopener noreferrer" aria-label="Cash App" title="Cash App"><span aria-hidden="true">$</span></a>'
+        brand_re = re.compile(r'<a class="top-brand top-logo-mark"[^>]*>.*?</a>', re.S)
+        body, brand_count = brand_re.subn(canonical_brand, body, count=1)
+        if brand_count and 'class="top-discord-link"' not in body:
+            body = body.replace(canonical_brand, canonical_brand + canonical_cashapp + canonical_discord, 1)
+        elif brand_count and 'class="top-discord-link"' in body and 'class="top-cashapp-link"' not in body:
+            body = body.replace(canonical_brand, canonical_brand + canonical_cashapp, 1)
+
         # Keep the account/profile control consistent across every web page.
         # The navigation itself is intentionally kept in each page so existing
         # page-specific layouts remain untouched; this adds only the right-side
