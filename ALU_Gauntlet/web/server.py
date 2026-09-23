@@ -751,24 +751,46 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def upload_brand_asset(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
-        if request.content_length and request.content_length > 8*1024*1024:
-            raise web.HTTPRequestEntityTooLarge(max_size=8*1024*1024, actual_size=request.content_length)
-        reader = await request.multipart()
-        field = await reader.next()
+        if request.content_length and request.content_length > 8 * 1024 * 1024:
+            raise web.HTTPRequestEntityTooLarge(max_size=8 * 1024 * 1024, actual_size=request.content_length)
+        try:
+            reader = await request.multipart()
+            field = await reader.next()
+        except Exception as exc:
+            log.exception("Brand asset multipart parsing failed for guild %s", guild_id)
+            raise web.HTTPBadRequest(text=f"Invalid PNG upload: {str(exc)[:200]}") from exc
         if field is None or field.name != "file":
-            raise web.HTTPBadRequest(text="Send an image in the 'file' field.")
-        filename = Path(field.filename or "brand-image").name[:120]
-        content_type = str(field.headers.get("Content-Type","") or "")
-        if content_type != "image/png":
+            raise web.HTTPBadRequest(text="Send a PNG image in the 'file' field.")
+        filename = Path(field.filename or "brand-image.png").name[:120]
+        if not filename.lower().endswith(".png"):
+            raise web.HTTPBadRequest(text="Only .png files are accepted.")
+        content_type = str(field.headers.get("Content-Type", "") or "").lower().split(";", 1)[0]
+        if content_type not in {"image/png", "application/octet-stream"}:
             raise web.HTTPBadRequest(text="Only PNG images are accepted.")
         data = await field.read()
-        if not data or len(data)>8*1024*1024:
-            raise web.HTTPRequestEntityTooLarge(max_size=8*1024*1024, actual_size=len(data or b""))
-        asset_id = hashlib.sha256(f"{guild_id}:{filename}:{time.time()}".encode()+data).hexdigest()[:32]
-        await self.bot.db.web_brand_assets.insert_one({"_id":asset_id,"guild_id":guild_id,"filename":filename,"content_type":content_type,"data":data,"created_at":time.time(),"created_by":str(user.user_id)})
-        url=f"/assets/tenant/{guild_id}/{asset_id}"
-        await self._audit(guild_id,user.user_id,f"Web brand asset uploaded: {filename}")
-        return web.json_response({"ok":True,"asset_id":asset_id,"url":url,"filename":filename,"content_type":content_type})
+        if not data or len(data) > 8 * 1024 * 1024:
+            raise web.HTTPRequestEntityTooLarge(max_size=8 * 1024 * 1024, actual_size=len(data or b""))
+        asset_id = hashlib.sha256(f"{guild_id}:{filename}:{time.time()}".encode() + data).hexdigest()[:32]
+        document = {
+            "_id": asset_id,
+            "guild_id": str(guild_id),
+            "filename": filename,
+            "content_type": "image/png",
+            "data": data,
+            "created_at": time.time(),
+            "created_by": str(user.user_id),
+        }
+        try:
+            await self.bot.db.web_brand_assets.insert_one(document)
+        except Exception as exc:
+            log.exception("Brand asset database save failed for guild %s", guild_id)
+            raise web.HTTPServiceUnavailable(text=f"Unable to save PNG upload: {str(exc)[:200]}") from exc
+        url = f"/assets/tenant/{guild_id}/{asset_id}"
+        try:
+            await self._audit(guild_id, user.user_id, f"Web brand asset uploaded: {filename}")
+        except Exception:
+            log.exception("Brand asset audit logging failed for guild %s", guild_id)
+        return web.json_response({"ok": True, "asset_id": asset_id, "url": url, "filename": filename, "content_type": "image/png"})
 
     async def serve_brand_asset(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
