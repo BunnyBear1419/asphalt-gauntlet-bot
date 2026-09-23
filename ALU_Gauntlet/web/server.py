@@ -209,6 +209,13 @@ class WebControlCenter:
                         "name": "Racing Syndicate League",
                         "alternateName": "RSL",
                         "url": website_url,
+                        "logo": {
+                            "@type": "ImageObject",
+                            "url": website_url + "/static/assets/rsl-shield.png",
+                        },
+                        "sameAs": [
+                            "https://discord.gg/fmFk8Ejf2H"
+                        ],
                     },
                     {
                         "@type": "WebSite",
