@@ -312,6 +312,70 @@ window.rslGoogleTranslateInit=function(){
 </script>
 '''
 
+        footer_links = branding.get("links") or {}
+        footer_identity = branding.get("identity") or {}
+        footer_name = html.escape(str(footer_identity.get("name") or "Racing Syndicate League"))
+        footer_tagline = html.escape(str(footer_identity.get("tagline") or "Race • Compete • Unite"))
+        footer_logo = html.escape(str(footer_identity.get("logo_url") or "/assets/rsl-shield.png"), quote=True)
+        footer_social = {
+            "discord": str(footer_links.get("discord") or "").strip(),
+            "cashapp": str(footer_links.get("cashapp") or "").strip(),
+            "x": str(footer_links.get("x") or "").strip(),
+            "instagram": str(footer_links.get("instagram") or "").strip(),
+            "youtube": str(footer_links.get("youtube") or "").strip(),
+            "linkedin": "",
+            "tiktok": "",
+        }
+        social_svgs = {
+            "discord": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg>',
+            "cashapp": '<span class="rsl-footer-cash" aria-hidden="true">$</span>',
+            "x": '<span aria-hidden="true">𝕏</span>',
+            "instagram": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.6" r="1"/></svg>',
+            "youtube": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8.2a2.7 2.7 0 0 0-1.9-1.9C17.4 5.8 12 5.8 12 5.8s-5.4 0-7.1.5A2.7 2.7 0 0 0 3 8.2a28 28 0 0 0-.5 3.8A28 28 0 0 0 3 15.8a2.7 2.7 0 0 0 1.9 1.9c1.7.5 7.1.5 7.1.5s5.4 0 7.1-.5a2.7 2.7 0 0 0 1.9-1.9 28 28 0 0 0 .5-3.8 28 28 0 0 0-.5-3.8Z"/><path d="m10 9 5 3-5 3Z" fill="#02060c" stroke="none"/></svg>',
+            "linkedin": '<span aria-hidden="true">in</span>',
+            "tiktok": '<span aria-hidden="true">♪</span>',
+        }
+        social_items = []
+        social_labels = {"discord":"Discord","cashapp":"Cash App","x":"X","instagram":"Instagram","youtube":"YouTube","linkedin":"LinkedIn","tiktok":"TikTok"}
+        for key in ("discord","cashapp","x","instagram","youtube","linkedin","tiktok"):
+            href = footer_social.get(key, "")
+            if not href:
+                if key == "linkedin":
+                    href = ""
+                elif key == "tiktok":
+                    href = ""
+                else:
+                    continue
+            social_items.append(f'<a class="rsl-footer-social" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="{social_labels[key]}" title="{social_labels[key]}">{social_svgs[key]}</a>')
+        social_markup = "".join(social_items)
+        footer_markup = f'''
+<footer class="rsl-footer" aria-label="{footer_name} footer">
+  <div class="rsl-footer-social-row">
+    <span class="rsl-footer-rule" aria-hidden="true"></span>
+    <div class="rsl-footer-socials">{social_markup}</div>
+    <span class="rsl-footer-rule" aria-hidden="true"></span>
+  </div>
+  <div class="rsl-footer-brand">
+    <img src="{footer_logo}" alt="" aria-hidden="true">
+    <div class="rsl-footer-brand-name">{footer_name}</div>
+    <div class="rsl-footer-copy">© 2026 {footer_name}™</div>
+    <div class="rsl-footer-tagline">{footer_tagline}</div>
+  </div>
+  <nav class="rsl-footer-legal" aria-label="Legal and privacy">
+    <a href="/help#legal-center">Legal Center</a><span aria-hidden="true">|</span>
+    <a href="/help#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
+    <a href="/help#security">Security</a><span aria-hidden="true">|</span>
+    <a href="/help#accessibility">Website Accessibility</a><span aria-hidden="true">|</span>
+    <a href="/help#cookies">Manage Cookies</a><span aria-hidden="true">|</span>
+    <a href="/help#privacy-choices"><span class="rsl-footer-privacy-icon" aria-hidden="true">✓×</span> Your Privacy Choices</a>
+  </nav>
+</footer>
+'''
+        # Replace any page-specific legacy footer with the shared RSL footer.
+        body = re.sub(r'\s*<footer\b[^>]*>.*?</footer>', '', body, count=1, flags=re.S|re.I)
+        if "</body>" in body:
+            body = body.replace("</body>", footer_markup + "</body>", 1)
+
         if "</body>" in body:
             body = body.replace("</body>", language_markup + search_script + "</body>", 1)
 
