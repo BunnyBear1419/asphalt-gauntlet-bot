@@ -300,9 +300,12 @@ window.rslGoogleTranslateInit=function(){
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
             replacement = (calendar_markup if '<a href="/calendar"' not in body else '') + companion_markup
             body = legacy_companion.sub(replacement, body, count=1)
-        elif '<a href="/calendar"' not in body and "</nav>" in body:
-            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
-            body = body.replace("</nav>", calendar_markup + "</nav>", 1)
+        elif "</nav>" in body:
+            # Some dedicated Gauntlet/Tournament pages have an older header
+            # containing only Clubs + Help. Bring those pages up to the same
+            # shared navigation without changing their page-specific content.
+            calendar_markup = '' if '<a href="/calendar"' in body else '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
+            body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
 
         if "</header>" in body and 'id="rsl-search-trigger"' not in body:
             body = body.replace("</header>", search_markup + "</header>", 1)
