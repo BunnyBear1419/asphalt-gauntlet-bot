@@ -1780,3 +1780,98 @@ body:has(.legal-main) .rsl-global-help-card{width:100%;max-width:none;box-sizing
   visibility:visible!important;
   opacity:1!important;
 }
+
+/* Final canonical shared-card overrides */
+
+/* Final canonical shared-card overrides */
+.rsl-global-discord-cta{
+  display:flex!important;
+  align-items:center!important;
+  gap:22px!important;
+  width:100%!important;
+  max-width:none!important;
+  min-height:86px!important;
+  margin:16px 0 24px!important;
+  padding:16px 28px!important;
+  box-sizing:border-box!important;
+  border:1px solid #168cff!important;
+  border-radius:0!important;
+  background:linear-gradient(145deg,#071a35,#020916)!important;
+  color:#fff!important;
+  text-decoration:none!important;
+  overflow:visible!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+.rsl-global-discord-icon{
+  width:58px!important;height:58px!important;min-width:58px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 58px!important;
+}
+.rsl-global-discord-icon svg{width:48px!important;height:48px!important;fill:#7d87ff!important;display:block!important}
+.rsl-global-discord-copy{
+  display:flex!important;flex-direction:column!important;justify-content:center!important;
+  flex:1 1 auto!important;min-width:0!important;
+}
+.rsl-global-discord-copy strong{display:block!important;color:#fff!important;font-size:19px!important;line-height:1.15!important;letter-spacing:.03em!important}
+.rsl-global-discord-copy small{display:block!important;margin-top:5px!important;color:#aebdd2!important;font-size:12px!important;line-height:1.4!important}
+.rsl-global-discord-stats{
+  display:flex!important;align-items:center!important;gap:24px!important;
+  flex:0 0 auto!important;padding:0 22px!important;
+  border-left:1px solid #27466b!important;border-right:1px solid #27466b!important;
+}
+.rsl-global-discord-stats>span{display:flex!important;flex-direction:column!important;align-items:center!important;min-width:90px!important}
+.rsl-global-discord-stats em{font-style:normal!important;color:#aebdd2!important;font-size:9px!important;font-weight:800!important;letter-spacing:.06em!important;text-transform:uppercase!important}
+.rsl-global-discord-stats strong{color:#fff!important;font-size:21px!important;line-height:1.1!important;margin-top:3px!important}
+.rsl-global-discord-dot{width:12px!important;height:12px!important;border-radius:50%!important;background:#00e65b!important;box-shadow:0 0 12px #00e65b88!important;margin-bottom:4px!important}
+.rsl-global-discord-button{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 auto!important;padding:12px 20px!important;
+  border:1px solid #28d7ff!important;border-radius:7px!important;
+  background:#087cff!important;color:#fff!important;
+  font-weight:800!important;font-size:11px!important;letter-spacing:.06em!important;
+}
+.rsl-global-help-card{
+  display:block!important;
+  width:100%!important;max-width:none!important;min-height:230px!important;
+  margin:24px 0 34px!important;padding:32px!important;box-sizing:border-box!important;
+  border:1px solid #168cff!important;border-radius:0!important;
+  background:linear-gradient(145deg,#071a35,#020916)!important;
+  color:inherit!important;text-decoration:none!important;text-align:center!important;
+  position:relative!important;overflow:hidden!important;
+}
+.rsl-global-help-content{
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;max-width:1000px!important;margin:0 auto!important;gap:14px!important;
+  text-align:center!important;
+}
+.rsl-global-help-icon{
+  width:86px!important;height:86px!important;min-width:86px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  border:1px solid #168cff!important;border-radius:50%!important;
+  background:linear-gradient(145deg,#061b35,#020a16)!important;
+  box-shadow:0 0 28px #168cff28!important;
+}
+.rsl-global-help-icon svg{width:52px!important;height:52px!important;fill:none!important;stroke:#25dfff!important;stroke-width:2.5!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+.rsl-global-help-copy{
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  min-width:0!important;text-align:center!important;
+}
+.rsl-global-help-eyebrow{display:block!important;color:#fff!important;font-size:12px!important;font-weight:700!important;letter-spacing:.08em!important}
+.rsl-global-help-copy>strong{display:block!important;margin:7px 0 9px!important;color:#fff!important;font-size:30px!important;line-height:1.1!important}
+.rsl-global-help-copy>small{display:block!important;max-width:850px!important;color:#aebdd2!important;font-size:14px!important;line-height:1.6!important}
+.rsl-global-help-copy>b{display:block!important;margin-top:18px!important;color:#25dfff!important;font-size:12px!important;letter-spacing:.08em!important}
+@media(max-width:900px){
+  .rsl-global-discord-cta{flex-wrap:wrap!important}
+  .rsl-global-discord-stats{order:3!important;width:100%!important;justify-content:center!important;border-left:0!important;border-right:0!important;border-top:1px solid #27466b!important;padding:12px 0 0!important}
+  .rsl-global-discord-button{margin-left:auto!important}
+}
+@media(max-width:600px){
+  .rsl-global-discord-cta{padding:14px 16px!important;gap:12px!important}
+  .rsl-global-discord-icon{width:44px!important;height:44px!important;min-width:44px!important}
+  .rsl-global-discord-icon svg{width:38px!important;height:38px!important}
+  .rsl-global-discord-copy strong{font-size:15px!important}
+  .rsl-global-discord-button{width:100%!important;margin:0!important}
+  .rsl-global-help-card{padding:24px 16px!important;min-height:210px!important}
+  .rsl-global-help-copy>strong{font-size:24px!important}
+}
