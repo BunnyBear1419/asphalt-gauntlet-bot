@@ -386,29 +386,38 @@ window.rslGoogleTranslateInit=function(){
         # Home already owns these cards, so skip index.html to avoid duplicates.
         if filename != "index.html":
             global_discord_markup = r'''
-<a class="discord-cta rsl-global-discord-cta" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join the RSL Discord">
-  <div class="discord-cta-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></div>
-  <div class="discord-cta-copy"><span class="discord-cta-kicker">JOIN THE RSL DISCORD</span><p>Race with the community, participate in events, and stay up to date.</p></div>
-  <div class="discord-cta-stats" aria-label="Discord community statistics">
-    <div class="discord-stat discord-stat-online"><div class="discord-stat-icon" aria-hidden="true"><span class="discord-online-dot"></span></div><div><span class="discord-stat-label">Online Members</span><span class="discord-stat-value" id="discord-online-members">—</span></div></div>
-    <div class="discord-stat"><div class="discord-stat-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="11" cy="10" r="4"/><circle cx="21" cy="10" r="4"/><path d="M4 25c0-5 3-8 7-8s7 3 7 8M14 25c0-5 3-8 7-8s7 3 7 8"/></svg></div><div><span class="discord-stat-label">Server Members</span><span class="discord-stat-value" id="discord-server-members">—</span></div></div>
-  </div>
-  <span class="discord-cta-button">JOIN DISCORD →</span>
+<a class="rsl-global-discord-cta" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join the RSL Discord">
+  <span class="rsl-global-discord-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8 0 1.8 2-.8 2-1.8 2Z"/></svg></span>
+  <span class="rsl-global-discord-copy"><strong>JOIN THE RSL DISCORD</strong><small>Race with the community, participate in events, and stay up to date.</small></span>
+  <span class="rsl-global-discord-stats"><span><b class="rsl-global-discord-dot"></b><em>Online Members</em><strong id="discord-online-members">—</strong></span><span><em>Server Members</em><strong id="discord-server-members">—</strong></span></span>
+  <span class="rsl-global-discord-button">JOIN DISCORD →</span>
 </a>'''
             global_help_markup = r'''
 <a class="rsl-global-help-card" href="/help" aria-label="Open Help Center">
-  <div class="home-help-content"><div class="home-help-icon" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="19" r="9"></circle><path d="M17 52c1-12 7-18 15-18s14 6 15 18"></path><path d="M13 28v-3c0-11 8-19 19-19s19 8 19 19v3"></path><path d="M12 27h7v10h-7zM45 27h7v10h-7z"></path><path d="M19 35c2 5 7 8 13 8s11-3 13-8"></path><path d="M52 34h4"></path></svg></div><div class="home-help-copy">
-    <span class="home-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2>
-    <p>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</p>
-    <span class="home-help-arrow">OPEN HELP CENTER →</span>
-  </div>
+  <span class="rsl-global-help-content">
+    <span class="rsl-global-help-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="19" r="9"></circle><path d="M17 52c1-12 7-18 15-18s14 6 15 18"></path><path d="M13 28v-3c0-11 8-19 19-19s19 8 19 19v3"></path><path d="M12 27h7v10h-7zM45 27h7v10h-7z"></path><path d="M19 35c2 5 7 8 13 8s11-3 13-8"></path><path d="M52 34h4"></path></svg></span>
+    <span class="rsl-global-help-copy">
+      <span class="rsl-global-help-eyebrow">HELP CENTER</span>
+      <strong>Need help getting started?</strong>
+      <small>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</small>
+      <b>OPEN HELP CENTER →</b>
+    </span>
+  </span>
 </a>'''
-            if re.search(r"<main\\b", body, flags=re.I):
-                # Keep Discord above page content and Help outside page-specific main markup.
-                body = re.sub(r"(<main\\b[^>]*>)", global_discord_markup + r"\\n\\1", body, count=1, flags=re.I)
-            else:
-                body = body.replace("</header>", "</header>" + global_discord_markup, 1)
-            body = body.replace("</body>", global_help_markup + r"\\n</body>", 1)
+
+            # Shared cards live outside page-specific <main> layouts and directly above the footer.
+            if "rsl-global-discord-cta" not in body:
+                if re.search(r"<main\\b", body, flags=re.I):
+                    body = re.sub(r"(<main\\b[^>]*>)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
+                elif re.search(r"<footer\\b", body, flags=re.I):
+                    body = re.sub(r"(<footer\\b)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
+                else:
+                    body = body.replace("</header>", "</header>" + global_discord_markup, 1)
+            if "rsl-global-help-card" not in body:
+                if re.search(r"<footer\\b", body, flags=re.I):
+                    body = re.sub(r"(<footer\\b)", global_help_markup + "\n\\1", body, count=1, flags=re.I)
+                else:
+                    body = body.replace("</body>", global_help_markup + "\n</body>", 1)
 
             global_discord_script = r'''
 <script>(async function(){const online=document.getElementById("discord-online-members");const total=document.getElementById("discord-server-members");if(!online||!total)return;try{const r=await fetch("/api/discord-stats",{credentials:"same-origin"});if(!r.ok)return;const d=await r.json();if(d.available){online.textContent=Number(d.online_members||0).toLocaleString();total.textContent=Number(d.server_members||0).toLocaleString()}}catch(_){}})();</script>'''
