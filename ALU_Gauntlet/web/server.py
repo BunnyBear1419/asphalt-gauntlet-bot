@@ -403,12 +403,13 @@ window.rslGoogleTranslateInit=function(){
     <span class="home-help-arrow">OPEN HELP CENTER →</span>
   </div>
 </a>'''
-            if re.search(r"<main\b", body, flags=re.I):
-                body = re.sub(r"(<main\b[^>]*>)", global_discord_markup + r"\n\1", body, count=1, flags=re.I)
-                body = re.sub(r"</main>", global_help_markup + r"\n</main>", body, count=1, flags=re.I)
+            if re.search(r"<main\\b", body, flags=re.I):
+                # Keep Discord above page content and Help outside page-specific main markup.
+                body = re.sub(r"(<main\\b[^>]*>)", global_discord_markup + r"\\n\\1", body, count=1, flags=re.I)
             else:
                 body = body.replace("</header>", "</header>" + global_discord_markup, 1)
-                body = re.sub(r"<footer\b", global_help_markup + r"\n<footer", body, count=1, flags=re.I)
+            body = body.replace("</body>", global_help_markup + r"\\n</body>", 1)
+
             global_discord_script = r'''
 <script>(async function(){const online=document.getElementById("discord-online-members");const total=document.getElementById("discord-server-members");if(!online||!total)return;try{const r=await fetch("/api/discord-stats",{credentials:"same-origin"});if(!r.ok)return;const d=await r.json();if(d.available){online.textContent=Number(d.online_members||0).toLocaleString();total.textContent=Number(d.server_members||0).toLocaleString()}}catch(_){}})();</script>'''
             body = body.replace("</body>", global_discord_script + "</body>", 1)
