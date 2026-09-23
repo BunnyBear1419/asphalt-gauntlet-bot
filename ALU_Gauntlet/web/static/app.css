@@ -1669,11 +1669,28 @@ body{top:0!important}
 .rsl-global-help-card .home-help-copy h2{margin:8px 0}
 
 /* Legal Center: keep the shared Discord card aligned with the Legal page content width. */
-body:has(.legal-main) .rsl-global-discord-cta{width:calc(100% - 56px);max-width:none;margin:0 28px 15px;box-sizing:border-box}
-body:has(.legal-main) .rsl-global-help-card{width:calc(100% - 56px);max-width:none;margin-left:28px;margin-right:28px;box-sizing:border-box}
+/* Legal Center: shared cards use the exact same horizontal content width as .legal-main */
+body:has(.legal-main) .rsl-global-discord-cta{
+  width:calc(100% - 56px)!important;
+  max-width:none!important;
+  margin:0 28px 15px!important;
+  box-sizing:border-box!important;
+}
+body:has(.legal-main) .rsl-global-help-card{
+  width:calc(100% - 56px)!important;
+  max-width:none!important;
+  margin:0 28px 3px!important;
+  box-sizing:border-box!important;
+}
 @media(max-width:820px){
-  body:has(.legal-main) .rsl-global-discord-cta{width:calc(100% - 28px);margin:0 14px 15px}
-  body:has(.legal-main) .rsl-global-help-card{width:calc(100% - 28px);margin-left:14px;margin-right:14px}
+  body:has(.legal-main) .rsl-global-discord-cta{
+    width:calc(100% - 28px)!important;
+    margin:0 14px 15px!important;
+  }
+  body:has(.legal-main) .rsl-global-help-card{
+    width:calc(100% - 28px)!important;
+    margin:0 14px 3px!important;
+  }
 }
 @media(max-width:760px){
   .rsl-global-help-card .home-help-content{gap:18px}
