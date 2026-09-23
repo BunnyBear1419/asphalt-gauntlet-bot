@@ -357,8 +357,6 @@ window.rslGoogleTranslateInit=function(){
             href = footer_social.get(key, "")
             if href:
                 social_items.append(f'<a class="rsl-footer-social" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="{social_labels[key]}" title="{social_labels[key]}">{social_svgs[key]}</a>')
-            else:
-                social_items.append(f'<span class="rsl-footer-social is-placeholder" aria-label="{social_labels[key]}" title="{social_labels[key]}">{social_svgs[key]}</span>')
         social_markup = "".join(social_items)
         custom_footer_items = []
         custom_links = footer_links.get("custom") if isinstance(footer_links.get("custom"), list) else []
