@@ -991,15 +991,36 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.Response(text=body, content_type="text/plain")
 
     async def sitemap_xml(self, request: web.Request) -> web.Response:
-        """Return the public-page XML sitemap."""
+        """Return the canonical public-page XML sitemap."""
+        # Keep this list aligned with public routes only. Account/admin/API
+        # endpoints and pages marked noindex are intentionally excluded.
         urls = [
-            "/", "/help", "/legal", "/players", "/player",
-            "/gauntlet/registration", "/gauntlet/defense", "/gauntlet/matches",
-            "/gauntlet/leaderboard", "/gauntlet/references", "/gauntlet/career",
-            "/tournaments", "/calendar", "/clubs",
+            ("/", "2026-09-23"),
+            ("/help", "2026-09-23"),
+            ("/legal", "2026-09-23"),
+            ("/gauntlet/registration", "2026-09-23"),
+            ("/gauntlet/defense", "2026-09-23"),
+            ("/gauntlet/matches", "2026-09-23"),
+            ("/gauntlet/leaderboard", "2026-09-23"),
+            ("/gauntlet/references", "2026-09-23"),
+            ("/gauntlet/career", "2026-09-23"),
+            ("/tournaments", "2026-09-23"),
+            ("/tournaments/registration", "2026-09-23"),
+            ("/tournaments/matches", "2026-09-23"),
+            ("/tournaments/results", "2026-09-23"),
+            ("/tournaments/clubs", "2026-09-23"),
+            ("/calendar", "2026-09-23"),
+            ("/clubs", "2026-09-23"),
         ]
-        entries = "".join(f"<url><loc>https://asph.discloud.app{path}</loc></url>" for path in urls)
-        body = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{entries}</urlset>'
+        entries = "".join(
+            f"<url><loc>https://asph.discloud.app{path}</loc><lastmod>{lastmod}</lastmod></url>"
+            for path, lastmod in urls
+        )
+        body = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            f"{entries}</urlset>"
+        )
         return web.Response(text=body, content_type="application/xml")
 
     def _configure_routes(self) -> None:
