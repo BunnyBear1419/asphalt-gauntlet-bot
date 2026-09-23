@@ -339,14 +339,10 @@ window.rslGoogleTranslateInit=function(){
         social_labels = {"discord":"Discord","cashapp":"Cash App","x":"X","instagram":"Instagram","youtube":"YouTube","linkedin":"LinkedIn","tiktok":"TikTok"}
         for key in ("discord","cashapp","x","instagram","youtube","linkedin","tiktok"):
             href = footer_social.get(key, "")
-            if not href:
-                if key == "linkedin":
-                    href = ""
-                elif key == "tiktok":
-                    href = ""
-                else:
-                    continue
-            social_items.append(f'<a class="rsl-footer-social" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="{social_labels[key]}" title="{social_labels[key]}">{social_svgs[key]}</a>')
+            if href:
+                social_items.append(f'<a class="rsl-footer-social" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="{social_labels[key]}" title="{social_labels[key]}">{social_svgs[key]}</a>')
+            else:
+                social_items.append(f'<span class="rsl-footer-social is-placeholder" aria-label="{social_labels[key]}" title="{social_labels[key]}">{social_svgs[key]}</span>')
         social_markup = "".join(social_items)
         footer_markup = f'''
 <footer class="rsl-footer" aria-label="{footer_name} footer">
