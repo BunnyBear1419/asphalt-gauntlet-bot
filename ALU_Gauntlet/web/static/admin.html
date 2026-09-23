@@ -160,19 +160,16 @@
 </section>
 
 <section class="admin-section" id="section-links">
-  <div class="admin-card"><h2>Community Links</h2><p>Set the destinations used by your community-facing buttons and navigation.</p>
+  <div class="admin-card"><h2>Links</h2><p>Control the site logo destination and the special Discord/Donation icons, then add your own footer links. Each custom link can use its own uploaded PNG icon.</p>
     <div class="admin-grid">
-      <div class="admin-field"><label>Discord</label><input id="link-discord"></div>
-      <div class="admin-field"><label>Website</label><input id="link-website"></div>
-      <div class="admin-field"><label>YouTube</label><input id="link-youtube"></div>
-      <div class="admin-field"><label>Twitch</label><input id="link-twitch"></div>
-      <div class="admin-field"><label>Facebook</label><input id="link-facebook"></div>
-      <div class="admin-field"><label>Instagram</label><input id="link-instagram"></div>
-      <div class="admin-field"><label>X / Twitter</label><input id="link-x"></div>
-      <div class="admin-field"><label>Cash App</label><input id="link-cashapp"></div>
-      <div class="admin-field"><label>Support</label><input id="link-support"></div>
-      <div class="admin-field"><label>Companion</label><input id="link-companion"></div>
+      <div class="admin-field full"><label>Site Logo (Top Left)</label><input id="link-site_logo" placeholder="https://... or /..."><small style="color:#8198b5">Controls where the top-left site logo goes.</small></div>
+      <div class="admin-field"><label>Discord Logo</label><input id="link-discord" placeholder="https://discord.gg/..."><small style="color:#8198b5">Used by both the top-left Discord icon and footer Discord icon.</small></div>
+      <div class="admin-field"><label>Donations Logo</label><input id="link-cashapp" placeholder="https://cash.app/..."><small style="color:#8198b5">Used by both the top-left donation icon and footer donation icon.</small></div>
     </div>
+  </div>
+  <div class="admin-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><h2 style="margin-bottom:5px">Footer Links</h2><p style="margin-bottom:0">Add up to 7 custom links. They appear as social-style icons in the bottom footer.</p></div><button class="admin-btn primary" id="add-footer-link" type="button">+ Add Link</button></div>
+    <div id="custom-links-list" style="display:grid;gap:12px;margin-top:18px"></div>
     <div class="admin-actions"><button class="admin-btn primary" id="save-links">Save Links</button><span class="admin-status" id="links-status"></span></div>
   </div>
 </section>
@@ -255,7 +252,8 @@ function fillForm(){
  Object.keys(i).forEach(k=>setVal("identity-"+k,i[k]));
  ["primary","secondary","accent","background","surface","text","muted"].forEach(k=>fillColor(k,c[k]));
  Object.keys(m).forEach(k=>setVal("image-"+k,m[k]));
- Object.keys(l).forEach(k=>setVal("link-"+k,l[k]));
+ Object.keys(l).filter(k=>k!=="custom").forEach(k=>setVal("link-"+k,l[k]));
+ renderCustomLinks();
  Object.keys(t).forEach(k=>setVal("term-"+k,t[k]));
  $("preview-logo").src=i.logo_url||"";
  $("preview-hero").style.backgroundImage="url('"+(m.hero_url||"")+"')";
@@ -271,7 +269,8 @@ function buildBranding(){
  Object.keys(b.identity).forEach(k=>b.identity[k]=getVal("identity-"+k));
  ["primary","secondary","accent","background","surface","text","muted"].forEach(k=>b.colors[k]=getVal("color-"+k+"-text")||getVal("color-"+k));
  Object.keys(b.images).forEach(k=>b.images[k]=getVal("image-"+k));
- Object.keys(b.links).forEach(k=>b.links[k]=getVal("link-"+k));
+ Object.keys(b.links).filter(k=>k!=="custom").forEach(k=>b.links[k]=getVal("link-"+k));
+ b.links.custom=collectCustomLinks();
  Object.keys(b.terminology).forEach(k=>b.terminology[k]=getVal("term-"+k));
  delete b._guild; return b;
 }
@@ -282,7 +281,22 @@ async function save(which){
   fillForm();setStatus(which+"-status","Saved successfully.");
  }catch(e){setStatus(which+"-status",e.message,false)}
 }
-$("save-branding").onclick=()=>save("save");$("save-media").onclick=()=>save("media");$("save-links").onclick=()=>save("links");
+function renderCustomLinks(){
+ const list=$("custom-links-list"); if(!list)return;
+ const rows=Array.isArray(branding?.links?.custom)?branding.links.custom.slice(0,7):[];
+ list.innerHTML=rows.map((item,index)=>'<div class="admin-card" style="margin:0;padding:14px;background:#04101f"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="admin-field"><label>Link '+(index+1)+' Name</label><input data-custom-name="'+index+'" value="'+escapeHtml(item.name||'')+'" placeholder="My Community"></div><div class="admin-field"><label>URL</label><input data-custom-url="'+index+'" value="'+escapeHtml(item.url||'')+'" placeholder="https://..."></div><div class="admin-field"><label>Icon PNG</label><div style="display:flex;gap:8px;align-items:center"><input data-custom-icon="'+index+'" value="'+escapeHtml(item.icon||'')+'" placeholder="/assets/tenant/...png"><button class="admin-btn" type="button" data-upload-custom="'+index+'">Upload PNG</button><img data-custom-preview="'+index+'" src="'+escapeHtml(item.icon||'')+'" alt="" style="width:32px;height:32px;object-fit:contain;border:1px solid #174a79;border-radius:5px;background:#020817"></div></div><div class="admin-field"><label>Actions</label><button class="admin-btn" type="button" data-remove-custom="'+index+'">Remove Link</button></div></div><input data-custom-file="'+index+'" type="file" accept="image/png" hidden></div>').join("");
+ list.querySelectorAll("[data-remove-custom]").forEach(btn=>btn.onclick=()=>{branding.links.custom.splice(Number(btn.dataset.removeCustom),1);renderCustomLinks()});
+ list.querySelectorAll("[data-upload-custom]").forEach(btn=>btn.onclick=()=>list.querySelector('[data-custom-file="'+btn.dataset.uploadCustom+'"]').click());
+ list.querySelectorAll("[data-custom-file]").forEach(input=>input.onchange=async()=>{const index=Number(input.dataset.customFile),file=input.files[0];if(!file)return;try{const fd=new FormData();fd.append("file",file);const d=await api(" /api/admin/upload-asset".trim()+q(),{method:"POST",body:fd});branding.links.custom[index].icon=d.url;renderCustomLinks();setStatus("links-status","Icon uploaded. Save Links to keep the new footer link.");}catch(e){setStatus("links-status",e.message,false)}});
+}
+function collectCustomLinks(){
+ const list=$("custom-links-list"); const rows=[]; if(!list)return rows;
+ [...list.querySelectorAll("[data-custom-name]")].forEach(nameEl=>{const i=Number(nameEl.dataset.customName),url=list.querySelector('[data-custom-url="'+i+'"]')?.value.trim()||"",icon=list.querySelector('[data-custom-icon="'+i+'"]')?.value.trim()||"",name=nameEl.value.trim();if(name||url||icon)rows.push({name,url,icon})});
+ return rows.slice(0,7);
+}
+function addCustomLink(){if(!branding.links.custom)branding.links.custom=[];if(branding.links.custom.length>=7){setStatus("links-status","You can add up to 7 footer links.",false);return}branding.links.custom.push({name:"",url:"",icon:""});renderCustomLinks();}
+$("add-footer-link").onclick=addCustomLink;
+$("save-branding").onclick=()=>save("save");$("save-media").onclick=()=>save("media");$("save-links").onclick=async()=>{branding.links.custom=collectCustomLinks();await save("links");};
 $("upload-asset").onclick=async()=>{
  try{
   const file=$("asset-file").files[0];if(!file)throw new Error("Choose an image first.");
