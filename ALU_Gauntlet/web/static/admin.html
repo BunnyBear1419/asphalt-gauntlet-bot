@@ -232,7 +232,7 @@ function showSection(name){
 if(location.hash) showSection(location.hash.slice(1));
 function setStatus(id,msg,ok=true){const el=$(id);if(!el)return;el.textContent=msg;el.className="admin-status "+(ok?"ok":"error");}
 function q(){return guildId?"?guild_id="+encodeURIComponent(guildId):""}
-async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origin",...opts});let d={};try{d=await r.json()}catch(_){}if(!r.ok)throw new Error(d.error||await r.text()||"Request failed");return d}
+async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origin",...opts});const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){d={}}if(!r.ok)throw new Error(d.error||raw||"Request failed");return d}
 async function loadGuilds(){
  const d=await api("/api/admin/guilds"); const select=$("guild-select");
  select.innerHTML=d.guilds.map(g=>'<option value="'+g.id+'">'+escapeHtml(g.name)+' • '+g.member_count+' members</option>').join("");
