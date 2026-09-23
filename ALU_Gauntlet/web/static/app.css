@@ -2061,3 +2061,37 @@ body{top:0!important}
   .home-help-icon svg{width:56px;height:56px}
   .home-help-card{min-height:140px}
 }
+
+
+/* FINAL SUBMENU ICON VISIBILITY FIX */
+.top-nav-dropdown-menu > a{
+  display:grid!important;
+  grid-template-columns:24px minmax(0,1fr)!important;
+  align-items:center!important;
+  column-gap:9px!important;
+  box-sizing:border-box!important;
+}
+.top-nav-dropdown-menu > a > img.nav-icon-img{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:20px!important;
+  height:20px!important;
+  min-width:20px!important;
+  min-height:20px!important;
+  max-width:20px!important;
+  max-height:20px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  flex:none!important;
+  margin:0!important;
+  padding:0!important;
+  position:relative!important;
+  z-index:2!important;
+  filter:none!important;
+}
+.top-nav-dropdown-menu > a > span{
+  display:block!important;
+  visibility:visible!important;
+  min-width:0!important;
+}
