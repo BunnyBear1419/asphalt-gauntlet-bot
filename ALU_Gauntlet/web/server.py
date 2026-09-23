@@ -124,6 +124,8 @@ class WebControlCenter:
         brand_re = re.compile(r'<a class="top-brand top-logo-mark"[^>]*>.*?</a>', re.S)
         body, brand_count = brand_re.subn(canonical_brand, body, count=1)
         if brand_count:
+            body = re.sub(r'<a class="top-cashapp-link"[^>]*>.*?</a>', "", body, flags=re.S)
+            body = re.sub(r'<a class="top-discord-link"[^>]*>.*?</a>', "", body, flags=re.S)
             body = body.replace(canonical_brand, canonical_brand + canonical_cashapp + canonical_discord, 1)
 
         # Keep the account/profile control consistent across every web page.
