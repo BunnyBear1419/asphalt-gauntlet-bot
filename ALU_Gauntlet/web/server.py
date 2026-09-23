@@ -190,6 +190,31 @@ class WebControlCenter:
             body = re.sub(r'<meta\\s+(?:property|name)=["\\\'](?:og:|twitter:)[^>]*>', '', body, flags=re.I)
             body = body.replace("</head>", og_tags + "</head>", 1)
 
+            # JSON-LD structured data describing the RSL website and organization.
+            jsonld = {
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "Organization",
+                        "@id": website_url + "#organization",
+                        "name": "Racing Syndicate League",
+                        "alternateName": "RSL",
+                        "url": website_url,
+                    },
+                    {
+                        "@type": "WebSite",
+                        "@id": website_url + "#website",
+                        "name": "Racing Syndicate League",
+                        "url": website_url,
+                        "description": seo_description,
+                        "publisher": {"@id": website_url + "#organization"},
+                    },
+                ],
+            }
+            jsonld_tag = '<script type="application/ld+json">' + json.dumps(jsonld, ensure_ascii=False, separators=(",", ":")) + '</script>'
+            body = re.sub(r'<script\s+type=["\']application/ld\+json["\']>.*?</script>', '', body, flags=re.I|re.S)
+            body = body.replace("</head>", jsonld_tag + "</head>", 1)
+
         # Normalize the shared top-left header controls so every page matches Home.
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
