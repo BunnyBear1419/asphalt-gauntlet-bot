@@ -1687,3 +1687,8 @@ body{top:0!important}
 .rsl-footer-socials>* span{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:34px!important;height:34px!important;margin:0!important;padding:0!important}
 .rsl-footer-socials .rsl-footer-cash{width:30px!important;height:30px!important;margin:0 2px!important}
 @media(max-width:700px){.top-discord-link,.top-cashapp-link{width:52px;height:52px}.top-discord-link{left:70px}.top-cashapp-link{left:124px}.rsl-footer-socials{gap:1px!important}.rsl-footer-socials>*{flex-basis:32px!important;width:32px!important;height:32px!important;min-width:32px!important;max-width:32px!important}.rsl-footer-socials>* img,.rsl-footer-socials>* svg{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important}.rsl-footer-socials>* span{width:32px!important;height:32px!important}}
+
+/* Final header/footer cleanup: no top Discord/Cash App controls. */
+.top-discord-link,.top-cashapp-link{display:none!important}
+.top-nav nav{justify-content:flex-start!important;margin-left:0!important}
+.top-nav nav>a:first-child{margin-left:0!important}
