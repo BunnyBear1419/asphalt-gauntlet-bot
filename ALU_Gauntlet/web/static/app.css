@@ -1977,3 +1977,24 @@ body{top:0!important}
     transform:none!important;
   }
 }
+
+
+/* Final legal row alignment — centered links with translator farther right. */
+.rsl-footer-legal{
+  padding:0 205px 0 0!important;
+}
+.rsl-footer-legal-links{
+  justify-content:center!important;
+  text-align:center!important;
+}
+.rsl-footer .rsl-language-switcher{
+  right:-12px!important;
+}
+@media(max-width:760px){
+  .rsl-footer-legal{
+    padding:0 0 40px!important;
+  }
+  .rsl-footer .rsl-language-switcher{
+    right:0!important;
+  }
+}
