@@ -1645,3 +1645,11 @@ body{top:0!important}
 .home-help-card:hover{transform:translateY(-2px);box-shadow:0 18px 45px #0009,0 0 30px #168cff22}
 @media(max-width:760px){.home-grid{grid-template-columns:1fr}.home-info-card{min-height:0}.home-help-card{min-height:140px}}
 
+
+
+/* Site-wide cards: full content width, compact Help icon, and tight top spacing. */
+.rsl-global-discord-cta{width:100%;max-width:none;margin:16px 0 8px}
+.rsl-global-help-card{width:100%;max-width:none;margin:24px 0 30px}
+.rsl-global-help-card .home-help-icon{width:76px;height:76px;min-width:76px}
+.rsl-global-help-card .home-help-icon svg{width:48px;height:48px}
+@media(max-width:700px){.rsl-global-discord-cta,.rsl-global-help-card{width:100%}.rsl-global-help-card .home-help-icon{width:68px;height:68px;min-width:68px}.rsl-global-help-card .home-help-icon svg{width:44px;height:44px}}
