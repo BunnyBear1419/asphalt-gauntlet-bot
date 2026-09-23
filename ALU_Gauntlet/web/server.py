@@ -142,6 +142,37 @@ class WebControlCenter:
             else:
                 body = body.replace("</head>", description_tag + "</head>", 1)
 
+            # Canonical URL: tell search engines which public URL represents this page.
+            canonical_paths = {
+                "index.html": "/",
+                "gauntlet.html": "/gauntlet",
+                "gauntlet-career.html": "/gauntlet/career",
+                "gauntlet-registration.html": "/gauntlet/registration",
+                "gauntlet-defense.html": "/gauntlet/defense",
+                "gauntlet-matches.html": "/gauntlet/matches",
+                "gauntlet-leaderboard.html": "/gauntlet/leaderboard",
+                "gauntlet-references.html": "/gauntlet/references",
+                "tournaments.html": "/tournaments",
+                "tournament-registration.html": "/tournaments/registration",
+                "tournament-matches.html": "/tournaments/matches",
+                "tournament-results.html": "/tournaments/results",
+                "tournament-clubs.html": "/tournaments/clubs",
+                "clubs.html": "/clubs",
+                "calendar.html": "/calendar",
+                "help.html": "/help",
+                "legal.html": "/legal",
+                "players.html": "/players",
+                "player.html": "/player",
+            }
+            canonical_path = canonical_paths.get(filename)
+            if canonical_path:
+                website_url = str((branding.get("links") or {}).get("website") or "https://asph.discloud.app").rstrip("/")
+                canonical_tag = f'<link rel="canonical" href="{html.escape(website_url + canonical_path, quote=True)}">'
+                if re.search(r'<link\\s+rel=["\\\']canonical["\\\']', body, flags=re.I):
+                    body = re.sub(r'<link\\s+rel=["\\\']canonical["\\\'][^>]*>', canonical_tag, body, count=1, flags=re.I)
+                else:
+                    body = body.replace("</head>", canonical_tag + "</head>", 1)
+
         # Normalize the shared top-left header controls so every page matches Home.
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
