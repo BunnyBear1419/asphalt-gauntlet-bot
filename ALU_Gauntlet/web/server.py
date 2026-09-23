@@ -47,7 +47,7 @@ SETUP_CHANNELS = (
 SETUP_ROLES = (("admin_role_id", "Staff / admin role"), ("player_role_id", "Player role"))
 
 DEFAULT_WEB_BRANDING = {
-    "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Race, Compete, Unite","favicon_url":"/assets/rsl-favicon.png?v=20260922-favicon1","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
+    "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Compete. Race. Dominate.","favicon_url":"/assets/rsl-favicon.png?v=20260922-favicon1","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
     "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
     "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
     "links": {"site_logo":"/","website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","support":"","companion":"https://alu.shohanlab.com/","custom":[]},
@@ -330,7 +330,7 @@ window.rslGoogleTranslateInit=function(){
         footer_links = branding.get("links") or {}
         footer_identity = branding.get("identity") or {}
         footer_name = html.escape(str(footer_identity.get("name") or "Racing Syndicate League"))
-        footer_tagline = html.escape(str(footer_identity.get("tagline") or "Race, Compete, Unite"))
+        footer_tagline = html.escape(str(footer_identity.get("tagline") or "Race • Compete • Unite"))
         footer_logo_value = str(footer_identity.get("logo_url") or "/assets/rsl-shield.png")
         if footer_logo_value.rstrip("?").endswith("/assets/rsl-shield.png"):
             footer_logo_value = "/static/assets/rsl-footer-mark.png?v=20260921-rslfooter-png1"
@@ -363,15 +363,15 @@ window.rslGoogleTranslateInit=function(){
         footer_markup = f'''
 <footer class="rsl-footer" aria-label="{footer_name} footer">
   <div class="rsl-footer-social-row">
-    <div class="rsl-footer-social-panel">
-      <div class="rsl-footer-social-label">CONNECT WITH US</div>
-      <div class="rsl-footer-socials">{social_markup}</div>
-    </div>
+    <span class="rsl-footer-rule" aria-hidden="true"></span>
+    <div class="rsl-footer-socials">{social_markup}</div>
+    <span class="rsl-footer-rule" aria-hidden="true"></span>
   </div>
   <div class="rsl-footer-brand">
     <img src="{footer_logo}" alt="" aria-hidden="true">
     <div class="rsl-footer-brand-name">{footer_name}</div>
-    <div class="rsl-footer-copyline">© 2026 {footer_name}™ <span aria-hidden="true">/</span> {footer_tagline}</div>
+    <div class="rsl-footer-copy">© 2026 {footer_name}™</div>
+    <div class="rsl-footer-tagline">{footer_tagline}</div>
   </div>
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
     <a href="/legal">Legal Center</a><span aria-hidden="true">|</span>
