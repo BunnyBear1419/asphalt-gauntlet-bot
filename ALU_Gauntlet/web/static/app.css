@@ -1673,7 +1673,7 @@ body{top:0!important}
 body:has(.legal-main) .rsl-global-discord-cta{
   width:calc(100% - 56px)!important;
   max-width:none!important;
-  margin:0 28px 15px!important;
+  margin:15px 28px 10px!important;
   box-sizing:border-box!important;
 }
 body:has(.legal-main) .rsl-global-help-card{
@@ -1685,7 +1685,7 @@ body:has(.legal-main) .rsl-global-help-card{
 @media(max-width:820px){
   body:has(.legal-main) .rsl-global-discord-cta{
     width:calc(100% - 28px)!important;
-    margin:0 14px 15px!important;
+    margin:15px 14px 10px!important;
   }
   body:has(.legal-main) .rsl-global-help-card{
     width:calc(100% - 28px)!important;
@@ -1898,3 +1898,7 @@ body:has(.legal-main) .rsl-global-help-card{
 /* Final shared Discord banner spacing: keep it 15px below the fixed top menu. */
 .rsl-global-discord-cta{margin-top:15px!important}
 body:has(.legal-main) .rsl-global-discord-cta{margin-top:15px!important}
+
+
+/* Legal Center Discord-to-content spacing */
+body:has(.legal-main) .rsl-global-discord-cta{margin-bottom:10px!important}
