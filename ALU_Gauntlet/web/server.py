@@ -47,7 +47,7 @@ DEFAULT_WEB_BRANDING = {
     "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Compete. Race. Dominate.","favicon_url":"/assets/rsl-favicon.png?v=20260922-favicon1","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
     "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
     "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
-    "links": {"site_logo":"/","discord":"https://discord.gg/fmFk8Ejf2H","discord_icon":"","discord_enabled":true,"website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","cashapp":"https://cash.app/","cashapp_icon":"","cashapp_enabled":true,"support":"","companion":"https://alu.shohanlab.com/","custom":[]},
+    "links": {"site_logo":"/","discord":"https://discord.gg/fmFk8Ejf2H","discord_icon":"","discord_enabled":True,"website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","cashapp":"https://cash.app/","cashapp_icon":"","cashapp_enabled":True,"support":"","companion":"https://alu.shohanlab.com/","custom":[]},
     "navigation": {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"},
     "terminology": {"gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","players":"Drivers","season":"Season","matches":"Matches","support":"Help Center"},
 }
