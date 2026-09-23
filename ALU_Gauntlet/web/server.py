@@ -368,7 +368,7 @@ window.rslGoogleTranslateInit=function(){
             href = str(item.get("url") or "").strip()
             name = str(item.get("name") or f"Link {index}").strip()[:80]
             icon = str(item.get("icon") or "").strip()
-            if not href:
+            if not href or item.get("enabled") is False:
                 continue
             safe_href = html.escape(href, quote=True)
             safe_name = html.escape(name, quote=True)
