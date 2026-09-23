@@ -173,6 +173,17 @@ class WebControlCenter:
                 else:
                     body = body.replace("</head>", canonical_tag + "</head>", 1)
 
+            # Keep private/account/admin pages out of search indexes.
+            noindex_pages = {
+                "admin.html", "news-admin.html", "setup.html", "player.html", "players.html"
+            }
+            if filename in noindex_pages:
+                noindex_tag = '<meta name="robots" content="noindex, nofollow, noarchive">'
+                if re.search(r'<meta\\s+name=["\\\']robots["\\\'][^>]*>', body, flags=re.I):
+                    body = re.sub(r'<meta\\s+name=["\\\']robots["\\\'][^>]*>', noindex_tag, body, count=1, flags=re.I)
+                else:
+                    body = body.replace("</head>", noindex_tag + "</head>", 1)
+
             # Open Graph + X/Twitter metadata for rich link previews.
             social_image = website_url + "/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1"
             og_tags = (
