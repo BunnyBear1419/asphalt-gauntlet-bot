@@ -385,7 +385,7 @@ window.rslGoogleTranslateInit=function(){
 '''
         # Put the same community entry/Help Center cards from Home on every other page.
         # Home already owns these cards, so skip index.html to avoid duplicates.
-        if filename != "index.html":
+        if filename in {"legal.html"}:
             global_discord_markup = r'''
 <a class="rsl-global-discord-cta" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer" aria-label="Join the RSL Discord">
   <span class="rsl-global-discord-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8 0 1.8 2-.8 2-1.8 2Z"/></svg></span>
