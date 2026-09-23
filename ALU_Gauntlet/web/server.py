@@ -50,13 +50,13 @@ DEFAULT_WEB_BRANDING = {
     "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Compete. Race. Dominate.","favicon_url":"/assets/rsl-favicon.png?v=20260922-favicon1","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
     "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
     "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
-    "links": {"site_logo":"/","discord":"https://discord.gg/fmFk8Ejf2H","discord_icon":"","discord_enabled":True,"website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","cashapp":"https://cash.app/","cashapp_icon":"","cashapp_enabled":True,"support":"","companion":"https://alu.shohanlab.com/","custom":[]},
+    "links": {"site_logo":"/","website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","support":"","companion":"https://alu.shohanlab.com/","custom":[]},
     "navigation": {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"},
     "terminology": {"gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","players":"Drivers","season":"Season","matches":"Matches","support":"Help Center"},
 }
 BRANDING_COLOR_KEYS = ("primary","secondary","accent","background","surface","text","muted")
 BRANDING_IMAGE_KEYS = ("hero_url","welcome_url","gauntlet_url","tournament_url","club_url","login_url","background_url")
-BRANDING_LINK_KEYS = ("site_logo","discord","website","youtube","twitch","facebook","instagram","x","cashapp","support","companion","discord_icon","cashapp_icon")
+BRANDING_LINK_KEYS = ("site_logo","discord","website","youtube","twitch","facebook","instagram","x","support","companion")
 
 
 class WebControlCenter:
@@ -115,21 +115,12 @@ class WebControlCenter:
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
         canonical_brand = f'<a class="top-brand top-logo-mark" href="{site_logo_href}" aria-label="{html.escape(str((branding.get("identity") or {}).get("name") or "Racing Syndicate League"), quote=True)} home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a>'
-        link_settings = branding.get("links") or {}
-        discord_href = html.escape(str(link_settings.get("discord") or ""), quote=True)
-        cashapp_href = html.escape(str(link_settings.get("cashapp") or ""), quote=True)
-        discord_icon = str(link_settings.get("discord_icon") or "").strip()
-        cashapp_icon = str(link_settings.get("cashapp_icon") or "").strip()
-        discord_visual = f'<img src="{html.escape(discord_icon, quote=True)}" alt="" aria-hidden="true">' if discord_icon else '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 0-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5-.3-1.1-.6-1.7-.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8 2 1.8 2Z"/></svg>'
-        cashapp_visual = f'<img src="{html.escape(cashapp_icon, quote=True)}" alt="" aria-hidden="true">' if cashapp_icon else '<span aria-hidden="true">$</span>'
-        canonical_discord = f'<a class="top-discord-link" href="{discord_href}" target="_blank" rel="noopener noreferrer" aria-label="Join our Discord" title="Join our Discord">{discord_visual}</a>' if link_settings.get("discord_enabled") is not False and discord_href else ""
-        canonical_cashapp = f'<a class="top-cashapp-link" href="{cashapp_href}" target="_blank" rel="noopener noreferrer" aria-label="Donations" title="Donations">{cashapp_visual}</a>' if link_settings.get("cashapp_enabled") is not False and cashapp_href else ""
-        brand_re = re.compile(r'<a class="top-brand top-logo-mark"[^>]*>.*?</a>', re.S)
+        link_settings = branding.get("links") or {}\n        brand_re = re.compile(r'<a class="top-brand top-logo-mark"[^>]*>.*?</a>', re.S)
         body, brand_count = brand_re.subn(canonical_brand, body, count=1)
         if brand_count:
             body = re.sub(r'<a class="top-cashapp-link"[^>]*>.*?</a>', "", body, flags=re.S)
             body = re.sub(r'<a class="top-discord-link"[^>]*>.*?</a>', "", body, flags=re.S)
-            body = body.replace(canonical_brand, canonical_brand + canonical_cashapp + canonical_discord, 1)
+            body = body.replace(canonical_brand, canonical_brand, 1)
 
         # Keep the account/profile control consistent across every web page.
         # The navigation itself is intentionally kept in each page so existing
@@ -344,40 +335,16 @@ window.rslGoogleTranslateInit=function(){
             footer_logo_value = "/static/assets/rsl-footer-mark.png?v=20260921-rslfooter-png1"
         footer_logo = html.escape(footer_logo_value, quote=True)
         footer_social = {
-            "discord": str(footer_links.get("discord") or "").strip(),
-            "discord_icon": str(footer_links.get("discord_icon") or "").strip(),
-            "discord_enabled": footer_links.get("discord_enabled") is not False,
-            "cashapp": str(footer_links.get("cashapp") or "").strip(),
-            "cashapp_icon": str(footer_links.get("cashapp_icon") or "").strip(),
-            "cashapp_enabled": footer_links.get("cashapp_enabled") is not False,
             "x": str(footer_links.get("x") or "").strip(),
             "instagram": str(footer_links.get("instagram") or "").strip(),
             "youtube": str(footer_links.get("youtube") or "").strip(),
             "linkedin": "",
             "tiktok": "",
         }
-        social_svgs = {
-            "discord": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 5.2A16.7 16.7 0 0 0 15.4 4l-.5 1a14.7 14.7 0 0 0-5.8 0l-.5-1a16.7 16.7 0 0 0-4.1 1.2C1.9 9.1 1.2 13 1.5 16.8a16.8 16.8 0 0 0 5 2.5l1.1-1.5a10.4 10.4 0 0 1-1.7-.8l.4-.3c3.3 1.5 6.8 1.5 10.1 0l.4.3c-.5.3-1.1.6-1.7.8l1.1 1.5a16.8 16.8 0 0 0 5-2.5c.4-4.4-.8-8.2-1.7-11.6ZM8.5 14.7c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm7 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg>',
-            "cashapp": '<span class="rsl-footer-cash" aria-hidden="true">$</span>',
-            "x": '<span aria-hidden="true">𝕏</span>',
-            "instagram": '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.6" cy="6.6" r="1"/></svg>',
-            "youtube": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8.2a2.7 2.7 0 0 0-1.9-1.9C17.4 5.8 12 5.8 12 5.8s-5.4 0-7.1.5A2.7 2.7 0 0 0 3 8.2a28 28 0 0 0-.5 3.8A28 28 0 0 0 3 15.8a2.7 2.7 0 0 0 1.9 1.9c1.7.5 7.1.5 7.1.5s5.4 0 7.1-.5a2.7 2.7 0 0 0 1.9-1.9 28 28 0 0 0 .5-3.8 28 28 0 0 0-.5-3.8Z"/><path d="m10 9 5 3-5 3Z" fill="#02060c" stroke="none"/></svg>',
-            "linkedin": '<span aria-hidden="true">in</span>',
-            "tiktok": '<span aria-hidden="true">♪</span>',
-        }
-        social_items = []
-        social_labels = {"discord":"Discord","cashapp":"Cash App","x":"X","instagram":"Instagram","youtube":"YouTube","linkedin":"LinkedIn","tiktok":"TikTok"}
-        for key in ("discord","cashapp","x","instagram","youtube","linkedin","tiktok"):
-            href = footer_social.get(key, "")
-            enabled = footer_social.get(f"{key}_enabled", True)
-            if href and enabled:
-                icon_override = footer_social.get(f"{key}_icon", "")
-                visual = f'<img src="{html.escape(icon_override, quote=True)}" alt="" aria-hidden="true">' if icon_override else social_svgs[key]
-                social_items.append(f'<a class="rsl-footer-social" href="{html.escape(href, quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="{social_labels[key]}" title="{social_labels[key]}">{visual}</a>')
-        social_markup = "".join(social_items)
+        social_markup = ""
         custom_footer_items = []
         custom_links = footer_links.get("custom") if isinstance(footer_links.get("custom"), list) else []
-        for index, item in enumerate(custom_links[:7], 1):
+        for index, item in enumerate(custom_links[:10], 1):
             if not isinstance(item, dict):
                 continue
             href = str(item.get("url") or "").strip()
@@ -407,7 +374,6 @@ window.rslGoogleTranslateInit=function(){
   </div>
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
     <a href="/legal">Legal Center</a><span aria-hidden="true">|</span>
-    <a href="https://cash.app/" target="_blank" rel="noopener noreferrer">Creator Donation</a><span aria-hidden="true">|</span>
     <a href="/legal#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
     <a href="/legal#security">Security</a><span aria-hidden="true">|</span>
     <a href="/legal#accessibility">Website Accessibility</a><span aria-hidden="true">|</span>
@@ -714,16 +680,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         custom = clean["links"].get("custom")
         if not isinstance(custom, list):
             custom = []
-        for special in ("discord_icon", "cashapp_icon"):
-            icon = str(clean["links"].get(special, "") or "").strip()
-            if icon.startswith("/") and not self._is_png_asset_url(icon):
-                raise web.HTTPBadRequest(text=f"links.{special} must use a PNG asset.")
-            clean["links"][special] = icon
         link_payload = incoming.get("links") if isinstance(incoming.get("links"), dict) else {}
-        clean["links"]["discord_enabled"] = link_payload.get("discord_enabled") is not False
-        clean["links"]["cashapp_enabled"] = link_payload.get("cashapp_enabled") is not False
-        if len(custom) > 7:
-            raise web.HTTPBadRequest(text="A maximum of 7 custom footer links is allowed.")
+        if len(custom) > 10:
+            raise web.HTTPBadRequest(text="A maximum of 10 custom footer links is allowed.")
         clean_custom = []
         for item in custom:
             if not isinstance(item, dict):
@@ -808,8 +767,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     "club_url": (1400, 800),
                     "login_url": (1400, 800),
                     "background_url": (1920, 1080),
-                    "discord_icon": (36, 36),
-                    "cashapp_icon": (36, 36),
                     "custom_icon": (36, 36),
                 }
                 target_size = target_sizes.get(upload_target)
