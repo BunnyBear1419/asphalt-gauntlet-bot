@@ -2033,9 +2033,3 @@ body{top:0!important}
 }
 
 
-/* Shift desktop header navigation slightly left. */
-@media(min-width:1051px){
-  .top-nav nav{
-    transform:translateX(-28px)!important;
-  }
-}
