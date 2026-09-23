@@ -173,6 +173,23 @@ class WebControlCenter:
                 else:
                     body = body.replace("</head>", canonical_tag + "</head>", 1)
 
+            # Open Graph + X/Twitter metadata for rich link previews.
+            social_image = website_url + "/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1"
+            og_tags = (
+                f'<meta property="og:type" content="website">'
+                f'<meta property="og:site_name" content="Racing Syndicate League">'
+                f'<meta property="og:title" content="{html.escape(seo_title, quote=True)}">'
+                f'<meta property="og:description" content="{html.escape(seo_description, quote=True)}">'
+                f'<meta property="og:url" content="{html.escape(website_url + canonical_path, quote=True)}">'
+                f'<meta property="og:image" content="{html.escape(social_image, quote=True)}">'
+                f'<meta name="twitter:card" content="summary_large_image">'
+                f'<meta name="twitter:title" content="{html.escape(seo_title, quote=True)}">'
+                f'<meta name="twitter:description" content="{html.escape(seo_description, quote=True)}">'
+                f'<meta name="twitter:image" content="{html.escape(social_image, quote=True)}">'
+            )
+            body = re.sub(r'<meta\\s+(?:property|name)=["\\\'](?:og:|twitter:)[^>]*>', '', body, flags=re.I)
+            body = body.replace("</head>", og_tags + "</head>", 1)
+
         # Normalize the shared top-left header controls so every page matches Home.
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
