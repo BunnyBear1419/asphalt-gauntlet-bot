@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from io import BytesIO
 import mimetypes
+from urllib.parse import urlsplit
 import html
 import re
 from typing import Any
@@ -676,6 +677,15 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         branding["_guild"] = {"id":guild_id,"name":str(getattr(guild,"name",guild_id))}
         return web.json_response({"branding":branding})
 
+    @staticmethod
+    def _is_png_asset_url(value: str) -> bool:
+        # Generated tenant assets are always normalized to PNG even though their route has no .png suffix.
+        try:
+            path = (urlsplit(str(value or '')).path or '').lower()
+        except Exception:
+            path = str(value or '').split('?', 1)[0].split('#', 1)[0].lower()
+        return path.endswith('.png') or path.startswith('/assets/tenant/')
+
     async def save_admin_branding(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
         try:
@@ -698,7 +708,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     raise web.HTTPBadRequest(text=f"{section}.{key} is too long.")
                 if section in {"links","images"} and value and not (value.startswith("https://") or value.startswith("http://") or value.startswith("/")):
                     raise web.HTTPBadRequest(text=f"{section}.{key} must be an http(s) URL or site-relative path.")
-                if section in {"images","identity"} and key.endswith("_url") and value and value.startswith("/") and not value.lower().endswith(".png"):
+                if section in {"images","identity"} and key.endswith("_url") and value and value.startswith("/") and not self._is_png_asset_url(value):
                     raise web.HTTPBadRequest(text=f"{section}.{key} must use a PNG asset.")
                 clean[section][key]=value
         custom = clean["links"].get("custom")
@@ -706,7 +716,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             custom = []
         for special in ("discord_icon", "cashapp_icon"):
             icon = str(clean["links"].get(special, "") or "").strip()
-            if icon.startswith("/") and not icon.lower().endswith(".png"):
+            if icon.startswith("/") and not self._is_png_asset_url(icon):
                 raise web.HTTPBadRequest(text=f"links.{special} must use a PNG asset.")
             clean["links"][special] = icon
         link_payload = incoming.get("links") if isinstance(incoming.get("links"), dict) else {}
@@ -725,7 +735,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 raise web.HTTPBadRequest(text="Custom footer link URLs must be http(s) or site-relative paths.")
             if icon and not (icon.startswith("https://") or icon.startswith("http://") or icon.startswith("/")):
                 raise web.HTTPBadRequest(text="Custom footer icon URLs must be http(s) or site-relative paths.")
-            if icon.startswith("/") and not icon.lower().endswith(".png"):
+            if icon.startswith("/") and not self._is_png_asset_url(icon):
                 raise web.HTTPBadRequest(text="Custom footer icons must use PNG assets.")
             if not name and not url and not icon:
                 continue
