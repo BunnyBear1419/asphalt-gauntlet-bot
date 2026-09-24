@@ -586,8 +586,8 @@ window.rslGoogleTranslateInit=function(){
 <style>
 .rsl-cookie-banner{position:fixed;left:18px;right:18px;bottom:18px;z-index:9999;display:none;border:1px solid #168cff;background:#061226;box-shadow:0 10px 40px #000b;padding:18px 20px;color:#dce7f7}
 .rsl-cookie-banner.is-visible{display:block}.rsl-cookie-banner strong{color:#fff}.rsl-cookie-banner p{margin:7px 0 14px;line-height:1.55;color:#aebdd2}.rsl-cookie-actions{display:flex;gap:10px;flex-wrap:wrap}.rsl-cookie-btn{border:1px solid #168cff;background:#0a1a30;color:#25dfff;padding:9px 15px;cursor:pointer;font:inherit}.rsl-cookie-btn.primary{background:#168cff;color:#fff}.rsl-cookie-btn:hover{filter:brightness(1.15)}
-.rsl-cookie-settings{position:fixed;right:18px;bottom:18px;z-index:9998;border:1px solid #168cff;background:#061226;color:#25dfff;padding:9px 13px;cursor:pointer;font:inherit;display:none}
-@media(max-width:600px){.rsl-cookie-banner{left:10px;right:10px;bottom:10px}.rsl-cookie-settings{right:10px;bottom:10px}}
+.rsl-cookie-settings{position:fixed;right:190px;bottom:18px;z-index:9998;border:1px solid #168cff;background:#061226;color:#25dfff;padding:9px 13px;cursor:pointer;font:inherit;display:none}
+@media(max-width:600px){.rsl-cookie-banner{left:10px;right:10px;bottom:10px}.rsl-cookie-settings{right:150px;bottom:10px}}
 </style>
 <div class="rsl-cookie-banner" id="rsl-cookie-banner" role="dialog" aria-label="Cookie preferences">
   <strong>Cookie &amp; Privacy Choices</strong>
