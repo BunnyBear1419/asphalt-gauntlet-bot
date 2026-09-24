@@ -696,7 +696,7 @@ window.rslGoogleTranslateInit=function(){
         # Keep the shared stylesheet cache-busted for every page so shell fixes reach
         # old templates without requiring a manual edit to each HTML file.
         if filename.endswith(".html"):
-            app_css_tag = re.compile(r'<link\\b[^>]*href=["\']/static/app\\.css(?:\\?[^"\']*)?["\'][^>]*>', re.I)
+            app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
                 body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell2">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
