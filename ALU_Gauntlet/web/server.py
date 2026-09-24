@@ -50,7 +50,7 @@ DEFAULT_WEB_BRANDING = {
     "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Race, Compete, Unite","favicon_url":"/assets/rsl-favicon.png?v=20260922-favicon1","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
     "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
     "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
-    "links": {"site_logo":"/","website":"https://asph.discloud.app","youtube":"","twitch":"","facebook":"","instagram":"","x":"","support":"","companion":"https://alu.shohanlab.com/","custom":[]},
+    "links": {"site_logo":"/","website":"https://asph.discloud.app","discord":"https://discord.gg/fmFk8Ejf2H","cashapp":"https://cash.app/","youtube":"","twitch":"","facebook":"","instagram":"","x":"","support":"","companion":"https://alu.shohanlab.com/","custom":[]},
     "navigation": {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"},
     "terminology": {"gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","players":"Drivers","season":"Season","matches":"Matches","support":"Help Center"},
 }
@@ -537,8 +537,21 @@ window.rslGoogleTranslateInit=function(){
             flags=re.S | re.I,
         )
         if "</nav>" in body:
-            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav10" alt=""><span>Calendar</span></a>'
+            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
+
+        # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
+        # This keeps every page on the same PNG-only navigation shell.
+        body = re.sub(
+            r'<a href="/gauntlet/matches">\s*<span class="nav-icon-glyph"[^>]*>.*?</span>\s*<span>Challenges &amp; Matches</span>',
+            '<a href="/gauntlet/matches"><img class="nav-icon-img" src="/assets/icons/matches.png" alt=""><span>Challenges &amp; Matches</span>',
+            body, flags=re.S | re.I
+        )
+        body = re.sub(
+            r'<a href="/tournaments/results">\s*<span class="nav-icon-glyph"[^>]*>.*?</span>\s*<span>Results &amp; Rankings</span>',
+            '<a href="/tournaments/results"><img class="nav-icon-img" src="/assets/icons/results.png" alt=""><span>Results &amp; Rankings</span>',
+            body, flags=re.S | re.I
+        )
 
         if "</header>" in body and 'id="rsl-search-trigger"' not in body:
             body = body.replace("</header>", search_markup + "</header>", 1)
@@ -1259,7 +1272,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "/calendar",
             "/clubs",
         ]
-        website_url = str((self.branding.get("links") or {}).get("website") or "https://asph.discloud.app").rstrip("/")
+        website_url = str((self._merge_branding({}).get("links") or {}).get("website") or "https://asph.discloud.app").rstrip("/")
         entries = "".join(
             f"<url><loc>{html.escape(website_url + path)}</loc></url>"
             for path in urls
