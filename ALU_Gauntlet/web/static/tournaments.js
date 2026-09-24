@@ -90,6 +90,16 @@ async function checkin(id,button){
   if(button){button.disabled=true;button.textContent="Checking In…"}
   try{const r=await api("/api/tournaments/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:id})});toast(r.message||"Checked in.");await showTournament(id)}catch(e){toast(e.message,true)}finally{if(button){button.disabled=false;button.textContent=original}}
 }
+async function startTournament(id,button){
+  if(button?.disabled)return;
+  const original=button?.textContent;
+  if(button){button.disabled=true;button.textContent="Starting…"}
+  try{
+    const r=await api("/api/tournaments/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:id})});
+    toast(r.message||"Tournament started."); await showTournament(id);
+  }catch(e){toast(e.message,true)}
+  finally{if(button){button.disabled=false;button.textContent=original}}
+}
 async function showTournament(id){
   try{
     const t=await api("/api/tournaments/"+encodeURIComponent(id)); const box=$("#tournament-detail"); box.hidden=false;
@@ -98,10 +108,12 @@ async function showTournament(id){
     box.innerHTML='<div class="panel-heading"><h2>'+esc(t.name)+'</h2><button class="qa qa-blue" id="close-tournament-detail">Close</button></div>'+
       '<p>'+esc(t.description||"")+'</p>'+
       (t.status==="completed"&&champion?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><button type="button" class="tournament-champion-link" data-identity-type="'+esc(champion.identityType||"")+'" data-identity-id="'+esc(champion.identityType==="club"?champion.clubId:(champion.userId||""))+'"><strong>'+esc(champion.name)+'</strong><small>'+esc(champion.detail||"")+'</small>'+verifiedBadge(champion)+'</button></section>':'')+
-      '<div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button></div>'+
+      '<div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button>'+((t.can_manage_results&&(t.status==="registration_open"||t.status==="open"))?'<button class="qa qa-gold" id="start-tournament">Start Tournament →</button>':'')+'</div>'+
       (pending.length&&(window._me?.staff||t.can_manage_results)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+      (Number(t.team_size||1)>1&&((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).length)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>🏎️ Tournament Lineup</h3><span>'+Number(t.team_size||1)+' drivers required</span></div>'+((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).map(c=>'<div class="lineup-editor"><strong>'+esc(c.name)+'</strong><div class="lineup-list">'+(c.members||[]).map(m=>'<label><input class="lineup-member" data-club="'+esc(c.id)+'" type="checkbox" value="'+esc(m.user_id)+'" '+((c.lineup||[]).map(String).includes(String(m.user_id))?'checked':'')+'> '+esc(m.username)+'</label>').join('')+'</div><button class="qa qa-purple lineup-save" data-club="'+esc(c.id)+'">Save Lineup</button></div>').join(''))+'</section>':'')+
       '<div class="tournament-bracket">'+bracketText(t)+'</div>'+clubHtml(t);
-    $("#close-tournament-detail").onclick=()=>box.hidden=true; $("#checkin-tournament").onclick=()=>checkin(id);
+    $("#close-tournament-detail").onclick=()=>box.hidden=true;
+    $("#checkin-tournament").onclick=()=>checkin(id);
+    $("#start-tournament")?.addEventListener("click",()=>startTournament(id,$("#start-tournament")));
     box.querySelectorAll(".tournament-competitor").forEach(b=>{b.onclick=()=>{const type=b.dataset.identityType,id=b.dataset.identityId;if(!id)return;if(type==="player")openPlayerProfile(id);else if(type==="club"){openTournamentClubProfile(id)}}});
     box.querySelectorAll(".tournament-champion-link").forEach(b=>{b.onclick=()=>{const type=b.dataset.identityType,id=b.dataset.identityId;if(type==="player")openPlayerProfile(id);else if(type==="club"){openTournamentClubProfile(id)}}});
     const matches=allMatches(t.bracket);
