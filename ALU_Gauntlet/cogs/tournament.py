@@ -215,9 +215,9 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
     groups = []
     for key in ("rounds", "winners", "losers"):
         groups.extend(bracket.get(key) or [])
-    grand_final = bracket.get("grand_final")
-    if isinstance(grand_final, dict):
-        groups.append({"matches": [grand_final]})
+    for key in ("grand_final", "grand_final_reset"):
+        if isinstance(bracket.get(key), dict):
+            groups.append({"matches": [bracket[key]]})
     match=next((m for group in groups for m in group.get("matches",[]) if str(m.get("id"))==str(match_id)),None)
     if not match:
         return False, "Match not found."
@@ -258,11 +258,51 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
                 target_match["player_slots"] = slots
                 if all(slots):
                     target_match["status"] = "ready"
-            else:
-                if str(match.get("bracket","winners"))=="winners" and (match.get("round") or 0)==len(groups):
-                    t["status"]="completed"
-                    t["champion_id"]=winner
-                    t["completed_at"]=discord.utils.utcnow().isoformat()
+
+            loser_to = match.get("loser_to")
+            if loser_to and str(match.get("bracket")) == "winners":
+                slots = [str(x) for x in (match.get("player_slots") or []) if x]
+                loser = next((x for x in slots if x != winner), None)
+                if loser:
+                    target_match = next(
+                        (nxt for group in groups for nxt in group.get("matches", []) if str(nxt.get("id")) == str(loser_to)),
+                        None,
+                    )
+                    if target_match is None:
+                        return False, "Losers-bracket destination is invalid."
+                    target_slots = list(target_match.get("player_slots") or [None, None])
+                    while len(target_slots) < 2:
+                        target_slots.append(None)
+                    if loser not in [str(x) for x in target_slots if x is not None]:
+                        if all(target_slots):
+                            return False, "Losers-bracket destination is already occupied."
+                        empty_index = target_slots.index(None)
+                        target_slots[empty_index] = loser
+                        target_match["player_slots"] = target_slots
+                        if all(target_slots):
+                            target_match["status"] = "ready"
+
+            fmt = str(t.get("format") or bracket.get("type") or "single_elimination").casefold()
+            if fmt == "double_elimination":
+                if match.get("id") == "GF-M1":
+                    protected = str(bracket.get("protected_finalist") or "")
+                    if winner == protected:
+                        t["status"] = "completed"
+                        t["champion_id"] = winner
+                        t["completed_at"] = discord.utils.utcnow().isoformat()
+                    else:
+                        reset = bracket.get("grand_final_reset")
+                        if isinstance(reset, dict):
+                            reset["player_slots"] = [protected, winner]
+                            reset["status"] = "ready"
+                            bracket["grand_final_reset"] = reset
+                elif match.get("id") == "GF-M2":
+                    t["status"] = "completed"
+                    t["champion_id"] = winner
+                    t["completed_at"] = discord.utils.utcnow().isoformat()
+                elif match.get("bracket") == "winners" and match.get("winner_to") == "GF-M1":
+                    bracket["protected_finalist"] = winner
+
             message="Result approved and winner advanced."
         await bot.db.tournaments.update_one(
             {"_id":t["_id"]},
