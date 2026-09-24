@@ -2180,3 +2180,34 @@ main:has(.rsl-global-discord-cta)::before{content:none!important;display:none!im
 /* RSL GLOBAL SHELL: normalize page-top spacing so every page starts the shared Discord card at the same distance below the menu. */
 main:has(.rsl-global-discord-cta){padding-top:0!important}
 .rsl-global-discord-cta.rsl-global-discord-cta{margin-top:var(--rsl-shell-discord-top-gap)!important}
+
+
+/* FINAL GLOBAL SHELL SPACING LOCK — one exact menu-to-Discord measurement on every page. */
+body:has(.rsl-global-discord-cta) .app-frame{
+  margin-top:0!important;
+  padding-top:var(--rsl-shell-header-height)!important;
+}
+body:has(.rsl-global-discord-cta) .workspace{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+body:has(.rsl-global-discord-cta) .workspace>main{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+body:has(.rsl-global-discord-cta) .rsl-global-discord-cta.rsl-global-discord-cta.rsl-global-discord-cta{
+  margin-top:var(--rsl-shell-discord-top-gap)!important;
+  margin-bottom:var(--rsl-shell-discord-bottom-gap)!important;
+  position:relative!important;
+  top:0!important;
+  transform:none!important;
+}
+body:has(.rsl-global-discord-cta) .rsl-global-help-card.rsl-global-help-card{
+  margin-top:var(--rsl-shell-help-top-gap)!important;
+  margin-bottom:var(--rsl-shell-help-bottom-gap)!important;
+}
+/* Calendar has its own page padding; preserve its horizontal layout but never let it add vertical shell spacing. */
+body:has(.rsl-global-discord-cta) main.calendar-page{
+  padding-top:0!important;
+  margin-top:0!important;
+}
