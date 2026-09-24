@@ -40,6 +40,14 @@ async function load(){
   text("registration-status",p.season_registered?"Gauntlet registration: ACTIVE":"Gauntlet registration: NOT REGISTERED");
   const asphalt=p.asphalt_verified===true?"Verified":(p.asphalt_verified===false?"Pending verification":"Not linked");
   text("asphalt-status","Asphalt account status: "+asphalt);
+  const tourney=await api("/api/profile/tournaments").catch(()=>({stats:{},upcoming:[],history:[]}));
+  const ts=tourney.stats||{};
+  text("tourney-entered",ts.entered??0); text("tourney-completed",ts.completed??0); text("tourney-played",ts.matches_played??0);
+  text("tourney-wins",ts.wins??0); text("tourney-losses",ts.losses??0); text("tourney-rate",(ts.win_rate??0)+"%");
+  const currentBox=$("#tourney-current"), active=(tourney.upcoming||[]).filter(t=>["live","registration_open","open"].includes(t.status));
+  if(currentBox){currentBox.textContent=active.length?active.slice(0,3).map(t=>t.name+" • "+(t.status==="live"?"Live":"Registered/Open")+(t.team_size>1?" • "+t.team_size+"v"+t.team_size:"")).join("\n"):"No active tournament registrations.";currentBox.style.whiteSpace="pre-line";}
+  const historyBox=$("#tourney-history");
+  if(historyBox){historyBox.innerHTML="";const history=tourney.history||[];if(!history.length){const e=document.createElement("div");e.className="profile-status";e.textContent="No completed tournament history yet.";historyBox.append(e);}else history.forEach(t=>{const row=document.createElement("div");row.className="profile-field";row.style.marginBottom="10px";row.innerHTML="<strong>"+esc(t.name)+"</strong><span style=\"display:block;margin-top:6px;color:#7188a7;font-size:11px\">"+esc(t.format_label)+(t.team_size>1?" • "+t.team_size+"v"+t.team_size:"")+" • "+esc(t.finish)+" • "+Number(t.wins||0)+"W-"+Number(t.losses||0)+"L • "+Number(t.matches_played||0)+" matches</span>";historyBox.append(row);});}
   const links=Array.isArray(p.links)?p.links:(Array.isArray(prefs.links)?prefs.links:[]);
   const box=$("#links");box.textContent="";
   if(!links.length){const span=document.createElement("span");span.className="profile-status";span.textContent="No links added.";box.append(span)}
