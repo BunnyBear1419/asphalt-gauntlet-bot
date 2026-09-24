@@ -2260,7 +2260,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 raise
             return web.json_response({"ok": True, "message": "Club registration submitted for staff review."})
         count = await self.bot.db.tournament_registrations.count_documents(
-            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted"]}}
+            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
         )
         if count >= int(tournament.get("max_players", 32)):
             raise web.HTTPConflict(text="This tournament is full.")
