@@ -1462,7 +1462,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def gauntlet_matches(self, request: web.Request) -> web.Response:
         user,guild_id,_=await self.require_guild_member(request); uid=str(user.user_id); active=[]; recent=[]
-        async for item in self.bot.db.active_challenges.find({"guild_id":str(guild_id),"$or":[{"challenger_id":uid},{"opponent_id":uid}],"status":{"$in":["active","processing"]}}).sort("created_at",-1).limit(10):
+        current_season = await get_current_season_number(str(guild_id))
+        async for item in self.bot.db.active_challenges.find({"guild_id":str(guild_id),"season_number":int(current_season),"$or":[{"challenger_id":uid},{"opponent_id":uid}],"status":{"$in":["active","processing"]}}).sort("created_at",-1).limit(10):
             oppid=str(item.get("opponent_id") if str(item.get("challenger_id"))==uid else item.get("challenger_id")); opp=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{oppid}"}) or {}
             active.append({"id":str(item.get("_id","")),"status":str(item.get("status","active")),"role":"challenger" if str(item.get("challenger_id"))==uid else "defender","opponent_id":oppid,"opponent":str(opp.get("game_id") or opp.get("username") or oppid),"courses":item.get("defense_courses") or [],"created_at":item.get("created_at") or item.get("started_at") or time.time()})
         cursor=self.bot.db.matches.find({"guild_id":str(guild_id),"reverted":{"$ne":True},"$or":[{"challenger_id":uid},{"opponent_id":uid}]}).sort("timestamp",-1).limit(20)
@@ -1482,6 +1483,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         uid=str(user.user_id); active=await claim_active_challenge(str(guild_id),uid)
         if not active: raise web.HTTPConflict(text="No active challenge is available to submit.")
         try:
+            current_season = await get_current_season_number(str(guild_id))
+            if int(active.get("season_number", 0) or 0) != int(current_season):
+                await release_active_challenge(active["_id"])
+                raise web.HTTPConflict(text="This challenge belongs to an older season. Start a new challenge for the current season.")
             rows=payload.get("courses"); proof=str(payload.get("proof","")).strip()
             if not isinstance(rows,list) or len(rows)!=5: raise web.HTTPBadRequest(text="Exactly five course results are required.")
             if not proof.lower().startswith(("http://","https://")): raise web.HTTPBadRequest(text="Proof must be an image URL.")
