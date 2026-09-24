@@ -718,8 +718,12 @@ window.rslGoogleTranslateInit=function(){
                 else:
                     body = body.replace("</header>", "</header>" + global_discord_markup, 1)
             if "rsl-global-help-card" not in body:
-                if re.search(r"<footer\b", body, flags=re.I):
-                    body = re.sub(r"(<footer\b)", global_help_markup + "\n\\1", body, count=1, flags=re.I)
+                if re.search(r"</main>", body, flags=re.I):
+                    # Keep Help inside the same page container as the hero and Discord card,
+                    # so its width is always exactly the same as the page hero.
+                    body = re.sub(r"</main>", "\n" + global_help_markup + "\n</main>", body, count=1, flags=re.I)
+                elif re.search(r"<footer\\b", body, flags=re.I):
+                    body = re.sub(r"(<footer\\b)", global_help_markup + "\n\\1", body, count=1, flags=re.I)
                 else:
                     body = body.replace("</body>", global_help_markup + "\n</body>", 1)
 
