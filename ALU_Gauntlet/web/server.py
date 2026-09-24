@@ -2646,9 +2646,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if len(players) > max_players:
             raise web.HTTPConflict(text="Too many entrants for this tournament.")
         if fmt == "double_elimination":
-            if len(players) not in {4, 8, 16, 32}:
-                raise web.HTTPConflict(text="Double Elimination currently requires 4, 8, 16, or 32 entrants.")
-            bracket = generate_tournament_bracket(fmt, len(players))
+            entrant_count = len(players)
+            if entrant_count < 4 or entrant_count > 256 or (entrant_count & (entrant_count - 1)):
+                raise web.HTTPConflict(
+                    text="Double Elimination requires 4, 8, 16, 32, 64, 128, or 256 accepted entrants."
+                )
+            bracket = generate_tournament_bracket(fmt, entrant_count)
             for i, match in enumerate(bracket["winners"][0]["matches"]):
                 match["player_slots"] = [players[i * 2], players[i * 2 + 1]]
                 match["status"] = "ready"
