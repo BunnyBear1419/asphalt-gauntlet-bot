@@ -64,7 +64,12 @@ async def _is_participant(tournament, match, user_id):
     slots = [str(x) for x in (match.get("player_slots") or []) if x]
     if int(tournament.get("team_size", 1)) > 1:
         return bool(await bot.db.tournament_club_registrations.find_one(
-            {"tournament_id": str(tournament["_id"]), "club_id": {"$in": slots}, "lineup": uid}
+            {
+                "tournament_id": str(tournament["_id"]),
+                "club_id": {"$in": slots},
+                "lineup": uid,
+                "status": {"$in": ["accepted", "checked_in"]},
+            }
         ))
     return uid in slots
 
@@ -116,11 +121,14 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
         if not await _is_participant(tournament, match, interaction.user.id) and not await _is_tournament_staff(interaction):
             await interaction.response.send_message("❌ Only a participant in this match can submit the result.", ephemeral=True)
             return
+        if self.winner_id not in [str(x) for x in (match.get("player_slots") or []) if x]:
+            await interaction.response.send_message("❌ The selected winner is not an entrant in this match.", ephemeral=True)
+            return
         if match.get("result_status") == "pending":
             await interaction.response.send_message("❌ This match already has a result waiting for staff verification.", ephemeral=True)
             return
-        if match.get("status") == "completed":
-            await interaction.response.send_message("❌ This match is already completed.", ephemeral=True)
+        if match.get("status") != "ready":
+            await interaction.response.send_message("❌ This match is not ready for a result submission.", ephemeral=True)
             return
         if not await _claim_action(self.tournament_id, self.match_id, "submit"):
             await interaction.response.send_message("❌ Another result submission is already being processed for this match.", ephemeral=True)
@@ -345,7 +353,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
             message="Result approved and winner advanced."
         await bot.db.tournaments.update_one(
             {"_id":t["_id"]},
-            {"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"updated_at":discord.utils.utcnow().isoformat()}}
+            {"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"standings":t.get("standings"),"updated_at":discord.utils.utcnow().isoformat()}}
         )
         return True, message
     finally:
