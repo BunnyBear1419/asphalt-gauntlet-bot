@@ -349,8 +349,14 @@ class WebControlCenter:
 <div class="rsl-search-overlay" id="rsl-search-overlay" hidden>
   <div class="rsl-search-dialog" role="dialog" aria-modal="true" aria-labelledby="rsl-search-title">
     <div class="rsl-search-head"><strong id="rsl-search-title">Search Racing Syndicate League</strong><button type="button" class="rsl-search-close" id="rsl-search-close" aria-label="Close search">×</button></div>
-    <div class="rsl-search-input-wrap"><img src="/assets/icons/search.png" alt=""><input id="rsl-search-input" type="search" placeholder="Search the site…" autocomplete="off"></div>
-    <div class="rsl-search-results" id="rsl-search-results"><p>Type to search pages, features and racing information.</p></div>
+    <div class="rsl-search-toolbar">
+      <div class="rsl-search-input-wrap"><img src="/assets/icons/search.png" alt=""><input id="rsl-search-input" type="search" placeholder="Search drivers, clubs, tournaments, pages…" autocomplete="off"></div>
+      <select id="rsl-search-type" aria-label="Search category">
+        <option value="all">Everything</option><option value="players">Drivers</option><option value="clubs">Clubs</option><option value="tournaments">Tournaments</option><option value="pages">Pages</option><option value="help">Help</option>
+      </select>
+    </div>
+    <div class="rsl-search-meta" id="rsl-search-meta"></div>
+    <div class="rsl-search-results" id="rsl-search-results"><p>Search across RSL pages and, when signed in, your available drivers, clubs, and tournaments.</p></div>
   </div>
 </div>
 '''
@@ -514,14 +520,28 @@ window.rslGoogleTranslateInit=function(){
         search_script = r'''
 <script>
 (function(){
-  const trigger=document.getElementById("rsl-search-trigger"), overlay=document.getElementById("rsl-search-overlay"), input=document.getElementById("rsl-search-input"), close=document.getElementById("rsl-search-close"), results=document.getElementById("rsl-search-results");
-  if(!trigger||!overlay||!input||!close||!results)return;
+  const trigger=document.getElementById("rsl-search-trigger"), overlay=document.getElementById("rsl-search-overlay"), input=document.getElementById("rsl-search-input"), type=document.getElementById("rsl-search-type"), close=document.getElementById("rsl-search-close"), results=document.getElementById("rsl-search-results"), meta=document.getElementById("rsl-search-meta");
+  if(!trigger||!overlay||!input||!type||!close||!results)return;
   const hide=()=>{overlay.hidden=true;trigger.setAttribute("aria-expanded","false");};
   const show=()=>{overlay.hidden=false;trigger.setAttribute("aria-expanded","true");setTimeout(()=>input.focus(),20);};
+  const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+  const run=async()=>{
+    const q=input.value.trim();
+    if(q.length<2){meta.textContent="";results.innerHTML="<p>Type at least 2 characters to search.</p>";return;}
+    results.innerHTML="<p>Searching…</p>"; meta.textContent="";
+    try{
+      const r=await fetch("/api/search?q="+encodeURIComponent(q)+"&type="+encodeURIComponent(type.value),{credentials:"same-origin"});
+      const d=await r.json();
+      const rows=Array.isArray(d.results)?d.results:[];
+      meta.textContent=rows.length+" result"+(rows.length===1?"":"s")+" • "+(type.options[type.selectedIndex]?.text||"Everything");
+      results.innerHTML=rows.length?rows.map(x=>'<a class="rsl-search-result rsl-search-result-'+escapeHtml(x.type)+'" href="'+escapeHtml(x.url)+'"><span class="rsl-search-result-type">'+escapeHtml(x.type)+'</span><strong>'+escapeHtml(x.title)+'</strong><span>'+escapeHtml(x.snippet)+'</span></a>').join(""):"<p>No matching results found.</p>";
+    }catch(_){results.innerHTML="<p>Search is temporarily unavailable.</p>";}
+  };
   trigger.addEventListener("click",show); close.addEventListener("click",hide);
   overlay.addEventListener("click",e=>{if(e.target===overlay)hide();});
   document.addEventListener("keydown",e=>{if(e.key==="Escape")hide();if(e.key==="/"&&document.activeElement!==input){e.preventDefault();show();}});
-  let timer; input.addEventListener("input",()=>{clearTimeout(timer);const q=input.value.trim();if(q.length<2){results.innerHTML="<p>Type at least 2 characters to search.</p>";return;}timer=setTimeout(async()=>{results.innerHTML="<p>Searching…</p>";try{const r=await fetch("/api/search?q="+encodeURIComponent(q),{credentials:"same-origin"});const d=await r.json();results.innerHTML=d.results.length?d.results.map(x=>'<a class="rsl-search-result" href="'+x.url+'"><strong>'+x.title+'</strong><span>'+x.snippet+'</span></a>').join(""):"<p>No matching pages found.</p>";}catch(_){results.innerHTML="<p>Search is temporarily unavailable.</p>";}},180);});
+  let timer; input.addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(run,180);});
+  type.addEventListener("change",run);
 })();
 </script>
 '''
@@ -2561,46 +2581,107 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return await self._page_response("player.html", request)
 
     async def site_search(self, request: web.Request) -> web.Response:
-        await self.require_user(request)
+        """Search public site content plus account-visible racing data."""
         query = request.query.get("q", "").strip()
+        category = request.query.get("type", "all").strip().casefold()
         if len(query) < 2:
-            return web.json_response({"results": []})
+            return web.json_response({"query": query, "type": category, "results": []})
+
+        allowed_types = {"all", "pages", "players", "clubs", "tournaments", "help"}
+        if category not in allowed_types:
+            category = "all"
         terms = [x.lower() for x in re.findall(r"[\w]+", query) if len(x) > 1][:8]
-        pages = [
-            ("Home", "/", "index.html"), ("Help Center", "/help", "help.html"), ("Legal Center", "/legal", "legal.html"),
-            ("Player", "/player", "player.html"), ("Calendar", "/calendar", "calendar.html"),
-            ("Clubs", "/clubs", "clubs.html"), ("Tournaments", "/tournaments", "tournaments.html"),
-            ("Tournament Registration", "/tournaments/registration", "tournament-registration.html"),
-            ("Tournament Matches", "/tournaments/matches", "tournament-matches.html"),
-            ("Tournament Results", "/tournaments/results", "tournament-results.html"),
-            ("Club Tournaments", "/tournaments/clubs", "tournament-clubs.html"),
-            ("Gauntlet Registration", "/gauntlet/registration", "gauntlet-registration.html"),
-            ("Gauntlet Defense", "/gauntlet/defense", "gauntlet-defense.html"),
-            ("Gauntlet Challenges & Matches", "/gauntlet/matches", "gauntlet-matches.html"),
-            ("Gauntlet Leaderboards", "/gauntlet/leaderboard", "gauntlet-leaderboard.html"),
-            ("Gauntlet References", "/gauntlet/references", "gauntlet-references.html"),
-            ("My Gauntlet Career", "/gauntlet/career", "gauntlet-career.html"),
-        ]
-        results = []
-        for title, path, filename in pages:
-            try:
-                raw = (WEB_DIR / filename).read_text(encoding="utf-8")
-            except OSError:
-                continue
-            text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", raw)
-            text = html.unescape(re.sub(r"(?s)<[^>]+>", " ", text))
-            text = re.sub(r"\\s+", " ", text).strip()
-            haystack = (title + " " + text).lower()
+        if not terms:
+            return web.json_response({"query": query, "type": category, "results": []})
+
+        results: list[dict[str, str]] = []
+
+        def add_result(kind: str, title: str, url: str, snippet: str, keywords: str = "") -> None:
+            haystack = (title + " " + snippet + " " + keywords).lower()
             if all(term in haystack for term in terms):
-                pos = min((haystack.find(term) for term in terms if haystack.find(term) >= 0), default=0)
-                start = max(0, pos - 90)
-                snippet = text[start:start + 220]
-                if start > 0:
+                results.append({"type": kind, "title": title, "url": url, "snippet": snippet})
+
+        pages = [
+            ("Home", "/", "index.html", "pages"),
+            ("Help Center", "/help", "help.html", "help"),
+            ("Legal Center", "/legal", "legal.html", "pages"),
+            ("Calendar", "/calendar", "calendar.html", "pages"),
+            ("Clubs", "/clubs", "clubs.html", "clubs"),
+            ("Tournaments", "/tournaments", "tournaments.html", "tournaments"),
+            ("Tournament Registration", "/tournaments/registration", "tournament-registration.html", "tournaments"),
+            ("Tournament Matches", "/tournaments/matches", "tournament-matches.html", "tournaments"),
+            ("Tournament Results", "/tournaments/results", "tournament-results.html", "tournaments"),
+            ("Club Tournaments", "/tournaments/clubs", "tournament-clubs.html", "tournaments"),
+            ("Gauntlet Registration", "/gauntlet/registration", "gauntlet-registration.html", "pages"),
+            ("Gauntlet Defense", "/gauntlet/defense", "gauntlet-defense.html", "pages"),
+            ("Gauntlet Challenges & Matches", "/gauntlet/matches", "gauntlet-matches.html", "pages"),
+            ("Gauntlet Leaderboards", "/gauntlet/leaderboard", "gauntlet-leaderboard.html", "pages"),
+            ("Gauntlet References", "/gauntlet/references", "gauntlet-references.html", "help"),
+            ("My Gauntlet Career", "/gauntlet/career", "gauntlet-career.html", "pages"),
+        ]
+        if category in {"all", "pages", "help", "clubs", "tournaments"}:
+            for title, path, filename, kind in pages:
+                if category not in {"all", kind} and not (category == "pages" and kind == "pages"):
+                    continue
+                try:
+                    raw = (WEB_DIR / filename).read_text(encoding="utf-8")
+                except OSError:
+                    continue
+                clean = re.sub(r"(?is)<(script|style).*?>.*?</\\1>", " ", raw)
+                clean = html.unescape(re.sub(r"(?s)<[^>]+>", " ", clean))
+                clean = re.sub(r"\\s+", " ", clean).strip()
+                pos = min((clean.lower().find(term) for term in terms if clean.lower().find(term) >= 0), default=0)
+                snippet = clean[max(0, pos - 80):pos + 220] if clean else ""
+                if pos > 80:
                     snippet = "…" + snippet
-                if start + 220 < len(text):
+                if pos + 220 < len(clean):
                     snippet += "…"
-                results.append({"title": title, "url": path, "snippet": snippet})
-        return web.json_response({"query": query, "results": results[:12]})
+                add_result(kind, title, path, snippet, clean[:600])
+
+        user = None
+        try:
+            user = await self.auth.get_session(request)
+        except Exception:
+            user = None
+
+        if user and category in {"all", "players"}:
+            guild_ids = [str(x) for x in (getattr(user, "guild_ids", []) or [])]
+            if guild_ids:
+                player_docs = await self.bot.db.players.find(
+                    {"guild_id": {"$in": guild_ids}},
+                    {"user_id": 1, "username": 1, "global_name": 1, "game_name": 1, "game_id": 1, "about": 1, "location": 1}
+                ).limit(100).to_list(length=100)
+                for player in player_docs:
+                    name = str(player.get("global_name") or player.get("username") or player.get("game_name") or "Driver")
+                    profile = " ".join(str(player.get(k) or "") for k in ("game_name", "game_id", "about", "location"))
+                    add_result("players", name, "/players", f"Driver profile • {profile[:220]}", profile)
+
+        if user and category in {"all", "clubs"}:
+            guild_ids = [str(x) for x in (getattr(user, "guild_ids", []) or [])]
+            if guild_ids:
+                async for club in self.bot.db.clubs.find(
+                    {"guild_id": {"$in": guild_ids}},
+                    {"name": 1, "about": 1, "guild_id": 1}
+                ).sort("name_ci", 1).limit(100):
+                    name = str(club.get("name") or "Club")
+                    about = str(club.get("about") or "")
+                    add_result("clubs", name, "/clubs", f"Club • {about[:220]}", about)
+
+        if user and category in {"all", "tournaments"}:
+            guild_ids = [str(x) for x in (getattr(user, "guild_ids", []) or [])]
+            if guild_ids:
+                async for tournament in self.bot.db.tournaments.find(
+                    {"guild_id": {"$in": guild_ids}},
+                    {"name": 1, "description": 1, "format": 1, "team_size": 1, "status": 1}
+                ).sort("start_time", 1).limit(100):
+                    name = str(tournament.get("name") or "Tournament")
+                    details = " ".join(str(tournament.get(k) or "") for k in ("description", "format", "team_size", "status"))
+                    add_result("tournaments", name, "/tournaments", f"Tournament • {details[:220]}", details)
+
+        # Relevance: exact title/name matches first, then shorter snippets.
+        needle = query.casefold()
+        results.sort(key=lambda x: (0 if needle in x["title"].casefold() else 1, len(x["title"]), x["title"].casefold()))
+        return web.json_response({"query": query, "type": category, "results": results[:30]})
 
     async def discord_stats(self, request: web.Request) -> web.Response:
         """Return public Discord server counts for the homepage community banner."""
