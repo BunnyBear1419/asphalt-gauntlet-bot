@@ -3190,6 +3190,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         profile = await self.bot.db.drivers.find_one({"_id": driver_id})
         if not profile:
             raise web.HTTPConflict(text="Register your driver for the current season before setting a defense.")
+        current_season = await get_current_season_number(str(guild_id))
+        if not profile.get("season_registered") or int(profile.get("season_number", 0) or 0) != int(current_season):
+            raise web.HTTPConflict(text=f"Register your driver for Season {current_season} before setting a defense.")
         if profile.get("defense_review_pending"):
             raise web.HTTPConflict(text="Your defense submission is already pending staff review.")
         if action == "submit":
