@@ -84,3 +84,5 @@ def test_tournament_result_paths_cover_all_bracket_sections():
     assert "tournament_admin_role_id" in web_source
     assert "can_manage_results" in web_source
     assert '"standings":t.get("standings")' in discord_source
+    assert '/api/tournaments/start' in js_source
+    assert 'id="start-tournament"' in js_source
