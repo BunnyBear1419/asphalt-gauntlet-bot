@@ -203,6 +203,7 @@ class WebControlCenter:
                 "tournament-results.html": "/tournaments/results",
                 "tournament-clubs.html": "/tournaments/clubs",
                 "clubs.html": "/clubs",
+                "club.html": "/club",
                 "calendar.html": "/calendar",
                 "help.html": "/help",
                 "legal.html": "/legal",
@@ -358,7 +359,7 @@ class WebControlCenter:
     </div>
     <a href="/player#preferences">⚙️ <span>My Settings</span></a>
     <a href="/profile">👤 <span>My Profile</span></a>
-    <a href="/clubs">🏎️ <span>My Club</span></a>
+    <a href="/club">🏎️ <span>My Club</span></a>
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
     <a href="/player#career">🏆 <span>My Tournaments</span></a>
     <a class="rsl-admin-tools-link" id="rsl-admin-tools-link" href="/admin" hidden>🛠️ <span>Admin Tools</span></a>
@@ -1237,6 +1238,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/tournaments/results", self.tournament_results_page)
         self.app.router.add_get("/tournaments/clubs", self.tournament_clubs_page)
         self.app.router.add_get("/clubs", self.clubs_page)
+        self.app.router.add_get("/club", self.club_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
@@ -1536,6 +1538,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("clubs.html", request)
+
+    async def club_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("club.html", request)
 
     async def clubs(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
