@@ -728,7 +728,15 @@ window.rslGoogleTranslateInit=function(){
                     body = body.replace("</body>", global_help_markup + "\n</body>", 1)
 
             global_discord_script = r'''
-<script>(async function(){const online=document.getElementById("discord-online-members");const total=document.getElementById("discord-server-members");if(!online||!total)return;try{const r=await fetch("/api/discord-stats",{credentials:"same-origin"});if(!r.ok)return;const d=await r.json();if(d.available){online.textContent=Number(d.online_members||0).toLocaleString();total.textContent=Number(d.server_members||0).toLocaleString()}}catch(_){}})();</script>'''
+<script>(function(){
+function alignRslShell(){const help=document.querySelector(".rsl-global-help-card");if(!help)return;
+const ref=document.querySelector(".home-hero,.page-hero,.tournament-hero,.clubs-center-hero,.my-tournaments-hero,.profile-hero,.hero-banner,.rsl-global-discord-cta");
+if(!ref)return;const parent=help.offsetParent||help.parentElement;const rr=ref.getBoundingClientRect(),pr=parent.getBoundingClientRect();
+help.style.width=rr.width+"px";help.style.maxWidth="none";help.style.marginLeft=(rr.left-pr.left)+"px";help.style.marginRight="0";
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",alignRslShell);else alignRslShell();
+window.addEventListener("load",alignRslShell,{passive:true});window.addEventListener("resize",alignRslShell,{passive:true});
+(async function(){const online=document.getElementById("discord-online-members");const total=document.getElementById("discord-server-members");if(!online||!total)return;try{const r=await fetch("/api/discord-stats",{credentials:"same-origin"});if(!r.ok)return;const d=await r.json();if(d.available){online.textContent=Number(d.online_members||0).toLocaleString();total.textContent=Number(d.server_members||0).toLocaleString()}}catch(_){}})();})();</script>'''
             body = body.replace('id="discord-online-members">—', f'id="discord-online-members">{online:,}', 1)
             body = body.replace('id="discord-server-members">—', f'id="discord-server-members">{total:,}', 1)
             body = body.replace("</body>", global_discord_script + "</body>", 1)
