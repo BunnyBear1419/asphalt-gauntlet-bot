@@ -2238,3 +2238,85 @@ body:has(.rsl-global-discord-cta) main.calendar-page{
   padding-top:0!important;
   margin-top:0!important;
 }
+
+
+/* =========================================================
+   RSL CANONICAL HEADER LOCK — SINGLE SOURCE OF TRUTH
+   Keep header actions out of the navigation flow so Search
+   can never overlap Profile or push the menu sideways.
+   ========================================================= */
+.top-nav{
+  position:fixed!important;
+  left:0!important;right:0!important;top:0!important;
+  width:100%!important;height:70px!important;
+  display:flex!important;align-items:stretch!important;
+  overflow:visible!important;
+  padding:0!important;
+}
+.top-nav>.top-brand.top-logo-mark{
+  position:absolute!important;left:12px!important;top:50%!important;
+  transform:translateY(-50%)!important;
+  width:64px!important;height:64px!important;
+  margin:0!important;padding:0!important;
+  z-index:1200!important;
+}
+.top-nav>nav{
+  position:absolute!important;
+  left:88px!important;
+  right:360px!important;
+  top:0!important;
+  width:auto!important;
+  height:70px!important;
+  min-width:0!important;
+  display:flex!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+  padding:0!important;
+  margin:0!important;
+}
+.top-nav>nav>a,
+.top-nav>nav>.top-nav-dropdown,
+.top-nav>nav>.top-nav-dropdown-trigger{
+  flex:0 0 auto!important;
+}
+.top-nav>.rsl-profile-nav,
+.top-nav>.rsl-login-button{
+  position:absolute!important;
+  right:14px!important;top:50%!important;
+  transform:translateY(-50%)!important;
+  margin:0!important;
+  z-index:1300!important;
+}
+.top-nav>.rsl-profile-nav .rsl-profile-trigger,
+.top-nav>.rsl-login-button{
+  min-height:42px!important;
+}
+.top-nav>.rsl-profile-nav .rsl-profile-menu{
+  z-index:1400!important;
+}
+.top-nav>.rsl-search-trigger{
+  position:absolute!important;
+  right:calc(14px + 245px + 12px)!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:1301!important;
+}
+@media(max-width:1100px){
+  .top-nav>nav{left:78px!important;right:300px!important;justify-content:flex-start!important}
+  .top-nav>.rsl-search-trigger{right:calc(14px + 190px + 10px)!important}
+}
+@media(max-width:760px){
+  .top-nav{height:68px!important}
+  .top-nav>nav{left:64px!important;right:118px!important;height:68px!important;justify-content:flex-start!important}
+  .top-nav>.top-brand.top-logo-mark{left:6px!important;width:52px!important;height:52px!important}
+  .top-nav>.top-brand.top-logo-mark img{width:52px!important;height:52px!important}
+  .top-nav>.rsl-search-trigger{
+    right:66px!important;width:38px!important;height:38px!important;
+  }
+  .top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:8px!important}
+}
+@media(max-width:560px){
+  .top-nav>nav{display:none!important}
+  .top-nav>.rsl-search-trigger{right:60px!important}
+}
