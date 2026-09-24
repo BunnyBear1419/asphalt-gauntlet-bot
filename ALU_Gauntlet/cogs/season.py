@@ -157,6 +157,80 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
 class SeasonCog(commands.Cog):
     season_group = app_commands.Group(name="season", description="Manage league seasons.")
 
+    def __init__(self, bot_instance):
+        self.bot = bot_instance
+        self.season_scheduler.start()
+
+    def cog_unload(self):
+        self.season_scheduler.cancel()
+
+    @tasks.loop(seconds=30)
+    async def season_scheduler(self):
+        now = time.time()
+        async for state in self.bot.db.season_state.find({
+            "starts_at": {"$gt": 0},
+            "ends_at": {"$gt": 0},
+        }):
+            try:
+                guild_id = str(state.get("guild_id") or str(state.get("_id", "")).removeprefix("guild_"))
+                if not guild_id:
+                    continue
+                season_number = int(state.get("season_number", 1) or 1)
+                starts_at = float(state.get("starts_at", 0) or 0)
+                ends_at = float(state.get("ends_at", 0) or 0)
+                if ends_at <= starts_at:
+                    continue
+                active = bool(state.get("season_active", False))
+
+                if not active and starts_at <= now < ends_at:
+                    transition = await self.bot.db.season_state.update_one(
+                        {
+                            "_id": f"guild_{guild_id}",
+                            "season_number": season_number,
+                            "season_active": {"$ne": True},
+                            "starts_at": starts_at,
+                            "ends_at": ends_at,
+                        },
+                        {"$set": {"season_active": True, "awaiting_staff_start": False, "started_at": now}},
+                    )
+                    if transition.modified_count:
+                        await announce_season_start(guild_id, season_number, reason="scheduled")
+                    continue
+
+                if now >= ends_at:
+                    config = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+                    auto_rollover = bool(config.get("automatic_season_end", False))
+                    lock = await self.bot.db.season_state.update_one(
+                        {
+                            "_id": f"guild_{guild_id}",
+                            "season_number": season_number,
+                            "ends_at": ends_at,
+                            "rollover_lock_at": {"$exists": False},
+                        },
+                        {"$set": {"rollover_lock_at": now, "rollover_phase": "closing", "rollover_season": season_number}},
+                    )
+                    if lock.modified_count:
+                        try:
+                            await trigger_global_season_end(
+                                guild_id=guild_id,
+                                start_next_season=auto_rollover,
+                            )
+                        except Exception:
+                            await self.bot.db.season_state.update_one(
+                                {"_id": f"guild_{guild_id}", "season_number": season_number},
+                                {"$unset": {"rollover_lock_at": "", "rollover_phase": "", "rollover_season": ""}},
+                            )
+                            raise
+            except Exception:
+                continue
+
+    @season_scheduler.before_loop
+    async def before_season_scheduler(self):
+        await self.bot.wait_until_ready()
+
+
+    season_group = app_commands.Group(name="season", description="Manage league seasons.")
+
     @season_group.command(name='auto', description='Control whether a scheduled season end automatically starts the next season.')
     @app_commands.describe(mode='Choose whether scheduled season endings may automatically roll into the next season')
     @app_commands.choices(mode=[app_commands.Choice(name="Enable automatic season rollover", value="on"), app_commands.Choice(name="Disable automatic season rollover", value="off")])
