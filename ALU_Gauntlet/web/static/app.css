@@ -2182,6 +2182,31 @@ main:has(.rsl-global-discord-cta){padding-top:0!important}
 .rsl-global-discord-cta.rsl-global-discord-cta{margin-top:var(--rsl-shell-discord-top-gap)!important}
 
 
+/* RSL SHELL HARD LOCK v3: eliminate page-specific top spacing before the shared Discord card. */
+body:has(.rsl-global-discord-cta) .top-nav{
+  position:fixed!important;
+  top:0!important;
+  left:0!important;
+  right:0!important;
+  height:var(--rsl-shell-header-height)!important;
+  margin:0!important;
+}
+body:has(.rsl-global-discord-cta) .app-frame{
+  padding-top:var(--rsl-shell-header-height)!important;
+  margin:0!important;
+}
+body:has(.rsl-global-discord-cta) .workspace,
+body:has(.rsl-global-discord-cta) .workspace>main{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+body:has(.rsl-global-discord-cta) .rsl-global-discord-cta{
+  margin-top:var(--rsl-shell-discord-top-gap)!important;
+  margin-bottom:var(--rsl-shell-discord-bottom-gap)!important;
+  top:0!important;
+  transform:none!important;
+}
+
 /* FINAL GLOBAL SHELL SPACING LOCK — one exact menu-to-Discord measurement on every page. */
 body:has(.rsl-global-discord-cta) .app-frame{
   margin-top:0!important;
