@@ -1244,6 +1244,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_delete("/api/news/{news_id}", self.delete_news)
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
+        self.app.router.add_get("/api/profile/tournaments", self.profile_tournaments)
         self.app.router.add_get("/api/tournaments", self.tournaments)
         self.app.router.add_get("/api/calendar", self.calendar)
         self.app.router.add_get("/api/tournaments/{tournament_id}", self.tournament_detail)
@@ -1915,6 +1916,48 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     events.append({**base, "id": tid + "-registration", "kind": "registration", "title": str(item.get("name", "Tournament")) + " Registration Closes", "start": reg_ts, "end": reg_ts})
         events.sort(key=lambda x: (float(x.get("start") or 0), str(x.get("title", ""))))
         return web.json_response({"events": events, "seasons": seasons, "server_time": time.time()})
+
+    async def profile_tournaments(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        uid = str(user.user_id)
+        guild_ids = set(str(x) for x in user.guild_ids)
+        rows = []
+        total_matches = total_wins = total_losses = 0
+        async for t in self.bot.db.tournaments.find({"guild_id": {"$in": list(guild_ids)}}).sort("start_time", -1):
+            tid = str(t.get("_id"))
+            team_size = int(t.get("team_size", 1))
+            entrant_ids = {uid}
+            registration = await self.bot.db.tournament_registrations.find_one({"tournament_id": tid, "user_id": uid}) if team_size == 1 else None
+            participant = bool(registration and registration.get("status") not in {"withdrawn", "cancelled", "rejected"})
+            club_regs = []
+            if team_size > 1:
+                async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tid, "status": {"$nin": ["withdrawn", "cancelled", "rejected"]}}):
+                    if uid in {str(x) for x in (reg.get("lineup") or [])}:
+                        participant = True
+                        club_regs.append(reg)
+                        entrant_ids.add(str(reg.get("club_id", "")))
+            if not participant:
+                continue
+            bracket = t.get("bracket") or {}
+            groups = bracket.get("rounds") or bracket.get("winners") or []
+            matches = [m for group in groups for m in group.get("matches", [])]
+            wins = losses = played = highest_round = 0
+            for m in matches:
+                slots = {str(x) for x in (m.get("player_slots") or []) if x}
+                if not slots.intersection(entrant_ids):
+                    continue
+                highest_round = max(highest_round, int(m.get("round") or 0))
+                if m.get("status") == "completed" or m.get("result_status") == "verified":
+                    played += 1
+                    if str(m.get("winner_id", "")) in entrant_ids: wins += 1
+                    elif m.get("winner_id"): losses += 1
+            total_matches += played; total_wins += wins; total_losses += losses
+            status = str(t.get("status", "draft"))
+            finish = "Champion" if str(t.get("champion_id", "")) in entrant_ids else ("Eliminated" if status == "completed" else "In progress")
+            rows.append({"id":tid,"name":t.get("name","Tournament"),"status":status,"format_label":{"single_elimination":"Single Elimination","double_elimination":"Double Elimination","round_robin":"Round Robin"}.get(t.get("format"),str(t.get("format","Tournament")).replace("_"," ").title()),"team_size":team_size,"start_time":t.get("start_time"),"wins":wins,"losses":losses,"matches_played":played,"current_round":highest_round,"finish":finish,"registration_status":(registration or {}).get("status") if registration else (club_regs[0].get("status") if club_regs else None)})
+        rows.sort(key=lambda x: str(x.get("start_time") or ""), reverse=True)
+        history = [r for r in rows if r["status"] == "completed"][:12]
+        return web.json_response({"tournaments":rows[:20],"upcoming":[r for r in rows if r["status"] in {"registration_open","open","live"}][:5],"history":history,"stats":{"entered":len(rows),"completed":len(history),"matches_played":total_matches,"wins":total_wins,"losses":total_losses,"win_rate":round((total_wins/total_matches)*100,1) if total_matches else 0}})
 
     async def tournaments_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
