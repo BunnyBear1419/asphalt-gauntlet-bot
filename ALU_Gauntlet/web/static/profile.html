@@ -56,6 +56,17 @@
 @media(max-width:1000px){.profile-status-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:620px){.profile-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.profile-status-grid{grid-template-columns:1fr}}
+
+.profile-club-card{margin-top:18px;border:1px solid #174a79;background:#061226;padding:22px}
+.profile-club-head{display:flex;align-items:center;gap:18px}
+.profile-club-logo{width:76px;height:76px;flex:0 0 76px;border:1px solid #168cff;background:#07172b;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#25dfff;font-size:32px}
+.profile-club-logo img{width:100%;height:100%;object-fit:cover}
+.profile-club-title{min-width:0;flex:1}.profile-club-title h2{margin:0;color:#fff}.profile-club-role{display:inline-block;margin-top:5px;color:#25dfff;font-size:10px;font-weight:800;letter-spacing:.09em}
+.profile-club-actions{display:flex;gap:8px;flex-wrap:wrap}.profile-club-actions a{border:1px solid #168cff;background:#081a31;color:#fff;padding:9px 12px;text-decoration:none;font-weight:700}
+.profile-club-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.profile-club-stat{border:1px solid #123c63;background:#07172b;padding:14px;text-align:center}.profile-club-stat span{display:block;color:#7188a7;font-size:9px;font-weight:800;letter-spacing:.09em}.profile-club-stat strong{display:block;color:#25dfff;font-size:20px;margin-top:5px}
+.profile-club-about{margin-top:14px;color:#aebdd2;line-height:1.6}.profile-club-empty{color:#9fb2ca;line-height:1.6}
+@media(max-width:650px){.profile-club-head{align-items:flex-start;flex-wrap:wrap}.profile-club-actions{width:100%}.profile-club-stats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body class="alu-dashboard">
@@ -107,6 +118,20 @@
 </div><div class="profile-status" id="tourney-current" style="margin-top:14px">No active tournament registrations.</div><div id="tourney-history" style="margin-top:14px"></div></article>
 <article class="profile-card-rsl" style="margin-top:18px"><h2>Profile Privacy</h2><p style="color:#9fb2ca;line-height:1.6;margin:0">Your Discord identity and public driver profile are tied to your signed-in account. Profile editing remains inside My Garage.</p></article>
 </div>
+</section>
+<section class="profile-club-card" id="profile-club-card" hidden>
+<div class="profile-club-head">
+<div class="profile-club-logo" id="profile-club-logo" aria-hidden="true">🛡️</div>
+<div class="profile-club-title"><h2 id="profile-club-name">My Club</h2><span class="profile-club-role" id="profile-club-role">MEMBER</span></div>
+<div class="profile-club-actions"><a id="profile-club-view" href="/clubs">VIEW CLUB →</a><a id="profile-club-manage" href="/clubs" hidden>MANAGE CLUB →</a></div>
+</div>
+<div class="profile-club-stats">
+<div class="profile-club-stat"><span>MEMBERS</span><strong id="profile-club-members">—</strong></div>
+<div class="profile-club-stat"><span>CLUB W/L</span><strong id="profile-club-record">—</strong></div>
+<div class="profile-club-stat"><span>TOURNAMENTS</span><strong id="profile-club-tournaments">—</strong></div>
+<div class="profile-club-stat"><span>YOUR ROLE</span><strong id="profile-club-role-stat">—</strong></div>
+</div>
+<div class="profile-club-about" id="profile-club-about"></div>
 </section>
 <a class="profile-help-card" href="/help" aria-label="Open Help Center"><div class="profile-help-content"><div class="profile-help-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><circle cx="32" cy="19" r="9"></circle><path d="M17 52c1-12 7-18 15-18s14 6 15 18"></path><path d="M13 28v-3c0-11 8-19 19-19s19 8 19 19v3"></path><path d="M12 27h7v10h-7zM45 27h7v10h-7z"></path><path d="M19 35c2 5 7 8 13 8s11-3 13-8"></path><path d="M52 34h4"></path></svg></div><div class="profile-help-copy"><span class="profile-help-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2><p>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</p><span class="profile-help-arrow">OPEN HELP CENTER →</span></div></div></a>
 </main>
