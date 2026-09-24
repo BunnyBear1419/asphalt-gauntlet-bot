@@ -111,12 +111,29 @@ class WebControlCenter:
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
 
-        # Google Analytics 4 / Google tag
-        # Installed once at the shared page-response layer so all RSL web pages
-        # rendered through this service report to the same Analytics property.
-        google_tag = '<script async src="https://www.googletagmanager.com/gtag/js?id=G-YXZGNWY1PE"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","G-YXZGNWY1PE");</script>'
+        # Google Analytics 4 is consent-gated. Do not load the Analytics tag until
+        # the visitor explicitly enables analytics cookies through the RSL banner.
+        # This keeps analytics optional while preserving the existing GA property.
+        analytics_gate = r'''<script>
+(function(){
+  window.rslLoadAnalytics=function(){
+    if(window.__rslAnalyticsLoaded)return;
+    window.__rslAnalyticsLoaded=true;
+    window.dataLayer=window.dataLayer||[];
+    window.gtag=function(){window.dataLayer.push(arguments);};
+    window.gtag("js",new Date());
+    window.gtag("config","G-YXZGNWY1PE");
+    var s=document.createElement("script");
+    s.async=true;
+    s.src="https://www.googletagmanager.com/gtag/js?id=G-YXZGNWY1PE";
+    document.head.appendChild(s);
+  };
+  var consent=document.cookie.match(/(?:^|; )rsl_analytics_consent=([^;]+)/);
+  if(consent&&decodeURIComponent(consent[1])==="accepted") window.rslLoadAnalytics();
+})();
+</script>'''
         if 'G-YXZGNWY1PE' not in body:
-            body = body.replace("</head>", google_tag + "</head>", 1)
+            body = body.replace("</head>", analytics_gate + "</head>", 1)
 
         # RSL SEO: give each public page its own search title and description.
         seo_pages = {
@@ -545,6 +562,46 @@ window.rslGoogleTranslateInit=function(){
         custom_social_markup = "".join(custom_footer_items)
         if custom_social_markup:
             social_markup += custom_social_markup
+        cookie_controls_markup = r'''
+<style>
+.rsl-cookie-banner{position:fixed;left:18px;right:18px;bottom:18px;z-index:9999;display:none;border:1px solid #168cff;background:#061226;box-shadow:0 10px 40px #000b;padding:18px 20px;color:#dce7f7}
+.rsl-cookie-banner.is-visible{display:block}.rsl-cookie-banner strong{color:#fff}.rsl-cookie-banner p{margin:7px 0 14px;line-height:1.55;color:#aebdd2}.rsl-cookie-actions{display:flex;gap:10px;flex-wrap:wrap}.rsl-cookie-btn{border:1px solid #168cff;background:#0a1a30;color:#25dfff;padding:9px 15px;cursor:pointer;font:inherit}.rsl-cookie-btn.primary{background:#168cff;color:#fff}.rsl-cookie-btn:hover{filter:brightness(1.15)}
+.rsl-cookie-settings{position:fixed;right:18px;bottom:18px;z-index:9998;border:1px solid #168cff;background:#061226;color:#25dfff;padding:9px 13px;cursor:pointer;font:inherit;display:none}
+@media(max-width:600px){.rsl-cookie-banner{left:10px;right:10px;bottom:10px}.rsl-cookie-settings{right:10px;bottom:10px}}
+</style>
+<div class="rsl-cookie-banner" id="rsl-cookie-banner" role="dialog" aria-label="Cookie preferences">
+  <strong>Cookie &amp; Privacy Choices</strong>
+  <p>RSL uses essential cookies for site functionality and, with your permission, analytics cookies from Google Analytics to understand website usage and improve the site. Analytics cookies are optional.</p>
+  <div class="rsl-cookie-actions">
+    <button class="rsl-cookie-btn primary" type="button" id="rsl-cookie-accept">Allow Analytics</button>
+    <button class="rsl-cookie-btn" type="button" id="rsl-cookie-deny">Decline Analytics</button>
+    <button class="rsl-cookie-btn" type="button" id="rsl-cookie-details">Manage Preferences</button>
+  </div>
+</div>
+<button class="rsl-cookie-settings" id="rsl-cookie-settings" type="button">Cookie Settings</button>
+<script>
+(function(){
+  const banner=document.getElementById("rsl-cookie-banner"),settings=document.getElementById("rsl-cookie-settings");
+  if(!banner||!settings)return;
+  const read=()=>{const m=document.cookie.match(/(?:^|; )rsl_analytics_consent=([^;]+)/);return m?decodeURIComponent(m[1]):"";};
+  const save=value=>{document.cookie="rsl_analytics_consent="+encodeURIComponent(value)+";path=/;max-age=31536000;SameSite=Lax";};
+  const clearAnalytics=()=>{
+    const names=["_ga","_ga_YXZGNWY1PE"];
+    names.forEach(name=>{document.cookie=name+"=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";document.cookie=name+"=;path=/;domain="+location.hostname+";expires=Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";});
+  };
+  const show=()=>{banner.classList.add("is-visible");settings.style.display="none";};
+  const hide=()=>{banner.classList.remove("is-visible");settings.style.display="block";};
+  document.getElementById("rsl-cookie-accept").addEventListener("click",()=>{save("accepted");hide();if(window.rslLoadAnalytics)window.rslLoadAnalytics();});
+  document.getElementById("rsl-cookie-deny").addEventListener("click",()=>{save("denied");clearAnalytics();hide();});
+  document.getElementById("rsl-cookie-details").addEventListener("click",()=>{window.location.href="/legal#cookies";});
+  settings.addEventListener("click",show);
+  const consent=read();
+  if(consent==="accepted"){hide();if(window.rslLoadAnalytics)window.rslLoadAnalytics();}
+  else if(consent==="denied"){hide();clearAnalytics();}
+  else show();
+})();
+</script>
+'''
         footer_markup = f'''
 <footer class="rsl-footer" aria-label="{footer_name} footer">
   <div class="rsl-footer-social-row">
@@ -601,7 +658,7 @@ window.rslGoogleTranslateInit=function(){
             body = body.replace("</body>", footer_markup + "</body>", 1)
 
         if "</body>" in body:
-            body = body.replace("</body>", language_markup + search_script + "</body>", 1)
+            body = body.replace("</body>", cookie_controls_markup + language_markup + search_script + "</body>", 1)
 
         profile_script = r'''
 <script>
