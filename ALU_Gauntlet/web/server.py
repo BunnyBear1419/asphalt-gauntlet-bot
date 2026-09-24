@@ -111,10 +111,10 @@ class WebControlCenter:
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
 
-        # Render public Discord community counts into the Help Center on first paint.
-        # This mirrors the reliable server-side stats used by My Profile and avoids
-        # leaving the Help Center Discord banner blank while client-side code loads.
-        if filename == "help.html":
+        # Render public Discord community counts server-side on first paint.
+        # Help and Home both use the same community statistics so neither page
+        # depends on a client-side request just to show the member counts.
+        if filename in {"help.html", "index.html"}:
             guilds = list(getattr(self.bot, "guilds", []) or [])
             guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
             online = 0
@@ -127,8 +127,12 @@ class WebControlCenter:
                     if str(getattr(member, "status", None)) not in {"offline", "invisible"}:
                         online += 1
                 total = int(getattr(guild, "member_count", 0) or len(members))
-            body = body.replace('id="help-discord-online">—', f'id="help-discord-online">{online:,}', 1)
-            body = body.replace('id="help-discord-total">—', f'id="help-discord-total">{total:,}', 1)
+            if filename == "help.html":
+                body = body.replace('id="help-discord-online">—', f'id="help-discord-online">{online:,}', 1)
+                body = body.replace('id="help-discord-total">—', f'id="help-discord-total">{total:,}', 1)
+            else:
+                body = body.replace('id="discord-online-members">—', f'id="discord-online-members">{online:,}', 1)
+                body = body.replace('id="discord-server-members">—', f'id="discord-server-members">{total:,}', 1)
 
         # Google Analytics 4 is consent-gated. Do not load the Analytics tag until
         # the visitor explicitly enables analytics cookies through the RSL banner.
