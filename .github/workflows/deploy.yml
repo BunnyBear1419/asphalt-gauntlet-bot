@@ -273,8 +273,8 @@ jobs:
 
             HOME_HTTP=$(curl -sS -o web-home.html -w "%{http_code}" "https://asph.discloud.app/" || true)
             echo "Web homepage HTTP status: $HOME_HTTP"
-            if [ "$HOME_HTTP" != "302" ] && [ "$HOME_HTTP" != "303" ]; then
-              echo "Web homepage did not redirect unauthenticated users to login."
+            if [ "$HOME_HTTP" != "200" ]; then
+              echo "Web homepage did not load as a public page."
               ok=false
             fi
 
@@ -311,8 +311,8 @@ jobs:
             # into aiohttp's generic HTTP 500 page.
             STALE_HOME_HTTP=$(curl -sS -o web-home-stale.html -w "%{http_code}"               -H "Cookie: alu_web_session=invalid-production-smoke-session"               "https://asph.discloud.app/" || true)
             echo "Web homepage with stale session HTTP status: $STALE_HOME_HTTP"
-            if [ "$STALE_HOME_HTTP" != "302" ] && [ "$STALE_HOME_HTTP" != "303" ]; then
-              echo "Web homepage stale-session recovery failed."
+            if [ "$STALE_HOME_HTTP" != "200" ]; then
+              echo "Web homepage did not remain publicly accessible with a stale session."
               ok=false
             fi
 
