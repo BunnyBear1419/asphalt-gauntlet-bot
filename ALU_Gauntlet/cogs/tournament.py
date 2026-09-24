@@ -7,7 +7,13 @@ MAX_MATCH_BUTTONS = 5
 
 def _matches(tournament):
     bracket = tournament.get("bracket") or {}
-    return [m for group in (bracket.get("rounds") or bracket.get("winners") or []) for m in group.get("matches", [])]
+    groups = []
+    for key in ("rounds", "winners", "losers"):
+        groups.extend(bracket.get(key) or [])
+    grand_final = bracket.get("grand_final")
+    if isinstance(grand_final, dict):
+        groups.append({"matches": [grand_final]})
+    return [m for group in groups for m in group.get("matches", [])]
 
 async def _entrant_name(tournament, entrant_id):
     sid = str(entrant_id)
@@ -206,7 +212,12 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
     if not t:
         return False, "Tournament not found."
     bracket=t.get("bracket") or {}
-    groups=bracket.get("rounds") or bracket.get("winners") or []
+    groups = []
+    for key in ("rounds", "winners", "losers"):
+        groups.extend(bracket.get(key) or [])
+    grand_final = bracket.get("grand_final")
+    if isinstance(grand_final, dict):
+        groups.append({"matches": [grand_final]})
     match=next((m for group in groups for m in group.get("matches",[]) if str(m.get("id"))==str(match_id)),None)
     if not match:
         return False, "Match not found."
@@ -272,12 +283,27 @@ async def build_tournament_view(tournament_id,user):
         names=[await _entrant_name(t,x) for x in m["player_slots"]]
         b=discord.ui.Button(label=f"{names[0][:30]} vs {names[1][:30]}",style=discord.ButtonStyle.primary)
         async def cb(interaction,match=m):
-            if not await _is_participant(t,match,interaction.user.id) and not interaction.user.guild_permissions.administrator:
+            if not await _is_participant(t,match,interaction.user.id) and not await _is_tournament_staff(interaction):
                 await interaction.response.send_message("❌ You are not a participant in this match.",ephemeral=True); return
             await interaction.response.send_message("Choose the winner:",view=MatchResultView(tournament_id,match),ephemeral=True)
         b.callback=cb
         view.add_item(b)
-    if await _is_tournament_staff(type("StaffContext", (), {"guild": getattr(user, "guild", None), "user": user})()):
+    staff_member = None
+    guild = getattr(user, "guild", None)
+    if guild is not None:
+        staff_member = guild.get_member(getattr(user, "id", 0))
+    is_staff = False
+    if staff_member is not None:
+        permissions = getattr(staff_member, "guild_permissions", None)
+        is_staff = bool(permissions and (permissions.administrator or permissions.manage_guild))
+        if not is_staff:
+            settings = await bot.db.settings.find_one({"_id": str(t.get("guild_id"))}) or {}
+            role_id = settings.get("tournament_admin_role_id")
+            try:
+                is_staff = bool(role_id and any(getattr(r, "id", None) == int(role_id) for r in getattr(staff_member, "roles", [])))
+            except (TypeError, ValueError):
+                is_staff = False
+    if is_staff:
         pending=[m for m in _matches(t) if m.get("result_status")=="pending"]
         for m in pending[:MAX_MATCH_BUTTONS]:
             b=discord.ui.Button(label=f"Review {m.get('id')}",style=discord.ButtonStyle.success)
