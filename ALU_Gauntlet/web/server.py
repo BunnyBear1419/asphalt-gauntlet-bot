@@ -499,7 +499,7 @@ window.rslGoogleTranslateInit=function(){
         # Replace the complete legacy Companion anchor; replacing only its opening
         # tag would leave the old href/attributes visible as plain text.
         companion_markup = r'''<details class="top-nav-dropdown companion-nav-dropdown">
-<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.svg" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
+<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
 <div class="top-nav-dropdown-menu companion-nav-info-menu">
   <a class="companion-info-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Asphalt United Companion by Shohan's Lab">
     <span class="companion-info-link-icon">↗</span>
@@ -703,7 +703,7 @@ window.rslGoogleTranslateInit=function(){
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell8">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell9">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
                 body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-shell5"></head>', 1)
 
