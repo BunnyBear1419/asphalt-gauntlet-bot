@@ -2649,9 +2649,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     raw = (WEB_DIR / filename).read_text(encoding="utf-8")
                 except OSError:
                     continue
-                clean = re.sub(r"(?is)<(script|style).*?>.*?</\\1>", " ", raw)
+                clean = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", raw)
                 clean = html.unescape(re.sub(r"(?s)<[^>]+>", " ", clean))
-                clean = re.sub(r"\\s+", " ", clean).strip()
+                clean = re.sub(r"\s+", " ", clean).strip()
                 pos = min((clean.lower().find(term) for term in terms if clean.lower().find(term) >= 0), default=0)
                 snippet = clean[max(0, pos - 80):pos + 220] if clean else ""
                 if pos > 80:
