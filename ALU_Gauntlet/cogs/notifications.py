@@ -1,7 +1,8 @@
 """Discord DM notifications for scheduled RSL calendar events."""
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime
+from pymongo.errors import DuplicateKeyError
 import discord
 from discord.ext import commands, tasks
 
@@ -122,12 +123,22 @@ class NotificationCog(commands.Cog):
             user_id = str(record.get("_id", ""))
             if not user_id.isdigit():
                 continue
-            delivery_id = f"{user_id}:{event['id']}:{lead_days:g}"
-            claimed = await self.bot.db.notification_deliveries.update_one(
-                {"_id": delivery_id},
-                {"$setOnInsert": {"created_at": now, "event_id": event["id"], "user_id": user_id, "lead_days": float(lead_days)}},
-                upsert=True,
-            )
+            delivery_filter = {
+                "event_id": str(event["id"]),
+                "user_id": user_id,
+                "lead_days": float(lead_days),
+            }
+            # Claim the delivery using the same event/user/lead-time identity
+            # enforced by the MongoDB unique index. This prevents duplicate DMs
+            # across concurrent scheduler runs or multiple bot/web workers.
+            try:
+                claimed = await self.bot.db.notification_deliveries.update_one(
+                    delivery_filter,
+                    {"$setOnInsert": {"created_at": now, "status": "sending"}},
+                    upsert=True,
+                )
+            except DuplicateKeyError:
+                continue
             if not claimed.upserted_id:
                 continue
             try:
@@ -144,9 +155,18 @@ class NotificationCog(commands.Cog):
                 embed.add_field(name="Calendar", value="Open the RSL Calendar to manage this notification.", inline=False)
                 embed.set_footer(text="Manage notification preferences anytime from your RSL profile.")
                 await user.send(embed=embed)
+                await self.bot.db.notification_deliveries.update_one(
+                    delivery_filter,
+                    {"$set": {"sent_at": now, "status": "sent"}},
+                )
             except (discord.Forbidden, discord.HTTPException):
-                # A closed DM is not a reason to retry the same notification forever.
-                pass
+                # Do not permanently consume a delivery slot when Discord rejects
+                # the DM. A later scheduler pass can retry after the failure.
+                await self.bot.db.notification_deliveries.delete_one(delivery_filter)
+            except Exception:
+                # Treat unexpected delivery failures as retryable as well, while
+                # keeping the background scheduler alive.
+                await self.bot.db.notification_deliveries.delete_one(delivery_filter)
 
     @tasks.loop(seconds=60)
     async def notification_loop(self):
