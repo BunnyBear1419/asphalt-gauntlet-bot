@@ -2176,3 +2176,7 @@ body{top:0!important}
 
 /* Remove legacy page-specific spacer pseudo-elements; the global Discord card owns this gap now. */
 main:has(.rsl-global-discord-cta)::before{content:none!important;display:none!important;height:0!important}
+
+/* RSL GLOBAL SHELL: normalize page-top spacing so every page starts the shared Discord card at the same distance below the menu. */
+main:has(.rsl-global-discord-cta){padding-top:0!important}
+.rsl-global-discord-cta.rsl-global-discord-cta{margin-top:var(--rsl-shell-discord-top-gap)!important}
