@@ -6,7 +6,13 @@ async function api(url){const r=await fetch(url,{credentials:"same-origin"});if(
 async function load(){
  try{
   const me=await api("/api/me");
-  text("profile-name",me.global_name||me.username||"Driver");
+  const discordName=me.global_name||me.username||"Driver";
+  text("profile-name",discordName);
+  const avatarBox=$(".profile-avatar-large");
+  if(avatarBox){
+    const avatarUrl=me.id&&me.avatar?"https://cdn.discordapp.com/avatars/"+encodeURIComponent(me.id)+"/"+encodeURIComponent(me.avatar)+".png?size=256":(me.id?"https://cdn.discordapp.com/embed/avatars/"+(Number(BigInt(me.id)%7n))+".png":"");
+    if(avatarUrl){const img=document.createElement("img");img.src=avatarUrl;img.alt=discordName+" Discord avatar";avatarBox.textContent="";avatarBox.appendChild(img);}
+  }
   text("profile-discord",me.username?"@"+me.username:"Discord account");
   const guilds=(await api("/api/guilds")).guilds||[];
   const cookie=(document.cookie.match(/(?:^|; )rsl_guild_id=([^;]+)/)||[])[1];
