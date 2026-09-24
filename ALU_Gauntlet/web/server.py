@@ -711,24 +711,17 @@ window.rslGoogleTranslateInit=function(){
             global_help_markup = r'''<a class="home-card home-help-card home-help-link rsl-global-help-card" id="help" href="/help" aria-label="Open Help Center"><div class="home-help-content"><div class="home-help-icon" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><circle cx="32" cy="19" r="9"></circle><path d="M17 52c1-12 7-18 15-18s14 6 15 18"></path><path d="M13 28v-3c0-11 8-19 19-19s19 8 19 19v3"></path><path d="M12 27h7v10h-7zM45 27h7v10h-7z"></path><path d="M19 35c2 5 7 8 13 8s11-3 13-8"></path><path d="M52 34h4"></path></svg></div><div class="home-help-copy"><span class="home-eyebrow">HELP CENTER</span><h2>Need help getting started?</h2><p>Find answers, guides and support for Player, Gauntlet, Tournaments, Clubs and your driver career.</p><span class="home-help-arrow">OPEN HELP CENTER →</span></div></div></a>
             '''
 
-            # The shared shell cards live OUTSIDE page-specific <main> layouts.
-            # This prevents legacy page padding/margins from changing the exact
-            # menu -> Discord -> content spacing on older and future pages.
+            # The shared Discord card is a true global shell element:
+            # place it directly after the shared header, never inside a page
+            # workspace/grid. This prevents page-specific flex/grid rules from
+            # breaking its width, position, or vertical spacing.
             if "rsl-global-discord-cta" not in body:
-                if re.search(r'<div[^>]*class=["\']workspace["\'][^>]*>', body, flags=re.I):
-                    body = re.sub(
-                        r'(<div[^>]*class=["\']workspace["\'][^>]*>)',
-                        "\\1" + global_discord_markup + "\n",
-                        body,
-                        count=1,
-                        flags=re.I,
-                    )
-                elif re.search(r"<main\b", body, flags=re.I):
-                    body = re.sub(r"(<main\b[^>]*>)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
-                elif re.search(r"<footer\b", body, flags=re.I):
-                    body = re.sub(r"(<footer\b)", global_discord_markup + "\n\\1", body, count=1, flags=re.I)
+                if re.search(r"</header>", body, flags=re.I):
+                    body = re.sub(r"(</header>)", "\\1\n" + global_discord_markup, body, count=1, flags=re.I)
+                elif re.search(r"<body\b", body, flags=re.I):
+                    body = re.sub(r"(<body\b[^>]*>)", "\\1\n" + global_discord_markup, body, count=1, flags=re.I)
                 else:
-                    body = body.replace("</header>", "</header>" + global_discord_markup, 1)
+                    body = global_discord_markup + body
             if "rsl-global-help-card" not in body:
                 if re.search(r"</main>", body, flags=re.I):
                     body = re.sub(r"</main>", "</main>\n" + global_help_markup, body, count=1, flags=re.I)
@@ -739,30 +732,22 @@ window.rslGoogleTranslateInit=function(){
                 else:
                     body = body.replace("</body>", global_help_markup + "\n</body>", 1)
 
-            global_discord_script = r'''
-<script>(function(){
-function alignRslShell(){
-const help=document.querySelector(".rsl-global-help-card");
-const discord=document.querySelector(".rsl-global-discord-cta");
-const ref=document.querySelector("main > section[class*=\"hero\"],main > div[class*=\"hero\"],main > header[class*=\"hero\"],main > .page-hero,main > .home-hero");
-if(!ref)return;
-const rr=ref.getBoundingClientRect();
-function align(box){
- if(!box)return;
- box.style.setProperty("width",rr.width+"px","important");
- box.style.setProperty("max-width","none","important");
- box.style.setProperty("margin-left","0","important");
- box.style.setProperty("margin-right","0","important");
- box.style.setProperty("position","relative","important");
- box.style.setProperty("left","0px","important");
- const br=box.getBoundingClientRect();
- box.style.setProperty("left",(rr.left-br.left)+"px","important");
-}
-align(discord); align(help);
-}
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",alignRslShell);else alignRslShell();
-window.addEventListener("load",alignRslShell,{passive:true});window.addEventListener("resize",alignRslShell,{passive:true});
-(async function(){const online=document.getElementById("rsl-discord-online");const total=document.getElementById("rsl-discord-total");if(!online||!total)return;try{const r=await fetch("/api/discord-stats",{credentials:"same-origin"});if(!r.ok)return;const d=await r.json();if(d.available){online.textContent=Number(d.online_members||0).toLocaleString();total.textContent=Number(d.server_members||0).toLocaleString()}}catch(_){}})();})();</script>'''
+            # Discord statistics are independent of layout; do not measure or
+            # reposition the shell card against page-specific hero elements.
+            global_discord_script = r'''<script>(async function(){
+const online=document.getElementById("rsl-discord-online");
+const total=document.getElementById("rsl-discord-total");
+if(!online||!total)return;
+try{
+  const r=await fetch("/api/discord-stats",{credentials:"same-origin"});
+  if(!r.ok)return;
+  const d=await r.json();
+  if(d.available){
+    online.textContent=Number(d.online_members||0).toLocaleString();
+    total.textContent=Number(d.server_members||0).toLocaleString();
+  }
+}catch(_){}
+})();</script>'''
             body = body.replace("</body>", global_discord_script + "</body>", 1)
 
         # Replace any page-specific legacy footer with the shared RSL footer.
