@@ -1587,8 +1587,11 @@ body{top:0!important}
   display:flex!important;
   width:100%!important;
   max-width:none!important;
-  margin:var(--rsl-shell-discord-top-gap) 0 var(--rsl-shell-discord-bottom-gap)!important;
   box-sizing:border-box!important;
+  align-self:stretch!important;
+  grid-column:1 / -1!important;
+  float:none!important;
+  clear:both!important;
 }
 .discord-cta:hover{border-color:#7d87ff;box-shadow:0 10px 34px #5865f230;transform:translateY(-1px)}
 .discord-cta-icon{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:transparent}
