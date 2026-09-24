@@ -382,10 +382,13 @@ async def build_tournament_view(tournament_id,user):
             await interaction.response.send_message("Choose the winner:",view=MatchResultView(tournament_id,match),ephemeral=True)
         b.callback=cb
         view.add_item(b)
-    staff_member = None
-    guild = getattr(user, "guild", None)
-    if guild is not None:
-        staff_member = guild.get_member(getattr(user, "id", 0))
+    guild = bot.get_guild(int(t.get("guild_id"))) if str(t.get("guild_id", "")).isdigit() else None
+    staff_member = guild.get_member(getattr(user, "id", 0)) if guild is not None else None
+    if staff_member is None and guild is not None:
+        try:
+            staff_member = await guild.fetch_member(getattr(user, "id", 0))
+        except Exception:
+            staff_member = None
     is_staff = False
     if staff_member is not None:
         permissions = getattr(staff_member, "guild_permissions", None)
@@ -400,14 +403,22 @@ async def build_tournament_view(tournament_id,user):
     if is_staff:
         pending=[m for m in _matches(t) if m.get("result_status")=="pending"]
         for m in pending[:MAX_MATCH_BUTTONS]:
-            b=discord.ui.Button(label=f"Review {m.get('id')}",style=discord.ButtonStyle.success)
-            async def review_cb(interaction,match=m):
+            approve=discord.ui.Button(label=f"Approve {m.get('id')}",style=discord.ButtonStyle.success)
+            async def approve_cb(interaction,match=m):
                 if not await _is_tournament_staff(interaction):
                     await interaction.response.send_message("❌ Tournament staff access required.",ephemeral=True); return
                 ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"approve",interaction.user.id)
                 await interaction.response.send_message(("✅ " if ok else "❌ ")+msg,ephemeral=True)
-            b.callback=review_cb
-            view.add_item(b)
+            approve.callback=approve_cb
+            view.add_item(approve)
+            reject=discord.ui.Button(label=f"Reject {m.get('id')}",style=discord.ButtonStyle.danger)
+            async def reject_cb(interaction,match=m):
+                if not await _is_tournament_staff(interaction):
+                    await interaction.response.send_message("❌ Tournament staff access required.",ephemeral=True); return
+                ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"reject",interaction.user.id)
+                await interaction.response.send_message(("✅ " if ok else "❌ ")+msg,ephemeral=True)
+            reject.callback=reject_cb
+            view.add_item(reject)
     return view
 
 class TournamentCog(commands.Cog):
