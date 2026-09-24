@@ -2603,7 +2603,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def player_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("player.html", request)
-\n    async def profile_page(self, request: web.Request) -> web.StreamResponse:\n        await self.require_user(request)\n        return await self._page_response("profile.html", request)\n
+
+    async def profile_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("profile.html", request)
+
     async def site_search(self, request: web.Request) -> web.Response:
         """Search public site content plus account-visible racing data."""
         query = request.query.get("q", "").strip()
