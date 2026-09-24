@@ -203,7 +203,14 @@ async def build_tournament_embed(tournament_id):
     embed.add_field(name="Status",value=str(t.get("status","draft")).replace("_"," ").title(),inline=True)
     embed.add_field(name="Format",value=str(t.get("format","")).replace("_"," ").title(),inline=True)
     if t.get("champion_id"):
-        embed.add_field(name="🏆 Champion",value=f"<@{t['champion_id']}>",inline=False)
+        champion_name = await _entrant_name(t, t["champion_id"])
+        embed.add_field(name="🏆 Champion",value=champion_name,inline=False)
+    if t.get("standings"):
+        lines = [
+            f"{index}. {await _entrant_name(t, row.get('entrant_id'))} — {row.get('wins', 0)}-{row.get('losses', 0)}"
+            for index, row in enumerate(t["standings"][:10], 1)
+        ]
+        embed.add_field(name="📊 Standings",value="\n".join(lines) or "No standings yet.",inline=False)
     matches=_matches(t)
     live=[m for m in matches if m.get("status") in {"ready","pending"}]
     lines=[]
