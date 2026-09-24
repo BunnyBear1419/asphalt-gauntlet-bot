@@ -2755,8 +2755,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"query": query, "type": category, "results": results[:30]})
 
     async def discord_stats(self, request: web.Request) -> web.Response:
-        """Return public Discord server counts for the homepage community banner."""
-        await self.require_user(request)
+        """Return Discord server counts for community banners and profile pages."""
+        # Counts are safe to expose publicly and should not fail just because a
+        # visitor's web session is stale or the page is being viewed signed out.
         guilds = list(getattr(self.bot, "guilds", []) or [])
         if not guilds:
             return web.json_response({"online_members": 0, "server_members": 0, "available": False})
@@ -2866,22 +2867,31 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         user = await self.require_user(request)
         admin = bool(user.user_id in self.auth.allowed_staff_ids)
         if not admin:
-            for gid in [str(x) for x in getattr(user, "guild_ids", [])]:
-                guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == gid), None)
-                if guild is None:
-                    continue
-                member = guild.get_member(int(user.user_id))
-                if member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
-                    admin = True
-                    break
-                if member:
-                    settings = await self.bot.db.settings.find_one({"_id": gid}) or {}
-                    role_id = str(settings.get("admin_role_id", "")).strip()
-                    if role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])):
+            try:
+                for gid in [str(x) for x in getattr(user, "guild_ids", [])]:
+                    guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == gid), None)
+                    if guild is None:
+                        continue
+                    member = guild.get_member(int(user.user_id))
+                    if member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
                         admin = True
                         break
-        return web.json_response({"id": user.user_id, "username": user.username, "global_name": user.global_name, "avatar": user.avatar, "staff": user.staff, "admin": admin})
-
+                    if member:
+                        settings = await self.bot.db.settings.find_one({"_id": gid}) or {}
+                        role_id = str(settings.get("admin_role_id", "")).strip()
+                        if role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])):
+                            admin = True
+                            break
+            except Exception:
+                log.exception("Unable to determine web admin status for %s", user.user_id)
+        return web.json_response({
+            "id": user.user_id,
+            "username": user.username,
+            "global_name": user.global_name or user.username,
+            "avatar": user.avatar,
+            "staff": user.staff,
+            "admin": admin,
+        })
 
     async def get_language(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
