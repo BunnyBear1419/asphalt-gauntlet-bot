@@ -61,6 +61,30 @@ async def _is_participant(tournament, match, user_id):
         ))
     return uid in slots
 
+async def _is_tournament_staff(interaction):
+    """Return whether the interacting member has tournament-specific staff access."""
+    if not interaction.guild:
+        return False
+    member = interaction.guild.get_member(interaction.user.id)
+    if member is None:
+        try:
+            member = await interaction.guild.fetch_member(interaction.user.id)
+        except Exception:
+            return False
+    permissions = getattr(member, "guild_permissions", None)
+    if permissions and (permissions.administrator or permissions.manage_guild):
+        return True
+    settings = await bot.db.settings.find_one({"_id": str(interaction.guild.id)}) or {}
+    role_id = settings.get("tournament_admin_role_id")
+    if role_id:
+        try:
+            role = interaction.guild.get_role(int(role_id))
+            if role and any(r.id == role.id for r in getattr(member, "roles", [])):
+                return True
+        except (TypeError, ValueError):
+            pass
+    return False
+
 class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
     proof = discord.ui.TextInput(label="Proof URL (optional)", required=False, max_length=500, placeholder="https://...")
     notes = discord.ui.TextInput(label="Notes (optional)", required=False, max_length=500, style=discord.TextStyle.paragraph)
@@ -82,7 +106,7 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
         if not match:
             await interaction.response.send_message("❌ Match not found.", ephemeral=True)
             return
-        if not await _is_participant(tournament, match, interaction.user.id) and not interaction.user.guild_permissions.administrator:
+        if not await _is_participant(tournament, match, interaction.user.id) and not await _is_tournament_staff(interaction):
             await interaction.response.send_message("❌ Only a participant in this match can submit the result.", ephemeral=True)
             return
         if match.get("result_status") == "pending":
@@ -126,7 +150,7 @@ class MatchResultView(discord.ui.View):
                 match=next((m for m in _matches(tournament or {}) if str(m.get("id"))==self.match_id),None)
                 if not tournament or not match:
                     await interaction.response.send_message("❌ Match not found.",ephemeral=True); return
-                if not await _is_participant(tournament,match,interaction.user.id) and not interaction.user.guild_permissions.administrator:
+                if not await _is_participant(tournament,match,interaction.user.id) and not await _is_tournament_staff(interaction):
                     await interaction.response.send_message("❌ You are not a participant in this match.",ephemeral=True); return
                 await interaction.response.send_modal(TournamentResultModal(self.tournament_id,self.match_id,entrant))
             button.callback=callback
@@ -253,13 +277,13 @@ async def build_tournament_view(tournament_id,user):
             await interaction.response.send_message("Choose the winner:",view=MatchResultView(tournament_id,match),ephemeral=True)
         b.callback=cb
         view.add_item(b)
-    if user.guild_permissions.administrator:
+    if await _is_tournament_staff(type("StaffContext", (), {"guild": getattr(user, "guild", None), "user": user})()):
         pending=[m for m in _matches(t) if m.get("result_status")=="pending"]
         for m in pending[:MAX_MATCH_BUTTONS]:
             b=discord.ui.Button(label=f"Review {m.get('id')}",style=discord.ButtonStyle.success)
             async def review_cb(interaction,match=m):
-                if not interaction.user.guild_permissions.administrator:
-                    await interaction.response.send_message("❌ Staff access required.",ephemeral=True); return
+                if not await _is_tournament_staff(interaction):
+                    await interaction.response.send_message("❌ Tournament staff access required.",ephemeral=True); return
                 ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"approve",interaction.user.id)
                 await interaction.response.send_message(("✅ " if ok else "❌ ")+msg,ephemeral=True)
             b.callback=review_cb
