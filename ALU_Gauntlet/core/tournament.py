@@ -93,7 +93,7 @@ def _double_elimination(max_players: int) -> dict[str, Any]:
                 # Winners round 2 drops into Losers round 3, round 3 into
                 # round 5, etc. The Winners Final is the special case that
                 # drops into the final Losers round before the Grand Final.
-                loser_round = (2 * r_idx + 1) if r_idx < winner_rounds - 2 else losers_rounds
+                loser_round = (2 * r_idx + 1) if r_idx < winner_rounds - 1 else losers_rounds
                 match["loser_to"] = f"LB-R{loser_round}-M{index // 2 if loser_round < losers_rounds else 0}"
 
     return {"type": "double_elimination", "winners": winners, "losers": losers, "grand_final": {"id": "GF-M1", "bracket": "grand_final", "round": 1, "player_slots": [None, None], "status": "waiting"}, "grand_final_reset": {"id": "GF-M2", "bracket": "grand_final", "round": 2, "player_slots": [None, None], "status": "waiting", "if_necessary": True}}
