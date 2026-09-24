@@ -2095,3 +2095,12 @@ body{top:0!important}
   visibility:visible!important;
   min-width:0!important;
 }
+
+/* Advanced RSL search */
+.rsl-search-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rsl-search-toolbar .rsl-search-input-wrap{flex:1 1 360px}
+.rsl-search-toolbar select{min-height:44px;border:1px solid #168cff;background:#061226;color:#dce7f7;padding:0 12px;font:inherit}
+.rsl-search-meta{min-height:22px;margin:12px 0 4px;color:#91a5c3;font-size:.88rem}
+.rsl-search-result{display:grid;grid-template-columns:auto 1fr;gap:4px 10px}
+.rsl-search-result .rsl-search-result-type{grid-column:1;grid-row:1 / span 2;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#25dfff}
+.rsl-search-result strong{grid-column:2}.rsl-search-result>span:last-child{grid-column:2}
