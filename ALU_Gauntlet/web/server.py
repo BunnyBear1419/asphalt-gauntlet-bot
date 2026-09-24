@@ -185,6 +185,7 @@ class WebControlCenter:
                 "legal.html": "/legal",
                 "players.html": "/players",
                 "player.html": "/player",
+                "profile.html": "/profile",
             }
             canonical_path = canonical_paths.get(filename)
             if canonical_path:
@@ -197,7 +198,7 @@ class WebControlCenter:
 
             # Keep private/account/admin pages out of search indexes.
             noindex_pages = {
-                "admin.html", "news-admin.html", "setup.html", "player.html", "players.html"
+                "admin.html", "news-admin.html", "setup.html", "player.html", "players.html", "profile.html"
             }
             if filename in noindex_pages:
                 noindex_tag = '<meta name="robots" content="noindex, nofollow, noarchive">'
@@ -333,7 +334,7 @@ class WebControlCenter:
       <small id="rsl-profile-menu-sub">Discord account</small>
     </div>
     <a href="/player#preferences">⚙️ <span>My Settings</span></a>
-    <a href="/player#profile-settings">👤 <span>My Profile</span></a>
+    <a href="/profile">👤 <span>My Profile</span></a>
     <a href="/clubs">🏎️ <span>My Club</span></a>
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
     <a href="/player#career">🏆 <span>My Tournaments</span></a>
@@ -1199,6 +1200,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/news-admin", self.news_admin_page)
         self.app.router.add_get("/admin", self.admin_page)
         self.app.router.add_get("/player", self.player_page)
+        self.app.router.add_get("/profile", self.profile_page)
         self.app.router.add_get("/gauntlet/registration", self.gauntlet_registration_page)
         self.app.router.add_get("/gauntlet/defense", self.gauntlet_defense_page)
         self.app.router.add_get("/gauntlet/matches", self.gauntlet_matches_page)
@@ -2601,7 +2603,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def player_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("player.html", request)
-
+\n    async def profile_page(self, request: web.Request) -> web.StreamResponse:\n        await self.require_user(request)\n        return await self._page_response("profile.html", request)\n
     async def site_search(self, request: web.Request) -> web.Response:
         """Search public site content plus account-visible racing data."""
         query = request.query.get("q", "").strip()
