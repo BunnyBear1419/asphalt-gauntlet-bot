@@ -2413,3 +2413,86 @@ body:has(.rsl-global-discord-cta) main.calendar-page{
   .top-nav>nav{display:none!important}
   .top-nav>.rsl-search-trigger{right:60px!important}
 }
+
+
+
+/* RSL SHELL FINAL v7 — stop legacy nav transforms from moving the menu off-center */
+.top-nav{
+  position:fixed!important;
+  left:0!important;right:0!important;top:0!important;
+  height:80px!important;
+  display:flex!important;
+  align-items:stretch!important;
+  overflow:visible!important;
+  z-index:2000!important;
+}
+.top-nav>nav{
+  position:absolute!important;
+  left:86px!important;
+  right:390px!important;
+  top:0!important;
+  width:auto!important;
+  height:80px!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  display:flex!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+  z-index:2050!important;
+}
+.top-nav>nav>a,
+.top-nav>nav>.top-nav-dropdown{
+  transform:none!important;
+  flex:0 0 auto!important;
+}
+.top-nav>nav>a{
+  min-width:132px!important;
+}
+.top-nav>nav>.top-nav-dropdown .top-nav-dropdown-trigger{
+  min-width:145px!important;
+}
+.top-nav>.rsl-search-trigger{
+  position:absolute!important;
+  right:270px!important;
+  left:auto!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:2150!important;
+}
+.top-nav>.rsl-profile-nav,
+.top-nav>.rsl-login-button{
+  position:absolute!important;
+  right:14px!important;
+  left:auto!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  margin:0!important;
+  z-index:2160!important;
+}
+.rsl-global-discord-cta{
+  position:relative!important;
+  left:auto!important;right:auto!important;
+  transform:none!important;
+  width:calc(100% - 56px)!important;
+  max-width:1240px!important;
+  margin:32px auto 18px!important;
+}
+@media(max-width:1200px){
+  .top-nav>nav{left:78px!important;right:350px!important;transform:none!important;justify-content:flex-start!important}
+  .top-nav>.rsl-search-trigger{right:245px!important}
+}
+@media(max-width:900px){
+  .top-nav>nav{left:72px!important;right:300px!important;transform:none!important;justify-content:flex-start!important;overflow-x:auto!important;overflow-y:visible!important;scrollbar-width:none!important}
+  .top-nav>nav::-webkit-scrollbar{display:none!important}
+  .top-nav>.rsl-search-trigger{right:205px!important}
+}
+@media(max-width:760px){
+  .top-nav{height:68px!important}
+  .top-nav>nav{left:62px!important;right:116px!important;height:68px!important;transform:none!important}
+  .top-nav>.rsl-search-trigger{right:66px!important;width:38px!important;height:38px!important}
+  .top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:8px!important}
+  .rsl-global-discord-cta{width:calc(100% - 24px)!important;margin:20px 12px 14px!important}
+}
