@@ -700,7 +700,7 @@ window.rslGoogleTranslateInit=function(){
             if app_css_tag.search(body):
                 body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell3">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
-                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-shell2"></head>', 1)
+                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-shell3"></head>', 1)
 
         # GLOBAL RSL PAGE SHELL: every HTML page receives the same Discord card and Help card.
         # Strip older page-specific copies first so the shared shell is always singular.
