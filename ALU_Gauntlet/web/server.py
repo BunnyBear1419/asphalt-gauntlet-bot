@@ -725,7 +725,7 @@ window.rslGoogleTranslateInit=function(){
 function alignRslShell(){
 const help=document.querySelector(".rsl-global-help-card");
 const discord=document.querySelector(".rsl-global-discord-cta");
-const ref=document.querySelector(".home-hero,.page-hero,.tournament-hero,.clubs-center-hero,.my-tournaments-hero,.profile-hero,.hero-banner");
+const ref=document.querySelector("main > section[class*=\"hero\"],main > div[class*=\"hero\"],main > header[class*=\"hero\"],main > .page-hero,main > .home-hero");
 if(!ref)return;
 const rr=ref.getBoundingClientRect();
 function align(box){
