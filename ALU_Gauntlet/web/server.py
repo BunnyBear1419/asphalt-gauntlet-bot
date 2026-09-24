@@ -517,6 +517,28 @@ window.rslGoogleTranslateInit=function(){
   <div class="companion-info-item"><span class="companion-info-icon">🎟️</span><span><strong>Event Calculator</strong><small>Plan limited-time Spotlight events — stage-by-stage reward simulation.</small></span></div>
   <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
 </div></details>'''
+        # Canonical shared header: replace every legacy page header as one unit.
+        # This prevents old per-page nav markup and CSS assumptions from fighting the RSL shell.
+        canonical_header = r'''<header class="top-nav rsl-canonical-header">
+  <a class="top-brand top-logo-mark rsl-canonical-logo" href="/" aria-label="Racing Syndicate League home"><img src="/assets/rsl-shield.png" alt="RSL"></a>
+  <nav class="rsl-canonical-nav" aria-label="Primary navigation">
+    <a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a>
+    <details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.png" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.png" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><img class="nav-icon-img" src="/assets/icons/matches.png" alt=""><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>References</span></a></div></details>
+    <details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.png" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><img class="nav-icon-img" src="/assets/icons/results.png" alt=""><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Club Tournaments</span></a></div></details>
+    <a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a>
+    <a href="/help"><img class="nav-icon-img" src="/assets/icons/help.png" alt=""><span>Help</span></a>
+    <a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>
+    @@COMPANION@@
+  </nav>
+  @@SEARCH@@
+  @@PROFILE@@
+</header>'''
+        canonical_header = canonical_header.replace("@@COMPANION@@", companion_markup).replace("@@SEARCH@@", search_markup).replace("@@PROFILE@@", profile_markup)
+        if re.search(r'<header\b[^>]*class=["\'][^"\']*\btop-nav\b[^"\']*["\'][^>]*>.*?</header>', body, flags=re.S|re.I):
+            body = re.sub(r'<header\b[^>]*class=["\'][^"\']*\btop-nav\b[^"\']*["\'][^>]*>.*?</header>', canonical_header, body, count=1, flags=re.S|re.I)
+        elif re.search(r'</header>', body, flags=re.I):
+            body = re.sub(r'<header\b.*?</header>', canonical_header, body, count=1, flags=re.S|re.I)
+
         legacy_companion = re.compile(r'<a class="companion-nav-link"[^>]*>.*?</a>', re.S)
         if legacy_companion.search(body):
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
@@ -698,7 +720,7 @@ window.rslGoogleTranslateInit=function(){
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell5">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell6">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
                 body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-shell5"></head>', 1)
 
