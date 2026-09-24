@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Profile • Racing Syndicate League</title>
+<link rel="stylesheet" href="/static/app.css?v=20260924-profile1">
+<style>
+.profile-main{width:100%;max-width:1180px;margin:0 auto;padding:22px;box-sizing:border-box}
+.profile-hero{position:relative;overflow:hidden;border:1px solid #174a79;background:linear-gradient(145deg,#071a35,#030914);padding:30px;display:flex;align-items:center;gap:22px;box-shadow:0 0 35px #168cff12}
+.profile-avatar-large{width:104px;height:104px;flex:0 0 104px;border:2px solid #25dfff;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#061226;font-size:48px;box-shadow:0 0 24px #25dfff22}
+.profile-hero h1{margin:0;color:#fff;font-size:clamp(30px,5vw,52px);font-style:italic}
+.profile-hero .eyebrow{color:#25dfff;font-size:12px;font-weight:800;letter-spacing:.12em}
+.profile-hero p{margin:7px 0 0;color:#9fb2ca}
+.profile-hero-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.profile-button{display:inline-flex;align-items:center;justify-content:center;border:1px solid #168cff;background:#081a31;color:#f5f7ff;padding:11px 16px;text-decoration:none;font-weight:700}
+.profile-button.primary{background:#0877e7;border-color:#25dfff}
+.profile-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:18px;margin-top:18px}
+.profile-card-rsl{border:1px solid #174a79;background:#061226;padding:22px}
+.profile-card-rsl h2{margin:0 0 16px;color:#fff}
+.profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.profile-field{border:1px solid #123c63;background:#07172b;padding:14px}
+.profile-field span{display:block;color:#7188a7;font-size:10px;letter-spacing:.1em;font-weight:800;margin-bottom:6px}
+.profile-field strong{display:block;color:#f5f7ff;overflow-wrap:anywhere}
+.profile-about{margin-top:14px;border:1px solid #123c63;background:#07172b;padding:14px;color:#b8c7d9;line-height:1.65;white-space:pre-wrap;min-height:70px}
+.profile-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.profile-stat{border:1px solid #174a79;background:#07172b;padding:16px;text-align:center}
+.profile-stat span{display:block;color:#7188a7;font-size:10px;letter-spacing:.1em}
+.profile-stat strong{display:block;color:#25dfff;font-size:25px;margin-top:5px}
+.profile-links{display:flex;flex-wrap:wrap;gap:8px}
+.profile-links a{border:1px solid #174a79;background:#07172b;color:#25dfff;padding:9px 12px;text-decoration:none}
+.profile-status{margin-top:14px;padding:12px;border-left:3px solid #25dfff;background:#071a2c;color:#aebdd2}
+.profile-loading{color:#91a5c3;padding:30px;text-align:center}
+@media(max-width:800px){.profile-grid{grid-template-columns:1fr}.profile-hero{align-items:flex-start;flex-wrap:wrap}.profile-hero-actions{margin-left:0;width:100%}}
+@media(max-width:560px){.profile-main{padding:12px}.profile-fields{grid-template-columns:1fr}.profile-avatar-large{width:78px;height:78px;flex-basis:78px;font-size:36px}.profile-hero{padding:20px}}
+</style>
+</head>
+<body class="alu-dashboard">
+<header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/assets/rsl-shield.png" alt="RSL"></a>
+<nav aria-label="Primary navigation">
+<a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a>
+<details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.png" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.png" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><span class="nav-icon-glyph">⚔</span><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>References</span></a></div></details>
+<details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.png" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><span class="nav-icon-glyph">📊</span><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Club Tournaments</span></a></div></details>
+<a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a><a href="/help"><img class="nav-icon-img" src="/assets/icons/help.png" alt=""><span>Help</span></a><a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span>Companion</span></a>
+</nav></header>
+<main class="profile-main">
+<section class="profile-hero"><div class="profile-avatar-large">🏎️</div><div><span class="eyebrow">RACING SYNDICATE LEAGUE • DRIVER PROFILE</span><h1 id="profile-name">Driver</h1><p id="profile-discord">Discord account</p></div><div class="profile-hero-actions"><a class="profile-button primary" href="/player#profile-settings">✎ Edit Profile</a><a class="profile-button" href="/player">My Garage →</a></div></section>
+<div id="profile-loading" class="profile-card-rsl profile-loading">Loading your profile…</div>
+<section id="profile-content" class="profile-grid" hidden>
+<div>
+<article class="profile-card-rsl"><h2>Driver Information</h2><div class="profile-fields">
+<div class="profile-field"><span>GAME NAME</span><strong id="game-name">—</strong></div><div class="profile-field"><span>GAME ID</span><strong id="game-id">—</strong></div>
+<div class="profile-field"><span>PLATFORM</span><strong id="platform">—</strong></div><div class="profile-field"><span>DRIVER TYPE</span><strong id="driver-type">—</strong></div>
+<div class="profile-field"><span>LOCATION</span><strong id="location">—</strong></div><div class="profile-field"><span>TIMEZONE</span><strong id="timezone">—</strong></div>
+</div><div class="profile-about" id="about">No About Me information added yet.</div><div class="profile-status" id="asphalt-status">Asphalt account status: —</div></article>
+<article class="profile-card-rsl" style="margin-top:18px"><h2>Links</h2><div class="profile-links" id="links"><span class="profile-status">No links added.</span></div></article>
+</div>
+<aside>
+<article class="profile-card-rsl"><h2>Career Snapshot</h2><div class="profile-stat-grid">
+<div class="profile-stat"><span>ELO</span><strong id="elo">—</strong></div><div class="profile-stat"><span>RANK</span><strong id="rank">—</strong></div>
+<div class="profile-stat"><span>WINS</span><strong id="wins">—</strong></div><div class="profile-stat"><span>PLAYED</span><strong id="played">—</strong></div>
+<div class="profile-stat"><span>STREAK</span><strong id="streak">—</strong></div><div class="profile-stat"><span>SEASON</span><strong id="season">—</strong></div>
+</div><div class="profile-status" id="registration-status">Gauntlet registration: —</div></article>
+<article class="profile-card-rsl" style="margin-top:18px"><h2>Profile Privacy</h2><p style="color:#9fb2ca;line-height:1.6;margin:0">Your Discord identity and public driver profile are tied to your signed-in account. Profile editing remains inside My Garage.</p></article>
+</aside>
+</section>
+</main>
+<footer>RACING SYNDICATE LEAGUE • Web ↔ MongoDB ↔ Discord</footer>
+<script src="/static/profile.js?v=20260924-profile1"></script>
+</body></html>
