@@ -742,7 +742,15 @@ window.rslGoogleTranslateInit=function(){
                 else:
                     body = global_discord_markup + body
             if "rsl-global-help-card" not in body:
-                if re.search(r"</main>", body, flags=re.I):
+                # Admin Tools contains a nested <main class="admin-content"> inside
+                # its two-column layout. Inserting after the first </main> places
+                # the shared Help card inside the admin grid, collapsing it into
+                # the narrow sidebar column. Keep the shared card outside the
+                # admin layout, just before </body>, like the other global shell
+                # elements.
+                if filename == "admin.html":
+                    body = body.replace("</body>", global_help_markup + "\n</body>", 1)
+                elif re.search(r"</main>", body, flags=re.I):
                     body = re.sub(r"</main>", "</main>\n" + global_help_markup, body, count=1, flags=re.I)
                 elif re.search(r'<div[^>]*class=["\']workspace["\'][^>]*>', body, flags=re.I):
                     body = re.sub(r"(</div>)(\s*</div>\s*</body>)", global_help_markup + "\n\\1\\2", body, count=1, flags=re.I)
