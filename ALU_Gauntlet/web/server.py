@@ -518,14 +518,15 @@ window.rslGoogleTranslateInit=function(){
   <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
 </div></details>'''
         legacy_companion = re.compile(r'<a class="companion-nav-link"[^>]*>.*?</a>', re.S)
+        has_companion_dropdown = 'companion-nav-dropdown' in body
         if legacy_companion.search(body):
+            # Replace the legacy single-link Companion control exactly once.
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
-            replacement = (calendar_markup if '<a href="/calendar"' not in body else '') + companion_markup
+            replacement = (calendar_markup if '<a href="/calendar"' not in body else '') + ('' if has_companion_dropdown else companion_markup)
             body = legacy_companion.sub(replacement, body, count=1)
-        elif "</nav>" in body:
-            # Some dedicated Gauntlet/Tournament pages have an older header
-            # containing only Clubs + Help. Bring those pages up to the same
-            # shared navigation without changing their page-specific content.
+        elif "</nav>" in body and not has_companion_dropdown:
+            # Some dedicated pages have an older header containing only Clubs + Help.
+            # Add Calendar + Companion once, keeping Calendar immediately before Companion.
             calendar_markup = '' if '<a href="/calendar"' in body else '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
 
