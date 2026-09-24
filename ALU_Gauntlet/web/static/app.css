@@ -1583,20 +1583,12 @@ body{top:0!important}
 
 
 /* Shared Home-style Discord and Help cards on every page. */
-.rsl-global-discord-cta.rsl-global-discord-cta{width:calc(100% - 56px);max-width:1240px;margin:16px auto 18px;box-sizing:border-box}
-.rsl-global-help-card{width:calc(100% - 56px);max-width:1240px;margin:24px auto 30px;box-sizing:border-box}
-@media(max-width:700px){.rsl-global-discord-cta,.rsl-global-help-card{width:calc(100% - 28px)}}
-
-
-
-/* Shared Home cards — also used by the site-wide Discord and Help cards. */
-.discord-cta{
-  display:flex;align-items:center;gap:24px;width:100%;box-sizing:border-box;
-  margin:16px 0 18px;padding:14px 28px;
-  border:1px solid #5865f2;border-radius:12px;
-  background:linear-gradient(100deg,#101a3b,#0a1a2d 55%,#07152a);
-  color:#fff;text-decoration:none;box-shadow:0 8px 28px #0006;
-  transition:.18s ease;
+.rsl-global-discord-cta.rsl-global-discord-cta{
+  display:flex!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:var(--rsl-shell-discord-top-gap) 0 var(--rsl-shell-discord-bottom-gap)!important;
+  box-sizing:border-box!important;
 }
 .discord-cta:hover{border-color:#7d87ff;box-shadow:0 10px 34px #5865f230;transform:translateY(-1px)}
 .discord-cta-icon{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:transparent}
@@ -1666,37 +1658,12 @@ body{top:0!important}
 
 /* Site-wide cards: full content width, compact Help icon, and tight top spacing. */
 .rsl-global-discord-cta{width:100%;max-width:none;margin:16px 0 8px}
-.rsl-global-help-card{width:100%;max-width:none;margin:24px 0 30px}
-.rsl-global-help-card .home-help-icon{width:76px;height:76px;min-width:76px}
-.rsl-global-help-card .home-help-icon svg{width:48px;height:48px}
-@media(max-width:700px){.rsl-global-discord-cta,.rsl-global-help-card{width:100%}.rsl-global-help-card .home-help-icon{width:68px;height:68px;min-width:68px}.rsl-global-help-card .home-help-icon svg{width:44px;height:44px}}
-
-
-/* Shared header social controls — compact 34px icons. */
-.top-discord-link{position:absolute;left:84px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#5865f2;box-shadow:none!important;z-index:1100;text-decoration:none;transition:.18s ease}
-.top-cashapp-link{position:absolute;left:154px;top:50%;transform:translateY(-50%);width:64px;height:64px;display:flex;align-items:center;justify-content:center;border:0!important;border-radius:0!important;background:transparent!important;color:#00d64f;z-index:1100;text-decoration:none;transition:.18s ease}
-.top-discord-link:hover,.top-cashapp-link:hover{background:transparent!important;border-color:transparent!important;box-shadow:none!important;transform:translateY(-50%) scale(1.04)}
-.top-discord-link img,.top-discord-link svg,.top-cashapp-link img{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;object-fit:contain!important;display:block!important;margin:0!important;padding:0!important}
-.top-cashapp-link span{font:900 34px/1 Arial,Helvetica,sans-serif;transform:translateY(-1px)}
-/* Footer social cluster: only rendered links occupy space. */
-.rsl-footer-social-row{display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;margin:0 auto 26px!important;padding:0!important;gap:0!important}
-.rsl-footer-social-row .rsl-footer-rule{display:none!important;width:0!important;min-width:0!important;max-width:0!important}
-.rsl-footer-socials{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 auto!important;width:max-content!important;max-width:100%!important;flex-wrap:nowrap!important;gap:2px!important;margin:0!important;padding:0!important}
-.rsl-footer-socials>*{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 34px!important;width:34px!important;height:34px!important;min-width:34px!important;max-width:34px!important;margin:0!important;padding:0!important;border:0!important;box-sizing:border-box!important}
-.rsl-footer-socials>* img,.rsl-footer-socials>* svg{display:block!important;width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;max-width:34px!important;max-height:34px!important;margin:0!important;padding:0!important;object-fit:contain!important}
-.rsl-footer-socials>* span{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:34px!important;height:34px!important;margin:0!important;padding:0!important}
-.rsl-footer-socials .rsl-footer-cash{width:30px!important;height:30px!important;margin:0 2px!important}
-@media(max-width:700px){.top-discord-link,.top-cashapp-link{width:52px;height:52px}.top-discord-link{left:70px}.top-cashapp-link{left:124px}.rsl-footer-socials{gap:1px!important}.rsl-footer-socials>*{flex-basis:32px!important;width:32px!important;height:32px!important;min-width:32px!important;max-width:32px!important}.rsl-footer-socials>* img,.rsl-footer-socials>* svg{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-width:32px!important;max-height:32px!important}.rsl-footer-socials>* span{width:32px!important;height:32px!important}}
-
-/* Final header/footer cleanup: no top Discord/Cash App controls. */
-.top-discord-link,.top-cashapp-link{display:none!important}
-.top-nav nav{justify-content:flex-start!important;margin-left:0!important}
-.top-nav nav>a:first-child{margin-left:0!important}
-
-
-/* RSL final navigation/footer polish */
-@media(min-width:1051px){
-  .top-nav nav{padding-left:0!important;margin-left:-18px!important}
+.rsl-global-help-card{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  margin:var(--rsl-shell-help-top-gap) 0 var(--rsl-shell-help-bottom-gap)!important;
+  box-sizing:border-box!important;
 }
 .rsl-footer-social-row{
   margin:18px auto 30px!important;
@@ -2146,9 +2113,6 @@ body{top:0!important}
   max-width:1240px!important;
   margin:var(--rsl-shell-help-top-gap) auto var(--rsl-shell-help-bottom-gap)!important;
   box-sizing:border-box!important;
-}
-@media(max-width:700px){
-  .rsl-global-discord-cta,.rsl-global-help-card{width:calc(100% - 28px)!important}
 }
 
 /* Remove legacy page-specific spacer pseudo-elements; the global Discord card owns this gap now. */
