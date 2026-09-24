@@ -114,7 +114,7 @@ class WebControlCenter:
         # Render public Discord community counts server-side on first paint.
         # Help and Home both use the same community statistics so neither page
         # depends on a client-side request just to show the member counts.
-        if filename in {"help.html", "index.html"}:
+        if filename in {"help.html", "index.html", "clubs.html", "club.html"}:
             guilds = list(getattr(self.bot, "guilds", []) or [])
             guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
             online = 0
@@ -130,9 +130,12 @@ class WebControlCenter:
             if filename == "help.html":
                 body = body.replace('id="help-discord-online">—', f'id="help-discord-online">{online:,}', 1)
                 body = body.replace('id="help-discord-total">—', f'id="help-discord-total">{total:,}', 1)
-            else:
+            elif filename == "index.html":
                 body = body.replace('id="discord-online-members">—', f'id="discord-online-members">{online:,}', 1)
                 body = body.replace('id="discord-server-members">—', f'id="discord-server-members">{total:,}', 1)
+            else:
+                body = body.replace('id="page-discord-online">—', f'id="page-discord-online">{online:,}', 1)
+                body = body.replace('id="page-discord-total">—', f'id="page-discord-total">{total:,}', 1)
 
         # Google Analytics 4 is consent-gated. Do not load the Analytics tag until
         # the visitor explicitly enables analytics cookies through the RSL banner.
