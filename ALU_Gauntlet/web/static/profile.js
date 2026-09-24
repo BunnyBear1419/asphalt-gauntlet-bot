@@ -6,31 +6,33 @@ async function api(url){const r=await fetch(url,{credentials:"same-origin"});if(
 async function load(){
  try{
   const me=await api("/api/me");
-  const discordName=me.global_name||me.username||"Driver";
+  const discordName=me.global_name||me.username||me.username||"Discord User";
   text("profile-name",discordName);
   const avatarBox=$("#profile-avatar-large");
   if(avatarBox){
-    const avatarUrl=me.avatar&&me.id
-      ?"https://cdn.discordapp.com/avatars/"+encodeURIComponent(me.id)+"/"+encodeURIComponent(me.avatar)+".png?size=256"
-      :(me.id?"https://cdn.discordapp.com/embed/avatars/"+(Number(BigInt(me.id)%7n))+".png":"");
-    if(avatarUrl){
+    avatarBox.textContent="";
+    if(me.id){
       const img=document.createElement("img");
-      img.src=avatarUrl;
       img.alt=discordName+" Discord avatar";
-      img.onerror=()=>{img.remove();avatarBox.textContent="🏎️";};
-      avatarBox.textContent="";
+      img.src=me.avatar
+        ?"https://cdn.discordapp.com/avatars/"+encodeURIComponent(me.id)+"/"+encodeURIComponent(me.avatar)+".png?size=256"
+        :"https://cdn.discordapp.com/embed/avatars/0.png?size=256";
+      img.onerror=()=>{img.onerror=null;img.src="https://cdn.discordapp.com/embed/avatars/0.png?size=256";};
       avatarBox.appendChild(img);
     }
   }
   text("profile-discord",me.username?"@"+me.username:"Discord account");
-  const discordStats=await api("/api/discord-stats").catch(()=>({available:false}));
-  if(discordStats.available){
-    text("profile-discord-online",Number(discordStats.online_members??0).toLocaleString());
-    text("profile-discord-total",Number(discordStats.server_members??0).toLocaleString());
-  }else{
-    text("profile-discord-online","—");
-    text("profile-discord-total","—");
-  }
+  const loadDiscordStats=async()=>{
+    try{
+      const discordStats=await api("/api/discord-stats");
+      text("profile-discord-online",Number(discordStats.online_members??0).toLocaleString());
+      text("profile-discord-total",Number(discordStats.server_members??0).toLocaleString());
+    }catch(_){
+      text("profile-discord-online","0");
+      text("profile-discord-total","0");
+    }
+  };
+  await loadDiscordStats();
   const guilds=(await api("/api/guilds")).guilds||[];
   const cookie=(document.cookie.match(/(?:^|; )rsl_guild_id=([^;]+)/)||[])[1];
   const guild=(guilds.find(g=>String(g.id)===decodeURIComponent(cookie||""))||guilds[0]);
