@@ -2527,7 +2527,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                         t["status"] = "completed"
                         t["champion_id"] = winner_id
                         t["completed_at"] = datetime.now(timezone.utc).isoformat()
-                    elif match.get("bracket") == "winners" and not match.get("winner_to") and winner_id:
+                    elif match.get("bracket") == "winners" and match.get("winner_to") == "GF-M1" and winner_id:
+                        # The Winners Final feeds the first Grand Final match, so its
+                        # winner is the protected finalist for the double-elimination
+                        # reset rule. The Winners Final always has winner_to=GF-M1;
+                        # checking for a missing winner_to here would never fire.
                         bracket["protected_finalist"] = winner_id
 
                 await self.bot.db.tournaments.update_one(
