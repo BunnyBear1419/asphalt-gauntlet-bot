@@ -2405,7 +2405,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "message": "Result submitted for staff verification."})
 
     async def tournament_verify_result(self, request: web.Request) -> web.Response:
-        """Staff verification endpoint that advances a single-elimination bracket atomically."""
+        """Staff verification endpoint for all supported tournament formats."""
         user, guild_id, _ = await self.require_admin(request)
         from bson import ObjectId
         payload = await request.json()
@@ -2434,7 +2434,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPNotFound(text="Match not found.")
         if match.get("result_status") != "pending":
             raise web.HTTPConflict(text="This match does not have a pending result.")
-        if not await self._claim_tournament_action(str(oid), str(match_id), "verify"):
+        if not await self._claim_tournament_action(str(oid), match_id, "verify"):
             raise web.HTTPConflict(text="Another staff action is already processing this match.")
         try:
             if action == "reject":
@@ -2451,60 +2451,108 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 match["verified_by"] = str(user.user_id)
                 match["verified_at"] = datetime.now(timezone.utc).isoformat()
                 match["status"] = "completed"
+
                 target = match.get("winner_to")
                 if target:
-                    target_match = next(
-                        (nxt for group in groups for nxt in group.get("matches", []) if str(nxt.get("id")) == str(target)),
-                        None,
-                    )
+                    target_match = next((n for g in groups for n in g.get("matches", []) if str(n.get("id")) == str(target)), None)
                     if target_match is None:
                         raise web.HTTPConflict(text="Bracket advancement target is invalid.")
                     ns = list(target_match.get("player_slots") or [None, None])
                     while len(ns) < 2:
                         ns.append(None)
-                    if winner_id in [str(x) for x in ns if x is not None]:
-                        raise web.HTTPConflict(text="Winner has already advanced to the target match.")
-                    if all(ns):
+                    if all(ns) and winner_id not in [str(x) for x in ns]:
                         raise web.HTTPConflict(text="Bracket advancement target is already occupied.")
-                    empty_index = ns.index(None)
-                    ns[empty_index] = winner_id
+                    if winner_id not in [str(x) for x in ns]:
+                        ns[0 if ns[0] is None else 1] = winner_id
                     target_match["player_slots"] = ns
                     if all(ns):
                         target_match["status"] = "ready"
-                elif str(match.get("bracket", "winners")) == "winners" and (match.get("round") or 0) == len(groups):
-                    t["status"] = "completed"
-                    t["champion_id"] = winner_id
-                    t["completed_at"] = datetime.now(timezone.utc).isoformat()
-                message = "Result verified and winner advanced."
-            await self.bot.db.tournaments.update_one(
-                {"_id": oid},
-                {"$set": {
-                    "bracket": bracket,
-                    "status": t.get("status", "live"),
-                    "champion_id": t.get("champion_id"),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }},
-            )
+
+                loser_to = match.get("loser_to")
+                if loser_to and str(match.get("bracket")) == "winners":
+                    loser_id = next((x for x in slots if x != winner_id), None)
+                    if loser_id:
+                        target_match = next((n for g in groups for n in g.get("matches", []) if str(n.get("id")) == str(loser_to)), None)
+                        if target_match is None:
+                            raise web.HTTPConflict(text="Losers-bracket destination is invalid.")
+                        ns = list(target_match.get("player_slots") or [None, None])
+                        while len(ns) < 2:
+                            ns.append(None)
+                        if loser_id not in [str(x) for x in ns]:
+                            if all(ns):
+                                raise web.HTTPConflict(text="Losers-bracket destination is already occupied.")
+                            ns[0 if ns[0] is None else 1] = loser_id
+                        target_match["player_slots"] = ns
+                        if all(ns):
+                            target_match["status"] = "ready"
+
+                fmt = str(t.get("format") or bracket.get("type") or "single_elimination").casefold()
+                if fmt == "round_robin":
+                    rr_matches = [m for g in bracket.get("rounds", []) for m in g.get("matches", [])]
+                    if rr_matches and all(m.get("status") == "completed" for m in rr_matches):
+                        wins = {}
+                        losses = {}
+                        seed_order = {}
+                        for idx, m in enumerate(rr_matches):
+                            pair = [str(x) for x in (m.get("player_slots") or []) if x]
+                            if len(pair) != 2:
+                                continue
+                            seed_order.setdefault(pair[0], idx)
+                            seed_order.setdefault(pair[1], idx)
+                            w = str(m.get("winner_id") or "")
+                            if w in pair:
+                                l = pair[1] if w == pair[0] else pair[0]
+                                wins[w] = wins.get(w, 0) + 1
+                                losses[l] = losses.get(l, 0) + 1
+                        entrants = sorted(set(wins) | set(losses), key=lambda x: (-wins.get(x, 0), losses.get(x, 0), seed_order.get(x, 10**9), x))
+                        t["standings"] = [{"entrant_id": x, "wins": wins.get(x, 0), "losses": losses.get(x, 0)} for x in entrants]
+                        if entrants:
+                            t["status"] = "completed"
+                            t["champion_id"] = entrants[0]
+                            t["completed_at"] = datetime.now(timezone.utc).isoformat()
+                elif fmt == "double_elimination":
+                    if match.get("id") == "GF-M1":
+                        protected = str(bracket.get("protected_finalist") or "")
+                        if winner_id == protected:
+                            t["status"] = "completed"
+                            t["champion_id"] = winner_id
+                            t["completed_at"] = datetime.now(timezone.utc).isoformat()
+                        else:
+                            reset = bracket.get("grand_final_reset")
+                            if isinstance(reset, dict):
+                                reset["player_slots"] = [protected, winner_id]
+                                reset["status"] = "ready"
+                                bracket["grand_final_reset"] = reset
+                    elif match.get("id") == "GF-M2":
+                        t["status"] = "completed"
+                        t["champion_id"] = winner_id
+                        t["completed_at"] = datetime.now(timezone.utc).isoformat()
+                    elif match.get("bracket") == "winners" and not match.get("winner_to") and winner_id:
+                        bracket["protected_finalist"] = winner_id
+
+                await self.bot.db.tournaments.update_one(
+                    {"_id": oid},
+                    {"$set": {
+                        "bracket": bracket,
+                        "status": t.get("status", "live"),
+                        "champion_id": t.get("champion_id"),
+                        "standings": t.get("standings"),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }},
+                )
+                message = "Result verified and tournament state advanced."
         finally:
-            await self._release_tournament_action(str(oid), str(match_id))
+            await self._release_tournament_action(str(oid), match_id)
 
         cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
         channel_id = cfg.get("match_results_channel_id")
         channel = self.bot.get_channel(int(channel_id)) if channel_id else None
         if channel is not None:
             try:
-                await channel.send(
-                    "🏆 **Tournament Result " + ("Approved" if action != "reject" else "Rejected") +
-                    "** • " + str(t.get("name", "Tournament")) + " • " + match_id
-                )
+                await channel.send("🏆 **Tournament Result " + ("Approved" if action != "reject" else "Rejected") + "** • " + str(t.get("name", "Tournament")) + " • " + match_id)
             except Exception:
                 log.exception("Unable to post tournament verification notice")
-        return web.json_response({
-            "ok": True,
-            "message": message,
-            "bracket": bracket,
-            "champion_id": t.get("champion_id"),
-        })
+        return web.json_response({"ok": True, "message": message, "bracket": bracket, "champion_id": t.get("champion_id"), "standings": t.get("standings")})
 
     async def tournament_checkin(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
