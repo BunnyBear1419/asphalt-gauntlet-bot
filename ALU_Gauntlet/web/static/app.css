@@ -2539,3 +2539,38 @@ body:has(.rsl-global-discord-cta) .rsl-global-help-card.rsl-global-help-card.rsl
   clear:both!important;
   box-sizing:border-box!important;
 }
+
+
+/* RSL SHELL v10 — identical content width for Hero, Discord, Help, and page cards. */
+:root{
+  --rsl-shell-page-gutter:44px!important;
+}
+body:has(.rsl-global-help-card) .rsl-global-help-card.rsl-global-help-card.rsl-global-help-card{
+  display:block!important;
+  width:calc(100% - (var(--rsl-shell-page-gutter) * 2))!important;
+  max-width:none!important;
+  height:auto!important;
+  min-height:170px!important;
+  max-height:none!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  margin-top:22px!important;
+  margin-bottom:30px!important;
+  padding:30px!important;
+  box-sizing:border-box!important;
+  flex:none!important;
+  align-self:center!important;
+  justify-self:center!important;
+}
+body:has(.rsl-global-help-card) .rsl-global-help-card .home-help-content{
+  width:100%!important;
+  max-width:none!important;
+  box-sizing:border-box!important;
+}
+body:has(.rsl-global-discord-cta) .rsl-global-discord-cta.rsl-global-discord-cta.rsl-global-discord-cta{
+  width:calc(100% - (var(--rsl-shell-page-gutter) * 2))!important;
+  max-width:none!important;
+  box-sizing:border-box!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
