@@ -10,9 +10,10 @@ def _matches(tournament):
     groups = []
     for key in ("rounds", "winners", "losers"):
         groups.extend(bracket.get(key) or [])
-    grand_final = bracket.get("grand_final")
-    if isinstance(grand_final, dict):
-        groups.append({"matches": [grand_final]})
+    for key in ("grand_final", "grand_final_reset"):
+        match = bracket.get(key)
+        if isinstance(match, dict):
+            groups.append({"matches": [match]})
     return [m for group in groups for m in group.get("matches", [])]
 
 async def _entrant_name(tournament, entrant_id):
@@ -302,6 +303,44 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
                     t["completed_at"] = discord.utils.utcnow().isoformat()
                 elif match.get("bracket") == "winners" and match.get("winner_to") == "GF-M1":
                     bracket["protected_finalist"] = winner
+                elif fmt == "round_robin":
+                    rr_matches = [m for group in (bracket.get("rounds") or []) for m in group.get("matches", [])]
+                    if rr_matches and all(m.get("status") == "completed" for m in rr_matches):
+                        wins = {}
+                        losses = {}
+                        seed_order = {}
+                        for index, rr_match in enumerate(rr_matches):
+                            pair = [str(x) for x in (rr_match.get("player_slots") or []) if x]
+                            if len(pair) != 2:
+                                continue
+                            seed_order.setdefault(pair[0], index)
+                            seed_order.setdefault(pair[1], index)
+                            rr_winner = str(rr_match.get("winner_id") or "")
+                            if rr_winner in pair:
+                                loser = pair[1] if rr_winner == pair[0] else pair[0]
+                                wins[rr_winner] = wins.get(rr_winner, 0) + 1
+                                losses[loser] = losses.get(loser, 0) + 1
+                        standings_ids = sorted(
+                            set(wins) | set(losses),
+                            key=lambda entrant: (
+                                -wins.get(entrant, 0),
+                                losses.get(entrant, 0),
+                                seed_order.get(entrant, 10**9),
+                                entrant,
+                            ),
+                        )
+                        t["standings"] = [
+                            {
+                                "entrant_id": entrant,
+                                "wins": wins.get(entrant, 0),
+                                "losses": losses.get(entrant, 0),
+                            }
+                            for entrant in standings_ids
+                        ]
+                        if standings_ids:
+                            t["status"] = "completed"
+                            t["champion_id"] = standings_ids[0]
+                            t["completed_at"] = discord.utils.utcnow().isoformat()
 
             message="Result approved and winner advanced."
         await bot.db.tournaments.update_one(
