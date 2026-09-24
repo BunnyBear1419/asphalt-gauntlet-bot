@@ -1,7 +1,157 @@
-from discord.ext import commands
+import time
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+import discord
+from discord.ext import commands, tasks
 from discord import app_commands
+
 from ..core.core import *
 
+
+async def announce_season_start(guild_id, season_number, reason="scheduled"):
+    """Announce a season start without blocking the lifecycle transition."""
+    try:
+        if reason == "rollover":
+            body = f"Season {int(season_number)} has automatically opened after the previous season ended."
+        elif reason == "early":
+            body = f"Season {int(season_number)} has been opened early by staff."
+        else:
+            body = f"Season {int(season_number)} has opened at its scheduled start time."
+        await dispatch_automated_announcement(
+            str(guild_id),
+            f"🏁 GAUNTLET SEASON {int(season_number)} IS LIVE",
+            body + " Drivers may register and begin the new-season Gauntlet.",
+            color=ASPHALT_VICTORY_COLOR,
+        )
+    except Exception:
+        pass
+
+
+async def trigger_global_season_end(guild_id, forced_interaction=None, start_next_season=False):
+    """Archive a completed season and optionally open the next one."""
+    guild_id = str(guild_id)
+    state_id = f"guild_{guild_id}"
+    state = await bot.db.season_state.find_one({"_id": state_id}) or {}
+    current_season = int(state.get("season_number", 1) or 1)
+    previous_start = float(state.get("starts_at", 0) or 0)
+    previous_end = float(state.get("ends_at", 0) or 0)
+    now = time.time()
+
+    drivers = await bot.db.drivers.find({
+        "guild_id": guild_id,
+        "season_registered": True,
+        "season_number": current_season,
+    }).to_list(length=5000)
+    drivers.sort(key=lambda row: (
+        -int(row.get("elo", 1000) or 1000),
+        str(row.get("game_id") or row.get("username") or row.get("user_id") or "").casefold(),
+    ))
+
+    standings = []
+    for rank, driver in enumerate(drivers, 1):
+        pi = int(driver.get("garage_pi", 0) or 0)
+        try:
+            division = get_division_for_pi(pi).get("name", "Unranked")
+        except Exception:
+            division = "Unranked"
+        standings.append({
+            "rank": rank,
+            "user_id": str(driver.get("user_id") or ""),
+            "name": str(driver.get("game_id") or driver.get("username") or driver.get("user_id") or ""),
+            "elo": int(driver.get("elo", 1000) or 1000),
+            "garage_pi": pi,
+            "division": division,
+            "career_wins": int(driver.get("career_wins", 0) or 0),
+            "career_played": int(driver.get("career_played", 0) or 0),
+        })
+
+    await bot.db.season_history.replace_one(
+        {"_id": f"{guild_id}_{current_season}"},
+        {
+            "_id": f"{guild_id}_{current_season}",
+            "guild_id": guild_id,
+            "season_number": current_season,
+            "player_count": len(standings),
+            "standings": standings,
+            "closed_at": now,
+            "scheduled_start": previous_start,
+            "scheduled_end": previous_end,
+        },
+        upsert=True,
+    )
+
+    await bot.db.active_challenges.delete_many({"guild_id": guild_id})
+    await bot.db.pending.delete_many({"guild_id": guild_id, "season_number": current_season})
+
+    next_season = current_season + 1
+    if bool(start_next_season):
+        season_duration = previous_end - previous_start
+        if season_duration <= 0:
+            season_duration = 30 * 24 * 60 * 60
+        next_end = now + season_duration
+        await bot.db.drivers.update_many(
+            {"guild_id": guild_id, "season_number": current_season},
+            {"$set": {
+                "season_registered": False,
+                "season_number": next_season,
+                "defense_locked": False,
+            }},
+        )
+        await bot.db.season_state.update_one(
+            {"_id": state_id},
+            {"$set": {
+                "guild_id": guild_id,
+                "season_number": next_season,
+                "starts_at": now,
+                "ends_at": next_end,
+                "season_active": True,
+                "awaiting_staff_start": False,
+                "started_at": now,
+            }, "$unset": {
+                "rollover_lock_at": "",
+                "rollover_phase": "",
+                "rollover_season": "",
+            }},
+            upsert=True,
+        )
+        await announce_season_start(guild_id, next_season, reason="rollover")
+    else:
+        await bot.db.drivers.update_many(
+            {"guild_id": guild_id, "season_number": current_season},
+            {"$set": {
+                "season_registered": False,
+                "season_number": next_season,
+                "defense_locked": False,
+            }},
+        )
+        await bot.db.season_state.update_one(
+            {"_id": state_id},
+            {"$set": {
+                "guild_id": guild_id,
+                "season_number": next_season,
+                "starts_at": 0,
+                "ends_at": 0,
+                "season_active": False,
+                "awaiting_staff_start": True,
+            }, "$unset": {
+                "started_at": "",
+                "rollover_lock_at": "",
+                "rollover_phase": "",
+                "rollover_season": "",
+            }},
+            upsert=True,
+        )
+
+    await dispatch_audit_log(
+        guild_id,
+        "🏁 Season Closed",
+        f"Season {current_season} archived with {len(standings)} drivers. "
+        + (f"Season {next_season} started automatically." if bool(start_next_season)
+           else f"Season {next_season} is waiting for staff scheduling."),
+        color=ASPHALT_VICTORY_COLOR,
+    )
+    return {"season": current_season, "next_season": next_season, "rolled_over": bool(start_next_season)}
 class SeasonCog(commands.Cog):
     season_group = app_commands.Group(name="season", description="Manage league seasons.")
 
