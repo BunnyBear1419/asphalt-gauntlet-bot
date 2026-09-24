@@ -27,6 +27,13 @@ async function load(){
     text("profile-discord-online","—");
     text("profile-discord-total","—");
   }
+  const setStatus=(id,value,mode="active")=>{
+    const box=$(id);if(!box)return;
+    const dot=box.querySelector(".profile-status-dot"), strong=box.querySelector("strong b");
+    if(strong)strong.textContent=value;
+    if(dot)dot.className="profile-status-dot "+(mode==="active"?"active":mode==="info"?"info":"");
+  };
+  setStatus("#status-discord","Connected","active");
   const d=await api("/api/player/me?guild_id="+encodeURIComponent(guild.id));
   const p=d.player||{}, prefs=d.preferences||{};
   text("game-name",p.game_name||prefs.game_name||"Not set");
@@ -48,12 +55,18 @@ async function load(){
   text("registration-status",p.season_registered?"Gauntlet registration: ACTIVE":"Gauntlet registration: NOT REGISTERED");
   const asphalt=p.asphalt_verified===true?"Verified":(p.asphalt_verified===false?"Pending verification":"Not linked");
   text("asphalt-status","Asphalt account status: "+asphalt);
+  setStatus("#status-asphalt",p.asphalt_verified===true?"Verified":(p.asphalt_verified===false?"Pending":"Not linked"),p.asphalt_verified===true?"active":p.asphalt_verified===false?"info":"");
+  setStatus("#status-gauntlet",p.season_registered?"Active":"Not registered",p.season_registered?"active":"");
   const tourney=await api("/api/profile/tournaments").catch(()=>({stats:{},upcoming:[],history:[]}));
   const ts=tourney.stats||{};
   text("tourney-entered",ts.entered??0); text("tourney-completed",ts.completed??0); text("tourney-played",ts.matches_played??0);
   text("tourney-wins",ts.wins??0); text("tourney-losses",ts.losses??0); text("tourney-rate",(ts.win_rate??0)+"%");
   const currentBox=$("#tourney-current"), active=(tourney.upcoming||[]).filter(t=>["live","registration_open","open"].includes(t.status));
   if(currentBox){currentBox.textContent=active.length?active.slice(0,3).map(t=>t.name+" • "+(t.status==="live"?"Live":"Registered/Open")+(t.team_size>1?" • "+t.team_size+"v"+t.team_size:"")).join("\n"):"No active tournament registrations.";currentBox.style.whiteSpace="pre-line";}
+  const tournamentStatus=active[0]?((active[0].status==="live"?"Live • ":"Registered • ")+active[0].name):"None";
+  setStatus("#status-tournament",tournamentStatus,active[0]?(active[0].status==="live"?"active":"info"):"");
+  const clubName=p.club_name||p.club?.name||prefs.club_name||"No club";
+  setStatus("#status-club",clubName,clubName==="No club"?"":"active");
   const historyBox=$("#tourney-history");
   if(historyBox){historyBox.innerHTML="";const history=tourney.history||[];if(!history.length){const e=document.createElement("div");e.className="profile-status";e.textContent="No completed tournament history yet.";historyBox.append(e);}else history.forEach(t=>{const row=document.createElement("div");row.className="profile-field";row.style.marginBottom="10px";row.innerHTML="<strong>"+esc(t.name)+"</strong><span style=\"display:block;margin-top:6px;color:#7188a7;font-size:11px\">"+esc(t.format_label)+(t.team_size>1?" • "+t.team_size+"v"+t.team_size:"")+" • "+esc(t.finish)+" • "+Number(t.wins||0)+"W-"+Number(t.losses||0)+"L • "+Number(t.matches_played||0)+" matches</span>";historyBox.append(row);});}
   const links=Array.isArray(p.links)?p.links:(Array.isArray(prefs.links)?prefs.links:[]);
