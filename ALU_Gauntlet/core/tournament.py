@@ -64,8 +64,12 @@ def _double_elimination(max_players: int) -> dict[str, Any]:
     losers_rounds = max(1, (winner_rounds - 1) * 2)
     losers = []
     for round_number in range(1, losers_rounds + 1):
-        match_count = max(1, size // (2 ** ((round_number + 1) // 2)))
-        next_count = max(1, size // (2 ** ((round_number + 2) // 2))) if round_number < losers_rounds else 1
+        # Losers bracket alternates a "minor" round and a "major" round.
+        # Its match counts are size/4, size/4, size/8, size/8, ...
+        # so winners from the preceding minor round can be paired with the
+        # next Winners-bracket drop without creating duplicate destinations.
+        match_count = max(1, size // (2 ** ((round_number + 3) // 2)))
+        next_count = max(1, size // (2 ** ((round_number + 4) // 2))) if round_number < losers_rounds else 1
         matches = []
         for index in range(match_count):
             target = None
@@ -86,7 +90,11 @@ def _double_elimination(max_players: int) -> dict[str, Any]:
             elif r_idx == 0:
                 match["loser_to"] = f"LB-R1-M{index // 2}"
             else:
-                match["loser_to"] = f"LB-R{2 * r_idx}-M{index}"
+                # Winners round 2 drops into Losers round 3, round 3 into
+                # round 5, etc. The Winners Final is the special case that
+                # drops into the final Losers round before the Grand Final.
+                loser_round = (2 * r_idx + 1) if r_idx < winner_rounds - 2 else losers_rounds
+                match["loser_to"] = f"LB-R{loser_round}-M{index // 2 if loser_round < losers_rounds else 0}"
 
     return {"type": "double_elimination", "winners": winners, "losers": losers, "grand_final": {"id": "GF-M1", "bracket": "grand_final", "round": 1, "player_slots": [None, None], "status": "waiting"}, "grand_final_reset": {"id": "GF-M2", "bracket": "grand_final", "round": 2, "player_slots": [None, None], "status": "waiting", "if_necessary": True}}
 def _round_robin(max_players: int) -> list[dict[str, Any]]:
