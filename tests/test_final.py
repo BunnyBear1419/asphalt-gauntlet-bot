@@ -54,3 +54,33 @@ def test_tournament_advancement_guards_are_present():
     )
     failed = [item for item in required if item not in source]
     assert not failed, failed
+
+
+def test_double_elimination_losers_bracket_structure():
+    from ALU_Gauntlet.core.tournament import generate_tournament_bracket
+
+    expected_counts = {
+        4: [1, 1],
+        8: [2, 2, 1, 1],
+        16: [4, 4, 2, 2, 1, 1],
+        32: [8, 8, 4, 4, 2, 2, 1, 1],
+    }
+    for entrant_count, counts in expected_counts.items():
+        bracket = generate_tournament_bracket("double_elimination", entrant_count)
+        actual = [len(group["matches"]) for group in bracket["losers"]]
+        assert actual == counts
+        assert bracket["winners"][-1]["matches"][0]["winner_to"] == "GF-M1"
+        assert bracket["winners"][-1]["matches"][0]["loser_to"] == f"LB-R{len(counts)}-M0"
+        if len(bracket["winners"]) > 2:
+            assert bracket["winners"][1]["matches"][0]["loser_to"] == "LB-R3-M0"
+
+def test_tournament_result_paths_cover_all_bracket_sections():
+    discord_source = (ROOT / "ALU_Gauntlet" / "cogs" / "tournament.py").read_text(encoding="utf-8")
+    web_source = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    js_source = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.js").read_text(encoding="utf-8")
+    for source in (discord_source, web_source, js_source):
+        for marker in ("grand_final", "grand_final_reset", "losers"):
+            assert marker in source
+    assert "tournament_admin_role_id" in web_source
+    assert "can_manage_results" in web_source
+    assert '"standings":t.get("standings")' in discord_source
