@@ -2496,3 +2496,46 @@ body:has(.rsl-global-discord-cta) main.calendar-page{
   .top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:8px!important}
   .rsl-global-discord-cta{width:calc(100% - 24px)!important;margin:20px 12px 14px!important}
 }
+
+
+
+/* RSL SHELL v9 — shared cards align to the same page gutter and sit below the fixed header. */
+:root{
+  --rsl-shell-page-gutter:44px!important;
+  --rsl-shell-discord-top-gap:92px!important;
+  --rsl-shell-discord-bottom-gap:14px!important;
+  --rsl-shell-help-top-gap:22px!important;
+  --rsl-shell-help-bottom-gap:30px!important;
+}
+body:has(.rsl-global-discord-cta) .rsl-global-discord-cta.rsl-global-discord-cta.rsl-global-discord-cta.rsl-global-discord-cta{
+  width:calc(100% - (var(--rsl-shell-page-gutter) * 2))!important;
+  max-width:none!important;
+  margin-top:var(--rsl-shell-discord-top-gap)!important;
+  margin-right:auto!important;
+  margin-bottom:var(--rsl-shell-discord-bottom-gap)!important;
+  margin-left:auto!important;
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  top:0!important;
+  transform:none!important;
+  float:none!important;
+  clear:both!important;
+  grid-column:auto!important;
+  align-self:auto!important;
+}
+body:has(.rsl-global-discord-cta) .rsl-global-help-card.rsl-global-help-card.rsl-global-help-card{
+  width:calc(100% - (var(--rsl-shell-page-gutter) * 2))!important;
+  max-width:none!important;
+  margin-top:var(--rsl-shell-help-top-gap)!important;
+  margin-right:auto!important;
+  margin-bottom:var(--rsl-shell-help-bottom-gap)!important;
+  margin-left:auto!important;
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  transform:none!important;
+  float:none!important;
+  clear:both!important;
+  box-sizing:border-box!important;
+}
