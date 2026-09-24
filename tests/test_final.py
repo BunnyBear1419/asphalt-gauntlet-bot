@@ -86,3 +86,18 @@ def test_tournament_result_paths_cover_all_bracket_sections():
     assert '"standings":t.get("standings")' in discord_source
     assert '/api/tournaments/start' in js_source
     assert 'id="start-tournament"' in js_source
+
+
+def test_global_web_shell_contract_is_consistent():
+    server = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    css = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.css").read_text(encoding="utf-8")
+    admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
+    assert '"discord":"https://discord.gg/fmFk8Ejf2H"' in server
+    assert '"cashapp":"https://cash.app/"' in server
+    assert 'self._merge_branding({})' in server
+    assert 'calendar_markup + companion_markup' in server
+    assert '/assets/icons/matches.png' in server
+    assert '/assets/icons/results.png' in server
+    assert '/assets/rsl-shield.svg' not in admin
+    assert '.top-nav>.rsl-profile-nav' in css
+    assert '.top-nav>.rsl-search-trigger' in css
