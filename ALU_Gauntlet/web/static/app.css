@@ -2125,3 +2125,28 @@ body{top:0!important}
 @media(max-width:760px){
   .rsl-footer .rsl-language-menu{min-width:135px!important}
 }
+
+/* GLOBAL RSL PAGE SHELL — centralized measurements for every current and future page. */
+:root{
+  --rsl-shell-header-height:80px;
+  --rsl-shell-page-gutter:28px;
+  --rsl-shell-discord-top-gap:32px;
+  --rsl-shell-discord-bottom-gap:18px;
+  --rsl-shell-help-top-gap:22px;
+  --rsl-shell-help-bottom-gap:30px;
+}
+.rsl-global-discord-cta{
+  width:calc(100% - (var(--rsl-shell-page-gutter) * 2))!important;
+  max-width:1240px!important;
+  margin:var(--rsl-shell-discord-top-gap) auto var(--rsl-shell-discord-bottom-gap)!important;
+  box-sizing:border-box!important;
+}
+.rsl-global-help-card{
+  width:calc(100% - (var(--rsl-shell-page-gutter) * 2))!important;
+  max-width:1240px!important;
+  margin:var(--rsl-shell-help-top-gap) auto var(--rsl-shell-help-bottom-gap)!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:700px){
+  .rsl-global-discord-cta,.rsl-global-help-card{width:calc(100% - 28px)!important}
+}
