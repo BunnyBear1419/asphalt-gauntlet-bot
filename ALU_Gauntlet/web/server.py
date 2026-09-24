@@ -503,23 +503,42 @@ window.rslGoogleTranslateInit=function(){
 '''
 
         # Normalize Calendar + Shohan's Companion on every page.
-        # Remove every legacy/generated copy first, then insert exactly one pair.
+        # Remove legacy/generated copies first, then insert exactly one Calendar + Companion pair.
+        companion_markup = r'''<details class="top-nav-dropdown companion-nav-dropdown">
+<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
+<div class="top-nav-dropdown-menu companion-nav-info-menu">
+  <a class="companion-info-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Asphalt United Companion by Shohan's Lab">
+    <span class="companion-info-link-icon">↗</span>
+    <span><strong>Click to View</strong><small>Open Asphalt United Companion by Shohan's Lab.</small></span>
+  </a>
+  <div class="companion-info-item"><span class="companion-info-icon">🚗</span><span><strong>Car Upgrade Calculator</strong><small>Plan your upgrades &amp; optimize your build.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">🔄</span><span><strong>Comparator</strong><small>Compare between cars.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">🎯</span><span><strong>Priority</strong><small>Manage your priorities.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">📅</span><span><strong>Season Calendar</strong><small>Stay on top of events, cups, &amp; seasons.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">🃏</span><span><strong>Hunt Game</strong><small>See how many times you have to play to get all those cards.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">🏁</span><span><strong>Simulation</strong><small>Simulate car win rates and matchups.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">🗺️</span><span><strong>Race Maps</strong><small>Full maps &amp; the track variants played on them.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">📊</span><span><strong>Rating Predictor</strong><small>Guess an opponent's configuration from their Gauntlet rating number.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">💰</span><span><strong>Cost Calculator</strong><small>Plan upgrades for your whole garage — credits, parts, &amp; garage value to a target star.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">🎟️</span><span><strong>Event Calculator</strong><small>Plan limited-time Spotlight events — stage-by-stage reward simulation.</small></span></div>
+  <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
+</div></details>'''
+
         companion_cleanup = re.compile(
-            r'<details\\b[^>]*class=["\\\'][^"\\\']*\\bcompanion-nav-dropdown\\b[^"\\\']*["\\\'][^>]*>.*?</details>'
-            r'|<a\\b[^>]*class=["\\\'][^"\\\']*\\bcompanion-nav-link\\b[^"\\\']*["\\\'][^>]*>.*?</a>',
-            re.S | re.I
+            r'<details\b[^>]*class=["\'][^"\']*\bcompanion-nav-dropdown\b[^"\']*["\'][^>]*>.*?</details>'
+            r'|<a\b[^>]*class=["\'][^"\']*\bcompanion-nav-link\b[^"\']*["\'][^>]*>.*?</a>',
+            re.S | re.I,
         )
         body = companion_cleanup.sub("", body)
         body = re.sub(
-            r'<a\\b[^>]*href=["\\\']/calendar["\\\'][^>]*>.*?</a>',
+            r'<a\b[^>]*href=["\']/calendar["\'][^>]*>.*?</a>',
             "",
             body,
-            flags=re.S | re.I
+            flags=re.S | re.I,
         )
         if "</nav>" in body:
-            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav9" alt=""><span>Calendar</span></a>'
+            calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav10" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
-
 
         if "</header>" in body and 'id="rsl-search-trigger"' not in body:
             body = body.replace("</header>", search_markup + "</header>", 1)
