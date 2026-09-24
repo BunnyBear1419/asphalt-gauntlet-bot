@@ -111,6 +111,25 @@ class WebControlCenter:
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
 
+        # Render public Discord community counts into the Help Center on first paint.
+        # This mirrors the reliable server-side stats used by My Profile and avoids
+        # leaving the Help Center Discord banner blank while client-side code loads.
+        if filename == "help.html":
+            guilds = list(getattr(self.bot, "guilds", []) or [])
+            guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
+            online = 0
+            total = 0
+            if guild is not None:
+                members = list(getattr(guild, "members", []) or [])
+                for member in members:
+                    if getattr(member, "bot", False):
+                        continue
+                    if str(getattr(member, "status", None)) not in {"offline", "invisible"}:
+                        online += 1
+                total = int(getattr(guild, "member_count", 0) or len(members))
+            body = body.replace('id="help-discord-online">—', f'id="help-discord-online">{online:,}', 1)
+            body = body.replace('id="help-discord-total">—', f'id="help-discord-total">{total:,}', 1)
+
         # Google Analytics 4 is consent-gated. Do not load the Analytics tag until
         # the visitor explicitly enables analytics cookies through the RSL banner.
         # This keeps analytics optional while preserving the existing GA property.
