@@ -42,6 +42,20 @@
 .profile-help-card{display:block;width:100%;box-sizing:border-box;margin-top:18px;min-height:170px;padding:30px;border:1px solid #168cff;background:linear-gradient(145deg,#071a35,#020916);text-align:center;position:relative;overflow:hidden;box-shadow:0 14px 40px #0008;text-decoration:none;color:inherit;transition:transform .2s ease,box-shadow .2s ease}.profile-help-card:hover{transform:translateY(-2px);box-shadow:0 0 28px #168cff25,0 14px 40px #0008}.profile-help-content{display:flex;align-items:center;justify-content:center;gap:28px;text-align:left;max-width:1000px;margin:0 auto}.profile-help-icon{width:108px;height:108px;min-width:108px;display:flex;align-items:center;justify-content:center;border:1px solid #168cff;background:linear-gradient(145deg,#061b35,#020a16);box-shadow:0 0 28px #168cff28;border-radius:50%;position:relative}.profile-help-icon:before{content:"";position:absolute;inset:-6px;border:1px solid #16cfff35;border-radius:50%}.profile-help-icon svg{width:70px;height:70px;fill:none;stroke:#27cfff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 8px #168cff)}.profile-help-copy{flex:1;min-width:0;text-align:center}.profile-help-copy .profile-help-eyebrow{display:block;color:#25dfff;font-size:10px;font-weight:900;letter-spacing:.09em}.profile-help-copy h2{margin:8px 0;color:#fff}.profile-help-copy p{margin:0 auto;color:#aebdd2;line-height:1.7;font-size:14px;max-width:900px}.profile-help-arrow{display:inline-block;margin-top:14px;color:#25dfff;font-weight:800;letter-spacing:.08em}
 @media(max-width:760px){.profile-discord-cta{flex-wrap:wrap;gap:14px;padding:16px}.profile-discord-stats{width:100%;padding:12px 0;border-left:0;border-right:0;justify-content:center;flex-wrap:wrap}.profile-discord-button{margin-left:72px}.profile-help-content{gap:18px}.profile-help-icon{width:86px;height:86px;min-width:86px}.profile-help-icon svg{width:56px;height:56px}}
 
+
+.profile-status-panel{margin-top:18px;border:1px solid #174a79;background:#061226;padding:20px}
+.profile-status-panel h2{margin:0 0 14px;color:#fff}
+.profile-status-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.profile-status-item{border:1px solid #123c63;background:#07172b;padding:13px;text-decoration:none;color:inherit;min-width:0}
+.profile-status-item:hover{border-color:#25dfff;background:#0a1d35}
+.profile-status-item span{display:block;color:#7188a7;font-size:9px;letter-spacing:.09em;font-weight:800;margin-bottom:7px}
+.profile-status-item strong{display:flex;align-items:center;gap:7px;color:#f5f7ff;font-size:13px;overflow-wrap:anywhere}
+.profile-status-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#6d7b8d;box-shadow:0 0 8px #6d7b8d55}
+.profile-status-dot.active{background:#27e57a;box-shadow:0 0 10px #27e57a88}
+.profile-status-dot.info{background:#25dfff;box-shadow:0 0 10px #25dfff66}
+@media(max-width:1000px){.profile-status-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.profile-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.profile-status-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body class="alu-dashboard">
@@ -60,6 +74,16 @@
 <span class="profile-discord-button">JOIN DISCORD →</span>
 </a>
 <section class="profile-hero"><div class="profile-avatar-large">🏎️</div><div><span class="eyebrow">RACING SYNDICATE LEAGUE • DRIVER PROFILE</span><h1 id="profile-name">Driver</h1><p id="profile-discord">Discord account</p></div><div class="profile-hero-actions"><a class="profile-button primary" href="/player#profile-settings">✎ Edit Profile</a><a class="profile-button" href="/player">My Garage →</a></div></section>
+<section class="profile-status-panel" aria-label="Current RSL status">
+<h2>Current Status</h2>
+<div class="profile-status-grid">
+<a class="profile-status-item" id="status-discord" href="https://discord.gg/fmFk8Ejf2H" target="_blank" rel="noopener noreferrer"><span>DISCORD</span><strong><i class="profile-status-dot active"></i><b>Connected</b></strong></a>
+<a class="profile-status-item" id="status-asphalt" href="/player#profile-settings"><span>ASPHALT ACCOUNT</span><strong><i class="profile-status-dot"></i><b>Not linked</b></strong></a>
+<a class="profile-status-item" id="status-gauntlet" href="/gauntlet/registration"><span>GAUNTLET</span><strong><i class="profile-status-dot"></i><b>Not registered</b></strong></a>
+<a class="profile-status-item" id="status-tournament" href="/tournaments"><span>TOURNAMENT</span><strong><i class="profile-status-dot"></i><b>None</b></strong></a>
+<a class="profile-status-item" id="status-club" href="/clubs"><span>CLUB</span><strong><i class="profile-status-dot"></i><b>No club</b></strong></a>
+</div>
+</section>
 <div id="profile-loading" class="profile-card-rsl profile-loading">Loading your profile…</div>
 <section id="profile-content" class="profile-grid" hidden>
 <div>
