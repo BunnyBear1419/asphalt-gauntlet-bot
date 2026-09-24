@@ -6,16 +6,16 @@
 <title>My Profile • Racing Syndicate League</title>
 <link rel="stylesheet" href="/static/app.css?v=20260924-profile1">
 <style>
-.profile-main{width:100%;max-width:1180px;margin:0 auto;padding:22px;box-sizing:border-box}
+.profile-main{width:100%;max-width:none;margin:0;padding:22px clamp(16px,3vw,42px);box-sizing:border-box}
 .profile-hero{position:relative;overflow:hidden;border:1px solid #174a79;background:linear-gradient(145deg,#071a35,#030914);padding:30px;display:flex;align-items:center;gap:22px;box-shadow:0 0 35px #168cff12}
-.profile-avatar-large{width:104px;height:104px;flex:0 0 104px;border:2px solid #25dfff;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#061226;font-size:48px;box-shadow:0 0 24px #25dfff22}
+.profile-avatar-large{width:104px;height:104px;flex:0 0 104px;border:2px solid #25dfff;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#061226;font-size:48px;box-shadow:0 0 24px #25dfff22;overflow:hidden}.profile-avatar-large img{width:100%;height:100%;object-fit:cover;display:block}
 .profile-hero h1{margin:0;color:#fff;font-size:clamp(30px,5vw,52px);font-style:italic}
 .profile-hero .eyebrow{color:#25dfff;font-size:12px;font-weight:800;letter-spacing:.12em}
 .profile-hero p{margin:7px 0 0;color:#9fb2ca}
 .profile-hero-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
 .profile-button{display:inline-flex;align-items:center;justify-content:center;border:1px solid #168cff;background:#081a31;color:#f5f7ff;padding:11px 16px;text-decoration:none;font-weight:700}
 .profile-button.primary{background:#0877e7;border-color:#25dfff}
-.profile-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);gap:18px;margin-top:18px}
+.profile-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;margin-top:18px}
 .profile-card-rsl{border:1px solid #174a79;background:#061226;padding:22px}
 .profile-card-rsl h2{margin:0 0 16px;color:#fff}
 .profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -31,7 +31,7 @@
 .profile-links a{border:1px solid #174a79;background:#07172b;color:#25dfff;padding:9px 12px;text-decoration:none}
 .profile-status{margin-top:14px;padding:12px;border-left:3px solid #25dfff;background:#071a2c;color:#aebdd2}
 .profile-loading{color:#91a5c3;padding:30px;text-align:center}
-@media(max-width:800px){.profile-grid{grid-template-columns:1fr}.profile-hero{align-items:flex-start;flex-wrap:wrap}.profile-hero-actions{margin-left:0;width:100%}}
+@media(max-width:800px){.profile-hero{align-items:flex-start;flex-wrap:wrap}.profile-hero-actions{margin-left:0;width:100%}}
 @media(max-width:560px){.profile-main{padding:12px}.profile-fields{grid-template-columns:1fr}.profile-avatar-large{width:78px;height:78px;flex-basis:78px;font-size:36px}.profile-hero{padding:20px}}
 </style>
 </head>
@@ -55,14 +55,14 @@
 </div><div class="profile-about" id="about">No About Me information added yet.</div><div class="profile-status" id="asphalt-status">Asphalt account status: —</div></article>
 <article class="profile-card-rsl" style="margin-top:18px"><h2>Links</h2><div class="profile-links" id="links"><span class="profile-status">No links added.</span></div></article>
 </div>
-<aside>
+<div>
 <article class="profile-card-rsl"><h2>Career Snapshot</h2><div class="profile-stat-grid">
 <div class="profile-stat"><span>ELO</span><strong id="elo">—</strong></div><div class="profile-stat"><span>RANK</span><strong id="rank">—</strong></div>
 <div class="profile-stat"><span>WINS</span><strong id="wins">—</strong></div><div class="profile-stat"><span>PLAYED</span><strong id="played">—</strong></div>
 <div class="profile-stat"><span>STREAK</span><strong id="streak">—</strong></div><div class="profile-stat"><span>SEASON</span><strong id="season">—</strong></div>
 </div><div class="profile-status" id="registration-status">Gauntlet registration: —</div></article>
 <article class="profile-card-rsl" style="margin-top:18px"><h2>Profile Privacy</h2><p style="color:#9fb2ca;line-height:1.6;margin:0">Your Discord identity and public driver profile are tied to your signed-in account. Profile editing remains inside My Garage.</p></article>
-</aside>
+</div>
 </section>
 </main>
 <footer>RACING SYNDICATE LEAGUE • Web ↔ MongoDB ↔ Discord</footer>
