@@ -2114,9 +2114,9 @@ body{top:0!important}
 }
 .rsl-footer .rsl-language-menu{
   position:absolute!important;
-  top:calc(100% + 6px)!important;
+  top:auto!important;
   right:0!important;
-  bottom:auto!important;
+  bottom:calc(100% + 6px)!important;
   left:auto!important;
   transform:none!important;
   z-index:1201!important;
