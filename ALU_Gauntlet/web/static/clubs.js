@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s);
-async function loadPageDiscordStats(){try{const d=await api("/api/discord-stats");const o=$("#page-discord-online"),t=$("#page-discord-total");if(o)o.textContent=Number(d.online_members||0).toLocaleString();if(t)t.textContent=Number(d.server_members||0).toLocaleString()}catch(_){}}
+
 async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origin",...opts});if(!r.ok)throw new Error(await r.text()||"Request failed");return r.json()}
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m,bad=false){let x=$("#toast");if(!x){x=document.createElement("div");x.id="toast";document.body.appendChild(x)}x.textContent=m;x.dataset.bad=bad?"1":"0";setTimeout(()=>x.remove(),3000)}
