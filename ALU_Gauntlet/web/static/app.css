@@ -1582,6 +1582,62 @@ body{top:0!important}
 }
 
 
+/* Canonical RSL Discord card — shared by Home and every page. */
+.discord-cta{
+  display:flex;
+  align-items:center;
+  gap:24px;
+  width:100%;
+  box-sizing:border-box;
+  margin:16px 0 18px;
+  padding:14px 28px;
+  border:1px solid #5865f2;
+  border-radius:12px;
+  background:linear-gradient(100deg,#101a3b,#0a1a2d 55%,#07152a);
+  color:#fff;
+  text-decoration:none;
+  box-shadow:0 8px 28px #0006;
+  transition:.18s ease;
+}
+.discord-cta:hover{border-color:#7d87ff;box-shadow:0 10px 34px #5865f230;transform:translateY(-1px)}
+.discord-cta-icon{width:58px;height:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:transparent}
+.discord-cta-icon svg{width:52px;height:52px;fill:#7d87ff;filter:drop-shadow(0 0 8px #5865f255)}
+.discord-cta-copy{flex:1;min-width:230px}
+.discord-cta-kicker{display:block;color:#fff;font-size:21px;font-weight:800;letter-spacing:.02em;margin:0 0 3px;text-transform:uppercase}
+.discord-cta h2{margin:0 0 2px;font-size:0}
+.discord-cta p{margin:0;color:#aebdd2;font-size:12px;line-height:1.4}
+.discord-cta-stats{display:flex;align-items:center;gap:28px;padding:0 28px;border-left:1px solid #27466b;border-right:1px solid #27466b}
+.discord-stat{display:flex;align-items:center;gap:10px;min-width:135px}
+.discord-stat-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:1px solid #27466b;border-radius:8px;background:#071a2d}
+.discord-stat-icon svg{width:25px;height:25px;fill:none;stroke:#28d7ff;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.discord-stat-online .discord-stat-icon svg{stroke:#28d7ff}
+.discord-online-dot{width:18px;height:18px;border-radius:50%;background:#00e65b;box-shadow:0 0 14px #00e65b88}
+.discord-stat-label{display:block;color:#e9f2ff;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.discord-stat-value{display:block;color:#fff;font-size:24px;font-weight:800;line-height:1.05;margin-top:2px}
+.discord-cta-button{flex:0 0 auto;padding:13px 22px;border:1px solid #28d7ff;border-radius:7px;background:#087cff;color:#fff;font-weight:800;font-size:12px;letter-spacing:.06em;box-shadow:0 0 18px #087cff33}
+@media(max-width:900px){
+  .discord-cta{gap:16px;padding:14px 18px}
+  .discord-cta-stats{gap:14px;padding:0 14px}
+  .discord-stat{min-width:115px}
+  .discord-cta-kicker{font-size:17px}
+}
+@media(max-width:700px){
+  .discord-cta{flex-wrap:wrap}
+  .discord-cta-icon{width:46px;height:46px;flex-basis:46px}
+  .discord-cta-icon svg{width:42px;height:42px}
+  .discord-cta-copy{min-width:calc(100% - 70px)}
+  .discord-cta-stats{width:100%;justify-content:center;border-left:0;border-right:0;border-top:1px solid #27466b;padding:12px 0 0}
+  .discord-cta-button{margin-left:auto}
+}
+@media(max-width:430px){
+  .discord-cta{padding:14px}
+  .discord-cta-stats{gap:8px}
+  .discord-stat{min-width:0}
+  .discord-stat-value{font-size:20px}
+  .discord-stat-label{font-size:8px}
+  .discord-cta-button{width:100%;text-align:center}
+}
+
 /* Shared Home-style Discord and Help cards on every page. */
 .rsl-global-discord-cta.rsl-global-discord-cta{
   display:flex!important;
