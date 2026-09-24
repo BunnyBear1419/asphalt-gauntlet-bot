@@ -19,6 +19,14 @@ async function load(){
   const guild=(guilds.find(g=>String(g.id)===decodeURIComponent(cookie||""))||guilds[0]);
   if(!guild)throw new Error("No Discord server is available for this account.");
   document.cookie="rsl_guild_id="+encodeURIComponent(guild.id)+";path=/;max-age=2592000;SameSite=Lax";
+  const discordStats=await api("/api/discord-stats").catch(()=>({available:false}));
+  if(discordStats.available){
+    text("profile-discord-online",Number(discordStats.online_members||0).toLocaleString());
+    text("profile-discord-total",Number(discordStats.server_members||0).toLocaleString());
+  }else{
+    text("profile-discord-online","—");
+    text("profile-discord-total","—");
+  }
   const d=await api("/api/player/me?guild_id="+encodeURIComponent(guild.id));
   const p=d.player||{}, prefs=d.preferences||{};
   text("game-name",p.game_name||prefs.game_name||"Not set");
