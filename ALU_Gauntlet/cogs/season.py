@@ -95,7 +95,8 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             {"$set": {
                 "season_registered": False,
                 "season_number": next_season,
-                "defense_locked": False,
+            }, "$unset": {
+                "defense_locked": "",
             }},
         )
         await bot.db.season_state.update_one(
@@ -122,7 +123,8 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             {"$set": {
                 "season_registered": False,
                 "season_number": next_season,
-                "defense_locked": False,
+            }, "$unset": {
+                "defense_locked": "",
             }},
         )
         await bot.db.season_state.update_one(
