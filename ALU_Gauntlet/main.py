@@ -37,8 +37,15 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_tournament_action_lock",
     )
+    # Notification delivery identity is event + user + lead-time reminder.
+    # The previous index used a missing "phase" field, which made the event-time
+    # reminder collide with the scheduled lead reminder for the same user/event.
+    try:
+        await db.notification_deliveries.drop_index("uniq_notification_delivery")
+    except Exception:
+        pass
     await db.notification_deliveries.create_index(
-        [("event_id", 1), ("user_id", 1), ("phase", 1)],
+        [("event_id", 1), ("user_id", 1), ("lead_days", 1)],
         unique=True,
         name="uniq_notification_delivery",
     )
