@@ -114,7 +114,7 @@ class WebControlCenter:
         # Render public Discord community counts server-side on first paint.
         # Help and Home both use the same community statistics so neither page
         # depends on a client-side request just to show the member counts.
-        if filename in {"help.html", "index.html", "clubs.html", "club.html"}:
+        if filename in {"help.html", "index.html", "clubs.html", "club.html", "tournaments.html"}:
             guilds = list(getattr(self.bot, "guilds", []) or [])
             guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
             online = 0
