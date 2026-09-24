@@ -8,25 +8,34 @@ async function load(){
   const me=await api("/api/me");
   const discordName=me.global_name||me.username||"Driver";
   text("profile-name",discordName);
-  const avatarBox=$(".profile-avatar-large");
+  const avatarBox=$("#profile-avatar-large");
   if(avatarBox){
-    const avatarUrl=me.id&&me.avatar?"https://cdn.discordapp.com/avatars/"+encodeURIComponent(me.id)+"/"+encodeURIComponent(me.avatar)+".png?size=256":(me.id?"https://cdn.discordapp.com/embed/avatars/"+(Number(BigInt(me.id)%7n))+".png":"");
-    if(avatarUrl){const img=document.createElement("img");img.src=avatarUrl;img.alt=discordName+" Discord avatar";avatarBox.textContent="";avatarBox.appendChild(img);}
+    const avatarUrl=me.avatar&&me.id
+      ?"https://cdn.discordapp.com/avatars/"+encodeURIComponent(me.id)+"/"+encodeURIComponent(me.avatar)+".png?size=256"
+      :(me.id?"https://cdn.discordapp.com/embed/avatars/"+(Number(BigInt(me.id)%7n))+".png":"");
+    if(avatarUrl){
+      const img=document.createElement("img");
+      img.src=avatarUrl;
+      img.alt=discordName+" Discord avatar";
+      img.onerror=()=>{img.remove();avatarBox.textContent="🏎️";};
+      avatarBox.textContent="";
+      avatarBox.appendChild(img);
+    }
   }
   text("profile-discord",me.username?"@"+me.username:"Discord account");
+  const discordStats=await api("/api/discord-stats").catch(()=>({available:false}));
+  if(discordStats.available){
+    text("profile-discord-online",Number(discordStats.online_members??0).toLocaleString());
+    text("profile-discord-total",Number(discordStats.server_members??0).toLocaleString());
+  }else{
+    text("profile-discord-online","—");
+    text("profile-discord-total","—");
+  }
   const guilds=(await api("/api/guilds")).guilds||[];
   const cookie=(document.cookie.match(/(?:^|; )rsl_guild_id=([^;]+)/)||[])[1];
   const guild=(guilds.find(g=>String(g.id)===decodeURIComponent(cookie||""))||guilds[0]);
   if(!guild)throw new Error("No Discord server is available for this account.");
   document.cookie="rsl_guild_id="+encodeURIComponent(guild.id)+";path=/;max-age=2592000;SameSite=Lax";
-  const discordStats=await api("/api/discord-stats").catch(()=>({available:false}));
-  if(discordStats.available){
-    text("profile-discord-online",Number(discordStats.online_members||0).toLocaleString());
-    text("profile-discord-total",Number(discordStats.server_members||0).toLocaleString());
-  }else{
-    text("profile-discord-online","—");
-    text("profile-discord-total","—");
-  }
   const setStatus=(id,value,mode="active")=>{
     const box=$(id);if(!box)return;
     const dot=box.querySelector(".profile-status-dot"), strong=box.querySelector("strong b");
