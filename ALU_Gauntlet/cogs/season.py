@@ -48,8 +48,43 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
         str(row.get("game_id") or row.get("username") or row.get("user_id") or "").casefold(),
     ))
 
+    # Build a season-specific match snapshot before the driver records are
+    # advanced to the next season. Completed/reverted matches are filtered
+    # independently of the current driver registration state so the archive
+    # remains accurate even when a driver has already been unregistered.
+    match_query = {
+        "guild_id": guild_id,
+        "settlement_status": "completed",
+        "reverted": {"$ne": True},
+    }
+    if previous_start > 0:
+        match_query["timestamp"] = {
+            "$gte": previous_start,
+            "$lte": min(previous_end, now) if previous_end > 0 else now,
+        }
+    else:
+        match_query["season_number"] = current_season
+
+    season_matches = await bot.db.matches.find(match_query).to_list(length=10000)
+    season_played = {}
+    season_wins = {}
+    for match in season_matches:
+        challenger_id = str(match.get("challenger_id") or "")
+        opponent_id = str(match.get("opponent_id") or "")
+        winner_id = str(match.get("w_id") or match.get("winner_id") or "")
+        for user_id in (challenger_id, opponent_id):
+            if user_id:
+                season_played[user_id] = season_played.get(user_id, 0) + 1
+        if winner_id:
+            season_wins[winner_id] = season_wins.get(winner_id, 0) + 1
+
     standings = []
     for rank, driver in enumerate(drivers, 1):
+        user_id = str(driver.get("user_id") or "")
+        played = int(season_played.get(user_id, 0))
+        wins = int(season_wins.get(user_id, 0))
+        losses = max(0, played - wins)
+        win_rate = round((wins / played) * 100, 2) if played else 0.0
         pi = int(driver.get("garage_pi", 0) or 0)
         try:
             division = get_division_for_pi(pi).get("name", "Unranked")
@@ -57,11 +92,15 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             division = "Unranked"
         standings.append({
             "rank": rank,
-            "user_id": str(driver.get("user_id") or ""),
-            "name": str(driver.get("game_id") or driver.get("username") or driver.get("user_id") or ""),
+            "user_id": user_id,
+            "name": str(driver.get("game_id") or driver.get("username") or user_id or ""),
             "elo": int(driver.get("elo", 1000) or 1000),
             "garage_pi": pi,
             "division": division,
+            "season_played": played,
+            "season_wins": wins,
+            "season_losses": losses,
+            "season_win_rate": win_rate,
             "career_wins": int(driver.get("career_wins", 0) or 0),
             "career_played": int(driver.get("career_played", 0) or 0),
         })
