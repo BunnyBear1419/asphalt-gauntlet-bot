@@ -2413,3 +2413,119 @@ body:has(.rsl-global-discord-cta) main.calendar-page{
   .top-nav>nav{display:none!important}
   .top-nav>.rsl-search-trigger{right:60px!important}
 }
+
+
+/* RSL CANONICAL SHELL v6 — one header layout, no legacy positioning */
+.rsl-canonical-header{
+  position:relative!important;
+  z-index:10000!important;
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  height:80px!important;
+  min-height:80px!important;
+  margin:0!important;
+  padding:0 18px!important;
+  box-sizing:border-box!important;
+  gap:0!important;
+  overflow:visible!important;
+}
+.rsl-canonical-logo{
+  position:relative!important;
+  inset:auto!important;
+  flex:0 0 52px!important;
+  width:52px!important;
+  height:52px!important;
+  margin:0 18px 0 0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.rsl-canonical-logo img{width:48px!important;height:48px!important;object-fit:contain!important;display:block!important}
+.rsl-canonical-nav{
+  position:relative!important;
+  inset:auto!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  height:100%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:4px!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:visible!important;
+}
+.rsl-canonical-nav>a,
+.rsl-canonical-nav>details{
+  flex:0 0 auto!important;
+  position:relative!important;
+  margin:0!important;
+}
+.rsl-canonical-nav>a{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  min-height:42px!important;
+  padding:0 10px!important;
+  white-space:nowrap!important;
+}
+.rsl-canonical-nav .top-nav-dropdown-trigger{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  min-height:42px!important;
+  padding:0 10px!important;
+  white-space:nowrap!important;
+}
+.rsl-canonical-nav .nav-icon-img{width:20px!important;height:20px!important;object-fit:contain!important;display:block!important}
+.rsl-canonical-nav .nav-chevron{margin-left:1px!important}
+.rsl-canonical-header .rsl-search-trigger{
+  position:relative!important;
+  inset:auto!important;
+  transform:none!important;
+  flex:0 0 42px!important;
+  width:42px!important;
+  height:42px!important;
+  margin:0 8px 0 10px!important;
+}
+.rsl-canonical-header .rsl-profile-nav,
+.rsl-canonical-header .rsl-login-button{
+  position:relative!important;
+  inset:auto!important;
+  flex:0 0 auto!important;
+  margin:0!important;
+}
+.rsl-canonical-header .rsl-profile-nav{display:block!important}
+.rsl-canonical-header .rsl-login-button{display:inline-flex!important;align-items:center!important;justify-content:center!important}
+.rsl-canonical-header .rsl-profile-menu{right:0!important;left:auto!important}
+.rsl-canonical-header .top-nav-dropdown-menu{z-index:10050!important}
+.rsl-global-discord-cta{
+  position:relative!important;
+  z-index:10!important;
+  display:flex!important;
+  width:calc(100% - 56px)!important;
+  max-width:1240px!important;
+  margin:10px auto 18px!important;
+  box-sizing:border-box!important;
+  transform:none!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+}
+@media(max-width:1100px){
+  .rsl-canonical-header{padding:0 12px!important}
+  .rsl-canonical-logo{margin-right:8px!important}
+  .rsl-canonical-nav>a,.rsl-canonical-nav .top-nav-dropdown-trigger{padding-left:7px!important;padding-right:7px!important}
+  .rsl-canonical-nav{gap:1px!important}
+}
+@media(max-width:850px){
+  .rsl-canonical-header{height:auto!important;min-height:72px!important;flex-wrap:wrap!important;padding:8px 10px!important}
+  .rsl-canonical-logo{flex-basis:44px!important;width:44px!important;height:44px!important}
+  .rsl-canonical-logo img{width:42px!important;height:42px!important}
+  .rsl-canonical-nav{order:3!important;flex-basis:100%!important;height:48px!important;overflow-x:auto!important;overflow-y:visible!important}
+  .rsl-canonical-header .rsl-search-trigger{margin-left:auto!important}
+  .rsl-global-discord-cta{width:calc(100% - 28px)!important}
+}
