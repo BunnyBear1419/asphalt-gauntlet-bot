@@ -2364,8 +2364,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             participant_ok = bool(reg)
         else:
             participant_ok = str(user.user_id) in slots
-        if not participant_ok and not user.staff:
-            raise web.HTTPForbidden(text="Only a participant in this match can submit its result.")
+        if not participant_ok:
+            match_guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(t.get("guild_id"))), None)
+            if match_guild is None or not await self._is_live_guild_staff(user, str(t.get("guild_id")), match_guild):
+                raise web.HTTPForbidden(text="Only a participant or staff member for this server can submit its result.")
         if match.get("result_status") == "pending":
             raise web.HTTPConflict(text="This match already has a result waiting for staff verification.")
         if match.get("status") != "ready":
@@ -2664,38 +2666,37 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPNotFound(text="The bot is not connected to this Discord server.")
         return user, guild_id, guild
 
-    async def require_admin(self, request: web.Request) -> tuple[Any, str, Any]:
-        user, guild_id, guild = await self.require_guild_member(request)
-
-        # Re-check permissions against the live Discord member instead of
-        # trusting a cached OAuth session for up to 30 days. This prevents a
-        # removed admin role/permission from retaining web staff access.
+    async def _is_live_guild_staff(self, user: Any, guild_id: str, guild: Any) -> bool:
+        """Check staff/admin access against the live Discord member for one guild."""
         if user.user_id in self.auth.allowed_staff_ids:
-            return user, guild_id, guild
-
-        member = guild.get_member(int(user.user_id))
+            return True
+        try:
+            member = guild.get_member(int(user.user_id))
+        except Exception:
+            member = None
         if member is None:
             try:
                 member = await guild.fetch_member(int(user.user_id))
             except Exception:
                 member = None
-
-        live_admin = bool(
-            member
-            and (
-                member.guild_permissions.administrator
-                or member.guild_permissions.manage_guild
-            )
+        if member is None:
+            return False
+        if member.guild_permissions.administrator or member.guild_permissions.manage_guild:
+            return True
+        settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        admin_role_id = str(settings.get("admin_role_id", "")).strip()
+        return bool(
+            admin_role_id
+            and any(str(role.id) == admin_role_id for role in getattr(member, "roles", []))
         )
-        if not live_admin and member is not None:
-            settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
-            admin_role_id = str(settings.get("admin_role_id", "")).strip()
-            live_admin = bool(
-                admin_role_id
-                and any(str(role.id) == admin_role_id for role in getattr(member, "roles", []))
-            )
 
-        if not live_admin:
+    async def require_admin(self, request: web.Request) -> tuple[Any, str, Any]:
+        user, guild_id, guild = await self.require_guild_member(request)
+
+        # Always re-check the live Discord member for the selected guild.
+        # Do not rely on the cached OAuth "staff" flag because it can represent
+        # administrator access in a different guild.
+        if not await self._is_live_guild_staff(user, guild_id, guild):
             raise web.HTTPForbidden(text="Administrator access is required for this server.")
         return user, guild_id, guild
 
