@@ -69,6 +69,25 @@ async function load(){
   setStatus("#status-club",clubName,clubName==="No club"?"":"active");
   const historyBox=$("#tourney-history");
   if(historyBox){historyBox.innerHTML="";const history=tourney.history||[];if(!history.length){const e=document.createElement("div");e.className="profile-status";e.textContent="No completed tournament history yet.";historyBox.append(e);}else history.forEach(t=>{const row=document.createElement("div");row.className="profile-field";row.style.marginBottom="10px";row.innerHTML="<strong>"+esc(t.name)+"</strong><span style=\"display:block;margin-top:6px;color:#7188a7;font-size:11px\">"+esc(t.format_label)+(t.team_size>1?" • "+t.team_size+"v"+t.team_size:"")+" • "+esc(t.finish)+" • "+Number(t.wins||0)+"W-"+Number(t.losses||0)+"L • "+Number(t.matches_played||0)+" matches</span>";historyBox.append(row);});}
+  const clubsData=await api("/api/clubs").catch(()=>({clubs:[]}));  const myClub=(clubsData.clubs||[]).find(c=>c.mine);
+  const clubCard=$("#profile-club-card");
+  if(myClub&&clubCard){
+    clubCard.hidden=false;
+    text("profile-club-name",myClub.name||"My Club");
+    const members=Number(myClub.member_count??(myClub.members||[]).length||0);
+    text("profile-club-members",members);
+    text("profile-club-record",myClub.tournament_record||"0-0");
+    text("profile-club-tournaments",myClub.tournament_count??0);
+    const mine=(myClub.members||[]).find(m=>String(m.user_id)===String(me.id||""));
+    const role=mine?.role||"member";
+    text("profile-club-role",role.toUpperCase());
+    text("profile-club-role-stat",role.charAt(0).toUpperCase()+role.slice(1));
+    const about=myClub.about||"";
+    text("profile-club-about",about||"No club About information has been added yet.");
+    if(myClub.image){const logo=$("#profile-club-logo");if(logo){const img=document.createElement("img");img.src=myClub.image;img.alt=myClub.name+" club logo";logo.textContent="";logo.append(img);}}
+    const view=$("#profile-club-view"); if(view&&myClub.id)view.href="/clubs#club-"+encodeURIComponent(myClub.id);
+    const manage=$("#profile-club-manage"); if(manage&&myClub.leader){manage.hidden=false;manage.href="/clubs#club-"+encodeURIComponent(myClub.id);}
+  }
   const links=Array.isArray(p.links)?p.links:(Array.isArray(prefs.links)?prefs.links:[]);
   const box=$("#links");box.textContent="";
   if(!links.length){const span=document.createElement("span");span.className="profile-status";span.textContent="No links added.";box.append(span)}
