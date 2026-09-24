@@ -101,3 +101,12 @@ def test_global_web_shell_contract_is_consistent():
     assert '/assets/rsl-shield.svg' not in admin
     assert '.top-nav>.rsl-profile-nav' in css
     assert '.top-nav>.rsl-search-trigger' in css
+
+
+def test_notification_delivery_index_matches_multi_phase_reminders():
+    source = (ROOT / "ALU_Gauntlet" / "main.py").read_text(encoding="utf-8")
+    assert '[("event_id", 1), ("user_id", 1), ("lead_days", 1)]' in source
+    assert 'drop_index("uniq_notification_delivery")' in source
+    notifications = (ROOT / "ALU_Gauntlet" / "cogs" / "notifications.py").read_text(encoding="utf-8")
+    assert 'lead_days:g' in notifications
+    assert 'event_id' in notifications and 'user_id' in notifications
