@@ -494,41 +494,27 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        # Add Calendar immediately before the Companion dropdown on every page.
-        # Keep the navigation order stable: Clubs → Help → Calendar → Companion.
-        # Replace the complete legacy Companion anchor; replacing only its opening
-        # tag would leave the old href/attributes visible as plain text.
-        companion_markup = r'''<details class="top-nav-dropdown companion-nav-dropdown">
-<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
-<div class="top-nav-dropdown-menu companion-nav-info-menu">
-  <a class="companion-info-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Asphalt United Companion by Shohan's Lab">
-    <span class="companion-info-link-icon">↗</span>
-    <span><strong>Click to View</strong><small>Open Asphalt United Companion by Shohan's Lab.</small></span>
-  </a>
-  <div class="companion-info-item"><span class="companion-info-icon">🚗</span><span><strong>Car Upgrade Calculator</strong><small>Plan your upgrades &amp; optimize your build.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🔄</span><span><strong>Comparator</strong><small>Compare between cars.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🎯</span><span><strong>Priority</strong><small>Manage your priorities.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📅</span><span><strong>Season Calendar</strong><small>Stay on top of events, cups, &amp; seasons.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🃏</span><span><strong>Hunt Game</strong><small>See how many times you have to play to get all those cards.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🏁</span><span><strong>Simulation</strong><small>Simulate car win rates and matchups.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🗺️</span><span><strong>Race Maps</strong><small>Full maps &amp; the track variants played on them.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📊</span><span><strong>Rating Predictor</strong><small>Guess an opponent's configuration from their Gauntlet rating number.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">💰</span><span><strong>Cost Calculator</strong><small>Plan upgrades for your whole garage — credits, parts, &amp; garage value to a target star.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🎟️</span><span><strong>Event Calculator</strong><small>Plan limited-time Spotlight events — stage-by-stage reward simulation.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
-</div></details>'''
-        legacy_companion = re.compile(r'<a class="companion-nav-link"[^>]*>.*?</a>', re.S)
-        has_companion_dropdown = 'companion-nav-dropdown' in body
-        if legacy_companion.search(body):
-            # Replace the legacy single-link Companion control exactly once.
+        # Normalize the Companion/Calendar portion of the shared nav.
+        # Older templates and previous shell passes can contain either a legacy
+        # Companion link or a generated Companion dropdown. Remove both forms
+        # first, then add exactly one Calendar + one Companion control.
+        nav_companion_cleanup = re.compile(
+            r'<details\\b[^>]*class=["\\\'][^"\\\']*\\bcompanion-nav-dropdown\\b[^"\\\']*["\\\'][^>]*>.*?</details>'
+            r'|<a\\b[^>]*class=["\\\'][^"\\\']*\\bcompanion-nav-link\\b[^"\\\']*["\\\'][^>]*>.*?</a>',
+            re.S | re.I
+        )
+        body = nav_companion_cleanup.sub("", body, count=0)
+        body = re.sub(
+            r'<a\\b[^>]*href=["\\\']/calendar["\\\'][^>]*>.*?</a>',
+            "",
+            body,
+            count=0,
+            flags=re.S | re.I
+        )
+        if "</nav>" in body:
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
-            replacement = (calendar_markup if '<a href="/calendar"' not in body else '') + ('' if has_companion_dropdown else companion_markup)
-            body = legacy_companion.sub(replacement, body, count=1)
-        elif "</nav>" in body and not has_companion_dropdown:
-            # Some dedicated pages have an older header containing only Clubs + Help.
-            # Add Calendar + Companion once, keeping Calendar immediately before Companion.
-            calendar_markup = '' if '<a href="/calendar"' in body else '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
+
 
         # Remove legacy page-specific account controls before adding the shared
         # RSL Search + Profile controls. Older pages still contain a static
@@ -699,7 +685,7 @@ window.rslGoogleTranslateInit=function(){
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell5">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell7">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
                 body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-shell5"></head>', 1)
 
