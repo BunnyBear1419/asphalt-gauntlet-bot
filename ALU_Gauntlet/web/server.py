@@ -1240,7 +1240,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/tournaments/clubs", self.tournament_clubs_page)
         self.app.router.add_get("/clubs", self.clubs_page)
         self.app.router.add_get("/club", self.club_page)
-        self.app.router.add_get("/club", self.club_page)
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
