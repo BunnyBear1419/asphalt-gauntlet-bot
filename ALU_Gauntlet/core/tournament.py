@@ -60,28 +60,39 @@ def _single_elimination(max_players: int) -> list[dict[str, Any]]:
 def _double_elimination(max_players: int) -> dict[str, Any]:
     winners = _single_elimination(max_players)
     size = _next_power_of_two(max_players)
-    losers_rounds = max(1, (size.bit_length() - 1) * 2 - 2)
+    winner_rounds = len(winners)
+    # Standard double-elimination cadence: after each winners round,
+    # eliminated winners feed into the appropriate losers round.
+    losers_rounds = max(1, (winner_rounds - 1) * 2)
     losers = []
-
     for round_number in range(1, losers_rounds + 1):
         match_count = max(1, size // (2 ** ((round_number + 1) // 2)))
-        losers.append(
-            {
+        losers.append({
+            "round": round_number,
+            "name": f"Losers Round {round_number}",
+            "matches": [{
+                "id": f"LB-R{round_number}-M{index}",
+                "bracket": "losers",
                 "round": round_number,
-                "name": f"Losers Round {round_number}",
-                "matches": [
-                    {
-                        "id": f"LB-R{round_number}-M{index}",
-                        "bracket": "losers",
-                        "round": round_number,
-                        "player_slots": [None, None],
-                    }
-                    for index in range(match_count)
-                ],
-            }
-        )
+                "player_slots": [None, None],
+                "winner_to": (
+                    f"LB-R{round_number + 1}-M{index // 2}"
+                    if round_number < losers_rounds else "GF-M1"
+                ),
+            } for index in range(match_count)],
+        })
+
+    # Wire winners-bracket advancement and each winners loss into the
+    # appropriate losers-bracket round.  The loser feed is explicit so
+    # result verification can advance either side without guessing.
+    for r_idx, group in enumerate(winners):
+        if r_idx == len(winners) - 1:
+            continue
+        for match in group["matches"]:
+            match["loser_to"] = f"LB-R{max(1, r_idx * 2 + 1)}-M{match['id'].split('-M')[-1] if r_idx == 0 else int(match['id'].split('-M')[-1]) // 2}"
 
     return {
+        "type": "double_elimination",
         "winners": winners,
         "losers": losers,
         "grand_final": {
@@ -91,7 +102,6 @@ def _double_elimination(max_players: int) -> dict[str, Any]:
             "player_slots": [None, None],
         },
     }
-
 
 def _round_robin(max_players: int) -> list[dict[str, Any]]:
     # Berger-style round robin schedule. For odd player counts, add a bye.
