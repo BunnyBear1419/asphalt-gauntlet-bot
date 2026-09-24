@@ -2036,7 +2036,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             if not participant:
                 continue
             bracket = t.get("bracket") or {}
-            groups = bracket.get("rounds") or bracket.get("winners") or []
+            groups = []
+            for key in ("rounds", "winners", "losers"):
+                groups.extend(bracket.get(key) or [])
+            for key in ("grand_final", "grand_final_reset"):
+                if isinstance(bracket.get(key), dict):
+                    groups.append({"matches": [bracket[key]]})
             matches = [m for group in groups for m in group.get("matches", [])]
             wins = losses = played = highest_round = 0
             for m in matches:
@@ -2105,6 +2110,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         item = await self.bot.db.tournaments.find_one({"_id": oid})
         if not item or str(item.get("guild_id")) not in set(str(x) for x in user.guild_ids):
             raise web.HTTPNotFound(text="Tournament not found.")
+        detail_guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(item.get("guild_id"))), None)
+        item["can_manage_results"] = bool(
+            detail_guild and await self._is_live_tournament_staff(user, str(item.get("guild_id")), detail_guild)
+        )
         item["id"] = tournament_id
         item.pop("_id", None)
         registrations = []
@@ -2144,7 +2153,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response(item)
 
     async def create_tournament(self, request: web.Request) -> web.Response:
-        user, guild_id, _ = await self.require_admin(request)
+        user, guild_id, _ = await self.require_tournament_admin(request)
         try:
             payload = await request.json()
         except Exception:
@@ -2405,8 +2414,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "message": "Result submitted for staff verification."})
 
     async def tournament_verify_result(self, request: web.Request) -> web.Response:
-        """Staff verification endpoint for all supported tournament formats."""
-        user, guild_id, _ = await self.require_admin(request)
+        """Tournament-admin verification endpoint for all supported tournament formats."""
+        user, guild_id, _ = await self.require_tournament_admin(request)
         from bson import ObjectId
         payload = await request.json()
         try:
@@ -2608,7 +2617,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "message": "You are checked in."})
 
     async def tournament_start(self, request: web.Request) -> web.Response:
-        user, guild_id, _ = await self.require_admin(request)
+        user, guild_id, _ = await self.require_tournament_admin(request)
         from bson import ObjectId
         from ALU_Gauntlet.core.tournament import generate_tournament_bracket
         try:
@@ -2771,6 +2780,38 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if not await self._is_live_guild_staff(user, guild_id, guild):
             raise web.HTTPForbidden(text="Administrator access is required for this server.")
         return user, guild_id, guild
+
+    async def _is_live_tournament_staff(self, user: Any, guild_id: str, guild: Any) -> bool:
+        """Check administrator or configured tournament-admin role access."""
+        if user.user_id in self.auth.allowed_staff_ids:
+            return True
+        try:
+            member = guild.get_member(int(user.user_id))
+        except Exception:
+            member = None
+        if member is None:
+            try:
+                member = await guild.fetch_member(int(user.user_id))
+            except Exception:
+                member = None
+        if member is None:
+            return False
+        permissions = getattr(member, "guild_permissions", None)
+        if permissions and (permissions.administrator or permissions.manage_guild):
+            return True
+        settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        tournament_role_id = str(settings.get("tournament_admin_role_id", "")).strip()
+        return bool(
+            tournament_role_id
+            and any(str(role.id) == tournament_role_id for role in getattr(member, "roles", []))
+        )
+
+    async def require_tournament_admin(self, request: web.Request) -> tuple[Any, str, Any]:
+        user, guild_id, guild = await self.require_guild_member(request)
+        if not await self._is_live_tournament_staff(user, guild_id, guild):
+            raise web.HTTPForbidden(text="Tournament administrator access is required for this server.")
+        return user, guild_id, guild
+
 
     async def require_staff(self, request: web.Request) -> Any:
         user = await self.require_user(request)
