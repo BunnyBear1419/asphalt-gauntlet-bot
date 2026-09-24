@@ -2648,8 +2648,47 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return await self._page_response("player.html", request)
 
     async def profile_page(self, request: web.Request) -> web.StreamResponse:
-        await self.require_user(request)
-        return await self._page_response("profile.html", request)
+        user = await self.require_user(request)
+        response = await self._page_response("profile.html", request)
+        body = response.text
+
+        # Render the Discord identity directly into the page as a reliable
+        # first paint. JavaScript still refreshes the same fields from /api/me,
+        # but the profile must not depend on a client-side fetch to show who is
+        # signed in or the community counts.
+        discord_name = html.escape(user.global_name or user.username or "Discord User")
+        discord_username = html.escape(user.username or "Discord account")
+        avatar_url = ""
+        if user.user_id and user.avatar:
+            avatar_url = f"https://cdn.discordapp.com/avatars/{html.escape(str(user.user_id), quote=True)}/{html.escape(str(user.avatar), quote=True)}.png?size=256"
+        elif user.user_id:
+            try:
+                avatar_index = int(user.user_id) % 5
+            except (TypeError, ValueError):
+                avatar_index = 0
+            avatar_url = f"https://cdn.discordapp.com/embed/avatars/{avatar_index}.png?size=256"
+
+        guilds = list(getattr(self.bot, "guilds", []) or [])
+        guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
+        online = 0
+        total = 0
+        if guild is not None:
+            members = list(getattr(guild, "members", []) or [])
+            for member in members:
+                if getattr(member, "bot", False):
+                    continue
+                if str(getattr(member, "status", None)) not in {"offline", "invisible"}:
+                    online += 1
+            total = int(getattr(guild, "member_count", 0) or len(members))
+
+        body = body.replace('<h1 id="profile-name">Driver</h1>', f'<h1 id="profile-name">{discord_name}</h1>', 1)
+        body = body.replace('<p id="profile-discord">Discord account</p>', f'<p id="profile-discord">@{discord_username}</p>', 1)
+        if avatar_url:
+            avatar_img = f'<img src="{avatar_url}" alt="{discord_name} Discord avatar" loading="eager" decoding="async">'
+            body = body.replace('<div class="profile-avatar-large" id="profile-avatar-large" aria-label="Discord avatar">🏎️</div>', f'<div class="profile-avatar-large" id="profile-avatar-large" aria-label="Discord avatar">{avatar_img}</div>', 1)
+        body = body.replace('id="profile-discord-online">—', f'id="profile-discord-online">{online:,}', 1)
+        body = body.replace('id="profile-discord-total">—', f'id="profile-discord-total">{total:,}', 1)
+        return web.Response(text=body, content_type="text/html", charset="utf-8", headers={"Cache-Control": "no-store"})
 
     async def site_search(self, request: web.Request) -> web.Response:
         """Search public site content plus account-visible racing data."""
