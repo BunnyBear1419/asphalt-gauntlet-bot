@@ -732,7 +732,7 @@ window.rslGoogleTranslateInit=function(){
 function alignRslShell(){const help=document.querySelector(".rsl-global-help-card");if(!help)return;
 const ref=document.querySelector(".home-hero,.page-hero,.tournament-hero,.clubs-center-hero,.my-tournaments-hero,.profile-hero,.hero-banner,.rsl-global-discord-cta");
 if(!ref)return;const parent=help.offsetParent||help.parentElement;const rr=ref.getBoundingClientRect(),pr=parent.getBoundingClientRect();
-help.style.width=rr.width+"px";help.style.maxWidth="none";help.style.marginLeft=(rr.left-pr.left)+"px";help.style.marginRight="0";
+help.style.setProperty("width",rr.width+"px","important");help.style.setProperty("max-width","none","important");help.style.setProperty("margin-left",(rr.left-pr.left)+"px","important");help.style.setProperty("margin-right","0","important");
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",alignRslShell);else alignRslShell();
 window.addEventListener("load",alignRslShell,{passive:true});window.addEventListener("resize",alignRslShell,{passive:true});
