@@ -2353,7 +2353,13 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         proof_url = str(payload.get("proof_url", "")).strip()
         notes = str(payload.get("notes", "")).strip()[:500]
         bracket = t.get("bracket") or {}
-        matches = [m for group in (bracket.get("rounds") or bracket.get("winners") or []) for m in group.get("matches", [])]
+        groups = []
+        for key in ("rounds", "winners", "losers"):
+            groups.extend(bracket.get(key) or [])
+        for key in ("grand_final", "grand_final_reset"):
+            if isinstance(bracket.get(key), dict):
+                groups.append({"matches": [bracket[key]]})
+        matches = [m for group in groups for m in group.get("matches", [])]
         match = next((m for m in matches if str(m.get("id")) == match_id), None)
         if not match:
             raise web.HTTPNotFound(text="Match not found.")
@@ -2417,7 +2423,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         action = str(payload.get("action", "approve")).strip().casefold()
         if action not in {"approve", "reject"}:
             raise web.HTTPBadRequest(text="Action must be approve or reject.")
-        groups = bracket.get("rounds") or bracket.get("winners") or []
+        groups = []
+        for key in ("rounds", "winners", "losers"):
+            groups.extend(bracket.get(key) or [])
+        for key in ("grand_final", "grand_final_reset"):
+            if isinstance(bracket.get(key), dict):
+                groups.append({"matches": [bracket[key]]})
         match = next((m for group in groups for m in group.get("matches", []) if str(m.get("id")) == match_id), None)
         if not match:
             raise web.HTTPNotFound(text="Match not found.")
@@ -2557,35 +2568,43 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPNotFound(text="Tournament not found.")
         if t.get("status") not in {"registration_open", "open"}:
             raise web.HTTPConflict(text="Only a tournament still in registration can be started.")
-        if t.get("format") != "single_elimination":
-            raise web.HTTPConflict(text="This tournament format does not yet have a complete live state-transition workflow.")
         players = []
         if int(t.get("team_size", 1)) > 1:
-            async for row in self.bot.db.tournament_club_registrations.find(
-                {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
-            ).sort("registered_at", 1):
+            async for row in self.bot.db.tournament_club_registrations.find({"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}).sort("registered_at", 1):
                 lineup = row.get("lineup") or []
                 if len(lineup) != int(t.get("team_size", 1)):
                     raise web.HTTPConflict(text="Every registered club must save a complete tournament lineup before the tournament starts.")
                 players.append(str(row["club_id"]))
         else:
-            async for row in self.bot.db.tournament_registrations.find(
-                {"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}
-            ).sort("registered_at", 1):
+            async for row in self.bot.db.tournament_registrations.find({"tournament_id": str(oid), "status": {"$in": ["accepted", "checked_in"]}}).sort("registered_at", 1):
                 players.append(str(row["user_id"]))
         if len(players) < 2:
             raise web.HTTPConflict(text="At least 2 accepted entrants are required to start.")
-        if t.get("format") in {"single_elimination", "double_elimination"} and len(players) > int(t.get("max_players", 32)):
+        max_players = int(t.get("max_players", 32))
+        fmt = str(t.get("format") or "single_elimination").casefold()
+        if len(players) > max_players:
             raise web.HTTPConflict(text="Too many entrants for this tournament.")
-        bracket = generate_tournament_bracket(t["format"], int(t["max_players"]))
-        if t["format"] == "single_elimination":
-            slots = players + [None] * (int(t["max_players"]) - len(players))
-            matches = bracket["rounds"][0]["matches"]
-            for i, match in enumerate(matches):
+        if fmt == "double_elimination":
+            if len(players) not in {4, 8, 16, 32}:
+                raise web.HTTPConflict(text="Double Elimination currently requires 4, 8, 16, or 32 entrants.")
+            bracket = generate_tournament_bracket(fmt, len(players))
+            for i, match in enumerate(bracket["winners"][0]["matches"]):
+                match["player_slots"] = [players[i * 2], players[i * 2 + 1]]
+                match["status"] = "ready"
+        elif fmt == "round_robin":
+            bracket = generate_tournament_bracket(fmt, len(players))
+            seed_map = {i + 1: player for i, player in enumerate(players)}
+            for group in bracket["rounds"]:
+                for match in group["matches"]:
+                    match["player_slots"] = [seed_map.get(x) for x in match.get("seed_slots", [])]
+                    match.pop("seed_slots", None)
+                    match["status"] = "ready"
+        else:
+            bracket = generate_tournament_bracket("single_elimination", max_players)
+            slots = players + [None] * (max_players - len(players))
+            for i, match in enumerate(bracket["rounds"][0]["matches"]):
                 match["player_slots"] = [slots[i * 2], slots[i * 2 + 1]]
                 match["status"] = "ready" if all(match["player_slots"]) else "bye" if any(match["player_slots"]) else "waiting"
-            # Resolve byes immediately so a tournament with fewer entrants than
-            # the configured bracket size can still advance normally.
             changed = True
             while changed:
                 changed = False
@@ -2599,16 +2618,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                             match["result_status"] = "verified"
                             target = match.get("winner_to")
                             if target:
-                                for next_group in bracket.get("rounds", []):
-                                    for nxt in next_group.get("matches", []):
+                                for next_group in bracket["rounds"]:
+                                    for nxt in next_group["matches"]:
                                         if nxt.get("id") == target:
-                                            next_slots = nxt.setdefault("player_slots", [None, None])
-                                            if winner not in next_slots:
-                                                next_slots[0 if next_slots[0] is None else 1] = winner
-                                            if all(next_slots):
-                                                nxt["status"] = "ready"
-                                            elif any(next_slots):
-                                                nxt["status"] = "bye"
+                                            ns = nxt.setdefault("player_slots", [None, None])
+                                            ns[0 if ns[0] is None else 1] = winner
+                                            nxt["status"] = "ready" if all(ns) else "bye"
                                             changed = True
                                             break
                         elif match.get("status") == "bye" and not slots_now:
