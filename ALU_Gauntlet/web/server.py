@@ -327,6 +327,14 @@ class WebControlCenter:
             else:
                 body = body.replace("</head>", noindex_tag + "</head>", 1)
 
+        # Force every rendered page to use the current shared shell stylesheet cache key.
+        body = re.sub(
+            r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
+            'href="/static/app.css?v=20260924-shell10"',
+            body,
+            flags=re.I
+        )
+
         # Normalize the shared top-left header controls so every page matches Home.
         # This keeps the RSL mini-logo, Discord button, and Cash App button identical site-wide.
         site_logo_href = html.escape(str((branding.get("links") or {}).get("site_logo") or "/"), quote=True)
