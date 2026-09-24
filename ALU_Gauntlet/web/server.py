@@ -586,8 +586,12 @@ window.rslGoogleTranslateInit=function(){
 <style>
 .rsl-cookie-banner{position:fixed;left:18px;right:18px;bottom:18px;z-index:9999;display:none;border:1px solid #168cff;background:#061226;box-shadow:0 10px 40px #000b;padding:18px 20px;color:#dce7f7}
 .rsl-cookie-banner.is-visible{display:block}.rsl-cookie-banner strong{color:#fff}.rsl-cookie-banner p{margin:7px 0 14px;line-height:1.55;color:#aebdd2}.rsl-cookie-actions{display:flex;gap:10px;flex-wrap:wrap}.rsl-cookie-btn{border:1px solid #168cff;background:#0a1a30;color:#25dfff;padding:9px 15px;cursor:pointer;font:inherit}.rsl-cookie-btn.primary{background:#168cff;color:#fff}.rsl-cookie-btn:hover{filter:brightness(1.15)}
-.rsl-cookie-settings{position:static;z-index:auto;border:1px solid #168cff;background:#061226;color:#25dfff;padding:8px 12px;cursor:pointer;font:inherit;display:none;margin:0 0 0 10px;white-space:nowrap}
-@media(max-width:600px){.rsl-cookie-banner{left:10px;right:10px;bottom:10px}.rsl-cookie-settings{margin-left:8px;padding:7px 10px}}
+.rsl-cookie-settings{position:static;z-index:auto;border:1px solid #168cff;background:#081321;color:#f2f7ff;padding:11px 16px;cursor:pointer;font:inherit;display:none;margin:0;min-width:240px;height:44px;box-sizing:border-box;border-radius:9px;white-space:nowrap;text-align:center}
+.rsl-footer-utility-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:24px auto 0;width:100%}
+.rsl-footer-utility-row .rsl-language-switcher{margin:0!important}
+.rsl-footer-utility-row .rsl-cookie-settings{display:none}
+@media(max-width:700px){.rsl-footer-utility-row{gap:8px;flex-wrap:wrap}.rsl-footer-utility-row .rsl-language-switcher,.rsl-footer-utility-row .rsl-cookie-settings{min-width:200px}}
+@media(max-width:460px){.rsl-footer-utility-row .rsl-language-switcher,.rsl-footer-utility-row .rsl-cookie-settings{min-width:100%;width:100%}}
 </style>
 <div class="rsl-cookie-banner" id="rsl-cookie-banner" role="dialog" aria-label="Cookie preferences">
   <strong>Cookie &amp; Privacy Choices</strong>
@@ -615,6 +619,24 @@ window.rslGoogleTranslateInit=function(){
   document.getElementById("rsl-cookie-deny").addEventListener("click",()=>{save("denied");clearAnalytics();hide();});
   document.getElementById("rsl-cookie-details").addEventListener("click",()=>{window.location.href="/legal#cookies";});
   settings.addEventListener("click",show);
+  const placeFooterControls=()=>{
+    const footer=document.querySelector(".rsl-footer");
+    if(!footer)return;
+    let row=footer.querySelector(".rsl-footer-utility-row");
+    if(!row){
+      row=document.createElement("div");
+      row.className="rsl-footer-utility-row";
+      footer.appendChild(row);
+    }
+    const switcher=document.getElementById("rsl-language-switcher");
+    if(switcher)row.appendChild(switcher);
+    row.appendChild(settings);
+  };
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",()=>requestAnimationFrame(placeFooterControls),{once:true});
+  }else{
+    requestAnimationFrame(placeFooterControls);
+  }
   const consent=read();
   if(consent==="accepted"){hide();if(window.rslLoadAnalytics)window.rslLoadAnalytics();}
   else if(consent==="denied"){hide();clearAnalytics();}
