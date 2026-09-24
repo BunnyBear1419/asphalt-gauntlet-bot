@@ -367,7 +367,7 @@ class WebControlCenter:
     <a href="/profile">👤 <span>My Profile</span></a>
     <a href="/club">🏎️ <span>My Club</span></a>
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
-    <a href="/player#career">🏆 <span>My Tournaments</span></a>
+    <a href="/my-tournaments">🏆 <span>My Tournaments</span></a>
     <a class="rsl-admin-tools-link" id="rsl-admin-tools-link" href="/admin" hidden>🛠️ <span>Admin Tools</span></a>
     <div class="rsl-profile-divider"></div>
     <a class="rsl-profile-logout" href="/logout">🔐 <span>Sign Out</span></a>
