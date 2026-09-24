@@ -126,7 +126,7 @@ class WebControlCenter:
                         continue
                     if str(getattr(member, "status", None)) not in {"offline", "invisible"}:
                         online += 1
-                total = int(getattr(guild, "member_count", 0) or len(members))
+                total = max(int(getattr(guild, "member_count", 0) or 0), len(members))
             if filename == "help.html":
                 body = body.replace('id="help-discord-online">—', f'id="help-discord-online">{online:,}', 1)
                 body = body.replace('id="help-discord-total">—', f'id="help-discord-total">{total:,}', 1)
