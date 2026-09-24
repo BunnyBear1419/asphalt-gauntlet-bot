@@ -2199,6 +2199,8 @@ body:has(.rsl-global-discord-cta) .workspace,
 body:has(.rsl-global-discord-cta) .workspace>main{
   margin-top:0!important;
   padding-top:0!important;
+  margin-bottom:0!important;
+  padding-bottom:0!important;
 }
 body:has(.rsl-global-discord-cta) .rsl-global-discord-cta{
   margin-top:var(--rsl-shell-discord-top-gap)!important;
