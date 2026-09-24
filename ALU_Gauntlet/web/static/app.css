@@ -2106,3 +2106,22 @@ body{top:0!important}
 .rsl-search-result{display:grid;grid-template-columns:auto 1fr;gap:4px 10px}
 .rsl-search-result .rsl-search-result-type{grid-column:1;grid-row:1 / span 2;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#25dfff}
 .rsl-search-result strong{grid-column:2}.rsl-search-result>span:last-child{grid-column:2}
+
+
+/* Final language dropdown anchor: keep the menu attached directly to its button. */
+.rsl-footer .rsl-language-switcher{
+  position:relative!important;
+}
+.rsl-footer .rsl-language-menu{
+  position:absolute!important;
+  top:calc(100% + 6px)!important;
+  right:0!important;
+  bottom:auto!important;
+  left:auto!important;
+  transform:none!important;
+  z-index:1201!important;
+  min-width:150px!important;
+}
+@media(max-width:760px){
+  .rsl-footer .rsl-language-menu{min-width:135px!important}
+}
