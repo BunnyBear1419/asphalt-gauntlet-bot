@@ -722,16 +722,28 @@ window.rslGoogleTranslateInit=function(){
 
             global_discord_script = r'''
 <script>(function(){
-function alignRslShell(){const help=document.querySelector(".rsl-global-help-card");if(!help)return;
-const ref=document.querySelector(".home-hero,.page-hero,.tournament-hero,.clubs-center-hero,.my-tournaments-hero,.profile-hero,.hero-banner,.rsl-global-discord-cta");
-if(!ref)return;const parent=help.offsetParent||help.parentElement;const rr=ref.getBoundingClientRect(),pr=parent.getBoundingClientRect();
-help.style.setProperty("width",rr.width+"px","important");help.style.setProperty("max-width","none","important");help.style.setProperty("margin-left","0","important");help.style.setProperty("margin-right","0","important");help.style.setProperty("position","relative","important");const hr=help.getBoundingClientRect();help.style.setProperty("left",(rr.left-hr.left)+"px","important");
+function alignRslShell(){
+const help=document.querySelector(".rsl-global-help-card");
+const discord=document.querySelector(".rsl-global-discord-cta");
+const ref=document.querySelector(".home-hero,.page-hero,.tournament-hero,.clubs-center-hero,.my-tournaments-hero,.profile-hero,.hero-banner");
+if(!ref)return;
+const rr=ref.getBoundingClientRect();
+function align(box){
+ if(!box)return;
+ box.style.setProperty("width",rr.width+"px","important");
+ box.style.setProperty("max-width","none","important");
+ box.style.setProperty("margin-left","0","important");
+ box.style.setProperty("margin-right","0","important");
+ box.style.setProperty("position","relative","important");
+ box.style.setProperty("left","0px","important");
+ const br=box.getBoundingClientRect();
+ box.style.setProperty("left",(rr.left-br.left)+"px","important");
+}
+align(discord); align(help);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",alignRslShell);else alignRslShell();
 window.addEventListener("load",alignRslShell,{passive:true});window.addEventListener("resize",alignRslShell,{passive:true});
 (async function(){const online=document.getElementById("rsl-discord-online");const total=document.getElementById("rsl-discord-total");if(!online||!total)return;try{const r=await fetch("/api/discord-stats",{credentials:"same-origin"});if(!r.ok)return;const d=await r.json();if(d.available){online.textContent=Number(d.online_members||0).toLocaleString();total.textContent=Number(d.server_members||0).toLocaleString()}}catch(_){}})();})();</script>'''
-            body = body.replace('id="discord-online-members">—', f'id="discord-online-members">{online:,}', 1)
-            body = body.replace('id="discord-server-members">—', f'id="discord-server-members">{total:,}', 1)
             body = body.replace("</body>", global_discord_script + "</body>", 1)
 
         # Replace any page-specific legacy footer with the shared RSL footer.
