@@ -2574,3 +2574,51 @@ body:has(.rsl-global-discord-cta) .rsl-global-discord-cta.rsl-global-discord-cta
   margin-left:auto!important;
   margin-right:auto!important;
 }
+
+
+/* 2026-09-24 GLOBAL HEADER ALIGNMENT HARDENING
+   Keep Search immediately left of the authenticated Profile control.
+   The primary nav remains centered independently so it cannot overlap either control. */
+.top-nav>.rsl-profile-nav,
+.top-nav>.rsl-login-button{
+  position:absolute!important;
+  right:18px!important;
+  top:18px!important;
+  margin:0!important;
+  width:auto!important;
+  z-index:100001!important;
+}
+.top-nav>.rsl-search-trigger{
+  right:238px!important;
+  z-index:100002!important;
+}
+.top-nav>nav{
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  width:max-content!important;
+  max-width:calc(100vw - 520px)!important;
+  padding-right:0!important;
+}
+@media(max-width:1100px){
+  .top-nav>nav{max-width:calc(100vw - 430px)!important}
+  .top-nav>.rsl-search-trigger{right:220px!important}
+}
+@media(max-width:760px){
+  .top-nav>nav{
+    left:145px!important;
+    right:105px!important;
+    transform:none!important;
+    width:auto!important;
+    max-width:none!important;
+    justify-content:center!important;
+  }
+  .top-nav>.rsl-search-trigger{right:70px!important}
+  .top-nav>.rsl-profile-nav,
+  .top-nav>.rsl-login-button{right:10px!important}
+}
+@media(max-width:560px){
+  .top-nav>nav{left:92px!important;right:92px!important}
+  .top-nav>.rsl-search-trigger{right:56px!important;width:36px!important;height:36px!important}
+  .top-nav>.rsl-profile-nav,
+  .top-nav>.rsl-login-button{right:8px!important}
+}
