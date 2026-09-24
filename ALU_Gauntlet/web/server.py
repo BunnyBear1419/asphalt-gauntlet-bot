@@ -114,7 +114,7 @@ class WebControlCenter:
         # Render public Discord community counts server-side on first paint.
         # Help and Home both use the same community statistics so neither page
         # depends on a client-side request just to show the member counts.
-        if filename in {"help.html", "index.html", "clubs.html", "club.html", "tournaments.html"}:
+        if filename in {"help.html", "index.html", "clubs.html", "club.html", "tournaments.html", "my-tournaments.html"}:
             guilds = list(getattr(self.bot, "guilds", []) or [])
             guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
             online = 0
@@ -179,6 +179,7 @@ class WebControlCenter:
             "calendar.html": ("Calendar • Racing Syndicate League", "Racing Syndicate League calendar for Gauntlet seasons, tournaments, events, matches, and community activities."),
             "help.html": ("Help Center • Racing Syndicate League", "Racing Syndicate League Help Center — guides, rules, support, and information about Gauntlet, tournaments, clubs, and the website."),
             "legal.html": ("Legal Center • Racing Syndicate League", "Racing Syndicate League legal information, privacy, security, accessibility, cookies, and website policies."),
+            "my-tournaments.html": ("My Tournaments • Racing Syndicate League", "Your Racing Syndicate League tournament registrations, active matches, completed events, results, and tournament history."),
         }
         seo = seo_pages.get(filename)
         if seo:
@@ -214,6 +215,7 @@ class WebControlCenter:
                 "players.html": "/players",
                 "player.html": "/player",
                 "profile.html": "/profile",
+                "my-tournaments.html": "/my-tournaments",
             }
             canonical_path = canonical_paths.get(filename)
             if canonical_path:
@@ -226,7 +228,7 @@ class WebControlCenter:
 
             # Keep private/account/admin pages out of search indexes.
             noindex_pages = {
-                "admin.html", "news-admin.html", "setup.html", "player.html", "players.html", "profile.html"
+                "admin.html", "news-admin.html", "setup.html", "player.html", "players.html", "profile.html", "my-tournaments.html"
             }
             if filename in noindex_pages:
                 noindex_tag = '<meta name="robots" content="noindex, nofollow, noarchive">'
@@ -1229,6 +1231,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/admin", self.admin_page)
         self.app.router.add_get("/player", self.player_page)
         self.app.router.add_get("/profile", self.profile_page)
+        self.app.router.add_get("/my-tournaments", self.my_tournaments_page)
         self.app.router.add_get("/gauntlet/registration", self.gauntlet_registration_page)
         self.app.router.add_get("/gauntlet/defense", self.gauntlet_defense_page)
         self.app.router.add_get("/gauntlet/matches", self.gauntlet_matches_page)
@@ -1995,6 +1998,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         rows.sort(key=lambda x: str(x.get("start_time") or ""), reverse=True)
         history = [r for r in rows if r["status"] == "completed"][:12]
         return web.json_response({"tournaments":rows[:20],"upcoming":[r for r in rows if r["status"] in {"registration_open","open","live"}][:5],"history":history,"stats":{"entered":len(rows),"completed":len(history),"matches_played":total_matches,"wins":total_wins,"losses":total_losses,"win_rate":round((total_wins/total_matches)*100,1) if total_matches else 0}})
+
+    async def my_tournaments_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("my-tournaments.html", request)
 
     async def tournaments_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
