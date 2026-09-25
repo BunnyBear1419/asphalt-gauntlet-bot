@@ -2427,9 +2427,8 @@ body:has(.rsl-global-discord-cta) main.calendar-page{
   overflow:visible!important;
   z-index:2000!important;
 }
-.top-nav>nav{
+.top-nav>nav{left:86px!important;
   position:absolute!important;
-  left:86px!important;
   right:390px!important;
   top:0!important;
   width:auto!important;
