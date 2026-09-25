@@ -17,7 +17,6 @@ COGS = ROOT / "ALU_Gauntlet" / "cogs"
 PRIVILEGED_COMMANDS = {
     "administration.py": {
         "setimage_cmd",
-        "setup_cmd",
         "admin_setpi_cmd",
         "admin_removeracer_cmd",
         "delete_id_cmd",
