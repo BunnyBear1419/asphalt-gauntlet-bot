@@ -3225,3 +3225,76 @@ html[data-theme] .clubs-center-main .tournament-empty{
   background:var(--rsl-final-panel2)!important;
   border-color:var(--rsl-final-line)!important;
 }
+
+
+/* FINAL MIDNIGHT-BLUE ELIMINATION: tournament empty states, Clubs loading state, and Player preference/profile surfaces. */
+html[data-theme] .tournament-empty,
+html[data-theme] .club-grid .tournament-empty,
+html[data-theme] .career-club,
+html[data-theme] .career-season-badge,
+html[data-theme] .career-stat-grid>div,
+html[data-theme] .career-card,
+html[data-theme] .career-tournament,
+html[data-theme] .notification-toggle,
+html[data-theme] .notification-toggle i,
+html[data-theme] .notification-timing,
+html[data-theme] .notification-timing select,
+html[data-theme] .notification-custom-days,
+html[data-theme] .profile-editor-grid input,
+html[data-theme] .profile-editor-grid textarea,
+html[data-theme] .profile-editor-grid select,
+html[data-theme] .profile-link-remove,
+html[data-theme] .activity-list>div,
+html[data-theme] .activity-list i{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .tournament-empty,
+html[data-theme] .career-club p,
+html[data-theme] .career-header p,
+html[data-theme] .career-season-badge small,
+html[data-theme] .career-stat-grid span,
+html[data-theme] .career-tournament small,
+html[data-theme] .notification-toggle small,
+html[data-theme] .notification-timing,
+html[data-theme] .notification-timing-note,
+html[data-theme] .notification-calendar-link,
+html[data-theme] .profile-setting-hint,
+html[data-theme] .activity-list small,
+html[data-theme] .activity-list time{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] .career-section{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .career-season-badge strong,
+html[data-theme] .career-stat-grid strong,
+html[data-theme] .career-card h3,
+html[data-theme] .career-tournament strong,
+html[data-theme] .notification-toggle b,
+html[data-theme] .profile-editor-grid label>b{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .career-tournament:hover{
+  background:var(--rsl-final-panel)!important;
+  border-color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .notification-toggle input:checked+i{
+  background:color-mix(in srgb,var(--rsl-final-accent) 18%,var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .profile-editor-grid input,
+html[data-theme] .profile-editor-grid textarea,
+html[data-theme] .profile-editor-grid select,
+html[data-theme] .notification-timing select,
+html[data-theme] .notification-custom-days{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .club-grid .tournament-empty{
+  min-height:120px;
+  display:grid;
+  place-items:center;
+}
