@@ -76,3 +76,23 @@ def test_cookie_footer_controls_share_the_same_utility_row():
     assert ".rsl-footer-utility-row{" in server
     assert ".rsl-footer-utility-row .rsl-language-switcher" in server
     assert ".rsl-footer-theme-control{" in server
+
+
+def test_shared_navigation_keeps_calendar_before_companion_and_search_before_profile():
+    server = SERVER.read_text(encoding="utf-8")
+    calendar = 'calendar_markup = \'<a href="/calendar">'
+    companion = 'companion_markup = r\'\'\'<details class="top-nav-dropdown companion-nav-dropdown">'
+    assert calendar in server
+    assert companion in server
+    assert server.index(calendar) < server.index(companion)
+    assert "search_markup" in server
+    assert "profile_markup" in server
+    assert "The search control belongs immediately to the left of the profile control." in server
+
+
+def test_navigation_reserves_space_for_search_and_profile_controls():
+    css = CSS.read_text(encoding="utf-8")
+    assert "FINAL NAVIGATION ACTION BAR" in css
+    assert ".top-nav nav{padding-right:260px!important" in css
+    assert ".top-nav>.rsl-search-trigger{right:158px!important" in css
+    assert ".top-nav>.rsl-profile-nav," in css
