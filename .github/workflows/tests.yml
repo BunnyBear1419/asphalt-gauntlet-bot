@@ -2,12 +2,12 @@ name: Bot Tests
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+
+# The main-branch test run is owned by CI and Deploy so a push does not
+# consume a second runner doing the same compile/test work.
 
 jobs:
   test:
