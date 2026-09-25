@@ -14,7 +14,7 @@ def test_discord_presence_intent_is_enabled():
 
 def test_live_counter_uses_presence_states_and_excludes_bots():
     source = SERVER.read_text(encoding="utf-8")
-    assert "guild.presences" in source
+    assert 'getattr(guild, "presences", None)' in source
     assert '{"online", "idle", "dnd"}' in source
     assert 'getattr(member, "bot", False)' in source
     assert "_discord_community_counts" in source
