@@ -3783,6 +3783,9 @@ html[data-theme] textarea:disabled{
 
 
 /* FINAL NAVIGATION ACTION BAR — Search is always immediately left of Profile. */
+.top-nav>.rsl-search-trigger{right:270px!important;}
+.top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:14px!important;}
+
 .top-nav>nav{right:390px!important;}
 
 .top-nav{
