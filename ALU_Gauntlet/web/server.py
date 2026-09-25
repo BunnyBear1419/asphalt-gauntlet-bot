@@ -3336,7 +3336,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid theme request.") from exc
         theme = str(payload.get("theme", "dark")).strip().lower()
-        if theme not in {"dark", "light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"}:
+        if theme not in THEMES:
             raise web.HTTPBadRequest(text="Unsupported theme.")
         await self.bot.db.web_user_preferences.update_one(
             {"_id": str(user.user_id)},
