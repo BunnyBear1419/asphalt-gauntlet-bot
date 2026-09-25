@@ -116,13 +116,16 @@ class WebControlCenter:
         # apply consistent spacing, widths, responsive behavior, and page-family
         # presentation without duplicating layout rules across templates.
         page_key = re.sub(r'[^a-z0-9]+', '-', Path(filename).stem.lower()).strip('-') or 'page'
-        body = re.sub(
-            r'<body\\b([^>]*)>',
-            lambda m: '<body' + m.group(1) + ' class="rsl-site-page rsl-page-' + page_key + '"' + ('>' if 'class=' not in m.group(1).lower() else '>'),
-            body,
-            count=1,
-            flags=re.I,
-        )
+        def _add_page_identity(match: re.Match[str]) -> str:
+            attrs = match.group(1) or ""
+            page_class = "rsl-site-page rsl-page-" + page_key
+            class_match = re.search(r'\\bclass=["\\']([^"\\']*)["\\']', attrs, flags=re.I)
+            if class_match:
+                classes = (class_match.group(1) + " " + page_class).strip()
+                attrs = attrs[:class_match.start(1)] + classes + attrs[class_match.end(1):]
+                return "<body" + attrs + ">"
+            return "<body" + attrs + ' class="' + page_class + '">'
+        body = re.sub(r'<body\\b([^>]*)>', _add_page_identity, body, count=1, flags=re.I)
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
