@@ -2757,3 +2757,59 @@ html[data-theme="light"] .profile-setting-hint{display:block;color:#60738b!impor
 html[data-theme="light"] .calendar-toolbar,
 html[data-theme="light"] .calendar-header,
 html[data-theme="light"] .calendar-controls{color:#162338!important}
+
+
+/* RSL PROFILE THEME TOGGLE — quick Light/Dark switch inside Profile dropdown. */
+.rsl-profile-theme-toggle{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:6px!important;
+  margin:8px 10px 10px!important;
+  padding:8px!important;
+  border:1px solid rgba(37,223,255,.18)!important;
+  border-radius:10px!important;
+  background:rgba(6,18,38,.55)!important;
+}
+.rsl-profile-theme-title{
+  grid-column:1 / -1!important;
+  display:block!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase!important;
+  color:#91a5c3!important;
+}
+.rsl-theme-choice{
+  appearance:none!important;
+  border:1px solid #173b64!important;
+  border-radius:8px!important;
+  padding:7px 8px!important;
+  background:#071427!important;
+  color:#dbe8f8!important;
+  font:inherit!important;
+  font-size:11px!important;
+  font-weight:700!important;
+  cursor:pointer!important;
+}
+.rsl-theme-choice:hover,
+.rsl-theme-choice.is-active{
+  border-color:#25dfff!important;
+  background:rgba(37,223,255,.12)!important;
+  color:#25dfff!important;
+}
+html[data-theme="light"] .rsl-profile-theme-toggle{
+  background:#eef4fa!important;
+  border-color:#c8d4e2!important;
+}
+html[data-theme="light"] .rsl-profile-theme-title{color:#60738b!important}
+html[data-theme="light"] .rsl-theme-choice{
+  background:#fff!important;
+  color:#30465f!important;
+  border-color:#b9c9da!important;
+}
+html[data-theme="light"] .rsl-theme-choice:hover,
+html[data-theme="light"] .rsl-theme-choice.is-active{
+  background:#eaf6ff!important;
+  color:#0877e7!important;
+  border-color:#0877e7!important;
+}
