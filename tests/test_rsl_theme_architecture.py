@@ -119,3 +119,11 @@ def test_shared_header_has_canonical_community_shortcuts_on_all_pages():
     assert 'discord_href = html.escape' in server
     assert 'cashapp_href = html.escape' in server
     assert 'canonical_brand + social_markup' in server
+
+
+def test_shared_navigation_cleans_legacy_companion_calendar_and_account_markup():
+    server = SERVER.read_text(encoding="utf-8")
+    assert 'companion_cleanup = re.compile(' in server
+    assert 'href=["\\\']/calendar' in server
+    assert 'class="top-user-area"' in server
+    assert 'Normalize Calendar + Shohan\'s Companion on every page.' in server
