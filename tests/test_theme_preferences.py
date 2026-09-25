@@ -36,3 +36,21 @@ def test_light_theme_css_exists():
     assert "RSL MULTI-THEME SYSTEM" in source
     for theme_name in ("ocean","purple","crimson","emerald","sunset","graphite"):
         assert f'html[data-theme="{theme_name}"]' in source
+
+def test_cross_page_theme_contract_covers_all_themes():
+    source=SERVER.read_text(encoding="utf-8")
+    themes=("dark","light","ocean","purple","crimson","emerald","sunset","graphite")
+    assert 'id="rsl-cross-page-theme-audit"' in source
+    assert "theme_audit_css" in source
+    for theme_name in themes:
+        assert f'html[data-theme="{theme_name}"]' in source
+    assert '/static/theme.js?v=20260924-theme5' in source
+
+
+def test_all_static_html_pages_are_theme_renderable():
+    pages=sorted(STATIC.glob("*.html"))
+    assert pages, "No static HTML pages found."
+    source=SERVER.read_text(encoding="utf-8")
+    assert 'body = body.replace("</body>", theme_audit_css + "\n</body>", 1)' in source
+    for page in pages:
+        assert page.suffix == ".html"
