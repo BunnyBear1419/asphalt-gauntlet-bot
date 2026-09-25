@@ -84,7 +84,7 @@ def test_shared_navigation_keeps_calendar_before_companion_and_search_before_pro
     companion = 'companion_markup = r\'\'\'<details class="top-nav-dropdown companion-nav-dropdown">'
     assert calendar in server
     assert companion in server
-    assert server.index(calendar) < server.index(companion)
+    assert "body = body.replace(\"</nav>\", calendar_markup + companion_markup + \"</nav>\", 1)" in server
     assert "search_markup" in server
     assert "profile_markup" in server
     assert "The search control belongs immediately to the left of the profile control." in server
@@ -93,9 +93,10 @@ def test_shared_navigation_keeps_calendar_before_companion_and_search_before_pro
 def test_navigation_reserves_space_for_search_and_profile_controls():
     css = CSS.read_text(encoding="utf-8")
     assert "FINAL NAVIGATION ACTION BAR" in css
-    assert ".top-nav nav{padding-right:260px!important" in css
-    assert ".top-nav>.rsl-search-trigger{right:158px!important" in css
-    assert ".top-nav>.rsl-profile-nav," in css
+    assert ".top-nav>nav{left:86px!important" in css
+    assert ".top-nav>nav{right:390px!important" in css
+    assert ".top-nav>.rsl-search-trigger{right:270px!important" in css
+    assert ".top-nav>.rsl-profile-nav" in css
 
 
 def test_navigation_normalizes_legacy_calendar_and_profile_markup():
