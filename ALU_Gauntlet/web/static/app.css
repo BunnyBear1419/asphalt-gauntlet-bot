@@ -4535,3 +4535,44 @@ footer.rsl-footer-mark > span{
 
 @media(max-width:1100px){.top-nav>nav{left:180px!important;right:330px!important}.top-nav>.rsl-search-trigger{right:220px!important}.top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:10px!important}}
 @media(max-width:700px){.top-nav>nav{left:125px!important;right:70px!important}.top-nav>.rsl-search-trigger{right:58px!important;width:38px!important;height:38px!important}.top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:6px!important}}
+
+
+/* FINAL NAV + DISCORD COMMUNITY CARD POLISH */
+.top-nav-dropdown-menu{
+  background:linear-gradient(145deg,#07172f,#030b18)!important;
+  border:1px solid #174a79!important;
+  border-radius:10px!important;
+  box-shadow:0 14px 34px #000b!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  overflow:hidden!important;
+  z-index:1001!important;
+}
+.top-nav-dropdown-menu a{
+  background:transparent!important;
+  border-bottom:1px solid #12385f!important;
+}
+.top-nav-dropdown-menu a:last-child{border-bottom:0!important}
+.top-nav-dropdown-menu a:hover{
+  background:#0b2442!important;
+}
+.discord-cta{
+  border:1px solid #174a79!important;
+  border-radius:8px!important;
+  background:linear-gradient(145deg,#07172f,#030b18)!important;
+  box-shadow:0 10px 26px #0007!important;
+}
+.discord-stat-icon{
+  background:#07172f!important;
+  border:1px solid #28547f!important;
+  box-shadow:inset 0 0 0 1px #0a2139!important;
+}
+.discord-stat:nth-child(2) .discord-stat-icon:before{
+  content:"♟";
+  display:block;
+  color:#28d7ff;
+  font-size:24px;
+  line-height:1;
+  font-family:Arial,sans-serif;
+  text-shadow:0 0 8px #28d7ff55;
+}
