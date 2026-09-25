@@ -4115,3 +4115,34 @@ footer.rsl-footer-mark > span{
 @media(max-width:700px){
   .rsl-footer .rsl-footer-copyline{font-size:15px!important;}
 }
+
+
+/* FINAL FOOTER UTILITY TEXT — restore clear readable size after page-polish typography */
+.rsl-footer .rsl-footer-utility-row,
+.rsl-footer .rsl-footer-utility-row *{
+  font-size:16px!important;
+  line-height:1.2!important;
+}
+.rsl-footer .rsl-footer-utility-row .rsl-language-trigger,
+.rsl-footer .rsl-footer-utility-row .rsl-cookie-settings,
+.rsl-footer .rsl-footer-utility-row .rsl-footer-theme-control{
+  font-size:16px!important;
+  font-weight:700!important;
+}
+.rsl-footer .rsl-footer-utility-row .rsl-footer-theme-control label,
+.rsl-footer .rsl-footer-utility-row .rsl-footer-theme-control select{
+  font-size:16px!important;
+}
+@media(max-width:700px){
+  .rsl-footer .rsl-footer-utility-row,
+  .rsl-footer .rsl-footer-utility-row *{
+    font-size:15px!important;
+  }
+  .rsl-footer .rsl-footer-utility-row .rsl-language-trigger,
+  .rsl-footer .rsl-footer-utility-row .rsl-cookie-settings,
+  .rsl-footer .rsl-footer-utility-row .rsl-footer-theme-control,
+  .rsl-footer .rsl-footer-utility-row .rsl-footer-theme-control label,
+  .rsl-footer .rsl-footer-utility-row .rsl-footer-theme-control select{
+    font-size:15px!important;
+  }
+}
