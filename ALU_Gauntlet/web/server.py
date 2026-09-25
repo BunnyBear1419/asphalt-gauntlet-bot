@@ -122,7 +122,7 @@ class WebControlCenter:
   } catch(e) {}
 })();
 </script>
-<script src="/static/theme.js?v=20260924-theme3"></script>'''
+<script src="/static/theme.js?v=20260924-theme4"></script>'''
         if '/static/theme.js?' not in body:
             body = body.replace("<head>", "<head>"+theme_bootstrap, 1)
 
@@ -880,21 +880,8 @@ try{
   });
   menu?.addEventListener("click", e => e.stopPropagation());
 
-  const themeSelect = document.querySelector("#rsl-footer-theme-select");
-  const currentTheme = () => document.documentElement.getAttribute("data-theme") || "dark";
-  const syncThemeSelect = theme => {
-    if(themeSelect) themeSelect.value = theme;
-  };
-  syncThemeSelect(currentTheme());
-  if(themeSelect) {
-    themeSelect.addEventListener("click", e => e.stopPropagation());
-    themeSelect.addEventListener("change", async e => {
-      e.stopPropagation();
-      if(window.RSLTheme) await window.RSLTheme.save(themeSelect.value);
-      syncThemeSelect(currentTheme());
-    });
-  }
-  window.addEventListener("rsl-theme-changed", e => syncThemeSelect(e.detail?.theme || currentTheme()));
+  // Theme selection is handled by /static/theme.js with delegated events because
+  // this footer control is created dynamically after the page shell is rendered.
   document.addEventListener("click", closeMenu);
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
 })();
