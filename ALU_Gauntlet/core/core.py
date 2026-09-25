@@ -5189,7 +5189,7 @@ HIDDEN_PLAYER_COMMANDS = {
 HIDDEN_STAFF_COMMANDS = {
     "missingdefense", "adminlog", "pending", "listplayers",
     "dbcheck", "backup", "diagnostics",
-    "sync", "launchcheck", "setimage", "setup", "timezone",
+    "sync", "launchcheck", "setimage", "timezone",
     "clearhistory", "identity", "delete_id", "status",
     # "season" and "admin" are app_commands.Group parents registered by their
     # respective Cogs — removing the group removes every subcommand
