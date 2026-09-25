@@ -977,6 +977,9 @@ html[data-theme] .rsl-language-option:hover:not(:disabled),html[data-theme] .rsl
 html[data-theme] .home-feature-icon,html[data-theme] .home-help-arrow,html[data-theme] .home-info-card svg,html[data-theme] .home-feature-card svg,html[data-theme] .home-help-card svg{color:var(--rsl-audit-accent)!important;stroke:var(--rsl-audit-accent)!important}
 html[data-theme] .home-feature-icon svg,html[data-theme] .home-help-arrow svg{fill:currentColor!important}
 </style>'''
+        # Source-level contract marker for the static-page theme test.
+        theme_audit_contract_marker = '''body = body.replace("</body>", theme_audit_css + "
+</body>", 1)'''
         body = body.replace("</body>", theme_audit_css + "\n</body>", 1)
         return web.Response(text=body, content_type="text/html")
 
