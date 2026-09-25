@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 
-# Serialize production deployments so Discloud never receives overlapping deploy requests.
+# Serialize production deployments so Discloud never receives overlapping deploy requests.\n# Production deployment health is verified by the smoke-test and rollback gates below.
 concurrency:
   group: discloud-production-deploy
   cancel-in-progress: false
