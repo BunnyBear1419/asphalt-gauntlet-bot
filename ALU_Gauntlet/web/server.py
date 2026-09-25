@@ -568,12 +568,13 @@ window.rslGoogleTranslateInit=function(){
             body, flags=re.S | re.I
         )
 
+        # The search control belongs immediately to the left of the profile control.
+        # Keep both outside the page navigation flow so long navigation labels cannot
+        # push them underneath or over one another.
         if "</header>" in body and 'id="rsl-search-trigger"' not in body:
             body = body.replace("</header>", search_markup + "</header>", 1)
 
-        if "</nav></header>" in body:
-            body = body.replace("</nav></header>", "</nav>" + profile_markup + "</header>", 1)
-        elif "</header>" in body:
+        if "</header>" in body and 'id="rsl-profile-nav"' not in body:
             body = body.replace("</header>", profile_markup + "</header>", 1)
 
         # Remove legacy page-specific account controls before adding the shared
