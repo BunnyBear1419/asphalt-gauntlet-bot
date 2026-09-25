@@ -122,7 +122,7 @@ class WebControlCenter:
   } catch(e) {}
 })();
 </script>
-<script src="/static/theme.js?v=20260924-theme4"></script>'''
+<script src="/static/theme.js?v=20260924-theme5"></script>'''
         if '/static/theme.js?' not in body:
             body = body.replace("<head>", "<head>"+theme_bootstrap, 1)
 
@@ -3329,10 +3329,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def get_theme(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         record = await self.bot.db.web_user_preferences.find_one({"_id": str(user.user_id)}) or {}
-        theme = str(record.get("theme", "dark")).strip().lower()
-        if theme not in THEMES:
-            theme = "dark"
-        return web.json_response({"theme": theme})
+        raw_theme = str(record.get("theme", "")).strip().lower()
+        has_saved_theme = raw_theme in THEMES
+        theme = raw_theme if has_saved_theme else "dark"
+        return web.json_response({"theme": theme, "saved": has_saved_theme})
 
     async def set_theme(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
