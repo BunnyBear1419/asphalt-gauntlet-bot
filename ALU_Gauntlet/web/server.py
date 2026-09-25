@@ -1009,6 +1009,61 @@ html[data-theme] .home-about-icon svg *,
 html[data-theme] .home-news-icon svg *{fill:none!important;stroke:var(--rsl-audit-accent)!important}
 
 /* FINAL PAGE TITLE AND INNER-BOX THEME OVERRIDE */
+html[data-theme] h1,html[data-theme] h2,html[data-theme] h3,html[data-theme] h4,html[data-theme] h5,html[data-theme] h6,
+html[data-theme] [class*="title"],html[data-theme] [class*="heading"]{color:var(--rsl-audit-text)!important}
+
+/* Page-specific legacy shells: route old hard-coded midnight palettes through theme variables. */
+html[data-theme] .my-club-hero,html[data-theme] .my-club-card,html[data-theme] .my-club-empty,
+html[data-theme] .my-club-stat,html[data-theme] .my-club-links a,html[data-theme] .my-club-member,
+html[data-theme] .my-club-result,html[data-theme] .my-tournament-stat,html[data-theme] .my-tournament-card,
+html[data-theme] .my-tournament-tag,html[data-theme] .my-tournament-empty,html[data-theme] .profile-card-rsl,
+html[data-theme] .profile-status-panel,html[data-theme] .profile-club-card,html[data-theme] .profile-avatar-large,
+html[data-theme] .legal-hero,html[data-theme] .legal-nav,html[data-theme] .legal-card,html[data-theme] .legal-note,
+html[data-theme] .news-admin-hero,html[data-theme] .news-editor,html[data-theme] .news-list-panel,
+html[data-theme] .admin-side,html[data-theme] .admin-card,html[data-theme] .admin-tool{
+  background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
+  color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important
+}
+html[data-theme] .my-club-hero-copy h1,html[data-theme] .my-club-card h2,html[data-theme] .my-club-empty h1,
+html[data-theme] .my-tournaments-section h2,html[data-theme] .my-tournament-card h3,html[data-theme] .legal-hero h1,
+html[data-theme] .legal-nav strong,html[data-theme] .legal-card h2,html[data-theme] .legal-card h3,
+html[data-theme] .news-admin-hero h1,html[data-theme] .news-editor h2,html[data-theme] .news-list-panel h2,
+html[data-theme] .admin-tool strong{color:var(--rsl-audit-text)!important}
+html[data-theme] .my-club-hero-copy p,html[data-theme] .my-club-about,html[data-theme] .my-club-stat span,
+html[data-theme] .my-club-member-info small,html[data-theme] .my-club-result small,html[data-theme] .my-club-empty p,
+html[data-theme] .my-club-loading,html[data-theme] .my-tournament-stat span,html[data-theme] .my-tournament-meta,
+html[data-theme] .my-tournament-progress,html[data-theme] .my-tournament-empty,html[data-theme] .legal-hero p,
+html[data-theme] .legal-card p,html[data-theme] .legal-card li,html[data-theme] .legal-updated,
+html[data-theme] .legal-nav a,html[data-theme] .legal-note,html[data-theme] .news-admin-hero p,
+html[data-theme] .news-form label,html[data-theme] .admin-tool span{color:var(--rsl-audit-muted)!important}
+html[data-theme] .my-club-button,html[data-theme] .my-tournament-button.secondary,html[data-theme] .legal-button,
+html[data-theme] .news-actions .secondary,html[data-theme] .admin-btn{
+  background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important
+}
+html[data-theme] .my-club-button.primary,html[data-theme] .my-tournament-button,html[data-theme] .admin-btn.primary,
+html[data-theme] .news-actions button{
+  background:linear-gradient(90deg,var(--rsl-audit-strong),var(--rsl-audit-accent))!important;
+  color:#fff!important;border-color:var(--rsl-audit-accent)!important
+}
+html[data-theme] .my-club-links a,html[data-theme] .my-club-badge,html[data-theme] .my-tournament-status,
+html[data-theme] .legal-hero-subtitle,html[data-theme] .legal-card h2 span,html[data-theme] .legal-button,
+html[data-theme] .news-actions button{color:var(--rsl-audit-accent)!important}
+html[data-theme] .my-club-stat,html[data-theme] .my-club-links a,html[data-theme] .my-club-member,
+html[data-theme] .my-club-result,html[data-theme] .my-tournament-tag,html[data-theme] .my-tournament-card,
+html[data-theme] .news-form input,html[data-theme] .news-form textarea,html[data-theme] .news-form select,
+html[data-theme] .news-guild,html[data-theme] .admin-toolbar select{border-color:var(--rsl-audit-line)!important}
+html[data-theme] .news-form input,html[data-theme] .news-form textarea,html[data-theme] .news-form select,
+html[data-theme] .news-guild,html[data-theme] .admin-toolbar select{
+  background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important
+}
+html[data-theme] .admin-news-item{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+
+/* Catch legacy hard-coded midnight inline backgrounds outside <main>. */
+html[data-theme] [style*="#061226"],html[data-theme] [style*="#06152f"],html[data-theme] [style*="#020814"],
+html[data-theme] [style*="#07172b"],html[data-theme] [style*="#071a2c"],html[data-theme] [style*="#0a1a30"],
+html[data-theme] [style*="#040d1d"],html[data-theme] [style*="#030b18"]{background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important}
+
+/* FINAL PAGE TITLE AND INNER-BOX THEME OVERRIDE */
 html[data-theme] main h1,
 html[data-theme] main h2,
 html[data-theme] main h3,
