@@ -103,6 +103,15 @@ def test_global_web_shell_contract_is_consistent():
     assert '.top-nav>.rsl-search-trigger' in css
 
 
+def test_web_route_and_shell_regressions_are_fixed():
+    server = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    calendar = (ROOT / "ALU_Gauntlet" / "web" / "static" / "calendar.html").read_text(encoding="utf-8")
+    assert 'self.app.router.add_get("/gauntlet/references/", self.gauntlet_references_page)' in server
+    assert 'self.app.router.add_get("/tournaments/matches/", self.tournament_matches_page)' in server
+    assert '</div>\\n    <div class="calendar-personal-actions">' not in calendar
+    assert '</div>\\n    <section class="calendar-personal-panel">' not in calendar
+
+
 def test_notification_delivery_index_matches_multi_phase_reminders():
     source = (ROOT / "ALU_Gauntlet" / "main.py").read_text(encoding="utf-8")
     assert '[("event_id", 1), ("user_id", 1), ("lead_days", 1)]' in source
