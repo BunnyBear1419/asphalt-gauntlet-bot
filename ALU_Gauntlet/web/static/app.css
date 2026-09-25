@@ -3783,6 +3783,8 @@ html[data-theme] textarea:disabled{
 
 
 /* FINAL NAVIGATION ACTION BAR — Search is always immediately left of Profile. */
+.top-nav>nav{right:390px!important;}
+
 .top-nav{
   position:fixed!important;
   overflow:visible!important;
