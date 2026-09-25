@@ -98,7 +98,6 @@ function syncPrimaryNav(){
  else if(hash==="#help") target=links.find(a=>a.getAttribute("href")==="/#help");
  else if(hash==="#gauntlet") target=links.find(a=>a.getAttribute("href")==="/player#gauntlet");
  else if(path==="/players") target=links.find(a=>a.getAttribute("href")==="/players");
- else if(path==="/setup") target=links.find(a=>a.getAttribute("href")==="/setup");
  else if(path==="/player") target=links.find(a=>a.getAttribute("href")==="/player" && !a.getAttribute("href").includes("#"));
  else if(path==="/") target=links.find(a=>a.getAttribute("href")==="/");
  if(target) target.classList.add("active");
