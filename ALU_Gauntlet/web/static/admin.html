@@ -257,7 +257,7 @@ function fillForm(){
  $("preview-hero").style.backgroundImage="url('"+(m.hero_url||"")+"')";
  $("overview-title").textContent=(i.name||"Community")+" Administration";
  $("preview-link").href="/?guild_id="+encodeURIComponent(guildId);
- $("setup-link").href="/setup?guild_id="+encodeURIComponent(guildId);
+ $("setup-link").href="/admin?guild_id="+encodeURIComponent(guildId)+"#section-settings";
  $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
  $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);document.querySelectorAll(".admin-guild-link").forEach(a=>a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId));
 }
