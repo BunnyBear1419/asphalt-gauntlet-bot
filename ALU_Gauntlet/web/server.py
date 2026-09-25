@@ -2706,10 +2706,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return await self._page_response("gauntlet-references.html", request)
 
     async def gauntlet_references(self, request: web.Request) -> web.Response:
-        """Return references with the signed-in driver's best known run and car rating."""
-        user=await self.require_user(request)
-        guild_id=str(user.guild_ids[0]) if user.guild_ids else ""
-        if not guild_id: raise web.HTTPForbidden(text="No server available.")
+        """Return references for the signed-in driver in the active connected server."""
+        user, guild_id, _ = await self.require_guild_member(request)
         profile=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{user.user_id}"}) or {}
         best_times=profile.get("best_times") or profile.get("track_records") or {}
         refs=[]
