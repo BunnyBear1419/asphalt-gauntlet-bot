@@ -4067,3 +4067,13 @@ footer.rsl-footer-mark > span{
     font-size:27px!important;
   }
 }
+
+
+/* FINAL COPYRIGHT TEXT SIZE */
+.rsl-footer .rsl-footer-copyline{
+  font-size:19px!important;
+  font-weight:600!important;
+}
+@media(max-width:700px){
+  .rsl-footer .rsl-footer-copyline{font-size:17px!important;}
+}
