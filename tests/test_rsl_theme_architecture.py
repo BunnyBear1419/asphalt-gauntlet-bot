@@ -93,7 +93,7 @@ def test_shared_navigation_keeps_calendar_before_companion_and_search_before_pro
 def test_navigation_reserves_space_for_search_and_profile_controls():
     css = CSS.read_text(encoding="utf-8")
     assert "FINAL NAVIGATION ACTION BAR" in css
-    assert ".top-nav>nav{left:86px!important" in css
+    assert ".top-nav>nav{left:250px!important" in css
     assert ".top-nav>nav{right:390px!important" in css
     assert ".top-nav>.rsl-search-trigger{right:270px!important" in css
     assert ".top-nav>.rsl-profile-nav" in css
