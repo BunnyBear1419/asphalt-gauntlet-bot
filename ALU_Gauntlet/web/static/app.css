@@ -2913,3 +2913,100 @@ html[data-theme] .rsl-profile-menu>a:hover{background:color-mix(in srgb,var(--rs
 .rsl-profile-theme-dropdown label{display:flex;align-items:center;gap:6px;min-width:62px;color:var(--rsl-box-muted,#91a5c3);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
 .rsl-profile-theme-dropdown select{flex:1;min-width:0;margin:0!important;padding:7px 8px!important;border:1px solid var(--rsl-box-line,#173b64)!important;border-radius:8px!important;background:var(--rsl-box-alt,#0b1d34)!important;color:var(--rsl-box-text,#dbe8f8)!important;font:inherit!important;font-size:11px!important;font-weight:700!important;cursor:pointer}
 .rsl-profile-theme-dropdown select:focus{outline:none;border-color:var(--rsl-box-accent,#25dfff)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--rsl-box-accent,#25dfff) 18%,transparent)}
+/* RSL THEME BODY-BOX PALETTE — ensure the main content panels visibly follow every selected theme. */
+html[data-theme="light"]{
+  --rsl-box:#f1f5f9;--rsl-box-alt:#e4ecf4;--rsl-box-line:#c3d0dd;--rsl-box-text:#18283b;--rsl-box-muted:#5d7187;--rsl-box-accent:#2878c8;
+}
+html[data-theme="dark"]{--rsl-box:#071427;--rsl-box-alt:#0d2139}
+html[data-theme="ocean"]{--rsl-box:#062936;--rsl-box-alt:#0d3b4b}
+html[data-theme="purple"]{--rsl-box:#1a0e2d;--rsl-box-alt:#291440}
+html[data-theme="crimson"]{--rsl-box:#250d12;--rsl-box-alt:#39151c}
+html[data-theme="emerald"]{--rsl-box:#07251d;--rsl-box-alt:#0d3c2e}
+html[data-theme="sunset"]{--rsl-box:#2b160c;--rsl-box-alt:#4d2815}
+html[data-theme="graphite"]{--rsl-box:#1c2024;--rsl-box-alt:#30363c}
+
+html[data-theme] .glass-panel,
+html[data-theme] .welcome-panel,
+html[data-theme] .season-panel,
+html[data-theme] .feature,
+html[data-theme] .card,
+html[data-theme] .table-wrap,
+html[data-theme] .profile-card,
+html[data-theme] .quick-actions,
+html[data-theme] .activity-card,
+html[data-theme] .matches-card,
+html[data-theme] .leaderboard-card,
+html[data-theme] .garage-card,
+html[data-theme] .profile-side-card,
+html[data-theme] .calendar-panel,
+html[data-theme] .calendar-shell,
+html[data-theme] .calendar-day,
+html[data-theme] .calendar-event,
+html[data-theme] .modal-card,
+html[data-theme] .admin-card,
+html[data-theme] .club-card,
+html[data-theme] .tournament-card,
+html[data-theme] .legal-card,
+html[data-theme] .profile-status-panel,
+html[data-theme] .career-section,
+html[data-theme] .public-profile{
+  background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important;
+  color:var(--rsl-box-text)!important;
+  border-color:var(--rsl-box-line)!important;
+}
+
+html[data-theme] .car-showcase,
+html[data-theme] .calendar-toolbar,
+html[data-theme] .calendar-header,
+html[data-theme] .calendar-controls,
+html[data-theme] .toolbar,
+html[data-theme] .server-select{
+  background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box))!important;
+  color:var(--rsl-box-text)!important;
+  border-color:var(--rsl-box-line)!important;
+}
+
+html[data-theme] .match-row,
+html[data-theme] .leader-row,
+html[data-theme] .activity-list>div,
+html[data-theme] .profile-stats,
+html[data-theme] th,
+html[data-theme] td{
+  border-color:color-mix(in srgb,var(--rsl-box-line) 78%,transparent)!important;
+}
+
+html[data-theme] .panel-heading h2,
+html[data-theme] .feature-body h2,
+html[data-theme] .card strong,
+html[data-theme] .profile-head strong,
+html[data-theme] .welcome-copy h1{
+  color:var(--rsl-box-text)!important;
+}
+
+html[data-theme] .panel-heading h2 small,
+html[data-theme] .feature-body p,
+html[data-theme] .server-sub,
+html[data-theme] .empty-state,
+html[data-theme] .profile-head small,
+html[data-theme] .profile-stats span,
+html[data-theme] .garage-meta small{
+  color:var(--rsl-box-muted)!important;
+}
+
+/* Light theme uses a soft blue-gray surface rather than pure white. */
+html[data-theme="light"] .glass-panel,
+html[data-theme="light"] .welcome-panel,
+html[data-theme="light"] .season-panel,
+html[data-theme="light"] .feature,
+html[data-theme="light"] .card,
+html[data-theme="light"] .table-wrap,
+html[data-theme="light"] .profile-card,
+html[data-theme="light"] .quick-actions,
+html[data-theme="light"] .activity-card,
+html[data-theme="light"] .matches-card,
+html[data-theme="light"] .leaderboard-card,
+html[data-theme="light"] .garage-card{
+  background:linear-gradient(145deg,#f1f5f9,#e4ecf4)!important;
+  border-color:#c3d0dd!important;
+  color:#18283b!important;
+}
