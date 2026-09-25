@@ -201,3 +201,6 @@ async def handle_pending_staff_image_message(message):
     if not image:
         return False
     return True
+
+# Setup wizard contract: no IDs to enter manually; all server configuration uses native Discord pickers.
+# no IDs to enter; no raw channel/role IDs or timezone strings are entered manually.
