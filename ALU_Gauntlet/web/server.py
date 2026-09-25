@@ -894,6 +894,69 @@ try{
 '''
         if "</body>" in body:
             body = body.replace("</body>", profile_script + "</body>", 1)
+
+        # Final cross-page theme contract. This is injected after every page
+        # template and shared shell so every rendered page follows the account
+        # theme without changing layout or artwork.
+        theme_audit_css = r'''<style id="rsl-cross-page-theme-audit">
+html[data-theme]{--rsl-audit-bg:#020817;--rsl-audit-panel:#071427;--rsl-audit-panel2:#0d2139;--rsl-audit-line:#173b64;--rsl-audit-text:#dbe8f8;--rsl-audit-muted:#91a5c3;--rsl-audit-accent:#25dfff;--rsl-audit-strong:#168cff;--rsl-audit-success:#20e39d;--rsl-audit-warn:#e9d66b;--rsl-audit-shadow:rgba(0,0,0,.28)}
+html[data-theme="light"]{--rsl-audit-bg:#eef3f8;--rsl-audit-panel:#f1f5f9;--rsl-audit-panel2:#e4ecf4;--rsl-audit-line:#c3d0dd;--rsl-audit-text:#18283b;--rsl-audit-muted:#5d7187;--rsl-audit-accent:#2878c8;--rsl-audit-strong:#1769d1;--rsl-audit-success:#087d5b;--rsl-audit-warn:#b87900;--rsl-audit-shadow:rgba(35,63,92,.10)}
+html[data-theme="ocean"]{--rsl-audit-bg:#03141c;--rsl-audit-panel:#062936;--rsl-audit-panel2:#0d3b4b;--rsl-audit-line:#15566b;--rsl-audit-text:#e0f7ff;--rsl-audit-muted:#8bb8c8;--rsl-audit-accent:#37e6ff;--rsl-audit-strong:#1599d8;--rsl-audit-success:#19d6ad;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.30)}
+html[data-theme="purple"]{--rsl-audit-bg:#0d0719;--rsl-audit-panel:#1a0e2d;--rsl-audit-panel2:#291440;--rsl-audit-line:#563b82;--rsl-audit-text:#f1e8ff;--rsl-audit-muted:#b9a9d1;--rsl-audit-accent:#b86cff;--rsl-audit-strong:#7b5cff;--rsl-audit-success:#50e0bb;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.34)}
+html[data-theme="crimson"]{--rsl-audit-bg:#130608;--rsl-audit-panel:#250d12;--rsl-audit-panel2:#39151c;--rsl-audit-line:#71303a;--rsl-audit-text:#ffe8ec;--rsl-audit-muted:#c49ba2;--rsl-audit-accent:#ff5c7a;--rsl-audit-strong:#e83256;--rsl-audit-success:#47d6a0;--rsl-audit-warn:#ffc857;--rsl-audit-shadow:rgba(0,0,0,.34)}
+html[data-theme="emerald"]{--rsl-audit-bg:#03130f;--rsl-audit-panel:#07251d;--rsl-audit-panel2:#0d3c2e;--rsl-audit-line:#17604c;--rsl-audit-text:#e5fff7;--rsl-audit-muted:#8fb9ab;--rsl-audit-accent:#32f2c2;--rsl-audit-strong:#12b892;--rsl-audit-success:#20e39d;--rsl-audit-warn:#e9d66b;--rsl-audit-shadow:rgba(0,0,0,.30)}
+html[data-theme="sunset"]{--rsl-audit-bg:#170b06;--rsl-audit-panel:#2b160c;--rsl-audit-panel2:#4d2815;--rsl-audit-line:#75411f;--rsl-audit-text:#fff0e5;--rsl-audit-muted:#c9aa91;--rsl-audit-accent:#ff9b54;--rsl-audit-strong:#e96b31;--rsl-audit-success:#62d39d;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.34)}
+html[data-theme="graphite"]{--rsl-audit-bg:#111315;--rsl-audit-panel:#1c2024;--rsl-audit-panel2:#30363c;--rsl-audit-line:#414951;--rsl-audit-text:#edf2f5;--rsl-audit-muted:#a6afb8;--rsl-audit-accent:#d7e3ea;--rsl-audit-strong:#7ca3bd;--rsl-audit-success:#72b89d;--rsl-audit-warn:#d8c98a;--rsl-audit-shadow:rgba(0,0,0,.30)}
+
+html[data-theme] body,html[data-theme] body.alu-dashboard{background:var(--rsl-audit-bg)!important;color:var(--rsl-audit-text)!important}
+html[data-theme] .top-nav{background:linear-gradient(180deg,var(--rsl-audit-panel2),var(--rsl-audit-bg))!important;border-color:var(--rsl-audit-line)!important;box-shadow:0 8px 28px var(--rsl-audit-shadow)!important}
+html[data-theme] .top-nav nav>a,html[data-theme] .top-nav .top-nav-dropdown-trigger{color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .top-nav nav>a:hover,html[data-theme] .top-nav nav>a.active,html[data-theme] .top-nav .top-nav-dropdown-trigger:hover{color:var(--rsl-audit-accent)!important}
+html[data-theme] .top-nav-dropdown-menu,html[data-theme] .rsl-profile-menu,html[data-theme] .rsl-search-dialog,html[data-theme] .rsl-search-panel{background:linear-gradient(145deg,var(--rsl-audit-panel2),var(--rsl-audit-panel))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .top-nav-dropdown-menu a,html[data-theme] .rsl-profile-menu a,html[data-theme] .rsl-search-result{color:var(--rsl-audit-text)!important}
+html[data-theme] .top-nav-dropdown-menu a:hover,html[data-theme] .rsl-profile-menu a:hover,html[data-theme] .rsl-search-result:hover{background:color-mix(in srgb,var(--rsl-audit-accent) 13%,var(--rsl-audit-panel))!important;color:var(--rsl-audit-accent)!important}
+html[data-theme] .rsl-profile-trigger,html[data-theme] .rsl-search-trigger{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+
+html[data-theme] .glass-panel,html[data-theme] .welcome-panel,html[data-theme] .season-panel,html[data-theme] .feature,html[data-theme] .card,html[data-theme] .table-wrap,html[data-theme] .profile-card,html[data-theme] .profile-side-card,html[data-theme] .profile-status-panel,html[data-theme] .quick-actions,html[data-theme] .activity-card,html[data-theme] .matches-card,html[data-theme] .leaderboard-card,html[data-theme] .garage-card,html[data-theme] .calendar-panel,html[data-theme] .calendar-shell,html[data-theme] .calendar-day,html[data-theme] .calendar-event,html[data-theme] .modal-card,html[data-theme] .admin-card,html[data-theme] .club-card,html[data-theme] .tournament-card,html[data-theme] .legal-card,html[data-theme] .career-section,html[data-theme] .career-card,html[data-theme] .public-profile,html[data-theme] .home-info-card,html[data-theme] .home-feature-card,html[data-theme] .home-help-card,html[data-theme] .home-upcoming-panel,html[data-theme] .clubs-center-hero,html[data-theme] .ref-card,html[data-theme] .compare,html[data-theme] .defense-summary{background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important;box-shadow:0 10px 30px var(--rsl-audit-shadow)!important}
+
+html[data-theme] .toolbar,html[data-theme] .server-select,html[data-theme] .calendar-toolbar,html[data-theme] .calendar-header,html[data-theme] .calendar-controls,html[data-theme] .calendar-personal-panel,html[data-theme] .calendar-personal-list,html[data-theme] .match-row,html[data-theme] .leader-row,html[data-theme] .activity-list>div,html[data-theme] .profile-stats,html[data-theme] .career-stat-grid>div,html[data-theme] .tournament-card-art,html[data-theme] .tournament-card-body,html[data-theme] .admin-sidebar,html[data-theme] .admin-content,html[data-theme] .news-card,html[data-theme] .home-news-item,html[data-theme] .ref-video{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] input,html[data-theme] textarea,html[data-theme] select,html[data-theme] .toolbar input,html[data-theme] .toolbar select,html[data-theme] .ref-toolbar input,html[data-theme] .ref-toolbar select,html[data-theme] .ref-form input,html[data-theme] .ref-form select,html[data-theme] .ref-form textarea,html[data-theme] .admin-toolbar select,html[data-theme] .admin-field input,html[data-theme] .admin-field select,html[data-theme] .admin-field textarea{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] input::placeholder,html[data-theme] textarea::placeholder{color:var(--rsl-audit-muted)!important}
+html[data-theme] th,html[data-theme] td,html[data-theme] .match-row,html[data-theme] .leader-row{border-color:var(--rsl-audit-line)!important}
+html[data-theme] .server-sub,html[data-theme] .empty-state,html[data-theme] .muted,html[data-theme] .ref-meta,html[data-theme] .ref-desc,html[data-theme] .tournament-card p,html[data-theme] .tournament-toolbar small,html[data-theme] .profile-status-item span,html[data-theme] .profile-label,html[data-theme] .garage-meta small,html[data-theme] .home-info-card p,html[data-theme] .home-feature-card p,html[data-theme] .home-help-card p,html[data-theme] .home-news-item p,html[data-theme] .news-loading,html[data-theme] .news-empty{color:var(--rsl-audit-muted)!important}
+html[data-theme] h1,html[data-theme] h2,html[data-theme] h3,html[data-theme] h4,html[data-theme] strong,html[data-theme] .panel-heading h2,html[data-theme] .feature-body h2,html[data-theme] .welcome-copy h1,html[data-theme] .home-info-card h2,html[data-theme] .home-feature-card h2,html[data-theme] .home-help-card h2,html[data-theme] .clubs-center-hero h1,html[data-theme] .tournament-card h2,html[data-theme] .career-card h3,html[data-theme] .home-section-heading h2{color:var(--rsl-audit-text)!important}
+html[data-theme] a{color:var(--rsl-audit-accent)}
+html[data-theme] .home-eyebrow,html[data-theme] .eyebrow,html[data-theme] .tournament-card-top b,html[data-theme] .official,html[data-theme] .defense-summary span{color:var(--rsl-audit-accent)!important}
+
+html[data-theme] .qa,html[data-theme] .ref-form button,html[data-theme] .home-action,html[data-theme] .tournament-hero-action,html[data-theme] .discord-cta-button{border-color:var(--rsl-audit-accent)!important}
+html[data-theme] .qa-blue,html[data-theme] .qa-purple,html[data-theme] .qa-gold,html[data-theme] .qa-green,html[data-theme] .wide-action,html[data-theme] .ref-form button{background:linear-gradient(90deg,var(--rsl-audit-strong),var(--rsl-audit-accent))!important;color:#fff!important}
+html[data-theme] .home-feature-icon,html[data-theme] .home-help-arrow{color:var(--rsl-audit-accent)!important}
+html[data-theme] .home-feature-card:before,html[data-theme] .home-info-card:before,html[data-theme] .home-help-card:before{background:linear-gradient(90deg,var(--rsl-audit-accent),var(--rsl-audit-strong),transparent)!important}
+html[data-theme] .home-feature-card:after,html[data-theme] .home-info-card:after{background:var(--rsl-audit-accent)!important;box-shadow:-18px -18px 0 color-mix(in srgb,var(--rsl-audit-accent) 35%,transparent)!important}
+
+html[data-theme] main [style*="background:#"],html[data-theme] main [style*="background: #"],html[data-theme] main [style*="background:linear-gradient"],html[data-theme] main [style*="background: linear-gradient"]{background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important}
+html[data-theme] main [style*="border:1px"],html[data-theme] main [style*="border: 1px"]{border-color:var(--rsl-audit-line)!important}
+html[data-theme] main [style*="color:#"],html[data-theme] main [style*="color: #"]{color:var(--rsl-audit-text)!important}
+
+html[data-theme] .home-page{background:radial-gradient(circle at 70% 10%,var(--rsl-audit-panel2) 0,var(--rsl-audit-bg) 52%,var(--rsl-audit-bg) 100%)!important}
+html[data-theme] .home-hero{background:var(--rsl-audit-bg)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .home-news-modal-card{background:linear-gradient(145deg,var(--rsl-audit-panel2),var(--rsl-audit-panel))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-accent)!important}
+html[data-theme] .rsl-footer{background:linear-gradient(180deg,var(--rsl-audit-panel),var(--rsl-audit-bg))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .rsl-footer a,html[data-theme] .rsl-footer-copyline,html[data-theme] .rsl-footer-brand-name{color:var(--rsl-audit-text)!important}
+html[data-theme] .rsl-cookie-banner,html[data-theme] .rsl-cookie-settings,html[data-theme] .rsl-footer-theme-control{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .rsl-cookie-banner p,html[data-theme] .rsl-footer-theme-control label{color:var(--rsl-audit-muted)!important}
+html[data-theme] .rsl-cookie-btn{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .rsl-cookie-btn.primary{background:var(--rsl-audit-strong)!important;color:#fff!important}
+html[data-theme] .rsl-footer-theme-control select{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+
+html[data-theme] .companion-nav-info-menu,html[data-theme] .companion-info-link,html[data-theme] .companion-info-item{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .companion-info-item small,html[data-theme] .companion-info-link small{color:var(--rsl-audit-muted)!important}
+html[data-theme] .rsl-search-input-wrap{background:var(--rsl-audit-panel)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .rsl-search-input-wrap input{background:transparent!important;color:var(--rsl-audit-text)!important}
+html[data-theme="light"] .top-nav nav>a,html[data-theme="light"] .top-nav .top-nav-dropdown-trigger,html[data-theme="light"] .rsl-profile-trigger,html[data-theme="light"] .rsl-search-trigger{color:#18283b!important}
+html[data-theme="light"] a,html[data-theme="light"] .rsl-footer a{color:#1769d1!important}
+</style>'''
+        body = body.replace("</body>", theme_audit_css + "\n</body>", 1)
         return web.Response(text=body, content_type="text/html")
 
     def _merge_branding(self, raw: dict[str, Any] | None) -> dict[str, Any]:
