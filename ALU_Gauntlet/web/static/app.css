@@ -696,8 +696,8 @@ body{background:radial-gradient(circle at 65% 30%,#071a3b 0,#02060d 48%,#010308 
   opacity:1;
   pointer-events:auto;
   top:80px!important;
-  left:50%!important;
-  transform:translateX(-50%);
+  left:0!important;
+  transform:none!important;
   white-space:nowrap;
 }
 .top-nav-dropdown:not([open])>.top-nav-dropdown-menu{
