@@ -108,6 +108,14 @@ def test_web_route_and_shell_regressions_are_fixed():
     calendar = (ROOT / "ALU_Gauntlet" / "web" / "static" / "calendar.html").read_text(encoding="utf-8")
     assert 'self.app.router.add_get("/gauntlet/references/", self.gauntlet_references_page)' in server
     assert 'self.app.router.add_get("/tournaments/matches/", self.tournament_matches_page)' in server
+    assert 'async def tournament_matches_page' in server
+    refs_start = server.index('async def gauntlet_references(self, request: web.Request)')
+    refs_end = server.index('async def create_gauntlet_reference', refs_start)
+    refs_fn = server[refs_start:refs_end]
+    assert 'await self.require_guild_member(request)' in refs_fn
+    tournament_matches = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournament-matches.html").read_text(encoding="utf-8")
+    assert "<h1>Brackets &amp; Matches</h1>" in tournament_matches
+    assert "🏆" not in tournament_matches and "◆" not in tournament_matches and "📅" not in tournament_matches
     assert '</div>\\n    <div class="calendar-personal-actions">' not in calendar
     assert '</div>\\n    <section class="calendar-personal-panel">' not in calendar
 
