@@ -363,6 +363,12 @@ class WebControlCenter:
             # could overlap the navigation. Remove all legacy copies globally.
             body = re.sub(r'<a class="top-cashapp-link"[^>]*>.*?</a>', "", body, flags=re.S)
             body = re.sub(r'<a class="top-discord-link"[^>]*>.*?</a>', "", body, flags=re.S)
+            # The footer keeps its social links, but they use footer-only
+            # classes so they cannot inherit the old absolute-positioned top-left CSS.
+        social_markup = (
+            f'<a class="rsl-footer-social rsl-footer-discord" href="{html.escape(str(link_settings.get("discord") or "https://discord.gg/fmFk8Ejf2H"), quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="RSL Discord"><span aria-hidden="true">Discord</span></a>'
+            f'<a class="rsl-footer-social rsl-footer-cashapp" href="{html.escape(str(link_settings.get("cashapp") or "https://cash.app/"), quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="RSL Cash App"><span aria-hidden="true">$</span></a>'
+        )
 
         # Keep the account/profile control consistent across every web page.
         # The navigation itself is intentionally kept in each page so existing
