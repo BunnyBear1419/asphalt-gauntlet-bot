@@ -168,11 +168,56 @@ class NotificationCog(commands.Cog):
                 # keeping the background scheduler alive.
                 await self.bot.db.notification_deliveries.delete_one(delivery_filter)
 
+    async def _notify_custom_reminders(self, now):
+        """Deliver private calendar reminders created by individual drivers."""
+        async for reminder in self.bot.db.custom_reminders.find({"enabled": True, "timestamp": {"$gt": 0}}):
+            try:
+                user_id = str(reminder.get("user_id", ""))
+                if not user_id.isdigit():
+                    continue
+                target = float(reminder.get("timestamp", 0) or 0)
+                configured_lead = float(reminder.get("lead_days", 0) or 0)
+                event_id = f"personal-{reminder.get('_id')}"
+                for selected_days in ([configured_lead, 0.0] if configured_lead > 0 else [0.0]):
+                    target_time = target - selected_days * 86400.0
+                    if abs(now - target_time) > 90:
+                        continue
+                    delivery_filter = {"event_id": event_id, "user_id": user_id, "lead_days": float(selected_days)}
+                    try:
+                        claimed = await self.bot.db.notification_deliveries.update_one(
+                            delivery_filter,
+                            {"$setOnInsert": {"created_at": now, "status": "sending"}},
+                            upsert=True,
+                        )
+                    except DuplicateKeyError:
+                        continue
+                    if not claimed.upserted_id:
+                        continue
+                    try:
+                        user = self.bot.get_user(int(user_id)) or await self.bot.fetch_user(int(user_id))
+                        when = "is happening now" if selected_days <= 0 else (f"is coming up in {selected_days:g} day" + ("." if selected_days == 1 else "s."))
+                        embed = discord.Embed(title="🔔 RSL Personal Reminder", description=f"**{reminder.get('title', 'Personal Reminder')}** {when}.", color=0x19D3FF)
+                        note = str(reminder.get("note") or "").strip()
+                        if note:
+                            embed.add_field(name="Note", value=note[:1024], inline=False)
+                        embed.add_field(name="When", value=f"<t:{int(target)}:F>\\n<t:{int(target)}:R>", inline=True)
+                        embed.add_field(name="Timezone", value=str(reminder.get("timezone") or "UTC"), inline=True)
+                        embed.set_footer(text="Manage personal reminders from your RSL Calendar.")
+                        await user.send(embed=embed)
+                        await self.bot.db.notification_deliveries.update_one(delivery_filter, {"$set": {"sent_at": now, "status": "sent"}})
+                    except (discord.Forbidden, discord.HTTPException):
+                        await self.bot.db.notification_deliveries.delete_one(delivery_filter)
+                    except Exception:
+                        await self.bot.db.notification_deliveries.delete_one(delivery_filter)
+            except Exception:
+                continue
+
     @tasks.loop(seconds=60)
     async def notification_loop(self):
         now = time.time()
         try:
             events = await self._calendar_events()
+            await self._notify_custom_reminders(now)
             for event in events:
                 for record in await self.bot.db.notification_preferences.find({}).to_list(length=None):
                     if not self._wants(record, event):
