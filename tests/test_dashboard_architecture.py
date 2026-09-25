@@ -62,7 +62,7 @@ def test_only_dashboard_and_staff_are_public():
         "delete_me", "setdefense", "mydefense", "changedefense", "submitdefense", "challenge",
         "submitmatch_direct", "leaderboard", "top", "maps", "besttime", "reference", "add_reference",
         "help", "status", "missingdefense", "adminlog", "pending", "listplayers", "clearhistory",
-        "dbcheck", "backup", "diagnostics", "launchcheck", "setimage", "setup", "delete_id",
+        "dbcheck", "backup", "diagnostics", "launchcheck", "setimage", "delete_id",
         "identity", "sync",
     }
 
