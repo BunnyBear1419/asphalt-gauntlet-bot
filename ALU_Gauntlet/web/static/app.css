@@ -3060,3 +3060,73 @@ html[data-theme] .home-feature-icon{border-color:var(--rsl-box-accent)!important
 html[data-theme] .home-news-item{background:var(--rsl-box)!important;border-color:var(--rsl-box-line)!important}
 html[data-theme] .home-news-item strong{color:var(--rsl-box-text)!important}
 html[data-theme] .home-upcoming-empty,.home-news-list .news-empty{color:var(--rsl-box-muted)!important}
+
+
+/* FINAL HOME THEME/ICON CORRECTION — use the actual home-upcoming markup and keep SVG icons crisp. */
+html[data-theme] .home-upcoming{
+  background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important;
+  color:var(--rsl-box-text)!important;
+  border:1px solid var(--rsl-box-line)!important;
+  box-shadow:0 14px 40px rgba(0,0,0,.28)!important;
+}
+html[data-theme] .home-upcoming-head,
+html[data-theme] .home-upcoming-title,
+html[data-theme] .home-upcoming-title h2,
+html[data-theme] .home-upcoming .home-eyebrow{
+  color:var(--rsl-box-text)!important;
+}
+html[data-theme] .home-upcoming-link{
+  color:var(--rsl-box-accent)!important;
+}
+html[data-theme] .home-upcoming-list{
+  color:var(--rsl-box-text)!important;
+}
+html[data-theme] .home-upcoming-list > *,
+html[data-theme] .home-upcoming-event,
+html[data-theme] .home-upcoming-item{
+  background:color-mix(in srgb,var(--rsl-box-alt) 88%,var(--rsl-box) 12%)!important;
+  color:var(--rsl-box-text)!important;
+  border-color:var(--rsl-box-line)!important;
+}
+html[data-theme] .home-upcoming-list svg,
+html[data-theme] .home-upcoming svg{
+  color:var(--rsl-box-accent)!important;
+  stroke:var(--rsl-box-accent)!important;
+}
+html[data-theme] .home-upcoming-list svg *,
+html[data-theme] .home-upcoming svg *{
+  stroke:var(--rsl-box-accent)!important;
+}
+html[data-theme] .home-upcoming-empty{
+  color:var(--rsl-box-muted)!important;
+}
+
+/* Normalize the homepage line icons so inherited fill rules cannot distort them. */
+html[data-theme] .home-feature-icon svg,
+html[data-theme] .home-help-icon svg,
+html[data-theme] .home-about-icon svg,
+html[data-theme] .home-news-icon svg{
+  width:52px!important;
+  height:52px!important;
+  fill:none!important;
+  stroke:var(--rsl-box-accent)!important;
+  stroke-width:3!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+  color:var(--rsl-box-accent)!important;
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--rsl-box-accent) 30%,transparent))!important;
+}
+html[data-theme] .home-feature-icon svg *,
+html[data-theme] .home-help-icon svg *,
+html[data-theme] .home-about-icon svg *,
+html[data-theme] .home-news-icon svg *{
+  fill:none!important;
+  stroke:var(--rsl-box-accent)!important;
+}
+html[data-theme] .home-feature-icon,
+html[data-theme] .home-help-icon,
+html[data-theme] .home-about-icon,
+html[data-theme] .home-news-icon{
+  color:var(--rsl-box-accent)!important;
+  border-color:var(--rsl-box-accent)!important;
+}
