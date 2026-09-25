@@ -2178,11 +2178,13 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/gauntlet/matches", self.gauntlet_matches_page)
         self.app.router.add_get("/gauntlet/leaderboard", self.gauntlet_leaderboard_page)
         self.app.router.add_get("/gauntlet/references", self.gauntlet_references_page)
+        self.app.router.add_get("/gauntlet/references/", self.gauntlet_references_page)
         self.app.router.add_get("/gauntlet/career", self.gauntlet_career_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/calendar", self.calendar_page)
         self.app.router.add_get("/tournaments/registration", self.tournament_registration_page)
         self.app.router.add_get("/tournaments/matches", self.tournament_matches_page)
+        self.app.router.add_get("/tournaments/matches/", self.tournament_matches_page)
         self.app.router.add_get("/tournaments/results", self.tournament_results_page)
         self.app.router.add_get("/tournaments/clubs", self.tournament_clubs_page)
         self.app.router.add_get("/clubs", self.clubs_page)
@@ -2336,11 +2338,16 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         profile=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{user.user_id}"}) or {}
         best_times=profile.get("best_times") or profile.get("track_records") or {}
         refs=[]
+        def safe_int(value: Any) -> int:
+            try:
+                return int(value or 0)
+            except (TypeError, ValueError):
+                return 0
         async for item in self.bot.db.gauntlet_references.find({"guild_id":guild_id}).sort("created_at",-1):
             course=str(item.get("course","")); mine=best_times.get(course) if isinstance(best_times,dict) else None
             if isinstance(mine,dict): my_time=mine.get("lap_time") or mine.get("lap_time_str") or mine.get("time"); my_rank=mine.get("car_rank"); my_car=mine.get("car")
             else: my_time,my_rank,my_car=(mine if mine else None),None,None
-            refs.append({"id":str(item.get("_id")),"course":course,"title":str(item.get("title","")),"driver":str(item.get("driver","")),"time":str(item.get("time","")),"car":str(item.get("car","")),"car_rank":int(item.get("car_rank",item.get("car_performance",0)) or 0),"video_url":str(item.get("video_url","")),"description":str(item.get("description","")),"official":bool(item.get("official",False)),"my_best_time":str(my_time or ""),"my_car":str(my_car or ""),"my_car_rank":int(my_rank or 0)})
+            refs.append({"id":str(item.get("_id")),"course":course,"title":str(item.get("title","")),"driver":str(item.get("driver","")),"time":str(item.get("time","")),"car":str(item.get("car","")),"car_rank":safe_int(item.get("car_rank",item.get("car_performance",0))),"video_url":str(item.get("video_url","")),"description":str(item.get("description","")),"official":bool(item.get("official",False)),"my_best_time":str(my_time or ""),"my_car":str(my_car or ""),"my_car_rank":safe_int(my_rank)})
         member=self.bot.get_guild(int(guild_id)).get_member(int(user.user_id)) if self.bot.get_guild(int(guild_id)) else None
         return web.json_response({"courses":list(ALU_TRACKS),"references":refs,"is_staff":bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))})
 
