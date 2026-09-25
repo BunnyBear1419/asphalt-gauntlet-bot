@@ -3794,7 +3794,7 @@ html[data-theme] textarea:disabled{
 }
 .top-nav>nav{
   position:absolute!important;
-  left:86px!important;
+  left:250px!important;
   right:390px!important;
   top:0!important;
   height:80px!important;
@@ -4532,3 +4532,6 @@ footer.rsl-footer-mark > span{
     font-size:38px!important;
   }
 }
+
+@media(max-width:1100px){.top-nav>nav{left:180px!important;right:330px!important}.top-nav>.rsl-search-trigger{right:220px!important}.top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:10px!important}}
+@media(max-width:700px){.top-nav>nav{left:125px!important;right:70px!important}.top-nav>.rsl-search-trigger{right:58px!important;width:38px!important;height:38px!important}.top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:6px!important}}
