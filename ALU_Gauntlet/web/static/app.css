@@ -2622,3 +2622,74 @@ body:has(.rsl-global-discord-cta) .rsl-global-discord-cta.rsl-global-discord-cta
   .top-nav>.rsl-profile-nav,
   .top-nav>.rsl-login-button{right:8px!important}
 }
+
+
+/* RSL HEADER FINAL ALIGNMENT — restore centered Profile bar and pull the primary menu back into its true center zone. */
+.top-nav>.rsl-profile-nav,
+.top-nav>.rsl-login-button{
+  position:absolute!important;
+  right:14px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  margin:0!important;
+  z-index:100001!important;
+}
+.top-nav>.rsl-profile-nav .rsl-profile-trigger{
+  width:230px!important;
+  min-width:230px!important;
+  height:44px!important;
+  min-height:44px!important;
+  justify-content:center!important;
+  text-align:center!important;
+}
+.top-nav>.rsl-profile-nav .rsl-profile-label{
+  flex:0 1 auto!important;
+  max-width:125px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.top-nav>.rsl-search-trigger{
+  right:256px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:100002!important;
+}
+.top-nav>nav{
+  left:86px!important;
+  right:390px!important;
+  top:0!important;
+  width:auto!important;
+  max-width:none!important;
+  height:80px!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  display:flex!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+}
+.top-nav>nav>a,
+.top-nav>nav>.top-nav-dropdown{
+  flex:0 0 auto!important;
+  transform:none!important;
+}
+@media(max-width:1200px){
+  .top-nav>nav{left:78px!important;right:350px!important;justify-content:flex-start!important}
+  .top-nav>.rsl-search-trigger{right:246px!important}
+}
+@media(max-width:900px){
+  .top-nav>nav{left:72px!important;right:300px!important;justify-content:flex-start!important;overflow-x:auto!important;overflow-y:visible!important;scrollbar-width:none!important}
+  .top-nav>nav::-webkit-scrollbar{display:none!important}
+  .top-nav>.rsl-search-trigger{right:214px!important}
+  .top-nav>.rsl-profile-nav .rsl-profile-trigger{width:190px!important;min-width:190px!important}
+}
+@media(max-width:760px){
+  .top-nav{height:68px!important}
+  .top-nav>nav{left:62px!important;right:116px!important;height:68px!important;justify-content:flex-start!important}
+  .top-nav>.rsl-search-trigger{right:66px!important;width:38px!important;height:38px!important}
+  .top-nav>.rsl-profile-nav,.top-nav>.rsl-login-button{right:8px!important}
+  .top-nav>.rsl-profile-nav .rsl-profile-trigger{width:auto!important;min-width:44px!important;height:44px!important;min-height:44px!important}
+  .top-nav>.rsl-profile-nav .rsl-profile-label{display:none!important}
+}
