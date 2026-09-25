@@ -26,6 +26,7 @@ from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_ap
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
+THEMES = ("dark", "light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite")
 
 TIMEZONE_LABELS = (
     ("UTC", "UTC"), ("Eastern Time", "America/New_York"), ("Central Time", "America/Chicago"),
@@ -3340,7 +3341,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         user = await self.require_user(request)
         record = await self.bot.db.web_user_preferences.find_one({"_id": str(user.user_id)}) or {}
         theme = str(record.get("theme", "dark")).strip().lower()
-        if theme not in {"dark", "light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"}:
+        if theme not in THEMES:
             theme = "dark"
         return web.json_response({"theme": theme})
 
