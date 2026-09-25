@@ -9,7 +9,7 @@ def test_oauth_state_is_short_lived_and_single_use():
     src = AUTH.read_text(encoding="utf-8")
     assert "STATE_TTL = 10 * 60" in src
     assert "secrets.token_urlsafe(32)" in src
-    assert "state = self.states.pop(state, None)" in src
+    assert "expiry = self.states.pop(state, None)" in src
 
 
 def test_session_tokens_are_random_hashed_and_http_only():
