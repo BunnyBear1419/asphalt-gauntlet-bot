@@ -379,19 +379,6 @@ class WebControlCenter:
       <strong id="rsl-profile-menu-name">Profile</strong>
       <small id="rsl-profile-menu-sub">Discord account</small>
     </div>
-    <div class="rsl-profile-theme-dropdown">
-      <label for="rsl-profile-theme-select">🎨 <span>Theme</span></label>
-      <select id="rsl-profile-theme-select" aria-label="Choose website theme">
-        <option value="dark">🌙 Midnight</option>
-        <option value="light">☀️ Light</option>
-        <option value="ocean">🌊 Ocean</option>
-        <option value="purple">🟣 Neon Purple</option>
-        <option value="crimson">🔴 Crimson</option>
-        <option value="emerald">🟢 Emerald</option>
-        <option value="sunset">🟠 Sunset</option>
-        <option value="graphite">⚙️ Graphite</option>
-      </select>
-    </div>
     <a href="/player#preferences">⚙️ <span>My Settings</span></a>
     <a href="/profile">👤 <span>My Profile</span></a>
     <a href="/club">🏎️ <span>My Club</span></a>
@@ -674,8 +661,15 @@ window.rslGoogleTranslateInit=function(){
 .rsl-footer-utility-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:24px auto 0;width:100%}
 .rsl-footer-utility-row .rsl-language-switcher{margin:0!important}
 .rsl-footer-utility-row .rsl-cookie-settings{display:none}
-@media(max-width:700px){.rsl-footer-utility-row{gap:8px;flex-wrap:wrap}.rsl-footer-utility-row .rsl-language-switcher,.rsl-footer-utility-row .rsl-cookie-settings{min-width:200px}}
-@media(max-width:460px){.rsl-footer-utility-row .rsl-language-switcher,.rsl-footer-utility-row .rsl-cookie-settings{min-width:100%;width:100%}}
+.rsl-footer-theme-control{display:flex;align-items:center;gap:8px;height:44px;min-width:240px;box-sizing:border-box;border:1px solid #168cff;background:#081321;color:#f2f7ff;padding:0 12px;border-radius:9px}
+.rsl-footer-theme-control label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#91a5c3;white-space:nowrap}
+.rsl-footer-theme-control select{width:155px;min-width:0;height:30px;padding:0 8px;border:1px solid #173b64;border-radius:7px;background:#071427;color:#dbe8f8;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.rsl-footer-theme-control select:focus{outline:none;border-color:#25dfff;box-shadow:0 0 0 2px rgba(37,223,255,.16)}
+html[data-theme="light"] .rsl-footer-theme-control{background:#eef4fa;border-color:#c3d0dd;color:#18283b}
+html[data-theme="light"] .rsl-footer-theme-control label{color:#5d7187}
+html[data-theme="light"] .rsl-footer-theme-control select{background:#f1f5f9;color:#18283b;border-color:#b9c9da}
+@media(max-width:700px){.rsl-footer-utility-row{gap:8px;flex-wrap:wrap}.rsl-footer-utility-row .rsl-language-switcher,.rsl-footer-utility-row .rsl-cookie-settings,.rsl-footer-theme-control{min-width:200px}}
+@media(max-width:460px){.rsl-footer-utility-row .rsl-language-switcher,.rsl-footer-utility-row .rsl-cookie-settings,.rsl-footer-theme-control{min-width:100%;width:100%}}
 </style>
 <div class="rsl-cookie-banner" id="rsl-cookie-banner" role="dialog" aria-label="Cookie preferences">
   <strong>Cookie &amp; Privacy Choices</strong>
@@ -715,6 +709,14 @@ window.rslGoogleTranslateInit=function(){
     const switcher=document.getElementById("rsl-language-switcher");
     if(switcher)row.appendChild(switcher);
     row.appendChild(settings);
+    let themeControl=document.getElementById("rsl-footer-theme-control");
+    if(!themeControl){
+      themeControl=document.createElement("div");
+      themeControl.id="rsl-footer-theme-control";
+      themeControl.className="rsl-footer-theme-control";
+      themeControl.innerHTML='<label for="rsl-footer-theme-select">🎨 <span>Theme</span></label><select id="rsl-footer-theme-select" aria-label="Choose website theme"><option value="dark">🌙 Midnight</option><option value="light">☀️ Light</option><option value="ocean">🌊 Ocean</option><option value="purple">🟣 Neon Purple</option><option value="crimson">🔴 Crimson</option><option value="emerald">🟢 Emerald</option><option value="sunset">🟠 Sunset</option><option value="graphite">⚙️ Graphite</option></select>';
+      row.appendChild(themeControl);
+    } else if(themeControl.parentElement!==row) row.appendChild(themeControl);
   };
   if(document.readyState==="loading"){
     document.addEventListener("DOMContentLoaded",()=>requestAnimationFrame(placeFooterControls),{once:true});
@@ -878,7 +880,7 @@ try{
   });
   menu?.addEventListener("click", e => e.stopPropagation());
 
-  const themeSelect = document.querySelector("#rsl-profile-theme-select");
+  const themeSelect = document.querySelector("#rsl-footer-theme-select");
   const currentTheme = () => document.documentElement.getAttribute("data-theme") || "dark";
   const syncThemeSelect = theme => {
     if(themeSelect) themeSelect.value = theme;
