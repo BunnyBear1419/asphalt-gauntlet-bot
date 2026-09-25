@@ -4267,3 +4267,124 @@ footer.rsl-footer-mark > span{
     font-size:18px!important;
   }
 }
+
+
+/* =========================================================
+   2026-09-25 FORM READABILITY + FIELD SPACING POLISH
+   Keep form labels and controls readable across every page.
+   ========================================================= */
+.rsl-site-page .activity-list label,
+.rsl-site-page .setup-form label,
+.rsl-site-page .profile-editor-grid label,
+.rsl-site-page .profile-links-editor,
+.rsl-site-page .tournament-create label,
+.rsl-site-page .club-create-panel label,
+.rsl-site-page .defense-result-grid label{
+  gap:9px!important;
+  margin:0 0 18px!important;
+  color:var(--rsl-box-text,#eef5ff)!important;
+  font-size:15px!important;
+  line-height:1.35!important;
+  font-weight:700!important;
+}
+.rsl-site-page .activity-list label>b,
+.rsl-site-page .setup-form label>b,
+.rsl-site-page .profile-editor-grid label>b,
+.rsl-site-page .profile-links-editor>b,
+.rsl-site-page .tournament-create label>b,
+.rsl-site-page .club-create-panel label>b,
+.rsl-site-page .defense-result-grid label>b{
+  font-size:15px!important;
+  line-height:1.35!important;
+  font-weight:800!important;
+  letter-spacing:.01em!important;
+  color:var(--rsl-box-text,#f2f7ff)!important;
+}
+.rsl-site-page .activity-list input,
+.rsl-site-page .activity-list select,
+.rsl-site-page .activity-list textarea,
+.rsl-site-page .setup-form input,
+.rsl-site-page .setup-form select,
+.rsl-site-page .setup-form textarea,
+.rsl-site-page .profile-editor-grid input,
+.rsl-site-page .profile-editor-grid select,
+.rsl-site-page .profile-editor-grid textarea,
+.rsl-site-page .tournament-create input,
+.rsl-site-page .tournament-create select,
+.rsl-site-page .tournament-create textarea,
+.rsl-site-page .club-create-panel input,
+.rsl-site-page .club-create-panel select,
+.rsl-site-page .club-create-panel textarea,
+.rsl-site-page .defense-result-grid input,
+.rsl-site-page .defense-result-grid select,
+.rsl-site-page .defense-result-grid textarea{
+  min-height:48px!important;
+  padding:11px 14px!important;
+  font-size:16px!important;
+  line-height:1.35!important;
+  border-radius:10px!important;
+  box-sizing:border-box!important;
+}
+.rsl-site-page .activity-list textarea,
+.rsl-site-page .setup-form textarea,
+.rsl-site-page .profile-editor-grid textarea,
+.rsl-site-page .tournament-create textarea,
+.rsl-site-page .club-create-panel textarea,
+.rsl-site-page .defense-result-grid textarea{
+  min-height:96px!important;
+}
+.rsl-site-page .activity-list label:last-child,
+.rsl-site-page .setup-form label:last-child,
+.rsl-site-page .profile-editor-grid label:last-child,
+.rsl-site-page .tournament-create label:last-child,
+.rsl-site-page .club-create-panel label:last-child,
+.rsl-site-page .defense-result-grid label:last-child{
+  margin-bottom:0!important;
+}
+.rsl-site-page .activity-list{
+  gap:0!important;
+}
+.rsl-site-page .profile-editor-grid{
+  row-gap:22px!important;
+}
+.rsl-site-page .setup-form,
+.rsl-site-page .tournament-create form,
+.rsl-site-page .club-create-panel .setup-form{
+  row-gap:20px!important;
+}
+.rsl-site-page .form-status,
+.rsl-site-page .server-sub,
+.rsl-site-page .profile-editor-grid small,
+.rsl-site-page .setup-form small{
+  font-size:14px!important;
+  line-height:1.5!important;
+}
+@media(max-width:700px){
+  .rsl-site-page .activity-list label,
+  .rsl-site-page .setup-form label,
+  .rsl-site-page .profile-editor-grid label,
+  .rsl-site-page .profile-links-editor,
+  .rsl-site-page .tournament-create label,
+  .rsl-site-page .club-create-panel label,
+  .rsl-site-page .defense-result-grid label,
+  .rsl-site-page .activity-list label>b,
+  .rsl-site-page .setup-form label>b,
+  .rsl-site-page .profile-editor-grid label>b,
+  .rsl-site-page .tournament-create label>b,
+  .rsl-site-page .club-create-panel label>b,
+  .rsl-site-page .defense-result-grid label>b{
+    font-size:15px!important;
+  }
+  .rsl-site-page .activity-list input,
+  .rsl-site-page .activity-list select,
+  .rsl-site-page .activity-list textarea,
+  .rsl-site-page .setup-form input,
+  .rsl-site-page .setup-form select,
+  .rsl-site-page .setup-form textarea,
+  .rsl-site-page .profile-editor-grid input,
+  .rsl-site-page .profile-editor-grid select,
+  .rsl-site-page .profile-editor-grid textarea{
+    min-height:48px!important;
+    font-size:16px!important;
+  }
+}
