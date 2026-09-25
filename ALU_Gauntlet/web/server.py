@@ -129,7 +129,7 @@ class WebControlCenter:
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
-        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site5', body)
+        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site6', body)
 
         theme_bootstrap = r'''<script>
 (function(){
@@ -1907,6 +1907,38 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
   .rsl-page-my-tournaments main{
     width:100%!important;
     max-width:none!important;
+  }
+}
+
+/* FINAL GLOBAL FULL-WIDTH LAYOUT — every page uses the full available content area. */
+.rsl-site-page main{
+  width:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:28px 32px 72px!important;
+  box-sizing:border-box!important;
+}
+.rsl-site-page main > section,
+.rsl-site-page main > .glass-panel,
+.rsl-site-page main > .card,
+.rsl-site-page main > .page-hero,
+.rsl-site-page main > .tournament-hero,
+.rsl-site-page main > .calendar-hero{
+  box-sizing:border-box;
+}
+@media(max-width:800px){
+  .rsl-site-page main{
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:20px 16px 56px!important;
+  }
+}
+@media(max-width:560px){
+  .rsl-site-page main{
+    width:100%!important;
+    max-width:none!important;
+    padding:16px 12px 44px!important;
   }
 }
 
