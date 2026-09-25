@@ -7,7 +7,7 @@ async function loadDashboard(){
   const me=await api("/api/me");
   const name=me.global_name||me.username||"Driver";
   ["#user-name","#welcome-name","#profile-name"].forEach(s=>{const x=$(s);if(x)x.textContent=name});
-  if(me.staff){const settings=$("#side-settings");if(settings)settings.href="/setup"}
+  if(me.staff){const settings=$("#side-settings");if(settings)settings.href="/admin#section-settings"}
   const status=await api("/api/status");
   const g=await api("/api/guilds");
   const guild=(g.guilds||[])[0];
@@ -89,7 +89,6 @@ function syncPrimaryNav(){
  else if(hash==="#help") target=links.find(a=>a.getAttribute("href")==="/#help");
  else if(hash==="#gauntlet") target=links.find(a=>a.getAttribute("href")==="/player#gauntlet");
  else if(path==="/players") target=links.find(a=>a.getAttribute("href")==="/players");
- else if(path==="/setup") target=links.find(a=>a.getAttribute("href")==="/setup");
  else if(path==="/player") target=links.find(a=>a.getAttribute("href")==="/player" && !a.getAttribute("href").includes("#"));
  else if(path==="/tournaments") target=links.find(a=>a.getAttribute("href")==="/tournaments" || a.getAttribute("href")==="/tournaments#clubs");
  else if(path==="/") target=links.find(a=>a.getAttribute("href")==="/");
