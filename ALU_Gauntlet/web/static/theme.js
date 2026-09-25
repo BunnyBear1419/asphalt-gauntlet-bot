@@ -26,13 +26,16 @@
   }
 
   async function load(){
+    let cached="";
+    try{cached=localStorage.getItem(KEY)||""}catch(_e){}
+    if(valid(cached)) apply(cached);
     try{
       const d=await api("/api/theme");
-      apply(d.theme);
+      if(d && d.saved===true && valid(d.theme)) apply(d.theme);
+      else if(!valid(cached)) apply("dark");
     }catch(e){
-      let cached="dark";
-      try{cached=localStorage.getItem(KEY)||cached}catch(_e){}
-      apply(document.documentElement.getAttribute("data-theme")||cached);
+      if(valid(cached)) apply(cached);
+      else apply(document.documentElement.getAttribute("data-theme")||"dark");
     }
   }
 
