@@ -1332,6 +1332,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/language", self.get_language)
         self.app.router.add_post("/api/language", self.set_language)
         self.app.router.add_get("/api/notifications", self.notification_preferences)
+        self.app.router.add_get("/api/reminders", self.list_reminders)
+        self.app.router.add_post("/api/reminders", self.create_reminder)
+        self.app.router.add_put("/api/reminders/{reminder_id}", self.update_reminder)
+        self.app.router.add_delete("/api/reminders/{reminder_id}", self.delete_reminder)
         self.app.router.add_put("/api/notifications/category", self.update_notification_category)
         self.app.router.add_put("/api/notifications/event", self.update_notification_event)
         self.app.router.add_put("/api/notifications/timing", self.update_notification_timing)
@@ -1873,6 +1877,97 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "muted_event_ids": [str(x) for x in (record.get("muted_event_ids") or [])],
         })
 
+    async def _reminder_payload(self, user, payload, existing=None):
+        """Validate a private calendar reminder and normalize its time to UTC."""
+        existing = existing or {}
+        title = str(payload.get("title", existing.get("title", ""))).strip()[:120]
+        if not title:
+            raise web.HTTPBadRequest(text="Reminder title is required.")
+        note = str(payload.get("note", existing.get("note", ""))).strip()[:500]
+        remind_at = str(payload.get("remind_at", existing.get("local_time", ""))).strip()
+        if not remind_at:
+            raise web.HTTPBadRequest(text="Reminder date and time are required.")
+        try:
+            local_dt = datetime.fromisoformat(remind_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise web.HTTPBadRequest(text="Reminder date/time must be a valid ISO date and time.") from exc
+        guild_id = str(payload.get("guild_id", existing.get("guild_id", ""))).strip()
+        guild_prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) if guild_id else None
+        timezone_name = str(payload.get("timezone", (guild_prefs or {}).get("timezone", "UTC"))).strip()
+        if timezone_name not in {value for _, value in TIMEZONE_LABELS}:
+            raise web.HTTPBadRequest(text="Invalid reminder timezone.")
+        tz = ZoneInfo(timezone_name)
+        if local_dt.tzinfo is None:
+            local_dt = local_dt.replace(tzinfo=tz)
+        else:
+            local_dt = local_dt.astimezone(tz)
+        timestamp = local_dt.astimezone(timezone.utc).timestamp()
+        if timestamp <= time.time() + 5:
+            raise web.HTTPBadRequest(text="Reminder time must be in the future.")
+        lead_days = payload.get("lead_days", existing.get("lead_days", 0))
+        try:
+            lead_days = float(lead_days)
+        except (TypeError, ValueError) as exc:
+            raise web.HTTPBadRequest(text="Reminder lead time must be a number of days.") from exc
+        if not 0 <= lead_days <= 365:
+            raise web.HTTPBadRequest(text="Reminder lead time must be between 0 and 365 days.")
+        return {"user_id": str(user.user_id), "guild_id": guild_id, "title": title, "note": note,
+                "local_time": local_dt.isoformat(), "timestamp": timestamp, "timezone": timezone_name,
+                "lead_days": lead_days, "enabled": bool(payload.get("enabled", existing.get("enabled", True))),
+                "updated_at": time.time()}
+
+    async def list_reminders(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        rows = []
+        async for reminder in self.bot.db.custom_reminders.find({"user_id": str(user.user_id)}).sort("timestamp", 1):
+            reminder["id"] = str(reminder.pop("_id"))
+            rows.append(reminder)
+        return web.json_response({"reminders": rows})
+
+    async def create_reminder(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
+        doc = await self._reminder_payload(user, payload)
+        doc["created_at"] = time.time()
+        result = await self.bot.db.custom_reminders.insert_one(doc)
+        rid = str(result.inserted_id)
+        return web.json_response({"ok": True, "message": "Personal reminder created.", "id": rid, "reminder": {**doc, "id": rid}})
+
+    async def update_reminder(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        rid = str(request.match_info.get("reminder_id", "")).strip()
+        try:
+            oid = ObjectId(rid)
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid reminder ID.") from exc
+        existing = await self.bot.db.custom_reminders.find_one({"_id": oid, "user_id": str(user.user_id)})
+        if not existing:
+            raise web.HTTPNotFound(text="Reminder not found.")
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
+        doc = await self._reminder_payload(user, payload, existing)
+        await self.bot.db.custom_reminders.update_one({"_id": oid, "user_id": str(user.user_id)}, {"$set": doc})
+        return web.json_response({"ok": True, "message": "Personal reminder updated.", "id": rid, "reminder": {**doc, "id": rid}})
+
+    async def delete_reminder(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        from bson import ObjectId
+        rid = str(request.match_info.get("reminder_id", "")).strip()
+        try:
+            oid = ObjectId(rid)
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid reminder ID.") from exc
+        deleted = await self.bot.db.custom_reminders.delete_one({"_id": oid, "user_id": str(user.user_id)})
+        if not deleted.deleted_count:
+            raise web.HTTPNotFound(text="Reminder not found.")
+        return web.json_response({"ok": True, "message": "Personal reminder deleted."})
+
     async def update_notification_category(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         payload = await request.json()
@@ -2025,6 +2120,16 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     events.append({**base, "id": tid + "-end", "kind": "end", "start": end_ts, "end": end_ts})
                 if reg_ts:
                     events.append({**base, "id": tid + "-registration", "kind": "registration", "title": str(item.get("name", "Tournament")) + " Registration Closes", "start": reg_ts, "end": reg_ts})
+        async for reminder in self.bot.db.custom_reminders.find({"user_id": str(user.user_id), "enabled": True}).sort("timestamp", 1):
+            rid = str(reminder.get("_id")); ts = float(reminder.get("timestamp", 0) or 0)
+            if ts <= 0: continue
+            events.append({"id": f"personal-{rid}", "type": "personal", "kind": "personal",
+                           "title": str(reminder.get("title") or "Personal Reminder"),
+                           "note": str(reminder.get("note") or ""), "guild_name": "My Reminder",
+                           "start": ts, "end": ts, "status": "personal",
+                           "lead_days": float(reminder.get("lead_days", 0) or 0),
+                           "timezone": str(reminder.get("timezone") or "UTC"), "reminder_id": rid})
+
         events.sort(key=lambda x: (float(x.get("start") or 0), str(x.get("title", ""))))
         return web.json_response({"events": events, "seasons": seasons, "server_time": time.time()})
 
