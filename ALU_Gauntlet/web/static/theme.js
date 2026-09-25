@@ -1,6 +1,7 @@
 (function(){
   const KEY="rsl_theme";
-  const valid=t=>t==="light"||t==="dark";
+  const THEMES=["dark","light","ocean","purple","crimson","emerald","sunset","graphite"];
+  const valid=t=>THEMES.includes(t);
   function apply(theme){
     const t=valid(theme)?theme:"dark";
     document.documentElement.setAttribute("data-theme",t);
@@ -34,7 +35,7 @@
       if(status)status.textContent="Theme could not be saved.";
     }
   }
-  window.RSLTheme={apply,save,load};
+  window.RSLTheme={apply,save,load,THEMES};
   document.addEventListener("DOMContentLoaded",()=>{
     const select=document.querySelector("#profile-theme");
     if(select)select.addEventListener("change",()=>save(select.value));
