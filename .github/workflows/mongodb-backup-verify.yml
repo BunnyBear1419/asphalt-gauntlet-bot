@@ -13,6 +13,10 @@ permissions:
 jobs:
   verify-backup:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: mongodb-backup-verification
+      cancel-in-progress: false
 
     steps:
       - name: Check out repository
