@@ -4538,10 +4538,12 @@ footer.rsl-footer-mark > span{
 
 /* FINAL NAV + DISCORD COMMUNITY CARD POLISH */
 .top-nav-dropdown-menu{
-  background:linear-gradient(145deg,#07172f,#030b18)!important;
+  background-color:#071427!important;
+  background-image:none!important;
   border:1px solid #174a79!important;
   border-radius:10px!important;
   box-shadow:0 14px 34px #000b!important;
+  opacity:1!important;
   backdrop-filter:none!important;
   -webkit-backdrop-filter:none!important;
   overflow:hidden!important;
@@ -4556,11 +4558,15 @@ footer.rsl-footer-mark > span{
   background:#0b2442!important;
 }
 .discord-cta{
-  border:1px solid var(--rsl-box-line)!important;
+  border:1px solid #174a79!important;
   border-radius:12px!important;
-  background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important;
-  color:var(--rsl-box-text)!important;
-  box-shadow:0 10px 26px #0005!important;
+  background-color:#071427!important;
+  background-image:none!important;
+  color:#e9f2ff!important;
+  box-shadow:0 10px 26px #0007!important;
+  opacity:1!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
 }
 .discord-stat-icon{
   background:#07172f!important;
