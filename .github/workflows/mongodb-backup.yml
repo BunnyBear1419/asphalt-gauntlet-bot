@@ -11,6 +11,10 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: mongodb-backup
+      cancel-in-progress: false
 
     steps:
       - name: Install MongoDB Database Tools
