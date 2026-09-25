@@ -117,7 +117,7 @@ class WebControlCenter:
 (function(){
   try {
     var saved=localStorage.getItem("rsl_theme");
-    if(saved==="light"||saved==="dark") document.documentElement.setAttribute("data-theme",saved);
+    if(["dark","light","ocean","purple","crimson","emerald","sunset","graphite"].includes(saved)) document.documentElement.setAttribute("data-theme",saved);
   } catch(e) {}
 })();
 </script>
@@ -3332,7 +3332,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         user = await self.require_user(request)
         record = await self.bot.db.web_user_preferences.find_one({"_id": str(user.user_id)}) or {}
         theme = str(record.get("theme", "dark")).strip().lower()
-        if theme not in {"dark", "light"}:
+        if theme not in {"dark", "light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"}:
             theme = "dark"
         return web.json_response({"theme": theme})
 
@@ -3343,7 +3343,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid theme request.") from exc
         theme = str(payload.get("theme", "dark")).strip().lower()
-        if theme not in {"dark", "light"}:
+        if theme not in {"dark", "light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"}:
             raise web.HTTPBadRequest(text="Unsupported theme.")
         await self.bot.db.web_user_preferences.update_one(
             {"_id": str(user.user_id)},
