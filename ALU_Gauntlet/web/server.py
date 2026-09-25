@@ -112,7 +112,7 @@ class WebControlCenter:
 
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
-        body = re.sub(r'/static/app\.css\?v=[^&"]+', '/static/app.css?v=20260924-theme1', body)
+        body = re.sub(r'/static/app\.css\?v=[^&"]+', '/static/app.css?v=20260924-theme5', body)
 
         theme_bootstrap = r'''<script>
 (function(){
@@ -715,6 +715,11 @@ html[data-theme="light"] .rsl-footer-theme-control select{background:#f1f5f9;col
       themeControl.id="rsl-footer-theme-control";
       themeControl.className="rsl-footer-theme-control";
       themeControl.innerHTML='<label for="rsl-footer-theme-select">🎨 <span>Theme</span></label><select id="rsl-footer-theme-select" aria-label="Choose website theme"><option value="dark">🌙 Midnight</option><option value="light">☀️ Light</option><option value="ocean">🌊 Ocean</option><option value="purple">🟣 Neon Purple</option><option value="crimson">🔴 Crimson</option><option value="emerald">🟢 Emerald</option><option value="sunset">🟠 Sunset</option><option value="graphite">⚙️ Graphite</option></select>';
+      const themeSelect=themeControl.querySelector("#rsl-footer-theme-select");
+      themeSelect?.addEventListener("change", e => {
+        e.stopPropagation();
+        if(window.RSLTheme) window.RSLTheme.save(e.target.value);
+      });
       row.appendChild(themeControl);
     } else if(themeControl.parentElement!==row) row.appendChild(themeControl);
   };
@@ -760,9 +765,9 @@ html[data-theme="light"] .rsl-footer-theme-control select{background:#f1f5f9;col
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-theme2">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-theme5">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
-                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-theme2"></head>', 1)
+                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-theme5"></head>', 1)
 
         # GLOBAL RSL PAGE SHELL: every HTML page receives the same Discord card and Help card.
         # Strip older page-specific copies first so the shared shell is always singular.
