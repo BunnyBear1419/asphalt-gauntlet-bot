@@ -357,12 +357,6 @@ class WebControlCenter:
         link_settings = branding.get("links") or {}
         brand_re = re.compile(r'<a class="top-brand(?:\s+top-logo-mark)?[^>]*>.*?</a>', re.S)
         body, brand_count = brand_re.subn(canonical_brand, body, count=1)
-        if brand_count:
-            # Top-left social shortcuts were previously injected into every page,
-            # which produced stray Discord/Cash App icons beside the RSL logo and
-            # could overlap the navigation. Remove all legacy copies globally.
-            # The footer keeps its social links, but they use footer-only
-            # classes so they cannot inherit the old absolute-positioned top-left CSS.
         social_markup = (
             f'<a class="rsl-footer-social rsl-footer-discord" href="{html.escape(str(link_settings.get("discord") or "https://discord.gg/fmFk8Ejf2H"), quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="RSL Discord"><span aria-hidden="true">Discord</span></a>'
             f'<a class="rsl-footer-social rsl-footer-cashapp" href="{html.escape(str(link_settings.get("cashapp") or "https://cash.app/"), quote=True)}" target="_blank" rel="noopener noreferrer" aria-label="RSL Cash App"><span aria-hidden="true">$</span></a>'
