@@ -570,6 +570,9 @@ window.rslGoogleTranslateInit=function(){
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
 
+        # Remove any remaining legacy account/header controls before the canonical shell is used.
+        body = re.sub(r'<div class="top-user-area">.*?</div>\\s*</header>', '</header>', body, count=1, flags=re.S | re.I)
+
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
         # This keeps every page on the same PNG-only navigation shell.
         body = re.sub(
