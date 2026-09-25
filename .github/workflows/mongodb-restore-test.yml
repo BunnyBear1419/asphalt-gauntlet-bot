@@ -1,8 +1,9 @@
 name: MongoDB Restore Test
 
 on:
-  schedule:
-    - cron: "45 8 * * 6"
+  # The weekly backup verification already restores and validates the latest
+  # backup. Keep this workflow available for manual recovery drills without
+  # running the same restore twice every week.
   workflow_dispatch:
 
 permissions:
@@ -12,6 +13,10 @@ permissions:
 jobs:
   restore-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: mongodb-restore-test
+      cancel-in-progress: false
 
     steps:
       - name: Checkout repository
