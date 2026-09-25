@@ -1387,6 +1387,37 @@ html[data-theme="graphite"] .nav-icon-glyph{
   filter:grayscale(1) brightness(1.15) saturate(.15)!important;
 }
 
+/* FINAL PAGE HERO SURFACE AUDIT: replace legacy dark-blue title bands with the active theme. */
+html[data-theme] .page-hero,
+html[data-theme] .tournament-hero,
+html[data-theme] .calendar-hero,
+html[data-theme] .clubs-center-hero,
+html[data-theme] .my-club-hero,
+html[data-theme] .profile-hero,
+html[data-theme] .legal-hero,
+html[data-theme] .my-tournaments-hero{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.18)!important;
+}
+html[data-theme] .page-hero::before,
+html[data-theme] .page-hero::after,
+html[data-theme] .tournament-hero::before,
+html[data-theme] .tournament-hero::after{
+  background:transparent!important;
+  border-color:transparent!important;
+}
+html[data-theme] .page-hero p,
+html[data-theme] .tournament-hero p,
+html[data-theme] .calendar-hero p,
+html[data-theme] .my-tournaments-hero p{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] .page-hero .home-eyebrow,
+html[data-theme] .tournament-hero .eyebrow{
+  color:var(--rsl-final-accent)!important;
+}
 /* DEEP THEME AUDIT v2 — final authority for all UI surfaces, settings, boxes and non-brand icons. */
 html[data-theme="dark"]{
   --rsl-final-bg:#0d1014;--rsl-final-panel:#151a20;--rsl-final-panel2:#1e252d;
