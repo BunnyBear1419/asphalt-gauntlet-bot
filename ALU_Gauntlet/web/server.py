@@ -1007,6 +1007,54 @@ html[data-theme] .home-feature-icon svg *,
 html[data-theme] .home-help-icon svg *,
 html[data-theme] .home-about-icon svg *,
 html[data-theme] .home-news-icon svg *{fill:none!important;stroke:var(--rsl-audit-accent)!important}
+
+/* FINAL PAGE TITLE AND INNER-BOX THEME OVERRIDE */
+html[data-theme] main h1,
+html[data-theme] main h2,
+html[data-theme] main h3,
+html[data-theme] main h4,
+html[data-theme] main h5,
+html[data-theme] main h6,
+html[data-theme] main .panel-heading,
+html[data-theme] main .section-heading,
+html[data-theme] main .page-heading,
+html[data-theme] main .page-title,
+html[data-theme] main .section-title,
+html[data-theme] main .card-title,
+html[data-theme] main .box-title,
+html[data-theme] main .title,
+html[data-theme] main [class*="heading"],
+html[data-theme] main [class*="title"]{
+  color:var(--rsl-audit-text)!important;
+}
+html[data-theme] main .card,
+html[data-theme] main .glass-panel,
+html[data-theme] main .feature,
+html[data-theme] main .panel,
+html[data-theme] main .box,
+html[data-theme] main .inner-box,
+html[data-theme] main .match-card,
+html[data-theme] main .challenge-card,
+html[data-theme] main .submit-card,
+html[data-theme] main .recent-matches-card,
+html[data-theme] main .registration-card,
+html[data-theme] main .tournament-card,
+html[data-theme] main .club-card,
+html[data-theme] main .calendar-panel{
+  background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] main [class*="card"] h1,
+html[data-theme] main [class*="card"] h2,
+html[data-theme] main [class*="card"] h3,
+html[data-theme] main [class*="card"] h4,
+html[data-theme] main [class*="box"] h1,
+html[data-theme] main [class*="box"] h2,
+html[data-theme] main [class*="box"] h3,
+html[data-theme] main [class*="box"] h4{
+  color:var(--rsl-audit-text)!important;
+}
 </style>'''
         # Source-level contract marker for the static-page theme test.
         theme_audit_contract_marker = '''body = body.replace("</body>", theme_audit_css + "
