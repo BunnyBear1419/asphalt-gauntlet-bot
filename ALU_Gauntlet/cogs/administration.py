@@ -61,15 +61,6 @@ class AdministrationCog(commands.Cog):
         await dispatch_audit_log(guild_id, '🖼️ Custom Image Updated', f'Admin {interaction.user.mention} updated the **{image_type.name}** image.', color=3066993)
         await audit_admin_action(interaction, 'Set Image', f'Updated `{image_type.value}`.')
 
-    @app_commands.command(name='setup', description='[Admin Only] Configure the server with Discord pickers — no IDs to enter.')
-    async def setup_cmd(self, interaction: discord.Interaction):
-        # /setup is intentionally the single server-configuration entry point.
-        # Channels, roles, and timezone are selected entirely through native
-        # Discord controls inside the ephemeral wizard.
-        if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
-            await interaction.response.send_message('❌ Access Denied: Requires administrator or configured admin role.', ephemeral=True)
-            return
-        await launch_setup_wizard(interaction)
 
     @admin_group.command(name='setpi', description="Overrides a driver's PI value.")
     @require_admin()
