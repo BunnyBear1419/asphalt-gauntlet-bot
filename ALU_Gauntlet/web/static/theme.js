@@ -6,8 +6,8 @@
     const t=valid(theme)?theme:"dark";
     document.documentElement.setAttribute("data-theme",t);
     try{localStorage.setItem(KEY,t)}catch(e){}
-    const select=document.querySelector("#profile-theme");
-    if(select)select.value=t;
+    const selects=document.querySelectorAll("#profile-theme,#rsl-profile-theme-select,#rsl-footer-theme-select");
+    selects.forEach(select=>{select.value=t;});
     try{window.dispatchEvent(new CustomEvent("rsl-theme-changed",{detail:{theme:t}}))}catch(e){}
     return t;
   }
@@ -36,9 +36,17 @@
     }
   }
   window.RSLTheme={apply,save,load,THEMES};
+  document.addEventListener("change",e=>{
+    const select=e.target.closest?.("#profile-theme,#rsl-profile-theme-select,#rsl-footer-theme-select");
+    if(select)save(select.value);
+  });
   document.addEventListener("DOMContentLoaded",()=>{
-    const select=document.querySelector("#profile-theme");
-    if(select)select.addEventListener("change",()=>save(select.value));
     load();
+    const syncFooter=()=>{
+      const t=document.documentElement.getAttribute("data-theme")||"dark";
+      document.querySelectorAll("#profile-theme,#rsl-profile-theme-select,#rsl-footer-theme-select").forEach(select=>{select.value=t;});
+    };
+    syncFooter();
+    window.addEventListener("rsl-theme-changed",syncFooter);
   });
 })();
