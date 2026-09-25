@@ -6,22 +6,22 @@
 <title>Admin Tools</title>
 <link rel="stylesheet" href="/static/app.css?v=20260921-admin1">
 <style>
-.admin-page{min-height:100vh;background:radial-gradient(circle at 70% 5%,#10285b 0,#020817 48%,#01050d 100%);padding:28px 24px 70px}
+.admin-page{min-height:100vh;background:radial-gradient(circle at 70% 5%,#10285b 0,var(--rsl-box) 48%,#01050d 100%);padding:28px 24px 70px}
 .admin-shell{max-width:1500px;margin:0 auto}
 .admin-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:22px 0 18px;border-bottom:1px solid #174a79}
 .admin-kicker{font-size:10px;letter-spacing:.2em;color:#25dfff;font-weight:800}
 .admin-head h1{margin:5px 0 0;font-size:38px;line-height:1}
 .admin-head p{margin:8px 0 0;color:#91a5c3;font-size:12px}
 .admin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.admin-toolbar select{min-width:270px;background:#061226;color:#fff;border:1px solid #174a79;padding:11px 13px;border-radius:7px}
+.admin-toolbar select{min-width:270px;background:var(--rsl-box);color:#fff;border:1px solid #174a79;padding:11px 13px;border-radius:7px}
 .admin-layout{display:grid;grid-template-columns:235px minmax(0,1fr);gap:18px;margin-top:20px}
-.admin-side{border:1px solid #174a79;background:#061226;padding:10px;height:max-content;position:sticky;top:96px}
+.admin-side{border:1px solid #174a79;background:var(--rsl-box);padding:10px;height:max-content;position:sticky;top:96px}
 .admin-side button{display:block;width:100%;border:0;background:transparent;color:#9eb0c8;text-align:left;padding:11px 12px;border-radius:6px;font-weight:700;cursor:pointer}
 .admin-side button:hover,.admin-side button.active{background:#0d2239;color:#25dfff}
 .admin-content{min-width:0}
 .admin-section{display:none}
 .admin-section.active{display:block}
-.admin-card{border:1px solid #174a79;background:linear-gradient(145deg,#06152f,#030c1b);padding:20px;margin-bottom:18px;box-shadow:0 10px 26px #0005}
+.admin-card{border:1px solid #174a79;background:linear-gradient(145deg,var(--rsl-box),#030c1b);padding:20px;margin-bottom:18px;box-shadow:0 10px 26px #0005}
 .admin-card h2{margin:0 0 5px;font-size:21px}.admin-card>p{margin:0 0 18px;color:#91a5c3;font-size:11px}
 .admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
 .admin-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -37,17 +37,17 @@
 .admin-status{min-height:18px;margin-top:10px;color:#91a5c3;font-size:11px}
 .admin-status.ok{color:#16dca0}.admin-status.error{color:#ff8d9a}
 .admin-preview{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:stretch}
-.admin-logo-preview{min-height:170px;display:grid;place-items:center;background:#020817;border:1px dashed #174a79;padding:15px}
+.admin-logo-preview{min-height:170px;display:grid;place-items:center;background:var(--rsl-box);border:1px dashed #174a79;padding:15px}
 .admin-logo-preview img{max-width:100%;max-height:140px;object-fit:contain}
-.admin-hero-preview{min-height:170px;background:#020817 center/cover no-repeat;border:1px solid #174a79;position:relative;overflow:hidden}
+.admin-hero-preview{min-height:170px;background:var(--rsl-box) center/cover no-repeat;border:1px solid #174a79;position:relative;overflow:hidden}
 .admin-hero-preview:after{content:"LIVE BRAND PREVIEW";position:absolute;left:15px;bottom:12px;font-size:9px;letter-spacing:.14em;font-weight:900;color:#fff;background:#0009;padding:8px}
 .admin-tools-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
-.admin-tool{border:1px solid #174a79;background:#061226;padding:16px;text-decoration:none;display:block;min-height:110px}
+.admin-tool{border:1px solid #174a79;background:var(--rsl-box);padding:16px;text-decoration:none;display:block;min-height:110px}
 .admin-tool:hover{border-color:#25dfff;transform:translateY(-1px)}
 .admin-tool strong{display:block;color:#fff;font-size:14px}.admin-tool span{display:block;color:#8198b5;font-size:10px;line-height:1.45;margin-top:6px}
 .admin-check{display:flex;justify-content:space-between;gap:15px;border-bottom:1px solid #123452;padding:10px 0;font-size:11px}.admin-check:last-child{border-bottom:0}
 .admin-check b.ok{color:#16dca0}.admin-check b.bad{color:#ff8d9a}
-.admin-log{max-height:320px;overflow:auto;border:1px solid #174a79;background:#020817;padding:10px}
+.admin-log{max-height:320px;overflow:auto;border:1px solid #174a79;background:var(--rsl-box);padding:10px}
 .admin-log-row{padding:9px;border-bottom:1px solid #102b49;color:#aebdd2;font-size:10px}.admin-log-row:last-child{border-bottom:0}
 @media(max-width:900px){.admin-layout{grid-template-columns:1fr}.admin-side{position:static;display:grid;grid-template-columns:repeat(2,1fr)}.admin-tools-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.admin-page{padding:18px 12px 50px}.admin-head{align-items:flex-start;flex-direction:column}.admin-head h1{font-size:30px}.admin-grid,.admin-grid.three,.admin-preview{grid-template-columns:1fr}.admin-tools-grid{grid-template-columns:1fr}.admin-side{grid-template-columns:1fr}.admin-toolbar,.admin-toolbar select{width:100%}}
@@ -284,7 +284,7 @@ function renderCustomLinks(){
  const rows=Array.isArray(branding?.links?.custom)?branding.links.custom.slice(0,10):[];
  list.innerHTML=rows.map((item,index)=>{
    const enabled=item.enabled!==false;
-   return '<div class="admin-card" style="margin:0;padding:14px;background:#04101f"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="admin-field"><label>Link '+(index+1)+' Name</label><input data-custom-name="'+index+'" value="'+escapeHtml(item.name||'')+'" placeholder="My Community"></div><div class="admin-field"><label>URL</label><input data-custom-url="'+index+'" value="'+escapeHtml(item.url||'')+'" placeholder="https://..."></div><div class="admin-field"><label>Icon PNG</label><div style="display:flex;gap:8px;align-items:center"><input data-custom-icon="'+index+'" value="'+escapeHtml(item.icon||'')+'" placeholder="/assets/tenant/...png"><button class="admin-btn" type="button" data-upload-custom="'+index+'">Upload Image</button><img data-custom-preview="'+index+'" src="'+escapeHtml(item.icon||'')+'" alt="" style="width:32px;height:32px;object-fit:contain;border:1px solid #174a79;border-radius:5px;background:#020817"></div></div><div class="admin-field"><label>Visibility</label><label style="display:flex;align-items:center;gap:8px"><input data-custom-enabled="'+index+'" type="checkbox" '+(enabled?'checked':'')+'> Show this link in footer</label><button class="admin-btn" type="button" data-remove-custom="'+index+'" style="margin-top:8px">Remove Link</button></div></div><input data-custom-file="'+index+'" type="file" accept="image/*" hidden></div>';
+   return '<div class="admin-card" style="margin:0;padding:14px;background:#04101f"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="admin-field"><label>Link '+(index+1)+' Name</label><input data-custom-name="'+index+'" value="'+escapeHtml(item.name||'')+'" placeholder="My Community"></div><div class="admin-field"><label>URL</label><input data-custom-url="'+index+'" value="'+escapeHtml(item.url||'')+'" placeholder="https://..."></div><div class="admin-field"><label>Icon PNG</label><div style="display:flex;gap:8px;align-items:center"><input data-custom-icon="'+index+'" value="'+escapeHtml(item.icon||'')+'" placeholder="/assets/tenant/...png"><button class="admin-btn" type="button" data-upload-custom="'+index+'">Upload Image</button><img data-custom-preview="'+index+'" src="'+escapeHtml(item.icon||'')+'" alt="" style="width:32px;height:32px;object-fit:contain;border:1px solid #174a79;border-radius:5px;background:var(--rsl-box)"></div></div><div class="admin-field"><label>Visibility</label><label style="display:flex;align-items:center;gap:8px"><input data-custom-enabled="'+index+'" type="checkbox" '+(enabled?'checked':'')+'> Show this link in footer</label><button class="admin-btn" type="button" data-remove-custom="'+index+'" style="margin-top:8px">Remove Link</button></div></div><input data-custom-file="'+index+'" type="file" accept="image/*" hidden></div>';
  }).join("");
  list.querySelectorAll("[data-remove-custom]").forEach(btn=>btn.onclick=()=>{branding.links.custom.splice(Number(btn.dataset.removeCustom),1);renderCustomLinks()});
  list.querySelectorAll("[data-upload-custom]").forEach(btn=>btn.onclick=()=>list.querySelector('[data-custom-file="'+btn.dataset.uploadCustom+'"]').click());
