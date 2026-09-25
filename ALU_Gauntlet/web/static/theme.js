@@ -16,7 +16,7 @@
   }
   async function load(){
     try{const d=await api("/api/theme");apply(d.theme)}
-    catch(e){apply(document.documentElement.getAttribute("data-theme")||"dark")}
+    catch(e){\n      let cached="dark";\n      try{cached=localStorage.getItem(KEY)||cached}catch(_e){}\n      apply(document.documentElement.getAttribute("data-theme")||cached)\n    }
   }
   async function save(theme){
     const t=apply(theme);
