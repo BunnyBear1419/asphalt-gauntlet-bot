@@ -3916,3 +3916,58 @@ footer.rsl-footer-mark>span{
     max-height:72px!important;
   }
 }
+
+
+/* FINAL COPYRIGHT / RSL MARK OVERRIDE — force visible presentation size */
+footer.rsl-footer-mark{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:22px!important;
+  min-height:140px!important;
+  margin:24px auto 0!important;
+  padding:18px 0!important;
+  font-size:22px!important;
+  line-height:1.2!important;
+  letter-spacing:.06em!important;
+  opacity:1!important;
+}
+footer.rsl-footer-mark > img{
+  width:150px!important;
+  height:110px!important;
+  min-width:150px!important;
+  min-height:110px!important;
+  max-width:150px!important;
+  max-height:110px!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  display:block!important;
+  opacity:1!important;
+  mix-blend-mode:normal!important;
+  transform:none!important;
+}
+footer.rsl-footer-mark > span{
+  font-size:22px!important;
+  line-height:1.2!important;
+  font-weight:700!important;
+  letter-spacing:.08em!important;
+  opacity:1!important;
+}
+@media(max-width:700px){
+  footer.rsl-footer-mark{
+    min-height:115px!important;
+    gap:16px!important;
+    font-size:18px!important;
+  }
+  footer.rsl-footer-mark > img{
+    width:125px!important;
+    height:92px!important;
+    min-width:125px!important;
+    min-height:92px!important;
+    max-width:125px!important;
+    max-height:92px!important;
+  }
+  footer.rsl-footer-mark > span{
+    font-size:18px!important;
+  }
+}
