@@ -360,7 +360,14 @@ class WebControlCenter:
         if brand_count:
             body = re.sub(r'<a class="top-cashapp-link"[^>]*>.*?</a>', "", body, flags=re.S)
             body = re.sub(r'<a class="top-discord-link"[^>]*>.*?</a>', "", body, flags=re.S)
-            body = body.replace(canonical_brand, canonical_brand, 1)
+            # Keep the community shortcuts identical on every page, not just Home.
+            discord_href = html.escape(str(link_settings.get("discord") or "https://discord.gg/fmFk8Ejf2H"), quote=True)
+            cashapp_href = html.escape(str(link_settings.get("cashapp") or "https://cash.app/"), quote=True)
+            social_markup = (
+                f'<a class="top-discord-link" href="{discord_href}" target="_blank" rel="noopener noreferrer" aria-label="Join the RSL Discord"><span aria-hidden="true">◉</span></a>'
+                f'<a class="top-cashapp-link" href="{cashapp_href}" target="_blank" rel="noopener noreferrer" aria-label="Support RSL on Cash App"><span aria-hidden="true">$</span></a>'
+            )
+            body = body.replace(canonical_brand, canonical_brand + social_markup, 1)
 
         # Keep the account/profile control consistent across every web page.
         # The navigation itself is intentionally kept in each page so existing
