@@ -21,7 +21,8 @@
 .quick-actions{height:199px}.quick-actions .panel-heading{height:43px}.qa{height:35px;margin:5px 14px;display:flex;align-items:center;padding:0 12px;border:1px solid;text-decoration:none;font-size:10px;font-weight:600;border-radius:5px}.qa-purple{background:linear-gradient(90deg,#0877e7,#075bbd);border-color:#b332ff}.qa-blue{background:linear-gradient(90deg,#086bd0,#0751a8);border-color:#168dff}.qa-green{background:linear-gradient(90deg,#098b69,#087357);border-color:#19e0a4}.qa-gold{background:linear-gradient(90deg,#a37408,#805e00);border-color:#ffd32d}
 .activity-card{height:249px;min-height:249px}.activity-card .panel-heading{height:48px}.server-select{height:34px;margin:0 14px;border-bottom:1px solid #153a61;display:flex;justify-content:space-between;align-items:center;font-size:11px}.server-sub{margin:3px 14px 7px;color:#8da1bd;font-size:8px}.activity-list{border-top:1px solid #153a61}.activity-list>div{display:grid;grid-template-columns:27px 1fr auto;gap:8px;padding:8px 14px;border-bottom:1px solid #112b4b}.activity-list i{width:25px;height:25px;display:grid;place-items:center;border-radius:50%;background:#082541;color:#25dfff;font-style:normal}.activity-list p{margin:0;display:flex;flex-direction:column}.activity-list b{font-size:9px}.activity-list small{font-size:7px;color:#8094b0;margin-top:2px}.activity-list time{font-size:7px;color:#6f87a6;align-self:center}
 .bottom-banner{height:90px;margin:13px 22px 0 14px;border:1px solid #1a4773;position:relative;overflow:hidden;display:flex;align-items:center;padding:0 28px;gap:34px;background:linear-gradient(90deg,#080b24ee,#080b2418),linear-gradient(120deg,#25dfff18,transparent 40%,#25dfff2b),url('/assets/competition.jpg') center/cover}.bottom-banner:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,#ff00d400 35%,#ff00d433 75%,#ff00d400);pointer-events:none}.bottom-logo{font-size:10px;line-height:.7;font-style:italic;font-weight:700;z-index:1}.bottom-logo b{font-size:6px;letter-spacing:.2em;margin-left:12px}.bottom-logo strong{display:block;font-size:30px;color:#25dfff}.bottom-banner>div:nth-child(2){z-index:1;display:flex;flex-direction:column}.bottom-banner>div:nth-child(2) b{font-size:16px;font-style:italic}.bottom-banner>div:nth-child(2) span{font-size:9px;color:#a9b8cf}.bottom-banner>a{z-index:1;margin-left:auto;background:#0877e7;border:1px solid #25dfff;padding:9px 18px;text-decoration:none;font-size:9px;font-weight:700}
-.sr-route{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}\nfooter{text-align:center;color:#506988;font-size:8px;padding:10px 20px 18px;letter-spacing:.08em}
+.sr-route{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+footer{text-align:center;color:#506988;font-size:8px;padding:10px 20px 18px;letter-spacing:.08em}
 
 .page-hero{padding:36px 20px 24px}.page-hero h1{font-size:45px}.toolbar{display:flex;gap:10px;margin:0 20px 18px}.toolbar select,.toolbar input{width:100%;min-height:42px;padding:0 12px;color:#eef3f8;border:1px solid var(--line);border-radius:4px;background:#071225;outline:none}.toolbar select{min-width:260px}.search{flex:1}.table-wrap{margin:0 20px;overflow:auto;border:1px solid var(--line);border-radius:4px}table{width:100%;border-collapse:collapse;min-width:700px}th,td{padding:13px 14px;text-align:left;border-bottom:1px solid #122947;font-size:14px}th{color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase}td small{display:block;margin-top:3px;color:#667990;font-size:11px}.grid{display:grid;gap:14px}.cards{grid-template-columns:repeat(4,1fr);margin:20px}.card{border:1px solid var(--line);background:var(--rsl-box);border-radius:4px;padding:18px}.card span,.card strong{display:block}.card span{color:var(--muted);font-size:11px}.card strong{font-size:24px}
 
@@ -3710,4 +3711,73 @@ html[data-theme] .profile-hero *,
 html[data-theme] .legal-hero *,
 html[data-theme] .my-tournaments-hero *{
   text-shadow:none!important;
+}
+
+
+/* =========================================================
+   RSL PRODUCTION UI HARDENING — FINAL THEME/ACCESSIBILITY LAYER
+   Keep this layer last: functional UI inherits the selected theme.
+   Artwork-specific gradients and brand artwork remain untouched.
+   ========================================================= */
+html[data-theme] body{
+  background:radial-gradient(circle at 65% 30%,color-mix(in srgb,var(--rsl-final-accent) 10%,var(--rsl-final-bg)) 0,var(--rsl-final-bg) 42%,var(--rsl-final-bg) 100%)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .top-nav{
+  background:linear-gradient(180deg,var(--rsl-final-panel2),var(--rsl-final-panel))!important;
+  border-bottom-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .top-profile,
+html[data-theme] .toolbar input,
+html[data-theme] .toolbar select,
+html[data-theme] .table-wrap,
+html[data-theme] .card,
+html[data-theme] .glass-panel,
+html[data-theme] .welcome-panel,
+html[data-theme] .season-panel,
+html[data-theme] .profile-card,
+html[data-theme] .quick-actions,
+html[data-theme] .activity-card{
+  border-color:var(--rsl-final-line)!important;
+  background:var(--rsl-final-panel)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .top-nav nav a,
+html[data-theme] .top-nav nav a i,
+html[data-theme] .panel-heading h2,
+html[data-theme] th,
+html[data-theme] td,
+html[data-theme] .card,
+html[data-theme] label{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .empty-state,
+html[data-theme] td small,
+html[data-theme] .panel-heading h2 small,
+html[data-theme] .server-sub,
+html[data-theme] footer{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] input:focus-visible,
+html[data-theme] select:focus-visible,
+html[data-theme] textarea:focus-visible,
+html[data-theme] button:focus-visible,
+html[data-theme] a:focus-visible{
+  outline:2px solid var(--rsl-final-accent)!important;
+  outline-offset:2px;
+}
+html[data-theme] button:disabled,
+html[data-theme] input:disabled,
+html[data-theme] select:disabled,
+html[data-theme] textarea:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    scroll-behavior:auto!important;
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+  }
 }
