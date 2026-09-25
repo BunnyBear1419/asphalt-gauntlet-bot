@@ -4077,3 +4077,41 @@ footer.rsl-footer-mark > span{
 @media(max-width:700px){
   .rsl-footer .rsl-footer-copyline{font-size:17px!important;}
 }
+
+/* FINAL FOOTER SOCIAL LINKS — slightly larger follow-up */
+.rsl-footer .rsl-footer-socials .rsl-footer-social{
+  width:104px!important;
+  height:80px!important;
+  min-width:104px!important;
+  min-height:80px!important;
+}
+.rsl-footer .rsl-footer-socials .rsl-footer-social > span{
+  font-size:35px!important;
+}
+.rsl-footer .rsl-footer-socials .rsl-footer-social img,
+.rsl-footer .rsl-footer-socials .rsl-footer-social svg{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  min-height:48px!important;
+  max-width:48px!important;
+  max-height:48px!important;
+}
+@media(max-width:700px){
+  .rsl-footer .rsl-footer-socials .rsl-footer-social{
+    width:88px!important;
+    height:70px!important;
+    min-width:88px!important;
+    min-height:70px!important;
+  }
+  .rsl-footer .rsl-footer-socials .rsl-footer-social > span{font-size:31px!important;}
+}
+
+/* FINAL COPYRIGHT TEXT SIZE — a tad smaller */
+.rsl-footer .rsl-footer-copyline{
+  font-size:17px!important;
+  font-weight:600!important;
+}
+@media(max-width:700px){
+  .rsl-footer .rsl-footer-copyline{font-size:15px!important;}
+}
