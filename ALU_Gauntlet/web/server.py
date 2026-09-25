@@ -121,7 +121,7 @@ class WebControlCenter:
   } catch(e) {}
 })();
 </script>
-<script src="/static/theme.js?v=20260924-theme1"></script>'''
+<script src="/static/theme.js?v=20260924-theme2"></script>'''
         if '/static/theme.js?' not in body:
             body = body.replace("<head>", "<head>"+theme_bootstrap, 1)
 
@@ -385,8 +385,16 @@ class WebControlCenter:
     <a href="/my-tournaments">🏆 <span>My Tournaments</span></a>
     <div class="rsl-profile-theme-toggle" id="rsl-profile-theme-toggle" role="group" aria-label="Website theme">
       <span class="rsl-profile-theme-title">Theme</span>
-      <button type="button" class="rsl-theme-choice" data-theme-choice="light" aria-label="Use light theme">☀️ Light</button>
-      <button type="button" class="rsl-theme-choice" data-theme-choice="dark" aria-label="Use dark theme">🌙 Dark</button>
+      <div class="rsl-theme-choice-grid">
+        <button type="button" class="rsl-theme-choice" data-theme-choice="dark" aria-label="Use midnight theme">🌙 Midnight</button>
+        <button type="button" class="rsl-theme-choice" data-theme-choice="light" aria-label="Use light theme">☀️ Light</button>
+        <button type="button" class="rsl-theme-choice" data-theme-choice="ocean" aria-label="Use ocean theme">🌊 Ocean</button>
+        <button type="button" class="rsl-theme-choice" data-theme-choice="purple" aria-label="Use neon purple theme">🟣 Neon Purple</button>
+        <button type="button" class="rsl-theme-choice" data-theme-choice="crimson" aria-label="Use crimson theme">🔴 Crimson</button>
+        <button type="button" class="rsl-theme-choice" data-theme-choice="emerald" aria-label="Use emerald theme">🟢 Emerald</button>
+        <button type="button" class="rsl-theme-choice" data-theme-choice="sunset" aria-label="Use sunset theme">🟠 Sunset</button>
+        <button type="button" class="rsl-theme-choice" data-theme-choice="graphite" aria-label="Use graphite theme">⚙️ Graphite</button>
+      </div>
     </div>
     <a class="rsl-admin-tools-link" id="rsl-admin-tools-link" href="/admin" hidden>🛠️ <span>Admin Tools</span></a>
     <div class="rsl-profile-divider"></div>
