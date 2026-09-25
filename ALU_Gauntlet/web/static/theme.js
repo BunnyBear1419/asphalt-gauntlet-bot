@@ -7,6 +7,7 @@
     try{localStorage.setItem(KEY,t)}catch(e){}
     const select=document.querySelector("#profile-theme");
     if(select)select.value=t;
+    try{window.dispatchEvent(new CustomEvent("rsl-theme-changed",{detail:{theme:t}}))}catch(e){}
     return t;
   }
   async function api(url,opts={}){
