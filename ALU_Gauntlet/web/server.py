@@ -1743,6 +1743,65 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
   filter:none!important;
 }
 </style><style id="rsl-page-polish">
+
+/* FINAL TOURNAMENT PAGE CENTERING — keep every tournament panel aligned to the shared page center. */
+.rsl-page-tournaments main,
+.rsl-page-tournament-center main,
+.rsl-page-tournament-registration main,
+.rsl-page-tournament-matches main,
+.rsl-page-tournament-results main,
+.rsl-page-tournament-clubs main{
+  width:min(100%,1360px)!important;
+  margin-inline:auto!important;
+}
+.rsl-page-tournaments main > section,
+.rsl-page-tournament-center main > section,
+.rsl-page-tournament-registration main > section,
+.rsl-page-tournament-matches main > section,
+.rsl-page-tournament-results main > section,
+.rsl-page-tournament-clubs main > section{
+  width:100%;
+  max-width:none;
+  margin-inline:auto;
+  box-sizing:border-box;
+}
+.rsl-page-tournaments .tournament-layout{
+  width:100%;
+  margin-inline:auto;
+  padding-left:0;
+  padding-right:0;
+  box-sizing:border-box;
+}
+.rsl-page-tournaments .tournament-list,
+.rsl-page-tournament-center .tournament-list,
+.rsl-page-tournament-registration .tournament-list,
+.rsl-page-tournament-results .tournament-list,
+.rsl-page-tournament-clubs .tournament-list{
+  width:100%;
+  margin-inline:auto;
+}
+.rsl-page-tournaments .tournament-card,
+.rsl-page-tournament-center .tournament-card,
+.rsl-page-tournament-registration .tournament-card,
+.rsl-page-tournament-results .tournament-card,
+.rsl-page-tournament-clubs .tournament-card{
+  width:100%;
+  margin-inline:auto;
+  box-sizing:border-box;
+}
+.rsl-page-tournament-matches .tournament-detail,
+.rsl-page-tournament-matches .tournament-detail > .glass-panel{
+  width:100%;
+  margin-inline:auto;
+  box-sizing:border-box;
+}
+@media(max-width:800px){
+  .rsl-page-tournaments .tournament-layout{
+    padding-left:0;
+    padding-right:0;
+  }
+}
+
 /* RSL SITE-WIDE PAGE POLISH: one professional layout contract for every page. */
 .rsl-site-page main{
   width:min(100%,1380px);
