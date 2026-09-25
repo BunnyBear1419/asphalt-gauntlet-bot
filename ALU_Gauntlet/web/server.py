@@ -112,6 +112,18 @@ class WebControlCenter:
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
 
+        theme_bootstrap = r'''<script>
+(function(){
+  try {
+    var saved=localStorage.getItem("rsl_theme");
+    if(saved==="light"||saved==="dark") document.documentElement.setAttribute("data-theme",saved);
+  } catch(e) {}
+})();
+</script>
+<script src="/static/theme.js?v=20260924-theme1"></script>'''
+        if '/static/theme.js?' not in body:
+            body = body.replace("<head>", "<head>"+theme_bootstrap, 1)
+
         # Render public Discord community counts server-side on first paint.
         # Help and Home both use the same community statistics so neither page
         # depends on a client-side request just to show the member counts.
@@ -1331,6 +1343,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/discord-stats", self.discord_stats)
         self.app.router.add_get("/api/language", self.get_language)
         self.app.router.add_post("/api/language", self.set_language)
+        self.app.router.add_get("/api/theme", self.get_theme)
+        self.app.router.add_put("/api/theme", self.set_theme)
         self.app.router.add_get("/api/notifications", self.notification_preferences)
         self.app.router.add_get("/api/reminders", self.list_reminders)
         self.app.router.add_post("/api/reminders", self.create_reminder)
@@ -3286,6 +3300,30 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             upsert=True,
         )
         return web.json_response({"ok": True, "language": language})
+
+    async def get_theme(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        record = await self.bot.db.web_user_preferences.find_one({"_id": str(user.user_id)}) or {}
+        theme = str(record.get("theme", "dark")).strip().lower()
+        if theme not in {"dark", "light"}:
+            theme = "dark"
+        return web.json_response({"theme": theme})
+
+    async def set_theme(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid theme request.") from exc
+        theme = str(payload.get("theme", "dark")).strip().lower()
+        if theme not in {"dark", "light"}:
+            raise web.HTTPBadRequest(text="Unsupported theme.")
+        await self.bot.db.web_user_preferences.update_one(
+            {"_id": str(user.user_id)},
+            {"$set": {"theme": theme, "updated_at": time.time()}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "theme": theme})
 
     async def news(self, request: web.Request) -> web.Response:
         """Return news scoped to the signed-in user; staff may manage drafts for one server."""
