@@ -22,7 +22,7 @@ def test_profile_exposes_theme_setting():
 
 def test_theme_controller_persists_and_applies_theme():
     source=(STATIC/"theme.js").read_text(encoding="utf-8")
-    assert 'localStorage.getItem("rsl_theme")' in source
+    assert 'localStorage.getItem(KEY)' in source
     assert 'localStorage.setItem(KEY,t)' in source
     assert 'document.documentElement.setAttribute("data-theme",t)' in source
     assert '"/api/theme"' in source
