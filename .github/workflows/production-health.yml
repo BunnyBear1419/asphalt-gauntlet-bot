@@ -1,8 +1,10 @@
 name: Production Health Monitor
 
 on:
+  # One health check per hour is sufficient for the production monitor and
+  # avoids spawning a new runner every 15 minutes.
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -11,6 +13,10 @@ permissions:
 jobs:
   health-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: production-health-monitor
+      cancel-in-progress: true
 
     steps:
       - name: Check Discloud application status
