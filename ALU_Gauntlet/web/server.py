@@ -1314,6 +1314,27 @@ html[data-theme] .player-card-stats span{
   color:var(--rsl-audit-muted)!important;
 }
 
+/* BOX ICONS: remove fixed midnight-blue backing from About/Features/Help/News and other themed cards. */
+html[data-theme] .home-about-icon,
+html[data-theme] .home-help-icon,
+html[data-theme] .home-news-icon,
+html[data-theme] .home-feature-icon,
+html[data-theme] .home-help-arrow,
+html[data-theme] .companion-info-link-icon{
+  background:var(--rsl-audit-panel2)!important;
+  border-color:var(--rsl-audit-line)!important;
+  color:var(--rsl-audit-accent)!important;
+}
+html[data-theme] .home-about-icon svg,
+html[data-theme] .home-help-icon svg,
+html[data-theme] .home-news-icon svg,
+html[data-theme] .home-feature-icon svg,
+html[data-theme] .home-help-arrow svg,
+html[data-theme] .companion-info-link-icon svg{
+  color:var(--rsl-audit-accent)!important;
+  stroke:var(--rsl-audit-accent)!important;
+  fill:none!important;
+}
 /* FINAL THEME NORMALIZATION: never let legacy midnight-blue CSS override the selected theme. */
 html[data-theme] .page-hero,
 html[data-theme] .page-hero h1,
