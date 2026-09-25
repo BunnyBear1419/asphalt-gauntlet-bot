@@ -361,8 +361,6 @@ class WebControlCenter:
             # Top-left social shortcuts were previously injected into every page,
             # which produced stray Discord/Cash App icons beside the RSL logo and
             # could overlap the navigation. Remove all legacy copies globally.
-            body = re.sub(r'<a class="top-cashapp-link"[^>]*>.*?</a>', "", body, flags=re.S)
-            body = re.sub(r'<a class="top-discord-link"[^>]*>.*?</a>', "", body, flags=re.S)
             # The footer keeps its social links, but they use footer-only
             # classes so they cannot inherit the old absolute-positioned top-left CSS.
         social_markup = (
