@@ -1348,8 +1348,7 @@ body{top:0!important}
 /* Keep sibling top navigation dropdowns visually exclusive. Native <details> can leave
    both menus open when clicked quickly; modern browsers support :has(), which lets the
    newest/opened dropdown remain visible without changing the existing navigation design. */
-.top-nav-dropdown[open]:has(+ .top-nav-dropdown[open]) > .top-nav-dropdown-menu{display:none!important;}
-.top-nav-dropdown[open]:has(+ .top-nav-dropdown[open]) > .top-nav-dropdown-trigger{border-bottom-color:transparent!important;}
+/* Each open navigation dropdown remains independently visible. */
 
 
 /* Canonical dropdown icon alignment: every submenu item uses one fixed icon column,
