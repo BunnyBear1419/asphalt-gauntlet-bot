@@ -3781,3 +3781,45 @@ html[data-theme] textarea:disabled{
     transition-duration:.001ms!important;
   }
 }
+
+
+/* FINAL NAVIGATION ACTION BAR — Search is always immediately left of Profile. */
+.top-nav{
+  position:fixed!important;
+  overflow:visible!important;
+}
+.top-nav nav{
+  padding-right:260px!important;
+  box-sizing:border-box!important;
+  min-width:0!important;
+}
+.top-nav>.rsl-search-trigger{
+  right:158px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:1101!important;
+}
+.top-nav>.rsl-profile-nav,
+.top-nav>.rsl-login-button{
+  right:14px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:1102!important;
+}
+.top-nav>.rsl-search-trigger,
+.top-nav>.rsl-profile-nav,
+.top-nav>.rsl-login-button{
+  pointer-events:auto!important;
+}
+@media(max-width:1100px){
+  .top-nav nav{padding-right:230px!important}
+  .top-nav>.rsl-search-trigger{right:148px!important}
+}
+@media(max-width:800px){
+  .top-nav nav{padding-right:205px!important}
+  .top-nav>.rsl-search-trigger{right:136px!important;width:38px!important;height:38px!important}
+}
+@media(max-width:560px){
+  .top-nav nav{padding-right:118px!important}
+  .top-nav>.rsl-search-trigger{right:70px!important;width:36px!important;height:36px!important}
+}
