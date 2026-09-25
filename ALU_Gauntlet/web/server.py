@@ -383,6 +383,11 @@ class WebControlCenter:
     <a href="/club">🏎️ <span>My Club</span></a>
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
     <a href="/my-tournaments">🏆 <span>My Tournaments</span></a>
+    <div class="rsl-profile-theme-toggle" id="rsl-profile-theme-toggle" role="group" aria-label="Website theme">
+      <span class="rsl-profile-theme-title">Theme</span>
+      <button type="button" class="rsl-theme-choice" data-theme-choice="light" aria-label="Use light theme">☀️ Light</button>
+      <button type="button" class="rsl-theme-choice" data-theme-choice="dark" aria-label="Use dark theme">🌙 Dark</button>
+    </div>
     <a class="rsl-admin-tools-link" id="rsl-admin-tools-link" href="/admin" hidden>🛠️ <span>Admin Tools</span></a>
     <div class="rsl-profile-divider"></div>
     <a class="rsl-profile-logout" href="/logout">🔐 <span>Sign Out</span></a>
@@ -863,6 +868,27 @@ try{
     trigger.setAttribute("aria-expanded", String(!open));
   });
   menu?.addEventListener("click", e => e.stopPropagation());
+
+  const themeChoices = document.querySelectorAll("[data-theme-choice]");
+  const syncThemeChoices = theme => {
+    themeChoices.forEach(button => {
+      const active = button.dataset.themeChoice === theme;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  };
+  const currentTheme = () => document.documentElement.getAttribute("data-theme") || "dark";
+  syncThemeChoices(currentTheme());
+  themeChoices.forEach(button => {
+    button.addEventListener("click", async e => {
+      e.stopPropagation();
+      const theme = button.dataset.themeChoice;
+      if (!window.RSLTheme || !theme) return;
+      await window.RSLTheme.save(theme);
+      syncThemeChoices(currentTheme());
+    });
+  });
+  window.addEventListener("rsl-theme-changed", e => syncThemeChoices(e.detail?.theme || currentTheme()));
   document.addEventListener("click", closeMenu);
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
 })();
