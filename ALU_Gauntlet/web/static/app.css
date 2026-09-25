@@ -3857,3 +3857,26 @@ html[data-theme] textarea:disabled{
     height:34px!important;
   }
 }
+
+
+/* FINAL FOOTER BRAND MARK SIZE — clearly visible */
+.rsl-footer-mark{
+  gap:12px!important;
+  margin:18px auto 0!important;
+  padding:8px 0 4px!important;
+  font-size:12px!important;
+}
+.rsl-footer-mark img{
+  width:64px!important;
+  height:48px!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:contain!important;
+  display:block!important;
+}
+@media(max-width:700px){
+  .rsl-footer-mark img{
+    width:58px!important;
+    height:44px!important;
+  }
+}
