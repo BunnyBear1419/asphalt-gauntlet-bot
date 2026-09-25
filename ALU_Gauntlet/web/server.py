@@ -129,7 +129,7 @@ class WebControlCenter:
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
-        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site6', body)
+        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site7', body)
 
         theme_bootstrap = r'''<script>
 (function(){
@@ -4127,16 +4127,31 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return user
 
     async def require_guild_member(self, request: web.Request) -> tuple[Any, str, Any]:
+        """Resolve the active Discord server safely for web requests.
+
+        Explicit guild_id always wins. Otherwise reuse the account's selected
+        guild cookie, then fall back to the first connected guild the user can
+        access. This keeps account pages usable without forcing every client
+        script to manually append guild_id to every API request.
+        """
         user = await self.require_user(request)
-        guild_id = request.query.get("guild_id", "").strip()
+        memberships = {str(x) for x in getattr(user, "guild_ids", [])}
+        candidates = [
+            request.query.get("guild_id", "").strip(),
+            request.cookies.get("rsl_guild_id", "").strip(),
+            *[str(x) for x in getattr(user, "admin_guild_ids", [])],
+            *memberships,
+        ]
+        connected = {
+            str(getattr(g, "id", "")): g
+            for g in getattr(self.bot, "guilds", [])
+            if str(getattr(g, "id", "")) in memberships
+        }
+        guild_id = next((gid for gid in candidates if gid and gid in connected), None)
         if not guild_id:
-            raise web.HTTPBadRequest(text="guild_id is required.")
-        if guild_id not in user.guild_ids:
-            raise web.HTTPForbidden(text="You are not a member of this Discord server.")
-        guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == guild_id), None)
-        if guild is None:
-            raise web.HTTPNotFound(text="The bot is not connected to this Discord server.")
-        return user, guild_id, guild
+            raise web.HTTPBadRequest(text="No connected Discord server is available for this account.")
+        return user, guild_id, connected[guild_id]
+
 
     async def _is_live_guild_staff(self, user: Any, guild_id: str, guild: Any) -> bool:
         """Check staff/admin access against the live Discord member for one guild."""
@@ -4163,11 +4178,31 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         )
 
     async def require_admin(self, request: web.Request) -> tuple[Any, str, Any]:
+        # The standalone /setup page may be opened without ?guild_id. In that
+        # case choose the first connected guild where the signed-in user is
+        # actually staff/admin. Explicit guild_id still has priority.
+        user = await self.require_user(request)
+        explicit = request.query.get("guild_id", "").strip()
+        if not explicit:
+            memberships = {str(x) for x in getattr(user, "guild_ids", [])}
+            preferred = [
+                request.cookies.get("rsl_guild_id", "").strip(),
+                *[str(x) for x in getattr(user, "admin_guild_ids", [])],
+                *memberships,
+            ]
+            connected = {
+                str(getattr(g, "id", "")): g
+                for g in getattr(self.bot, "guilds", [])
+                if str(getattr(g, "id", "")) in memberships
+            }
+            for guild_id in preferred:
+                guild = connected.get(guild_id)
+                if guild is not None and await self._is_live_guild_staff(user, guild_id, guild):
+                    return user, guild_id, guild
+            raise web.HTTPForbidden(text="Administrator access is required for a connected server.")
         user, guild_id, guild = await self.require_guild_member(request)
 
         # Always re-check the live Discord member for the selected guild.
-        # Do not rely on the cached OAuth "staff" flag because it can represent
-        # administrator access in a different guild.
         if not await self._is_live_guild_staff(user, guild_id, guild):
             raise web.HTTPForbidden(text="Administrator access is required for this server.")
         return user, guild_id, guild
