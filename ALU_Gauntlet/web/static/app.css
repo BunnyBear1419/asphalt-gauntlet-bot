@@ -3820,3 +3820,32 @@ html[data-theme] textarea:disabled{
 .top-nav>.rsl-search-trigger,
 .top-nav>.rsl-profile-nav,
 .top-nav>.rsl-login-button{pointer-events:auto!important;}
+
+
+/* FINAL FOOTER SOCIAL ICON SIZE — slightly larger for visibility */
+.rsl-footer-socials .rsl-footer-social{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  min-height:48px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:15px!important;
+}
+.rsl-footer-socials .rsl-footer-social img,
+.rsl-footer-socials .rsl-footer-social svg{
+  width:28px!important;
+  height:28px!important;
+}
+.rsl-footer-socials .rsl-footer-social span{
+  font-size:15px!important;
+}
+@media(max-width:700px){
+  .rsl-footer-socials .rsl-footer-social{
+    width:46px!important;
+    height:46px!important;
+    min-width:46px!important;
+    min-height:46px!important;
+  }
+}
