@@ -308,7 +308,8 @@ class GauntletBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
         intents.message_content = True
-        intents.members = True  # Required to apply roles dynamically to targets
+        intents.members = True  # Required to cache/resolve guild members and apply roles dynamically.
+        intents.presences = True  # Required for live online/idle/DND presence updates and counts.
         super().__init__(command_prefix="!", intents=intents)
         self.db = None
         self.mongo_client = None
