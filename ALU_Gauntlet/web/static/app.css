@@ -4388,3 +4388,75 @@ footer.rsl-footer-mark > span{
     font-size:16px!important;
   }
 }
+
+
+/* =========================================================
+   TOURNAMENT PAGES — MATCH THE GAUNTLET SECTION LAYOUT
+   ========================================================= */
+.rsl-page-tournaments .tournament-hero,
+.rsl-page-tournament-center .tournament-hero,
+.rsl-page-tournament-registration .tournament-hero,
+.rsl-page-tournament-matches .tournament-hero,
+.rsl-page-tournament-results .tournament-hero,
+.rsl-page-tournament-clubs .tournament-hero{
+  width:100%!important;
+  margin:0 0 24px!important;
+  padding:0!important;
+  box-sizing:border-box!important;
+}
+.rsl-page-tournaments .tournament-hero .eyebrow,
+.rsl-page-tournament-center .tournament-hero .eyebrow,
+.rsl-page-tournament-registration .tournament-hero .eyebrow,
+.rsl-page-tournament-matches .tournament-hero .eyebrow,
+.rsl-page-tournament-results .tournament-hero .eyebrow,
+.rsl-page-tournament-clubs .tournament-hero .eyebrow{
+  display:block!important;
+  font-size:15px!important;
+  line-height:1.25!important;
+  font-weight:800!important;
+  letter-spacing:.08em!important;
+  margin:0 0 9px!important;
+}
+.rsl-page-tournaments .tournament-hero h1,
+.rsl-page-tournament-center .tournament-hero h1,
+.rsl-page-tournament-registration .tournament-hero h1,
+.rsl-page-tournament-matches .tournament-hero h1,
+.rsl-page-tournament-results .tournament-hero h1,
+.rsl-page-tournament-clubs .tournament-hero h1{
+  margin:0 0 12px!important;
+}
+.rsl-page-tournaments .tournament-hero p,
+.rsl-page-tournament-center .tournament-hero p,
+.rsl-page-tournament-registration .tournament-hero p,
+.rsl-page-tournament-matches .tournament-hero p,
+.rsl-page-tournament-results .tournament-hero p,
+.rsl-page-tournament-clubs .tournament-hero p{
+  margin:0!important;
+  font-size:16px!important;
+  line-height:1.6!important;
+}
+.rsl-page-tournament-matches .tournament-round{
+  margin:20px 0!important;
+  padding:20px!important;
+}
+.rsl-page-tournaments .tournament-card-art,
+.rsl-page-tournament-center .tournament-card-art,
+.rsl-page-tournament-registration .tournament-card-art,
+.rsl-page-tournament-results .tournament-card-art,
+.rsl-page-tournament-clubs .tournament-card-art{
+  display:none!important;
+}
+@media(max-width:700px){
+  .rsl-page-tournaments .tournament-hero .eyebrow,
+  .rsl-page-tournament-center .tournament-hero .eyebrow,
+  .rsl-page-tournament-registration .tournament-hero .eyebrow,
+  .rsl-page-tournament-matches .tournament-hero .eyebrow,
+  .rsl-page-tournament-results .tournament-hero .eyebrow,
+  .rsl-page-tournament-clubs .tournament-hero .eyebrow{font-size:14px!important}
+  .rsl-page-tournaments .tournament-hero p,
+  .rsl-page-tournament-center .tournament-hero p,
+  .rsl-page-tournament-registration .tournament-hero p,
+  .rsl-page-tournament-matches .tournament-hero p,
+  .rsl-page-tournament-results .tournament-hero p,
+  .rsl-page-tournament-clubs .tournament-hero p{font-size:15px!important}
+}
