@@ -330,7 +330,7 @@ class WebControlCenter:
         # Force every rendered page to use the current shared shell stylesheet cache key.
         body = re.sub(
             r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
-            'href="/static/app.css?v=20260924-shell10"',
+            'href="/static/app.css?v=20260924-shell11"',
             body,
             flags=re.I
         )
@@ -730,7 +730,7 @@ window.rslGoogleTranslateInit=function(){
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell10">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell11">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
                 body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-shell5"></head>', 1)
 
