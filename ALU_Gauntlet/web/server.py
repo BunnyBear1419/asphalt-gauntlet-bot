@@ -112,7 +112,7 @@ class WebControlCenter:
 
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
-        body = re.sub(r'/static/app\.css\?v=[^&"]+', '/static/app.css?v=20260924-theme5', body)
+        body = re.sub(r'/static/app\.css\?v=[^&"]+', '/static/app.css?v=20260925-footer1', body)
 
         theme_bootstrap = r'''<script>
 (function(){
