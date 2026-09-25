@@ -10,6 +10,7 @@ def test_theme_runtime_files_and_server_parse():
     assert (STATIC/"theme.js").is_file()
     source=SERVER.read_text(encoding="utf-8")
     assert '"/api/theme"' in source
+    assert "THEMES" in source
     assert "get_theme" in source
     assert "set_theme" in source
     assert "rsl_theme" in source
@@ -19,6 +20,8 @@ def test_profile_exposes_theme_setting():
     assert 'id="profile-theme"' in source
     assert 'value="dark"' in source
     assert 'value="light"' in source
+    for value in ("ocean","purple","crimson","emerald","sunset","graphite"):
+        assert f'value="{value}"' in source
 
 def test_theme_controller_persists_and_applies_theme():
     source=(STATIC/"theme.js").read_text(encoding="utf-8")
@@ -30,4 +33,6 @@ def test_theme_controller_persists_and_applies_theme():
 def test_light_theme_css_exists():
     source=(STATIC/"app.css").read_text(encoding="utf-8")
     assert 'html[data-theme="light"]' in source
-    assert "RSL ACCOUNT THEME" in source
+    assert "RSL MULTI-THEME SYSTEM" in source
+    for theme_name in ("ocean","purple","crimson","emerald","sunset","graphite"):
+        assert f'html[data-theme="{theme_name}"]' in source
