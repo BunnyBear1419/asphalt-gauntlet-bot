@@ -159,26 +159,20 @@ def test_setup_has_staff_authorization_on_every_interactive_path():
         assert "_authorized" in function, f"missing authorization guard in {name}"
 
 
-def test_setup_command_is_the_single_configuration_entry_point():
+def test_setup_is_staff_dashboard_only_and_not_a_top_level_discord_command():
     source = _source(ADMIN)
-    tree = _tree(ADMIN)
-    setup_commands = [
-        node for node in ast.walk(tree)
-        if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)) and node.name == "setup_cmd"
-    ]
-    assert len(setup_commands) == 1
-    setup = _function_source(ADMIN, "setup_cmd")
-    assert "launch_setup_wizard(interaction)" in setup
+    assert "setup_cmd" not in source
+    assert "@app_commands.command(name='setup'" not in source
+    assert '@app_commands.command(name="setup"' not in source
     assert "no IDs to enter" in source
     assert "@app_commands.command(name='timezone'" not in source
-    assert "@app_commands.command(name=\"timezone\"" not in source
+    assert '@app_commands.command(name="timezone"' not in source
 
 
-def test_setup_command_requires_administrator_or_configured_admin_role():
-    source = _function_source(ADMIN, "setup_cmd")
-    assert "guild_permissions.administrator" in source
-    assert "check_admin_privileges(interaction)" in source
-    assert "Access Denied" in source
+def test_setup_entry_point_is_the_staff_dashboard_bridge():
+    bridge = (ROOT / "ALU_Gauntlet" / "cogs" / "dashboard_setup_bridge.py").read_text(encoding="utf-8")
+    assert 'action == "setup_direct"' in bridge
+    assert "launch_setup_wizard(interaction)" in bridge
 
 
 def test_setup_cleans_stale_guild_local_setup_overrides_once():
