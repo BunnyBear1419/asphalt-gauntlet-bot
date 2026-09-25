@@ -20,7 +20,7 @@ def test_web_routes_are_guild_scoped():
     source=(WEB/"server.py").read_text(encoding="utf-8")
     for marker in ("player_me","player_preferences","setup_options","setup_settings","save_setup_settings","season"):
         assert marker in source
-    assert "guild_id is required." in source
+    assert "No connected Discord server is available for this account." in source
     assert "Administrator access is required for this server." in source
 
 def test_web_ui_is_simplified_control_center():
