@@ -119,13 +119,13 @@ class WebControlCenter:
         def _add_page_identity(match: re.Match[str]) -> str:
             attrs = match.group(1) or ""
             page_class = "rsl-site-page rsl-page-" + page_key
-            class_match = re.search(r'\\bclass=["\\']([^"\\']*)["\\']', attrs, flags=re.I)
+            class_match = re.search(r"\bclass=['\"]([^'\"]*)['\"]", attrs, flags=re.I)
             if class_match:
                 classes = (class_match.group(1) + " " + page_class).strip()
                 attrs = attrs[:class_match.start(1)] + classes + attrs[class_match.end(1):]
                 return "<body" + attrs + ">"
             return "<body" + attrs + ' class="' + page_class + '">'
-        body = re.sub(r'<body\\b([^>]*)>', _add_page_identity, body, count=1, flags=re.I)
+        body = re.sub(r'<body\b([^>]*)>', _add_page_identity, body, count=1, flags=re.I)
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
