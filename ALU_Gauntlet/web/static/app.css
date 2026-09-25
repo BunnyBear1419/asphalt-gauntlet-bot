@@ -3298,3 +3298,191 @@ html[data-theme] .club-grid .tournament-empty{
   display:grid;
   place-items:center;
 }
+
+
+/* FINAL THEME CLEANUP: remaining dropdown icons, leaderboard text, tournament steps,
+   Clubs background surfaces, and Player preference/profile identity boxes. */
+html[data-theme] .top-nav .nav-icon-img,
+html[data-theme] .top-nav .nav-icon-glyph{
+  color:var(--rsl-final-accent)!important;
+  filter:brightness(0) saturate(100%) invert(77%) sepia(73%) saturate(1162%) hue-rotate(151deg) brightness(102%) contrast(101%)!important;
+}
+html[data-theme="light"] .top-nav .nav-icon-img,
+html[data-theme="light"] .top-nav .nav-icon-glyph{
+  color:var(--rsl-final-accent)!important;
+  filter:brightness(0) saturate(100%) invert(38%) sepia(73%) saturate(1541%) hue-rotate(183deg) brightness(86%) contrast(93%)!important;
+}
+html[data-theme="purple"] .top-nav .nav-icon-img,
+html[data-theme="purple"] .top-nav .nav-icon-glyph{
+  filter:brightness(0) saturate(100%) invert(58%) sepia(87%) saturate(2264%) hue-rotate(238deg) brightness(101%) contrast(101%)!important;
+}
+html[data-theme="crimson"] .top-nav .nav-icon-img,
+html[data-theme="crimson"] .top-nav .nav-icon-glyph{
+  filter:brightness(0) saturate(100%) invert(47%) sepia(84%) saturate(3104%) hue-rotate(320deg) brightness(102%) contrast(101%)!important;
+}
+html[data-theme="emerald"] .top-nav .nav-icon-img,
+html[data-theme="emerald"] .top-nav .nav-icon-glyph{
+  filter:brightness(0) saturate(100%) invert(79%) sepia(67%) saturate(1107%) hue-rotate(113deg) brightness(99%) contrast(98%)!important;
+}
+html[data-theme="sunset"] .top-nav .nav-icon-img,
+html[data-theme="sunset"] .top-nav .nav-icon-glyph{
+  filter:brightness(0) saturate(100%) invert(70%) sepia(65%) saturate(1391%) hue-rotate(333deg) brightness(102%) contrast(101%)!important;
+}
+html[data-theme="graphite"] .top-nav .nav-icon-img,
+html[data-theme="graphite"] .top-nav .nav-icon-glyph{
+  filter:brightness(0) saturate(100%) invert(91%) sepia(7%) saturate(286%) hue-rotate(163deg) brightness(94%) contrast(91%)!important;
+}
+
+/* Leaderboard: remove legacy blue text/borders/row treatments. */
+html[data-theme] .leaderboard-list,
+html[data-theme] .leaderboard-card,
+html[data-theme] .leader-row,
+html[data-theme] .leader-rank,
+html[data-theme] .driver-mini,
+html[data-theme] .leader-elo,
+html[data-theme] .leaderboard-table,
+html[data-theme] .leaderboard-table th,
+html[data-theme] .leaderboard-table td,
+html[data-theme] .leaderboard-table small,
+html[data-theme] .leaderboard-toolbar,
+html[data-theme] .leaderboard-toolbar input,
+html[data-theme] .leaderboard-toolbar select{
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .leader-row,
+html[data-theme] .leader-rank,
+html[data-theme] .leaderboard-toolbar,
+html[data-theme] .leaderboard-toolbar input,
+html[data-theme] .leaderboard-toolbar select{
+  background:var(--rsl-final-panel2)!important;
+}
+html[data-theme] .leader-row:hover{
+  background:var(--rsl-final-panel)!important;
+}
+html[data-theme] .leaderboard-list .leader-row span,
+html[data-theme] .leaderboard-list .leader-row small,
+html[data-theme] .leaderboard-list .leader-row .leader-elo{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .leaderboard-list .leader-row .leader-rank{
+  color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .leaderboard-list .driver-dot{
+  background:var(--rsl-final-panel)!important;
+  border:1px solid var(--rsl-final-line)!important;
+  color:var(--rsl-final-accent)!important;
+}
+
+/* Tournament Center: How It Works steps 1–4. */
+html[data-theme] .tournament-info .tournament-step{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .tournament-info .tournament-step>b{
+  background:var(--rsl-final-panel)!important;
+  border:1px solid var(--rsl-final-line)!important;
+  color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .tournament-info .tournament-step strong{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .tournament-info .tournament-step small{
+  color:var(--rsl-final-muted)!important;
+}
+
+/* Clubs page: normalize the full background stack so no section falls back to midnight blue. */
+html[data-theme] .clubs-center-main{
+  background:var(--rsl-final-bg)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .clubs-center-main .dashboard-shell,
+html[data-theme] .clubs-center-main .dashboard-intro,
+html[data-theme] .clubs-center-main .club-grid,
+html[data-theme] .clubs-center-main .club-create-panel{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .clubs-center-main .club-grid{
+  background:transparent!important;
+}
+html[data-theme] .clubs-center-main .club-card,
+html[data-theme] .clubs-center-main .tournament-empty{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+
+/* Player identity summary: Game Name / Game ID / Status. */
+html[data-theme] .asphalt-identity-summary,
+html[data-theme] .identity-chip,
+html[data-theme] .identity-chip span,
+html[data-theme] .identity-chip strong{
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .asphalt-identity-summary{
+  background:transparent!important;
+}
+html[data-theme] .identity-chip{
+  background:var(--rsl-final-panel2)!important;
+  box-shadow:none!important;
+}
+html[data-theme] .identity-chip span{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] .identity-chip strong{
+  color:var(--rsl-final-text)!important;
+}
+
+/* Player Profile: Discord Name / Game Name / Game ID / Location and all profile fields. */
+html[data-theme] .profile-editor-grid,
+html[data-theme] .profile-editor-grid label,
+html[data-theme] .profile-editor-grid label>b,
+html[data-theme] .profile-editor-grid small{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .profile-editor-grid label{
+  background:transparent!important;
+}
+html[data-theme] .profile-editor-grid input,
+html[data-theme] .profile-editor-grid textarea,
+html[data-theme] .profile-editor-grid select{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme] .profile-editor-grid input::placeholder,
+html[data-theme] .profile-editor-grid textarea::placeholder{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] .profile-editor-grid input:focus,
+html[data-theme] .profile-editor-grid textarea:focus,
+html[data-theme] .profile-editor-grid select:focus{
+  border-color:var(--rsl-final-accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--rsl-final-accent) 15%,transparent)!important;
+}
+
+/* Player notification/settings boxes: remove remaining blue highlight surfaces. */
+html[data-theme] .notification-toggle,
+html[data-theme] .notification-toggle i,
+html[data-theme] .notification-timing,
+html[data-theme] .notification-timing select,
+html[data-theme] .notification-custom-days,
+html[data-theme] .notification-calendar-link{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .notification-toggle:hover,
+html[data-theme] .notification-timing:hover{
+  border-color:var(--rsl-final-accent)!important;
+  background:var(--rsl-final-panel)!important;
+}
+html[data-theme] .notification-toggle input:checked+i{
+  background:color-mix(in srgb,var(--rsl-final-accent) 18%,var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-accent)!important;
+}
