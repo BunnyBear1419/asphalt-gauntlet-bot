@@ -122,7 +122,7 @@ class WebControlCenter:
   } catch(e) {}
 })();
 </script>
-<script src="/static/theme.js?v=20260924-theme2"></script>'''
+<script src="/static/theme.js?v=20260924-theme3"></script>'''
         if '/static/theme.js?' not in body:
             body = body.replace("<head>", "<head>"+theme_bootstrap, 1)
 
@@ -345,7 +345,7 @@ class WebControlCenter:
         # Force every rendered page to use the current shared shell stylesheet cache key.
         body = re.sub(
             r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
-            'href="/static/app.css?v=20260924-theme2"',
+            'href="/static/app.css?v=20260924-theme3"',
             body,
             flags=re.I
         )
@@ -379,24 +379,24 @@ class WebControlCenter:
       <strong id="rsl-profile-menu-name">Profile</strong>
       <small id="rsl-profile-menu-sub">Discord account</small>
     </div>
+    <div class="rsl-profile-theme-dropdown">
+      <label for="rsl-profile-theme-select">🎨 <span>Theme</span></label>
+      <select id="rsl-profile-theme-select" aria-label="Choose website theme">
+        <option value="dark">🌙 Midnight</option>
+        <option value="light">☀️ Light</option>
+        <option value="ocean">🌊 Ocean</option>
+        <option value="purple">🟣 Neon Purple</option>
+        <option value="crimson">🔴 Crimson</option>
+        <option value="emerald">🟢 Emerald</option>
+        <option value="sunset">🟠 Sunset</option>
+        <option value="graphite">⚙️ Graphite</option>
+      </select>
+    </div>
     <a href="/player#preferences">⚙️ <span>My Settings</span></a>
     <a href="/profile">👤 <span>My Profile</span></a>
     <a href="/club">🏎️ <span>My Club</span></a>
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
     <a href="/my-tournaments">🏆 <span>My Tournaments</span></a>
-    <div class="rsl-profile-theme-toggle" id="rsl-profile-theme-toggle" role="group" aria-label="Website theme">
-      <span class="rsl-profile-theme-title">Theme</span>
-      <div class="rsl-theme-choice-grid">
-        <button type="button" class="rsl-theme-choice" data-theme-choice="dark" aria-label="Use midnight theme">🌙 Midnight</button>
-        <button type="button" class="rsl-theme-choice" data-theme-choice="light" aria-label="Use light theme">☀️ Light</button>
-        <button type="button" class="rsl-theme-choice" data-theme-choice="ocean" aria-label="Use ocean theme">🌊 Ocean</button>
-        <button type="button" class="rsl-theme-choice" data-theme-choice="purple" aria-label="Use neon purple theme">🟣 Neon Purple</button>
-        <button type="button" class="rsl-theme-choice" data-theme-choice="crimson" aria-label="Use crimson theme">🔴 Crimson</button>
-        <button type="button" class="rsl-theme-choice" data-theme-choice="emerald" aria-label="Use emerald theme">🟢 Emerald</button>
-        <button type="button" class="rsl-theme-choice" data-theme-choice="sunset" aria-label="Use sunset theme">🟠 Sunset</button>
-        <button type="button" class="rsl-theme-choice" data-theme-choice="graphite" aria-label="Use graphite theme">⚙️ Graphite</button>
-      </div>
-    </div>
     <a class="rsl-admin-tools-link" id="rsl-admin-tools-link" href="/admin" hidden>🛠️ <span>Admin Tools</span></a>
     <div class="rsl-profile-divider"></div>
     <a class="rsl-profile-logout" href="/logout">🔐 <span>Sign Out</span></a>
@@ -878,26 +878,21 @@ try{
   });
   menu?.addEventListener("click", e => e.stopPropagation());
 
-  const themeChoices = document.querySelectorAll("[data-theme-choice]");
-  const syncThemeChoices = theme => {
-    themeChoices.forEach(button => {
-      const active = button.dataset.themeChoice === theme;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-pressed", String(active));
-    });
-  };
+  const themeSelect = document.querySelector("#rsl-profile-theme-select");
   const currentTheme = () => document.documentElement.getAttribute("data-theme") || "dark";
-  syncThemeChoices(currentTheme());
-  themeChoices.forEach(button => {
-    button.addEventListener("click", async e => {
+  const syncThemeSelect = theme => {
+    if(themeSelect) themeSelect.value = theme;
+  };
+  syncThemeSelect(currentTheme());
+  if(themeSelect) {
+    themeSelect.addEventListener("click", e => e.stopPropagation());
+    themeSelect.addEventListener("change", async e => {
       e.stopPropagation();
-      const theme = button.dataset.themeChoice;
-      if (!window.RSLTheme || !theme) return;
-      await window.RSLTheme.save(theme);
-      syncThemeChoices(currentTheme());
+      if(window.RSLTheme) await window.RSLTheme.save(themeSelect.value);
+      syncThemeSelect(currentTheme());
     });
-  });
-  window.addEventListener("rsl-theme-changed", e => syncThemeChoices(e.detail?.theme || currentTheme()));
+  }
+  window.addEventListener("rsl-theme-changed", e => syncThemeSelect(e.detail?.theme || currentTheme()));
   document.addEventListener("click", closeMenu);
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
 })();
