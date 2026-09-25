@@ -1742,7 +1742,8 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
   stroke:#5865F2!important;
   filter:none!important;
 }
-</style>/* RSL SITE-WIDE PAGE POLISH: one professional layout contract for every page. */
+</style><style id="rsl-page-polish">
+/* RSL SITE-WIDE PAGE POLISH: one professional layout contract for every page. */
 .rsl-site-page main{
   width:min(100%,1380px);
   margin-inline:auto;
@@ -2025,6 +2026,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 .hero-action-gauntlet{{background:linear-gradient(90deg,var(--brand-secondary),var(--brand-primary))!important;border-color:var(--brand-primary)!important}}
 .hero-action,.home-info-card,.home-help-card{{border-color:var(--brand-primary)!important}}
 .rsl-profile-trigger,.rsl-profile-menu{{border-color:var(--brand-primary)!important}}
+</style>
 </style>"""
         if images.get("background_url"):
             css += f'<style id="rsl-tenant-background">body{{background-image:url("{esc(images["background_url"])}")!important;background-size:cover;background-attachment:fixed}}</style>'
