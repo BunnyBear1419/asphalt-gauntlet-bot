@@ -976,6 +976,37 @@ html[data-theme] .rsl-language-option{color:var(--rsl-audit-text)!important}
 html[data-theme] .rsl-language-option:hover:not(:disabled),html[data-theme] .rsl-language-option.is-active{background:color-mix(in srgb,var(--rsl-audit-accent) 13%,var(--rsl-audit-panel))!important;color:var(--rsl-audit-accent)!important}
 html[data-theme] .home-feature-icon,html[data-theme] .home-help-arrow,html[data-theme] .home-info-card svg,html[data-theme] .home-feature-card svg,html[data-theme] .home-help-card svg{color:var(--rsl-audit-accent)!important;stroke:var(--rsl-audit-accent)!important}
 html[data-theme] .home-feature-icon svg,html[data-theme] .home-help-arrow svg{fill:currentColor!important}
+
+html[data-theme] .home-upcoming{
+  background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] .home-upcoming-title h2,
+html[data-theme] .home-upcoming .home-eyebrow{color:var(--rsl-audit-text)!important}
+html[data-theme] .home-upcoming-link{color:var(--rsl-audit-accent)!important}
+html[data-theme] .home-upcoming-list,
+html[data-theme] .home-upcoming-list > *,
+html[data-theme] .home-upcoming-event,
+html[data-theme] .home-upcoming-item{
+  color:var(--rsl-audit-text)!important;
+  background:color-mix(in srgb,var(--rsl-audit-panel2) 88%,var(--rsl-audit-panel) 12%)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] .home-upcoming svg,
+html[data-theme] .home-upcoming svg *{stroke:var(--rsl-audit-accent)!important;color:var(--rsl-audit-accent)!important}
+html[data-theme] .home-upcoming-empty{color:var(--rsl-audit-muted)!important}
+html[data-theme] .home-feature-icon svg,
+html[data-theme] .home-help-icon svg,
+html[data-theme] .home-about-icon svg,
+html[data-theme] .home-news-icon svg{
+  fill:none!important;stroke:var(--rsl-audit-accent)!important;color:var(--rsl-audit-accent)!important;
+  stroke-width:3!important;stroke-linecap:round!important;stroke-linejoin:round!important;
+}
+html[data-theme] .home-feature-icon svg *,
+html[data-theme] .home-help-icon svg *,
+html[data-theme] .home-about-icon svg *,
+html[data-theme] .home-news-icon svg *{fill:none!important;stroke:var(--rsl-audit-accent)!important}
 </style>'''
         # Source-level contract marker for the static-page theme test.
         theme_audit_contract_marker = '''body = body.replace("</body>", theme_audit_css + "
