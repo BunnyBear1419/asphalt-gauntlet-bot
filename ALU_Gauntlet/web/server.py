@@ -1008,6 +1008,16 @@ html[data-theme] .home-help-icon svg *,
 html[data-theme] .home-about-icon svg *,
 html[data-theme] .home-news-icon svg *{fill:none!important;stroke:var(--rsl-audit-accent)!important}
 
+/* Discord brand exception: keep Discord icon in official Blurple across all themes. */
+html[data-theme] .discord-cta-icon svg,
+html[data-theme] .discord-cta-icon svg *,
+html[data-theme] .discord-stat-icon.discord-brand-icon svg,
+html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
+  color:#5865F2!important;
+  fill:#5865F2!important;
+  stroke:#5865F2!important;
+  filter:none!important;
+}
 /* FINAL PAGE TITLE AND INNER-BOX THEME OVERRIDE */
 html[data-theme] h1,html[data-theme] h2,html[data-theme] h3,html[data-theme] h4,html[data-theme] h5,html[data-theme] h6,
 html[data-theme] [class*="title"],html[data-theme] [class*="heading"]{color:var(--rsl-audit-text)!important}
