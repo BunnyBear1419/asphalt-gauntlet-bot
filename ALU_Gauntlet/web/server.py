@@ -1386,6 +1386,295 @@ html[data-theme="graphite"] .nav-icon-img,
 html[data-theme="graphite"] .nav-icon-glyph{
   filter:grayscale(1) brightness(1.15) saturate(.15)!important;
 }
+
+/* DEEP THEME AUDIT v2 — final authority for all UI surfaces, settings, boxes and non-brand icons. */
+html[data-theme="dark"]{
+  --rsl-final-bg:#0d1014;--rsl-final-panel:#151a20;--rsl-final-panel2:#1e252d;
+  --rsl-final-line:#343d47;--rsl-final-text:#edf2f6;--rsl-final-muted:#9aa6b2;--rsl-final-accent:#25dfff;
+}
+html[data-theme="light"]{
+  --rsl-final-bg:#eef3f8;--rsl-final-panel:#f8fafc;--rsl-final-panel2:#e8eef5;
+  --rsl-final-line:#c5d1dd;--rsl-final-text:#18283b;--rsl-final-muted:#60738b;--rsl-final-accent:#1769d1;
+}
+html[data-theme="ocean"]{
+  --rsl-final-bg:#03161f;--rsl-final-panel:#062b38;--rsl-final-panel2:#0b3b4a;
+  --rsl-final-line:#1a6074;--rsl-final-text:#e2f8ff;--rsl-final-muted:#8ebbc9;--rsl-final-accent:#37e6ff;
+}
+html[data-theme="purple"]{
+  --rsl-final-bg:#0e0718;--rsl-final-panel:#1a0e2d;--rsl-final-panel2:#291540;
+  --rsl-final-line:#60448b;--rsl-final-text:#f3eaff;--rsl-final-muted:#b9a9d1;--rsl-final-accent:#b86cff;
+}
+html[data-theme="crimson"]{
+  --rsl-final-bg:#140608;--rsl-final-panel:#250d12;--rsl-final-panel2:#39151c;
+  --rsl-final-line:#7b3541;--rsl-final-text:#ffe9ed;--rsl-final-muted:#c49ba2;--rsl-final-accent:#ff5c7a;
+}
+html[data-theme="emerald"]{
+  --rsl-final-bg:#03130f;--rsl-final-panel:#07251d;--rsl-final-panel2:#0d3c2e;
+  --rsl-final-line:#1b6853;--rsl-final-text:#e5fff7;--rsl-final-muted:#8fb9ab;--rsl-final-accent:#32f2c2;
+}
+html[data-theme="sunset"]{
+  --rsl-final-bg:#170b06;--rsl-final-panel:#2b160c;--rsl-final-panel2:#4d2815;
+  --rsl-final-line:#7d4724;--rsl-final-text:#fff0e5;--rsl-final-muted:#c9aa91;--rsl-final-accent:#ff9b54;
+}
+html[data-theme="graphite"]{
+  --rsl-final-bg:#111417;--rsl-final-panel:#1c2024;--rsl-final-panel2:#30363c;
+  --rsl-final-line:#454e57;--rsl-final-text:#edf2f5;--rsl-final-muted:#a6afb8;--rsl-final-accent:#d7e3ea;
+}
+
+/* Global page/shell surfaces. Artwork itself is intentionally left intact. */
+html[data-theme] body,
+html[data-theme] body.alu-dashboard,
+html[data-theme] body.home-page{
+  background:var(--rsl-final-bg)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .top-nav{
+  background:linear-gradient(180deg,var(--rsl-final-panel2),var(--rsl-final-panel))!important;
+  border-bottom-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .top-nav nav>a,
+html[data-theme] .top-nav .top-nav-dropdown-trigger{
+  color:var(--rsl-final-text)!important;
+  border-right-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .top-nav nav>a.active,
+html[data-theme] .top-nav nav>a:hover,
+html[data-theme] .top-nav .top-nav-dropdown-trigger:hover{
+  background:color-mix(in srgb,var(--rsl-final-accent) 12%,var(--rsl-final-panel))!important;
+  color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .top-profile,
+html[data-theme] .rsl-profile-trigger,
+html[data-theme] .top-user-area{
+  background:var(--rsl-final-panel)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .top-avatar{
+  background:linear-gradient(135deg,var(--rsl-final-accent),color-mix(in srgb,var(--rsl-final-accent) 45%,var(--rsl-final-panel)))!important;
+}
+
+/* Every reusable card/panel/box family follows the active theme. */
+html[data-theme] .glass-panel,
+html[data-theme] .welcome-panel,
+html[data-theme] .season-panel,
+html[data-theme] .feature,
+html[data-theme] .card,
+html[data-theme] .table-wrap,
+html[data-theme] .profile-card,
+html[data-theme] .profile-side-card,
+html[data-theme] .quick-actions,
+html[data-theme] .activity-card,
+html[data-theme] .matches-card,
+html[data-theme] .leaderboard-card,
+html[data-theme] .garage-card,
+html[data-theme] .admin-card,
+html[data-theme] .club-card,
+html[data-theme] .tournament-card,
+html[data-theme] .calendar-panel,
+html[data-theme] .calendar-shell,
+html[data-theme] .calendar-board,
+html[data-theme] .calendar-agenda,
+html[data-theme] .calendar-toolbar,
+html[data-theme] .calendar-hero,
+html[data-theme] .career-section,
+html[data-theme] .public-profile,
+html[data-theme] .public-club-hero,
+html[data-theme] .public-club-roster,
+html[data-theme] .legal-card,
+html[data-theme] .profile-status-panel,
+html[data-theme] .home-info-card,
+html[data-theme] .home-feature-card,
+html[data-theme] .home-help-card,
+html[data-theme] .home-upcoming,
+html[data-theme] .home-news-item,
+html[data-theme] .rsl-search-dialog,
+html[data-theme] .rsl-search-panel,
+html[data-theme] .rsl-profile-menu,
+html[data-theme] .rsl-profile-theme-dropdown,
+html[data-theme] .rsl-profile-theme-toggle,
+html[data-theme] .modal-card{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .my-club-card,
+html[data-theme] .my-club-stat,
+html[data-theme] .my-club-member,
+html[data-theme] .my-club-result,
+html[data-theme] .my-club-empty,
+html[data-theme] .player-directory-card,
+html[data-theme] .competition-toolbar,
+html[data-theme] .competition-table-head,
+html[data-theme] .review-row,
+html[data-theme] .notification-timing,
+html[data-theme] .companion-info-item,
+html[data-theme] .tournament-meta,
+html[data-theme] .tournament-club-driver{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+
+/* Settings/forms: eliminate inherited midnight-blue controls. */
+html[data-theme] input,
+html[data-theme] textarea,
+html[data-theme] select,
+html[data-theme] .setup-form input,
+html[data-theme] .setup-form textarea,
+html[data-theme] .setup-form select,
+html[data-theme] .profile-editor-grid input,
+html[data-theme] .profile-editor-grid textarea,
+html[data-theme] .profile-editor-grid select,
+html[data-theme] .notification-timing select,
+html[data-theme] .notification-custom-days,
+html[data-theme] .rsl-search-input-wrap,
+html[data-theme] .rsl-search-toolbar select,
+html[data-theme] .calendar-notify-timing select,
+html[data-theme] .calendar-reminder-modal input,
+html[data-theme] .calendar-reminder-modal textarea,
+html[data-theme] .calendar-reminder-modal select{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] input::placeholder,
+html[data-theme] textarea::placeholder{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] label,
+html[data-theme] .setup-form label>b,
+html[data-theme] .profile-editor-grid label>b,
+html[data-theme] .notification-timing span{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] small,
+html[data-theme] .muted,
+html[data-theme] .empty-state,
+html[data-theme] .profile-setting-hint,
+html[data-theme] .panel-heading small{
+  color:var(--rsl-final-muted)!important;
+}
+
+/* Page titles and headings must never inherit the old blue palette. */
+html[data-theme] main h1,
+html[data-theme] main h2,
+html[data-theme] main h3,
+html[data-theme] .page-hero,
+html[data-theme] .page-hero h1,
+html[data-theme] .page-hero h2,
+html[data-theme] .tournament-hero,
+html[data-theme] .tournament-hero h1,
+html[data-theme] .calendar-hero h1,
+html[data-theme] .clubs-center-hero h1,
+html[data-theme] .my-club-hero-copy h1,
+html[data-theme] .profile-hero h1,
+html[data-theme] .legal-hero h1{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .home-eyebrow,
+html[data-theme] .eyebrow,
+html[data-theme] .clubs-center-subtitle{
+  color:var(--rsl-final-accent)!important;
+}
+
+/* Icons: theme all icons; Discord Blurple is restored below as the only exception. */
+html[data-theme] .nav-icon-img,
+html[data-theme] .nav-icon-glyph,
+html[data-theme] .home-feature-icon,
+html[data-theme] .home-help-icon,
+html[data-theme] .home-about-icon,
+html[data-theme] .home-news-icon,
+html[data-theme] .companion-info-link-icon,
+html[data-theme] .home-help-arrow{
+  color:var(--rsl-final-accent)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .nav-icon-img,
+html[data-theme] .nav-icon-glyph{
+  filter:grayscale(1) sepia(.05) saturate(.2) brightness(1.2)!important;
+}
+html[data-theme="light"] .nav-icon-img,
+html[data-theme="light"] .nav-icon-glyph{
+  filter:grayscale(1) brightness(.55) saturate(.1)!important;
+}
+html[data-theme] .home-feature-icon,
+html[data-theme] .home-help-icon,
+html[data-theme] .home-about-icon,
+html[data-theme] .home-news-icon,
+html[data-theme] .companion-info-link-icon{
+  background:var(--rsl-final-panel2)!important;
+}
+html[data-theme] .home-feature-icon svg,
+html[data-theme] .home-help-icon svg,
+html[data-theme] .home-about-icon svg,
+html[data-theme] .home-news-icon svg,
+html[data-theme] .companion-info-link-icon svg{
+  fill:none!important;
+  stroke:var(--rsl-final-accent)!important;
+  color:var(--rsl-final-accent)!important;
+}
+
+/* Buttons/tabs/utility controls use theme colors rather than fixed blue surfaces. */
+html[data-theme] button,
+html[data-theme] .qa,
+html[data-theme] .primary-action,
+html[data-theme] .wide-action,
+html[data-theme] .my-club-button,
+html[data-theme] .profile-button,
+html[data-theme] .legal-button,
+html[data-theme] .calendar-nav button,
+html[data-theme] .calendar-filter,
+html[data-theme] .calendar-notify-button{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] button:hover,
+html[data-theme] .qa:hover,
+html[data-theme] .primary-action:hover,
+html[data-theme] .wide-action:hover,
+html[data-theme] .my-club-button:hover,
+html[data-theme] .profile-button:hover,
+html[data-theme] .legal-button:hover,
+html[data-theme] .calendar-nav button:hover,
+html[data-theme] .calendar-filter:hover,
+html[data-theme] .calendar-filter.is-active,
+html[data-theme] .calendar-notify-button:hover,
+html[data-theme] .calendar-notify-button.is-enabled{
+  background:color-mix(in srgb,var(--rsl-final-accent) 16%,var(--rsl-final-panel2))!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-accent)!important;
+}
+
+/* Footer translator/cookie/theme controls are part of the selected theme too. */
+html[data-theme] .rsl-footer,
+html[data-theme] footer,
+html[data-theme] .rsl-footer-theme-control,
+html[data-theme] .rsl-language-switcher,
+html[data-theme] .rsl-cookie-settings{
+  background:var(--rsl-final-panel)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .rsl-footer-theme-control select,
+html[data-theme] .rsl-language-switcher select,
+html[data-theme] .rsl-cookie-settings{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+
+/* Keep Discord icon/mark as the sole fixed brand-color exception. */
+html[data-theme] .discord-cta-icon svg,
+html[data-theme] .discord-cta-icon svg *,
+html[data-theme] .discord-stat-icon.discord-brand-icon svg,
+html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
+  color:#5865F2!important;
+  fill:#5865F2!important;
+  stroke:#5865F2!important;
+  filter:none!important;
+}
 /* Discord is the only intentionally fixed brand-color icon. */
 html[data-theme] .discord-cta-icon svg,
 html[data-theme] .discord-cta-icon svg *,
