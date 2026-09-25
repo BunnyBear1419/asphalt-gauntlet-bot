@@ -3880,3 +3880,39 @@ html[data-theme] textarea:disabled{
     height:44px!important;
   }
 }
+
+
+/* OVERRIDE FOOTER BRAND — large presentation mark */
+footer.rsl-footer-mark{
+  min-height:96px!important;
+  gap:16px!important;
+  padding:14px 0 10px!important;
+}
+footer.rsl-footer-mark img,
+.rsl-footer-mark>img{
+  width:110px!important;
+  height:82px!important;
+  min-width:110px!important;
+  min-height:82px!important;
+  max-width:110px!important;
+  max-height:82px!important;
+  object-fit:contain!important;
+  transform:scale(1)!important;
+}
+footer.rsl-footer-mark>span{
+  font-size:15px!important;
+}
+@media(max-width:700px){
+  footer.rsl-footer-mark{
+    min-height:84px!important;
+  }
+  footer.rsl-footer-mark img,
+  .rsl-footer-mark>img{
+    width:96px!important;
+    height:72px!important;
+    min-width:96px!important;
+    min-height:72px!important;
+    max-width:96px!important;
+    max-height:72px!important;
+  }
+}
