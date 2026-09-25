@@ -1024,6 +1024,21 @@ html[data-theme] main h1,html[data-theme] main h2,html[data-theme] main h3,html[
 html[data-theme] .calendar-hero,html[data-theme] .calendar-toolbar,html[data-theme] .calendar-board,html[data-theme] .calendar-agenda,html[data-theme] .calendar-personal-panel,html[data-theme] .calendar-day,html[data-theme] .calendar-event{background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
 html[data-theme] .calendar-nav button,html[data-theme] .calendar-filter,html[data-theme] .calendar-personal-actions button{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
 html[data-theme] .calendar-nav button:hover,html[data-theme] .calendar-filter:hover,html[data-theme] .calendar-filter.is-active,html[data-theme] .calendar-personal-actions button:hover{background:color-mix(in srgb,var(--rsl-audit-accent) 18%,var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-accent)!important}
+/* FINAL PAGE TITLE COLOR OVERRIDE: titles stay theme text, not accent blue */
+html[data-theme] main .page-hero,
+html[data-theme] main .page-hero h1,
+html[data-theme] main .page-hero h2,
+html[data-theme] main .page-hero .home-eyebrow,
+html[data-theme] main .tournament-hero,
+html[data-theme] main .tournament-hero h1,
+html[data-theme] main .tournament-hero .eyebrow,
+html[data-theme] main .calendar-hero h1{
+  color:var(--rsl-audit-text)!important
+}
+html[data-theme] main .page-hero .home-eyebrow,
+html[data-theme] main .tournament-hero .eyebrow{
+  color:var(--rsl-audit-text)!important
+}
 /* FINAL PAGE TITLE AND INNER-BOX THEME OVERRIDE */
 html[data-theme] h1,html[data-theme] h2,html[data-theme] h3,html[data-theme] h4,html[data-theme] h5,html[data-theme] h6,
 html[data-theme] [class*="title"],html[data-theme] [class*="heading"]{color:var(--rsl-audit-text)!important}
