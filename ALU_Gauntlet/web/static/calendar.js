@@ -1,10 +1,10 @@
 (() => {
-  const state={date:new Date(),filter:"all",events:[],lastSync:0,notifications:{gauntlet_notifications:false,tournament_notifications:false,subscribed_event_ids:[],muted_event_ids:[]}};
+  const state={date:new Date(),filter:"all",events:[],reminders:[],lastSync:0,notifications:{gauntlet_notifications:false,tournament_notifications:false,subscribed_event_ids:[],muted_event_ids:[]}};
   const $=id=>document.getElementById(id);
   const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const dayKey=d=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+day};
   const eventDate=e=>new Date((Number(e.start)||0)*1000);
-  const filtered=()=>state.events.filter(e=>state.filter==="all"||e.type===state.filter);
+  const filtered=()=>state.events.filter(e=>state.filter==="all"||e.type===state.filter||e.type==="personal");
   const notificationDays=e=>Number((state.notifications.event_lead_days||{})[String(e.id)] ?? state.notifications[e.type+"_lead_days"] ?? 1);
   const notificationEnabled=e=>{
     const subs=state.notifications.subscribed_event_ids||[], muted=state.notifications.muted_event_ids||[];
@@ -75,7 +75,9 @@
     try{
       const r=await fetch("/api/calendar",{credentials:"same-origin",cache:"no-store"});
       if(!r.ok)throw new Error("Calendar request failed");
-      const data=await r.json();state.events=Array.isArray(data.events)?data.events:[];try{const n=await fetch("/api/notifications",{credentials:"same-origin",cache:"no-store"});if(n.ok)state.notifications=await n.json()}catch(_){}state.lastSync=Date.now();
+      const data=await r.json();state.events=Array.isArray(data.events)?data.events:[];
+      try{const rr=await fetch("/api/reminders",{credentials:"same-origin",cache:"no-store"});if(rr.ok){const rd=await rr.json();state.reminders=Array.isArray(rd.reminders)?rd.reminders:[];const personal=state.reminders.filter(x=>x.enabled!==false&&Number(x.timestamp)>0).map(x=>({id:"personal-"+x.id,type:"personal",kind:"personal",title:x.title||"Personal Reminder",note:x.note||"",guild_name:"My Reminder",start:Number(x.timestamp),end:Number(x.timestamp),status:"personal",lead_days:Number(x.lead_days||0),timezone:x.timezone||"UTC",reminder_id:x.id}));state.events=[...state.events.filter(e=>e.type!=="personal"),...personal]}}catch(_){}
+      try{const n=await fetch("/api/notifications",{credentials:"same-origin",cache:"no-store"});if(n.ok)state.notifications=await n.json()}catch(_){}state.lastSync=Date.now();
       $("calendar-sync").textContent="Live • updated "+new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
       render();
     }catch(e){$("calendar-sync").textContent="Sync unavailable";$("calendar-agenda-list").innerHTML='<div class="calendar-empty">Calendar data could not be loaded.</div>'}
@@ -84,5 +86,5 @@
   $("calendar-next").onclick=()=>{state.date.setMonth(state.date.getMonth()+1);render()};
   $("calendar-today").onclick=()=>{state.date=new Date();render()};
   document.querySelectorAll(".calendar-filter").forEach(b=>b.onclick=()=>{state.filter=b.dataset.filter;document.querySelectorAll(".calendar-filter").forEach(x=>x.classList.toggle("is-active",x===b));render()});
-  load();setInterval(load,60000);
+  renderPersonalReminders();load();setInterval(load,60000);
 })();
