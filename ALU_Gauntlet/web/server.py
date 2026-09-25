@@ -1241,6 +1241,57 @@ html[data-theme] [style*="#020916"],
 html[data-theme] [style*="#02060d"]{
   background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
 }
+/* Third audit pass: shared app.css surfaces that still carried fixed dark palette values. */
+html[data-theme] .defense-result-row,
+html[data-theme] .match-row,
+html[data-theme] .compare,
+html[data-theme] .activity-list>div,
+html[data-theme] .defense-summary,
+html[data-theme] .tournament-card,
+html[data-theme] .review-row,
+html[data-theme] .public-profile,
+html[data-theme] .public-profile-hero,
+html[data-theme] .public-profile-grid,
+html[data-theme] .public-profile-about,
+html[data-theme] .public-profile-links,
+html[data-theme] .public-club-hero,
+html[data-theme] .public-club-roster,
+html[data-theme] .player-directory-card,
+html[data-theme] .player-card-stats,
+html[data-theme] .unified-profile-side,
+html[data-theme] .competition-toolbar,
+html[data-theme] .competition-table-head,
+html[data-theme] .career-section,
+html[data-theme] .companion-info-item{
+  background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] .defense-result-grid input,
+html[data-theme] .activity-list input,
+html[data-theme] .activity-list select,
+html[data-theme] .tournament-create input,
+html[data-theme] .tournament-create textarea,
+html[data-theme] .tournament-create select,
+html[data-theme] .competition-search input,
+html[data-theme] .rsl-search-toolbar select,
+html[data-theme] .notification-timing select,
+html[data-theme] .notification-custom-days{
+  background:var(--rsl-audit-panel)!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] .competition-row:hover,
+html[data-theme] .companion-info-item:hover{
+  background:color-mix(in srgb,var(--rsl-audit-accent) 10%,var(--rsl-audit-panel))!important;
+  color:var(--rsl-audit-text)!important;
+}
+html[data-theme] .tournament-meta span,
+html[data-theme] .tournament-club-driver,
+html[data-theme] .career-section p,
+html[data-theme] .player-card-stats span{
+  color:var(--rsl-audit-muted)!important;
+}
 </style>'''
         # Source-level contract marker for the static-page theme test.
         theme_audit_contract_marker = '''body = body.replace("</body>", theme_audit_css + "
