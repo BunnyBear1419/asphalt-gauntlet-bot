@@ -2889,3 +2889,8 @@ html[data-theme="ocean"] .rsl-footer-social:hover,html[data-theme="purple"] .rsl
 html[data-theme="ocean"] .rsl-search-dialog,html[data-theme="purple"] .rsl-search-dialog,html[data-theme="crimson"] .rsl-search-dialog,html[data-theme="emerald"] .rsl-search-dialog,html[data-theme="sunset"] .rsl-search-dialog,html[data-theme="graphite"] .rsl-search-dialog{background:linear-gradient(145deg,var(--panel),var(--bg))!important;border-color:color-mix(in srgb,var(--cyan) 60%,transparent)!important}
 html[data-theme="ocean"] .rsl-search-input-wrap,html[data-theme="purple"] .rsl-search-input-wrap,html[data-theme="crimson"] .rsl-search-input-wrap,html[data-theme="emerald"] .rsl-search-input-wrap,html[data-theme="sunset"] .rsl-search-input-wrap,html[data-theme="graphite"] .rsl-search-input-wrap{background:color-mix(in srgb,var(--bg) 88%,#fff 12%)!important}
 
+
+/* Multi-theme picker — same profile-dropdown footprint, no layout changes. */
+.rsl-theme-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.rsl-theme-choice-grid .rsl-theme-choice{width:100%;min-width:0;box-sizing:border-box}
+@media(max-width:700px){.rsl-theme-choice-grid{grid-template-columns:1fr 1fr}}
