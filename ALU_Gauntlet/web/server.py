@@ -112,7 +112,21 @@ class WebControlCenter:
 
         branding = await self._branding_for_request(request) if request is not None else self._merge_branding({})
         body = self._apply_web_branding(body, branding)
-        body = re.sub(r'/static/app\.css\?v=[^&"]+', '/static/app.css?v=20260925-footer1', body)
+        # Give every rendered page a stable page identity so the shared shell can
+        # apply consistent spacing, widths, responsive behavior, and page-family
+        # presentation without duplicating layout rules across templates.
+        page_key = re.sub(r'[^a-z0-9]+', '-', Path(filename).stem.lower()).strip('-') or 'page'
+        body = re.sub(
+            r'<body\\b([^>]*)>',
+            lambda m: '<body' + m.group(1) + ' class="rsl-site-page rsl-page-' + page_key + '"' + ('>' if 'class=' not in m.group(1).lower() else '>'),
+            body,
+            count=1,
+            flags=re.I,
+        )
+        # One authoritative cache key for the shared stylesheet. Keeping this
+        # here and in the final shell replacement prevents stale page-local CSS
+        # versions from surviving on older templates.
+        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site1site1', body)
 
         theme_bootstrap = r'''<script>
 (function(){
@@ -345,7 +359,7 @@ class WebControlCenter:
         # Force every rendered page to use the current shared shell stylesheet cache key.
         body = re.sub(
             r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
-            'href="/static/app.css?v=20260925-footer2"',
+            'href="/static/app.css?v=20260925-site1"',
             body,
             flags=re.I
         )
@@ -774,9 +788,9 @@ html[data-theme="light"] .rsl-footer-theme-control select{background:#f1f5f9;col
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-theme5">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260925-site1">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
-                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-theme5"></head>', 1)
+                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260925-site1"></head>', 1)
 
         # GLOBAL RSL PAGE SHELL: every HTML page receives the same Discord card and Help card.
         # Strip older page-specific copies first so the shared shell is always singular.
@@ -1725,7 +1739,176 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
   stroke:#5865F2!important;
   filter:none!important;
 }
-</style>'''
+</style>/* RSL SITE-WIDE PAGE POLISH: one professional layout contract for every page. */
+.rsl-site-page main{
+  width:min(100%,1380px);
+  margin-inline:auto;
+  padding:28px 24px 72px;
+  box-sizing:border-box;
+}
+.rsl-site-page main > *{box-sizing:border-box}
+.rsl-site-page main > section + section,
+.rsl-site-page main > .glass-panel + .glass-panel,
+.rsl-site-page main > .card + .card,
+.rsl-site-page main > .page-hero + *,
+.rsl-site-page main > .tournament-hero + *,
+.rsl-site-page main > .calendar-hero + *{
+  margin-top:22px;
+}
+.rsl-site-page .page-hero,
+.rsl-site-page .tournament-hero,
+.rsl-site-page .calendar-hero,
+.rsl-site-page .clubs-center-hero,
+.rsl-site-page .profile-hero,
+.rsl-site-page .my-club-hero,
+.rsl-site-page .my-tournaments-hero,
+.rsl-site-page .legal-hero{
+  border-radius:22px;
+  overflow:hidden;
+}
+.rsl-site-page .page-hero,
+.rsl-site-page .tournament-hero,
+.rsl-site-page .calendar-hero,
+.rsl-site-page .clubs-center-hero,
+.rsl-site-page .profile-hero,
+.rsl-site-page .my-club-hero,
+.rsl-site-page .my-tournaments-hero,
+.rsl-site-page .legal-hero{
+  padding:28px 30px;
+}
+.rsl-site-page .card,
+.rsl-site-page .glass-panel,
+.rsl-site-page .feature,
+.rsl-site-page .table-wrap,
+.rsl-site-page .calendar-panel,
+.rsl-site-page .club-card,
+.rsl-site-page .tournament-card,
+.rsl-site-page .career-card,
+.rsl-site-page .ref-card,
+.rsl-site-page .compare,
+.rsl-site-page .admin-card,
+.rsl-site-page .legal-card{
+  border-radius:18px;
+}
+.rsl-site-page .toolbar,
+.rsl-site-page .calendar-toolbar,
+.rsl-site-page .calendar-controls,
+.rsl-site-page .ref-toolbar,
+.rsl-site-page .admin-toolbar{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.rsl-site-page input,
+.rsl-site-page select,
+.rsl-site-page textarea,
+.rsl-site-page button{
+  font:inherit;
+}
+.rsl-site-page input,
+.rsl-site-page select,
+.rsl-site-page textarea{
+  min-height:42px;
+  border-radius:10px;
+  box-sizing:border-box;
+}
+.rsl-site-page textarea{min-height:110px}
+.rsl-site-page button,
+.rsl-site-page .qa,
+.rsl-site-page .wide-action,
+.rsl-site-page .home-action,
+.rsl-site-page .my-club-button,
+.rsl-site-page .my-tournament-button,
+.rsl-site-page .legal-button,
+.rsl-site-page .admin-btn{
+  min-height:42px;
+  border-radius:10px;
+  font-weight:700;
+}
+.rsl-site-page table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+.rsl-site-page .table-wrap,
+.rsl-site-page .calendar-board,
+.rsl-site-page .calendar-agenda{
+  overflow:auto;
+}
+.rsl-site-page .empty-state,
+.rsl-site-page .news-empty,
+.rsl-site-page .my-club-empty,
+.rsl-site-page .my-tournament-empty{
+  border-radius:16px;
+  padding:28px;
+  text-align:center;
+}
+.rsl-site-page a:focus-visible,
+.rsl-site-page button:focus-visible,
+.rsl-site-page input:focus-visible,
+.rsl-site-page select:focus-visible,
+.rsl-site-page textarea:focus-visible{
+  outline:2px solid var(--rsl-final-accent,#25dfff);
+  outline-offset:2px;
+}
+.rsl-page-index main{max-width:none;padding-top:18px}
+.rsl-page-calendar main{max-width:1440px}
+.rsl-page-legal main{max-width:1120px}
+.rsl-page-setup main,
+.rsl-page-admin main,
+.rsl-page-news-admin main{max-width:1400px}
+.rsl-page-player main,
+.rsl-page-profile main,
+.rsl-page-club main,
+.rsl-page-players main,
+.rsl-page-clubs main,
+.rsl-page-my-tournaments main{max-width:1280px}
+.rsl-page-gauntlet-registration main,
+.rsl-page-gauntlet-defense main,
+.rsl-page-gauntlet-matches main,
+.rsl-page-gauntlet-leaderboard main,
+.rsl-page-gauntlet-references main,
+.rsl-page-gauntlet-career main,
+.rsl-page-tournament-center main,
+.rsl-page-tournament-registration main,
+.rsl-page-tournament-matches main,
+.rsl-page-tournament-results main,
+.rsl-page-tournament-clubs main,
+.rsl-page-tournaments main{max-width:1360px}
+.rsl-site-page .home-grid,
+.rsl-site-page .feature-grid,
+.rsl-site-page .card-grid,
+.rsl-site-page .stats-grid,
+.rsl-site-page .profile-grid,
+.rsl-site-page .career-grid{
+  gap:20px;
+}
+@media(max-width:800px){
+  .rsl-site-page main{padding:20px 16px 56px}
+  .rsl-site-page .page-hero,
+  .rsl-site-page .tournament-hero,
+  .rsl-site-page .calendar-hero,
+  .rsl-site-page .clubs-center-hero,
+  .rsl-site-page .profile-hero,
+  .rsl-site-page .my-club-hero,
+  .rsl-site-page .my-tournaments-hero,
+  .rsl-site-page .legal-hero{padding:22px 20px;border-radius:18px}
+}
+@media(max-width:560px){
+  .rsl-site-page main{padding:16px 12px 44px}
+  .rsl-site-page .toolbar,
+  .rsl-site-page .calendar-toolbar,
+  .rsl-site-page .calendar-controls,
+  .rsl-site-page .ref-toolbar,
+  .rsl-site-page .admin-toolbar{align-items:stretch}
+  .rsl-site-page input,
+  .rsl-site-page select,
+  .rsl-site-page textarea,
+  .rsl-site-page button{max-width:100%}
+}
+'''
         # Source-level contract marker for the static-page theme test.
         theme_audit_contract_marker = '''body = body.replace("</body>", theme_audit_css + "
 </body>", 1)'''
@@ -4066,7 +4249,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPFound("/")
         state = await self.auth.create_state()
         return web.Response(
-            text=f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign In • Racing Syndicate League</title><link rel="stylesheet" href="/static/app.css?v=20260918-2"></head><body class="alu-dashboard"><main style="min-height:100vh;display:grid;place-items:center;padding:32px"><section class="glass-panel" style="max-width:620px;width:100%;padding:42px;text-align:center"><div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div><h1>Sign In to Racing Syndicate League</h1><p class="server-sub">Use your Discord account to access your player profile, registration, matches and staff controls. Your secure web session will be remembered for up to 30 days and refreshed while you use the site.</p><a class="qa qa-purple" href="{self.auth.login_url(state)}">Continue with Discord →</a></section></main></body></html>""",
+            text=f"""<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign In • Racing Syndicate League</title><link rel="stylesheet" href="/static/app.css?v=20260925-site1"></head><body class="alu-dashboard"><main style="min-height:100vh;display:grid;place-items:center;padding:32px"><section class="glass-panel" style="max-width:620px;width:100%;padding:42px;text-align:center"><div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div><h1>Sign In to Racing Syndicate League</h1><p class="server-sub">Use your Discord account to access your player profile, registration, matches and staff controls. Your secure web session will be remembered for up to 30 days and refreshed while you use the site.</p><a class="qa qa-purple" href="{self.auth.login_url(state)}">Continue with Discord →</a></section></main></body></html>""",
             content_type="text/html",
         )
 
