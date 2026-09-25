@@ -3010,3 +3010,53 @@ html[data-theme="light"] .garage-card{
   border-color:#c3d0dd!important;
   color:#18283b!important;
 }
+
+
+/* RSL THEME FINAL OVERRIDES — homepage and shared shell surfaces follow the selected theme. */
+html[data-theme="light"] .home-page{background:#eef3f8!important}
+html[data-theme="ocean"] .home-page{background:radial-gradient(circle at 70% 10%,#0b4356 0,#03141c 48%,#021017 100%)!important}
+html[data-theme="purple"] .home-page{background:radial-gradient(circle at 70% 10%,#3a1760 0,#0d0719 48%,#090411 100%)!important}
+html[data-theme="crimson"] .home-page{background:radial-gradient(circle at 70% 10%,#551521 0,#130608 48%,#0a0305 100%)!important}
+html[data-theme="emerald"] .home-page{background:radial-gradient(circle at 70% 10%,#0c4d3b 0,#03130f 48%,#020b08 100%)!important}
+html[data-theme="sunset"] .home-page{background:radial-gradient(circle at 70% 10%,#613018 0,#170b06 48%,#0c0502 100%)!important}
+html[data-theme="graphite"] .home-page{background:radial-gradient(circle at 70% 10%,#39434b 0,#111315 48%,#0a0b0c 100%)!important}
+
+html[data-theme="light"] .home-info-card,
+html[data-theme="light"] .home-feature-card,
+html[data-theme="light"] .home-help-card,
+html[data-theme="light"] .home-upcoming-panel{
+  background:linear-gradient(145deg,#f1f5f9,#e4ecf4)!important;
+  border-color:#c3d0dd!important;
+  box-shadow:0 14px 40px rgba(35,63,92,.08)!important;
+  color:#18283b!important;
+}
+html[data-theme="light"] .home-info-card h2,
+html[data-theme="light"] .home-feature-card h2,
+html[data-theme="light"] .home-help-card h2,
+html[data-theme="light"] .home-section-heading h2{color:#18283b!important}
+html[data-theme="light"] .home-info-card p,
+html[data-theme="light"] .home-feature-card p,
+html[data-theme="light"] .home-help-card p,
+html[data-theme="light"] .home-news-item p{color:#5d7187!important}
+
+html[data-theme="ocean"] .home-info-card,html[data-theme="ocean"] .home-feature-card,html[data-theme="ocean"] .home-help-card,html[data-theme="ocean"] .home-upcoming-panel,
+html[data-theme="purple"] .home-info-card,html[data-theme="purple"] .home-feature-card,html[data-theme="purple"] .home-help-card,html[data-theme="purple"] .home-upcoming-panel,
+html[data-theme="crimson"] .home-info-card,html[data-theme="crimson"] .home-feature-card,html[data-theme="crimson"] .home-help-card,html[data-theme="crimson"] .home-upcoming-panel,
+html[data-theme="emerald"] .home-info-card,html[data-theme="emerald"] .home-feature-card,html[data-theme="emerald"] .home-help-card,html[data-theme="emerald"] .home-upcoming-panel,
+html[data-theme="sunset"] .home-info-card,html[data-theme="sunset"] .home-feature-card,html[data-theme="sunset"] .home-help-card,html[data-theme="sunset"] .home-upcoming-panel,
+html[data-theme="graphite"] .home-info-card,html[data-theme="graphite"] .home-feature-card,html[data-theme="graphite"] .home-help-card,html[data-theme="graphite"] .home-upcoming-panel{
+  background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important;
+  border-color:var(--rsl-box-line)!important;
+  color:var(--rsl-box-text)!important;
+  box-shadow:0 14px 40px rgba(0,0,0,.28)!important;
+}
+html[data-theme] .home-info-card h2,html[data-theme] .home-feature-card h2,html[data-theme] .home-help-card h2,
+html[data-theme] .home-section-heading h2{color:var(--rsl-box-text)!important}
+html[data-theme] .home-info-card p,html[data-theme] .home-feature-card p,html[data-theme] .home-help-card p,
+html[data-theme] .home-news-item p{color:var(--rsl-box-muted)!important}
+html[data-theme] .home-feature-card:before,html[data-theme] .home-info-card:before{background:linear-gradient(90deg,var(--rsl-box-accent),var(--rsl-box-accent),transparent)!important}
+html[data-theme] .home-feature-card:after,html[data-theme] .home-info-card:after{background:var(--rsl-box-accent)!important;box-shadow:-18px -18px 0 color-mix(in srgb,var(--rsl-box-accent) 35%,transparent)!important}
+html[data-theme] .home-feature-icon{border-color:var(--rsl-box-accent)!important;color:var(--rsl-box-accent)!important}
+html[data-theme] .home-news-item{background:var(--rsl-box)!important;border-color:var(--rsl-box-line)!important}
+html[data-theme] .home-news-item strong{color:var(--rsl-box-text)!important}
+html[data-theme] .home-upcoming-empty,.home-news-list .news-empty{color:var(--rsl-box-muted)!important}
