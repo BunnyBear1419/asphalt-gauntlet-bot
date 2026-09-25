@@ -4472,3 +4472,63 @@ footer.rsl-footer-mark > span{
 .rsl-page-tournament-matches .tournament-round{margin:20px 0!important;padding:20px!important}
 .rsl-page-tournaments .tournament-card-art,.rsl-page-tournament-center .tournament-card-art,.rsl-page-tournament-registration .tournament-card-art,.rsl-page-tournament-results .tournament-card-art,.rsl-page-tournament-clubs .tournament-card-art{display:none!important}
 @media(max-width:700px){.rsl-page-tournaments .tournament-hero .eyebrow,.rsl-page-tournament-center .tournament-hero .eyebrow,.rsl-page-tournament-registration .tournament-hero .eyebrow,.rsl-page-tournament-matches .tournament-hero .eyebrow,.rsl-page-tournament-results .tournament-hero .eyebrow,.rsl-page-tournament-clubs .tournament-hero .eyebrow{font-size:14px!important}.rsl-page-tournaments .tournament-hero p,.rsl-page-tournament-center .tournament-hero p,.rsl-page-tournament-registration .tournament-hero p,.rsl-page-tournament-matches .tournament-hero p,.rsl-page-tournament-results .tournament-hero p,.rsl-page-tournament-clubs .tournament-hero p{font-size:15px!important}}
+
+
+/* =========================================================
+   TOURNAMENT HERO — MATCH THE GAUNTLET PAGE HERO
+   Use the same simple top-aligned hero geometry as Gauntlet pages.
+   ========================================================= */
+.rsl-page-tournaments .tournament-hero,
+.rsl-page-tournament-center .tournament-hero,
+.rsl-page-tournament-registration .tournament-hero,
+.rsl-page-tournament-matches .tournament-hero,
+.rsl-page-tournament-results .tournament-hero,
+.rsl-page-tournament-clubs .tournament-hero{
+  min-height:0!important;
+  height:auto!important;
+  display:block!important;
+  align-items:initial!important;
+  justify-content:initial!important;
+  padding:36px 20px 24px!important;
+  margin:0 0 22px!important;
+  box-sizing:border-box!important;
+}
+.rsl-page-tournaments .tournament-hero h1,
+.rsl-page-tournament-center .tournament-hero h1,
+.rsl-page-tournament-registration .tournament-hero h1,
+.rsl-page-tournament-matches .tournament-hero h1,
+.rsl-page-tournament-results .tournament-hero h1,
+.rsl-page-tournament-clubs .tournament-hero h1{
+  margin:7px 0 4px!important;
+  font-size:45px!important;
+  line-height:1.08!important;
+  letter-spacing:.02em!important;
+}
+.rsl-page-tournaments .tournament-hero p,
+.rsl-page-tournament-center .tournament-hero p,
+.rsl-page-tournament-registration .tournament-hero p,
+.rsl-page-tournament-matches .tournament-hero p,
+.rsl-page-tournament-results .tournament-hero p,
+.rsl-page-tournament-clubs .tournament-hero p{
+  margin:0!important;
+  font-size:12px!important;
+  line-height:1.45!important;
+}
+@media(max-width:700px){
+  .rsl-page-tournaments .tournament-hero,
+  .rsl-page-tournament-center .tournament-hero,
+  .rsl-page-tournament-registration .tournament-hero,
+  .rsl-page-tournament-matches .tournament-hero,
+  .rsl-page-tournament-results .tournament-hero,
+  .rsl-page-tournament-clubs .tournament-hero{
+    padding:36px 20px 24px!important;
+  }
+  .rsl-page-tournaments .tournament-hero h1,
+  .rsl-page-tournament-center .tournament-hero h1,
+  .rsl-page-tournament-registration .tournament-hero h1,
+  .rsl-page-tournament-matches .tournament-hero h1,
+  .rsl-page-tournament-results .tournament-hero h1,
+  .rsl-page-tournament-clubs .tournament-hero h1{
+    font-size:38px!important;
+  }
+}
