@@ -129,7 +129,7 @@ class WebControlCenter:
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
-        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site11', body)
+        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site12', body)
 
         theme_bootstrap = r'''<script>
 (function(){
