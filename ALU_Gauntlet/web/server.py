@@ -1420,8 +1420,8 @@ html[data-theme] .tournament-hero .eyebrow{
 }
 /* DEEP THEME AUDIT v2 — final authority for all UI surfaces, settings, boxes and non-brand icons. */
 html[data-theme="dark"]{
-  --rsl-final-bg:#0d1014;--rsl-final-panel:#151a20;--rsl-final-panel2:#1e252d;
-  --rsl-final-line:#343d47;--rsl-final-text:#edf2f6;--rsl-final-muted:#9aa6b2;--rsl-final-accent:#25dfff;
+  --rsl-final-bg:#020817;--rsl-final-panel:#071427;--rsl-final-panel2:#0d2139;
+  --rsl-final-line:#173b64;--rsl-final-text:#dbe8f8;--rsl-final-muted:#91a5c3;--rsl-final-accent:#25dfff;
 }
 html[data-theme="light"]{
   --rsl-final-bg:#eef3f8;--rsl-final-panel:#f8fafc;--rsl-final-panel2:#e8eef5;
