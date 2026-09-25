@@ -1018,6 +1018,12 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
   stroke:#5865F2!important;
   filter:none!important;
 }
+
+/* Final theme normalization for page titles and calendar controls */
+html[data-theme] main h1,html[data-theme] main h2,html[data-theme] main h3,html[data-theme] .page-title,html[data-theme] .page-heading,html[data-theme] .section-title,html[data-theme] .section-heading,html[data-theme] .panel-heading h2,html[data-theme] .calendar-hero h1,html[data-theme] .calendar-nav h2{color:var(--rsl-audit-text)!important}
+html[data-theme] .calendar-hero,html[data-theme] .calendar-toolbar,html[data-theme] .calendar-board,html[data-theme] .calendar-agenda,html[data-theme] .calendar-personal-panel,html[data-theme] .calendar-day,html[data-theme] .calendar-event{background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .calendar-nav button,html[data-theme] .calendar-filter,html[data-theme] .calendar-personal-actions button{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .calendar-nav button:hover,html[data-theme] .calendar-filter:hover,html[data-theme] .calendar-filter.is-active,html[data-theme] .calendar-personal-actions button:hover{background:color-mix(in srgb,var(--rsl-audit-accent) 18%,var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-accent)!important}
 /* FINAL PAGE TITLE AND INNER-BOX THEME OVERRIDE */
 html[data-theme] h1,html[data-theme] h2,html[data-theme] h3,html[data-theme] h4,html[data-theme] h5,html[data-theme] h6,
 html[data-theme] [class*="title"],html[data-theme] [class*="heading"]{color:var(--rsl-audit-text)!important}
