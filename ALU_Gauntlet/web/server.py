@@ -345,7 +345,7 @@ class WebControlCenter:
         # Force every rendered page to use the current shared shell stylesheet cache key.
         body = re.sub(
             r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
-            'href="/static/app.css?v=20260924-theme3"',
+            'href="/static/app.css?v=20260925-footer2"',
             body,
             flags=re.I
         )
