@@ -129,7 +129,7 @@ class WebControlCenter:
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
-        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site4', body)
+        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site5', body)
 
         theme_bootstrap = r'''<script>
 (function(){
@@ -1799,6 +1799,114 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
   .rsl-page-tournaments .tournament-layout{
     padding-left:0;
     padding-right:0;
+  }
+}
+
+/* FINAL CORE PAGE CENTERING — keep calendar, settings, tournaments, and players aligned to the same centered content rail. */
+.rsl-page-calendar main,
+.rsl-page-player main,
+.rsl-page-players main,
+.rsl-page-my-tournaments main{
+  width:min(100%,1280px)!important;
+  max-width:1280px!important;
+  margin-inline:auto!important;
+  box-sizing:border-box!important;
+}
+.rsl-page-calendar main > section,
+.rsl-page-player main > section,
+.rsl-page-players main > section,
+.rsl-page-my-tournaments main > section{
+  width:100%;
+  max-width:none;
+  margin-inline:auto;
+  box-sizing:border-box;
+}
+
+/* Calendar: center the complete board + agenda pair instead of allowing inner legacy sizing to drift. */
+.rsl-page-calendar .calendar-page{
+  width:100%!important;
+  max-width:none!important;
+  margin-inline:auto!important;
+  box-sizing:border-box;
+}
+.rsl-page-calendar .calendar-hero,
+.rsl-page-calendar .calendar-toolbar,
+.rsl-page-calendar .calendar-layout{
+  width:100%!important;
+  max-width:none!important;
+  margin-inline:auto!important;
+  box-sizing:border-box;
+}
+.rsl-page-calendar .calendar-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(300px,360px);
+  gap:20px;
+}
+.rsl-page-calendar .calendar-board,
+.rsl-page-calendar .calendar-agenda{
+  width:100%;
+  min-width:0;
+  margin-inline:auto;
+  box-sizing:border-box;
+}
+
+/* My Settings / Player: the dashboard has its own fixed-width legacy grid. */
+.rsl-page-player .dashboard-grid,
+.rsl-page-players .dashboard-grid{
+  width:100%!important;
+  max-width:none!important;
+  margin-inline:auto!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  box-sizing:border-box!important;
+  grid-template-columns:minmax(0,1fr) minmax(280px,315px);
+}
+.rsl-page-player .main-column,
+.rsl-page-player .right-column,
+.rsl-page-players .main-column,
+.rsl-page-players .right-column{
+  min-width:0;
+  width:100%;
+}
+
+/* My Tournaments: remove the page-specific 28px inset so its hero, stats, and lists share the same center rail. */
+.rsl-page-my-tournaments .my-tournaments-main{
+  width:100%!important;
+  max-width:none!important;
+  margin-inline:auto!important;
+  padding-left:0!important;
+  padding-right:0!important;
+  box-sizing:border-box!important;
+}
+.rsl-page-my-tournaments .my-tournaments-hero,
+.rsl-page-my-tournaments .my-tournaments-stats,
+.rsl-page-my-tournaments .my-tournaments-section,
+.rsl-page-my-tournaments .home-help-card{
+  width:100%;
+  max-width:none;
+  margin-inline:auto;
+  box-sizing:border-box;
+}
+.rsl-page-my-tournaments .my-tournaments-stats{
+  margin-top:18px;
+}
+
+@media(max-width:900px){
+  .rsl-page-calendar .calendar-layout{
+    grid-template-columns:1fr;
+  }
+  .rsl-page-player .dashboard-grid,
+  .rsl-page-players .dashboard-grid{
+    grid-template-columns:1fr;
+  }
+}
+@media(max-width:560px){
+  .rsl-page-calendar main,
+  .rsl-page-player main,
+  .rsl-page-players main,
+  .rsl-page-my-tournaments main{
+    width:100%!important;
+    max-width:none!important;
   }
 }
 
