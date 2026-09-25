@@ -1120,6 +1120,127 @@ html[data-theme] main [class*="box"] h3,
 html[data-theme] main [class*="box"] h4{
   color:var(--rsl-audit-text)!important;
 }
+/* SECOND FULL-PAGE THEME AUDIT: eliminate remaining page-local midnight surfaces. */
+html[data-theme] .defense-summary,
+html[data-theme] .match-card,
+html[data-theme] .ref-card,
+html[data-theme] .compare,
+html[data-theme] .ref-video,
+html[data-theme] .clubs-center-hero,
+html[data-theme] .profile-hero,
+html[data-theme] .profile-avatar-large,
+html[data-theme] .profile-card-rsl,
+html[data-theme] .profile-field,
+html[data-theme] .profile-about,
+html[data-theme] .profile-links a,
+html[data-theme] .profile-status,
+html[data-theme] .profile-help-card,
+html[data-theme] .profile-status-panel,
+html[data-theme] .profile-club-card,
+html[data-theme] .profile-club-logo,
+html[data-theme] .profile-club-stat,
+html[data-theme] .my-tournaments-hero,
+html[data-theme] .my-tournament-stat,
+html[data-theme] .my-tournament-card,
+html[data-theme] .my-tournament-tag,
+html[data-theme] .my-tournament-empty,
+html[data-theme] .legal-hero,
+html[data-theme] .legal-nav,
+html[data-theme] .legal-note,
+html[data-theme] .admin-page,
+html[data-theme] .admin-head,
+html[data-theme] .admin-side,
+html[data-theme] .admin-card,
+html[data-theme] .admin-logo-preview,
+html[data-theme] .admin-hero-preview,
+html[data-theme] .admin-log,
+html[data-theme] .news-editor,
+html[data-theme] .news-list-panel,
+html[data-theme] .admin-news-item{
+  background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] .match-row,
+html[data-theme] .submit-grid fieldset,
+html[data-theme] .profile-field,
+html[data-theme] .profile-status,
+html[data-theme] .profile-club-stat,
+html[data-theme] .admin-field,
+html[data-theme] .admin-field input,
+html[data-theme] .admin-field select,
+html[data-theme] .admin-field textarea,
+html[data-theme] .news-form input,
+html[data-theme] .news-form textarea,
+html[data-theme] .news-form select,
+html[data-theme] .news-guild{
+  background:var(--rsl-audit-panel)!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] .legal-nav a:hover{
+  background:color-mix(in srgb,var(--rsl-audit-accent) 12%,var(--rsl-audit-panel))!important;
+  color:var(--rsl-audit-accent)!important;
+}
+html[data-theme] .profile-hero h1,
+html[data-theme] .clubs-center-hero h1,
+html[data-theme] .my-tournaments-hero h1,
+html[data-theme] .admin-head h1,
+html[data-theme] .news-editor h2,
+html[data-theme] .news-list-panel h2,
+html[data-theme] .defense-summary h2,
+html[data-theme] .ref-card h2,
+html[data-theme] .compare h2,
+html[data-theme] .profile-card-rsl h2,
+html[data-theme] .profile-help-card h2{
+  color:var(--rsl-audit-text)!important;
+}
+html[data-theme] .profile-hero p,
+html[data-theme] .profile-field label,
+html[data-theme] .profile-about,
+html[data-theme] .profile-status,
+html[data-theme] .profile-help-card p,
+html[data-theme] .my-tournaments-hero p,
+html[data-theme] .defense-summary p,
+html[data-theme] .ref-card p,
+html[data-theme] .compare p,
+html[data-theme] .ref-video p,
+html[data-theme] .admin-head p,
+html[data-theme] .admin-log,
+html[data-theme] .news-form label{
+  color:var(--rsl-audit-muted)!important;
+}
+html[data-theme] .submit-grid input,
+html[data-theme] .admin-field input,
+html[data-theme] .admin-field select,
+html[data-theme] .admin-field textarea,
+html[data-theme] .news-form input,
+html[data-theme] .news-form textarea,
+html[data-theme] .news-form select{
+  background:var(--rsl-audit-panel)!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] [style*="#020817"],
+html[data-theme] [style*="#061226"],
+html[data-theme] [style*="#061427"],
+html[data-theme] [style*="#06152f"],
+html[data-theme] [style*="#020814"],
+html[data-theme] [style*="#07172b"],
+html[data-theme] [style*="#07172f"],
+html[data-theme] [style*="#071a2c"],
+html[data-theme] [style*="#071a31"],
+html[data-theme] [style*="#0a1a30"],
+html[data-theme] [style*="#0a172a"],
+html[data-theme] [style*="#030b18"],
+html[data-theme] [style*="#030c1b"],
+html[data-theme] [style*="#040d1d"],
+html[data-theme] [style*="#020b1b"],
+html[data-theme] [style*="#04101f"],
+html[data-theme] [style*="#020916"],
+html[data-theme] [style*="#02060d"]{
+  background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
+}
 </style>'''
         # Source-level contract marker for the static-page theme test.
         theme_audit_contract_marker = '''body = body.replace("</body>", theme_audit_css + "
