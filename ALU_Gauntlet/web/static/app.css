@@ -4146,3 +4146,124 @@ footer.rsl-footer-mark > span{
     font-size:15px!important;
   }
 }
+
+
+/* =========================================================
+   RSL READABILITY + SERVER SELECTOR POLISH
+   Give every Discord-server selector a comfortable control
+   size and restore readable hierarchy for page titles/descriptions.
+   ========================================================= */
+.rsl-site-page .server-select{
+  min-height:56px!important;
+  height:auto!important;
+  margin:0 0 24px!important;
+  padding:6px 0!important;
+  border-bottom:0!important;
+  display:flex!important;
+  align-items:center!important;
+}
+.rsl-site-page .server-select select,
+.rsl-site-page .toolbar select[id="guild"],
+.rsl-site-page .toolbar select[id="guild-select"],
+.rsl-site-page .admin-toolbar select[id="guild-select"]{
+  width:100%!important;
+  min-width:0!important;
+  max-width:620px!important;
+  min-height:50px!important;
+  height:50px!important;
+  padding:0 44px 0 16px!important;
+  border:1px solid #28639a!important;
+  border-radius:9px!important;
+  background:#07172d!important;
+  color:#f2f7ff!important;
+  font-size:16px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  box-shadow:0 6px 18px #0005!important;
+  cursor:pointer!important;
+}
+.rsl-site-page .server-select select:focus,
+.rsl-site-page .toolbar select[id="guild"]:focus,
+.rsl-site-page .toolbar select[id="guild-select"]:focus,
+.rsl-site-page .admin-toolbar select[id="guild-select"]:focus{
+  outline:2px solid #25dfff!important;
+  outline-offset:2px!important;
+  border-color:#25dfff!important;
+}
+.rsl-site-page .page-hero{
+  margin-bottom:24px!important;
+}
+.rsl-site-page .page-hero h1{
+  margin-bottom:12px!important;
+  line-height:1.05!important;
+}
+.rsl-site-page .page-hero p{
+  max-width:1100px!important;
+  font-size:16px!important;
+  line-height:1.6!important;
+  margin:0!important;
+}
+.rsl-site-page .page-hero .home-eyebrow{
+  font-size:14px!important;
+  line-height:1.2!important;
+  margin-bottom:8px!important;
+}
+.rsl-site-page .panel-heading{
+  min-height:58px!important;
+  height:auto!important;
+  padding:12px 20px!important;
+}
+.rsl-site-page .panel-heading h2{
+  font-size:20px!important;
+  line-height:1.2!important;
+}
+.rsl-site-page .panel-heading h2 small{
+  font-size:12px!important;
+}
+.rsl-site-page .server-sub,
+.rsl-site-page .empty-state{
+  font-size:13px!important;
+  line-height:1.5!important;
+}
+.rsl-site-page .server-sub{
+  margin:7px 0 12px!important;
+}
+.rsl-site-page .glass-panel p,
+.rsl-site-page .card p{
+  font-size:14px!important;
+  line-height:1.55!important;
+}
+.rsl-site-page .toolbar{
+  gap:14px!important;
+  margin-bottom:24px!important;
+}
+.rsl-site-page .toolbar input,
+.rsl-site-page .toolbar select{
+  min-height:48px!important;
+  font-size:15px!important;
+}
+.rsl-site-page main > section + section,
+.rsl-site-page main > .glass-panel + section,
+.rsl-site-page main > section + .glass-panel{
+  margin-top:24px!important;
+}
+@media(max-width:700px){
+  .rsl-site-page .server-select{
+    margin-bottom:20px!important;
+  }
+  .rsl-site-page .server-select select,
+  .rsl-site-page .toolbar select[id="guild"],
+  .rsl-site-page .toolbar select[id="guild-select"],
+  .rsl-site-page .admin-toolbar select[id="guild-select"]{
+    max-width:none!important;
+    min-height:48px!important;
+    height:48px!important;
+    font-size:15px!important;
+  }
+  .rsl-site-page .page-hero p{
+    font-size:15px!important;
+  }
+  .rsl-site-page .panel-heading h2{
+    font-size:18px!important;
+  }
+}
