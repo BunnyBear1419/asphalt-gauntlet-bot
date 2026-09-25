@@ -899,7 +899,7 @@ try{
         # template and shared shell so every rendered page follows the account
         # theme without changing layout or artwork.
         theme_audit_css = r'''<style id="rsl-cross-page-theme-audit">
-html[data-theme="dark"]{--rsl-audit-bg:#020817;--rsl-audit-panel:#071427;--rsl-audit-panel2:#0d2139;--rsl-audit-line:#173b64;--rsl-audit-text:#dbe8f8;--rsl-audit-muted:#91a5c3;--rsl-audit-accent:#25dfff;--rsl-audit-strong:#168cff;--rsl-audit-success:#20e39d;--rsl-audit-warn:#e9d66b;--rsl-audit-shadow:rgba(0,0,0,.28)}\nhtml[data-theme]{--rsl-audit-bg:#020817;--rsl-audit-panel:#071427;--rsl-audit-panel2:#0d2139;--rsl-audit-line:#173b64;--rsl-audit-text:#dbe8f8;--rsl-audit-muted:#91a5c3;--rsl-audit-accent:#25dfff;--rsl-audit-strong:#168cff;--rsl-audit-success:#20e39d;--rsl-audit-warn:#e9d66b;--rsl-audit-shadow:rgba(0,0,0,.28)}
+html[data-theme="dark"]{--rsl-audit-bg:#020817;--rsl-audit-panel:#071427;--rsl-audit-panel2:#0d2139;--rsl-audit-line:#173b64;--rsl-audit-text:#dbe8f8;--rsl-audit-muted:#91a5c3;--rsl-audit-accent:#25dfff;--rsl-audit-strong:#168cff;--rsl-audit-success:#20e39d;--rsl-audit-warn:#e9d66b;--rsl-audit-shadow:rgba(0,0,0,.28)}\nhtml[data-theme="dark"]{--rsl-audit-bg:#0b0d10;--rsl-audit-panel:#12161b;--rsl-audit-panel2:#1a2027;--rsl-audit-line:#303842;--rsl-audit-text:#eef2f5;--rsl-audit-muted:#9aa5b1;--rsl-audit-accent:#25dfff;--rsl-audit-strong:#168cff;--rsl-audit-success:#20e39d;--rsl-audit-warn:#e9d66b;--rsl-audit-shadow:rgba(0,0,0,.34)}
 html[data-theme="light"]{--rsl-audit-bg:#eef3f8;--rsl-audit-panel:#f1f5f9;--rsl-audit-panel2:#e4ecf4;--rsl-audit-line:#c3d0dd;--rsl-audit-text:#18283b;--rsl-audit-muted:#5d7187;--rsl-audit-accent:#2878c8;--rsl-audit-strong:#1769d1;--rsl-audit-success:#087d5b;--rsl-audit-warn:#b87900;--rsl-audit-shadow:rgba(35,63,92,.10)}
 html[data-theme="ocean"]{--rsl-audit-bg:#03141c;--rsl-audit-panel:#062936;--rsl-audit-panel2:#0d3b4b;--rsl-audit-line:#15566b;--rsl-audit-text:#e0f7ff;--rsl-audit-muted:#8bb8c8;--rsl-audit-accent:#37e6ff;--rsl-audit-strong:#1599d8;--rsl-audit-success:#19d6ad;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.30)}
 html[data-theme="purple"]{--rsl-audit-bg:#0d0719;--rsl-audit-panel:#1a0e2d;--rsl-audit-panel2:#291440;--rsl-audit-line:#563b82;--rsl-audit-text:#f1e8ff;--rsl-audit-muted:#b9a9d1;--rsl-audit-accent:#b86cff;--rsl-audit-strong:#7b5cff;--rsl-audit-success:#50e0bb;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.34)}
@@ -1312,6 +1312,68 @@ html[data-theme] .tournament-club-driver,
 html[data-theme] .career-section p,
 html[data-theme] .player-card-stats span{
   color:var(--rsl-audit-muted)!important;
+}
+
+/* FINAL THEME NORMALIZATION: never let legacy midnight-blue CSS override the selected theme. */
+html[data-theme] .page-hero,
+html[data-theme] .page-hero h1,
+html[data-theme] .page-hero h2,
+html[data-theme] .page-hero .home-eyebrow,
+html[data-theme] .tournament-hero,
+html[data-theme] .tournament-hero h1,
+html[data-theme] .tournament-hero .eyebrow,
+html[data-theme] .calendar-hero h1,
+html[data-theme] .page-title,
+html[data-theme] .page-heading,
+html[data-theme] .section-title,
+html[data-theme] .section-heading{
+  color:var(--rsl-audit-text)!important;
+}
+html[data-theme] .page-hero .home-eyebrow,
+html[data-theme] .tournament-hero .eyebrow{
+  color:var(--rsl-audit-text)!important;
+}
+html[data-theme] .nav-icon-img,
+html[data-theme] .nav-icon-glyph{
+  filter:grayscale(1) brightness(1.35) sepia(.05) saturate(.1)!important;
+}
+html[data-theme="light"] .nav-icon-img,
+html[data-theme="light"] .nav-icon-glyph{
+  filter:grayscale(1) brightness(.55) saturate(.1)!important;
+}
+html[data-theme="ocean"] .nav-icon-img,
+html[data-theme="ocean"] .nav-icon-glyph{
+  filter:grayscale(1) sepia(.25) saturate(2) hue-rotate(145deg) brightness(1.25)!important;
+}
+html[data-theme="purple"] .nav-icon-img,
+html[data-theme="purple"] .nav-icon-glyph{
+  filter:grayscale(1) sepia(.45) saturate(3) hue-rotate(235deg) brightness(1.15)!important;
+}
+html[data-theme="crimson"] .nav-icon-img,
+html[data-theme="crimson"] .nav-icon-glyph{
+  filter:grayscale(1) sepia(.55) saturate(4) hue-rotate(305deg) brightness(1.1)!important;
+}
+html[data-theme="emerald"] .nav-icon-img,
+html[data-theme="emerald"] .nav-icon-glyph{
+  filter:grayscale(1) sepia(.5) saturate(3) hue-rotate(100deg) brightness(1.15)!important;
+}
+html[data-theme="sunset"] .nav-icon-img,
+html[data-theme="sunset"] .nav-icon-glyph{
+  filter:grayscale(1) sepia(.6) saturate(3) hue-rotate(345deg) brightness(1.15)!important;
+}
+html[data-theme="graphite"] .nav-icon-img,
+html[data-theme="graphite"] .nav-icon-glyph{
+  filter:grayscale(1) brightness(1.15) saturate(.15)!important;
+}
+/* Discord is the only intentionally fixed brand-color icon. */
+html[data-theme] .discord-cta-icon svg,
+html[data-theme] .discord-cta-icon svg *,
+html[data-theme] .discord-stat-icon.discord-brand-icon svg,
+html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
+  color:#5865F2!important;
+  fill:#5865F2!important;
+  stroke:#5865F2!important;
+  filter:none!important;
 }
 </style>'''
         # Source-level contract marker for the static-page theme test.
