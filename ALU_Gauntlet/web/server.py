@@ -143,22 +143,12 @@ class WebControlCenter:
         if '/static/theme.js?' not in body:
             body = body.replace("<head>", "<head>"+theme_bootstrap, 1)
 
-        # Render public Discord community counts server-side on first paint.
-        # Help and Home both use the same community statistics so neither page
-        # depends on a client-side request just to show the member counts.
+        # Render the same live Discord community counts used by the API on first paint.
+        # This keeps Home/Help/profile banners correct even before their JS refreshes.
         if filename.endswith(".html"):
             guilds = list(getattr(self.bot, "guilds", []) or [])
             guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
-            online = 0
-            total = 0
-            if guild is not None:
-                members = list(getattr(guild, "members", []) or [])
-                for member in members:
-                    if getattr(member, "bot", False):
-                        continue
-                    if str(getattr(member, "status", None)) not in {"offline", "invisible"}:
-                        online += 1
-                total = max(int(getattr(guild, "member_count", 0) or 0), len(members))
+            online, total = self._discord_community_counts(guild) if guild is not None else (0, 0)
             body = body.replace('id="rsl-discord-online">—', f'id="rsl-discord-online">{online:,}', 1)
             body = body.replace('id="rsl-discord-total">—', f'id="rsl-discord-total">{total:,}', 1)
 
@@ -4429,27 +4419,59 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         results.sort(key=lambda x: (0 if needle in x["title"].casefold() else 1, len(x["title"]), x["title"].casefold()))
         return web.json_response({"query": query, "type": category, "results": results[:30]})
 
+    def _discord_community_counts(self, guild: Any) -> tuple[int, int]:
+        """Return live human presence count and total member count for a guild.
+
+        Presence data is authoritative for the live counter once the Discord
+        presence intent is enabled. Bots are deliberately excluded from the
+        human online count, while the total member count includes bots.
+        """
+        total = int(getattr(guild, "member_count", 0) or 0)
+        if not total:
+            total = len(list(getattr(guild, "members", []) or []))
+
+        online = 0
+        presences = getattr(guild, "presences", None)
+        if presences is not None:
+            seen: set[int] = set()
+            for presence in list(presences or []):
+                try:
+                    status = str(getattr(presence, "status", "") or "").lower()
+                    if status not in {"online", "idle", "dnd"}:
+                        continue
+                    user = getattr(presence, "user", None)
+                    user_id = int(getattr(user, "id", 0) or 0)
+                    if not user_id or user_id in seen:
+                        continue
+                    seen.add(user_id)
+                    member = guild.get_member(user_id)
+                    if bool(getattr(member, "bot", False) if member is not None else getattr(user, "bot", False)):
+                        continue
+                    online += 1
+                except Exception:
+                    continue
+        else:
+            # Compatibility fallback for test doubles/older discord.py objects.
+            for member in list(getattr(guild, "members", []) or []):
+                try:
+                    if getattr(member, "bot", False):
+                        continue
+                    status = str(getattr(member, "status", "") or "").lower()
+                    if status in {"online", "idle", "dnd"}:
+                        online += 1
+                except Exception:
+                    continue
+
+        return online, total
+
     async def discord_stats(self, request: web.Request) -> web.Response:
-        """Return Discord server counts for community banners and profile pages."""
-        # Counts are safe to expose publicly and should not fail just because a
-        # visitor's web session is stale or the page is being viewed signed out.
+        """Return live Discord community counts for community banners and profile pages."""
         guilds = list(getattr(self.bot, "guilds", []) or [])
         if not guilds:
             return web.json_response({"online_members": 0, "server_members": 0, "available": False})
         # Prefer the largest connected guild, which is normally the main RSL community.
         guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0))
-        members = list(getattr(guild, "members", []) or [])
-        online = 0
-        for member in members:
-            try:
-                if getattr(member, "bot", False):
-                    continue
-                status = getattr(member, "status", None)
-                if str(status) not in {"offline", "invisible"}:
-                    online += 1
-            except Exception:
-                continue
-        total = int(getattr(guild, "member_count", 0) or len(members))
+        online, total = self._discord_community_counts(guild)
         return web.json_response({
             "online_members": online,
             "server_members": total,
