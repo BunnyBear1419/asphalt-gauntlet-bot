@@ -3486,3 +3486,228 @@ html[data-theme] .notification-toggle input:checked+i{
   background:color-mix(in srgb,var(--rsl-final-accent) 18%,var(--rsl-final-panel2))!important;
   border-color:var(--rsl-final-accent)!important;
 }
+
+
+/* FINAL DEEP-DEEP THEME AUDIT: normalize remaining reusable functional UI surfaces across every page/theme.
+   Artwork-specific gradients are intentionally excluded; Discord branding remains an exception. */
+html[data-theme] .welcome-panel,
+html[data-theme] .season-panel,
+html[data-theme] .glass-panel,
+html[data-theme] .support-card,
+html[data-theme] .season-card-clean,
+html[data-theme] .club-card-large,
+html[data-theme] .player-directory-card,
+html[data-theme] .public-profile,
+html[data-theme] .unified-profile-hero,
+html[data-theme] .career-section,
+html[data-theme] .competition-snapshot,
+html[data-theme] .tournament-competitor,
+html[data-theme] .tournament-champion-link,
+html[data-theme] .tournament-club-driver,
+html[data-theme] .public-club-result{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .match-row,
+html[data-theme] .leader-row,
+html[data-theme] .activity-list>div,
+html[data-theme] .defense-course,
+html[data-theme] .public-club-member,
+html[data-theme] .profile-side-card,
+html[data-theme] .unified-profile-section,
+html[data-theme] .public-club-section,
+html[data-theme] .career-tournament,
+html[data-theme] .club-roster{
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .leader-rank,
+html[data-theme] .activity-list i,
+html[data-theme] .defense-course i,
+html[data-theme] .support-icon,
+html[data-theme] .identity-chip,
+html[data-theme] .profile-tag,
+html[data-theme] .club-quick-stats span,
+html[data-theme] .directory-loading,
+html[data-theme] .directory-empty{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .toolbar input,
+html[data-theme] .toolbar select,
+html[data-theme] .club-create-panel input,
+html[data-theme] .club-create-panel textarea,
+html[data-theme] .club-create-panel select,
+html[data-theme] .club-picker select,
+html[data-theme] .club-editor-form input,
+html[data-theme] .club-editor-form textarea,
+html[data-theme] .competition-search,
+html[data-theme] .ref-toolbar input,
+html[data-theme] .ref-toolbar select,
+html[data-theme] .ref-form input,
+html[data-theme] .ref-form select,
+html[data-theme] .ref-form textarea{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .player-card-footer,
+html[data-theme] .competition-table-head,
+html[data-theme] .competition-toolbar,
+html[data-theme] .public-profile-links a,
+html[data-theme] .public-club-link,
+html[data-theme] .unified-profile-info-grid>div,
+html[data-theme] .unified-profile-links a{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .public-profile-links a:hover,
+html[data-theme] .public-club-link:hover,
+html[data-theme] .tournament-competitor:hover:not(:disabled),
+html[data-theme] .tournament-champion-link:hover,
+html[data-theme] .tournament-club-driver:hover,
+html[data-theme] .public-club-result:hover,
+html[data-theme] .support-card:hover{
+  background:var(--rsl-final-panel)!important;
+  border-color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .profile-tag.verified,
+html[data-theme] .club-badge{
+  background:color-mix(in srgb,var(--rsl-final-success) 14%,var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-success)!important;
+  color:var(--rsl-final-success)!important;
+}
+html[data-theme] .career-season-badge,
+html[data-theme] .career-stat-grid>div,
+html[data-theme] .career-card,
+html[data-theme] .career-club,
+html[data-theme] .career-tournament{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .career-season-badge strong,
+html[data-theme] .career-stat-grid strong,
+html[data-theme] .career-card h3,
+html[data-theme] .career-tournament strong,
+html[data-theme] .career-club strong{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .career-season-badge small,
+html[data-theme] .career-stat-grid span,
+html[data-theme] .career-tournament small,
+html[data-theme] .career-club p,
+html[data-theme] .directory-loading,
+html[data-theme] .directory-empty,
+html[data-theme] .ref-meta,
+html[data-theme] .ref-desc{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] .player-menu-trigger,
+html[data-theme] .player-menu-dropdown,
+html[data-theme] .top-nav-dropdown-menu{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .player-menu-dropdown>a:hover,
+html[data-theme] .top-nav-dropdown-menu>a:hover{
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .player-menu-heading{
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .player-menu-dropdown .menu-danger{
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .public-profile-avatar,
+html[data-theme] .player-avatar,
+html[data-theme] .profile-avatar,
+html[data-theme] .player-card-avatar,
+html[data-theme] .unified-profile-avatar{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  box-shadow:none!important;
+}
+html[data-theme] .public-club-stat-grid>div,
+html[data-theme] .unified-profile-stats>div{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+  box-shadow:none!important;
+}
+html[data-theme] .ref-card,
+html[data-theme] .legal-card,
+html[data-theme] .legal-nav{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .ref-card h3,
+html[data-theme] .legal-card h2,
+html[data-theme] .legal-card h3,
+html[data-theme] .legal-nav strong{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .legal-note,
+html[data-theme] .compare{
+  background:var(--rsl-final-panel2)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] .legal-nav a,
+html[data-theme] .legal-card p,
+html[data-theme] .legal-card li{
+  color:var(--rsl-final-muted)!important;
+}
+html[data-theme] .legal-nav a:hover{
+  color:var(--rsl-final-accent)!important;
+  background:var(--rsl-final-panel2)!important;
+  border-left-color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .admin-card,
+html[data-theme] .admin-panel,
+html[data-theme] .admin-section{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] th,
+html[data-theme] td{
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .form-status,
+html[data-theme] .admin-status{
+  color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .primary-action,
+html[data-theme] .qa,
+html[data-theme] .admin-btn{
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .page-hero,
+html[data-theme] .tournament-hero,
+html[data-theme] .calendar-hero,
+html[data-theme] .clubs-center-hero,
+html[data-theme] .my-club-hero,
+html[data-theme] .profile-hero,
+html[data-theme] .legal-hero,
+html[data-theme] .my-tournaments-hero{
+  background:linear-gradient(145deg,var(--rsl-final-panel),var(--rsl-final-panel2))!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .page-hero *,
+html[data-theme] .tournament-hero *,
+html[data-theme] .calendar-hero *,
+html[data-theme] .clubs-center-hero *,
+html[data-theme] .my-club-hero *,
+html[data-theme] .profile-hero *,
+html[data-theme] .legal-hero *,
+html[data-theme] .my-tournaments-hero *{
+  text-shadow:none!important;
+}
