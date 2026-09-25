@@ -113,13 +113,13 @@ def test_player_page_no_longer_exposes_legacy_setup_route_links():
     assert 'href="/admin#section-settings"' in players
 
 
-def test_shared_header_has_canonical_community_shortcuts_on_all_pages():
+def test_shared_header_does_not_inject_stray_social_icons():
     server = SERVER.read_text(encoding="utf-8")
-    assert 'class="top-discord-link"' in server
-    assert 'class="top-cashapp-link"' in server
-    assert 'discord_href = html.escape' in server
-    assert 'cashapp_href = html.escape' in server
-    assert 'canonical_brand + social_markup' in server
+    assert 'class="top-discord-link"' not in server
+    assert 'class="top-cashapp-link"' not in server
+    assert "rsl-footer-social" in server
+    assert "rsl-footer-discord" in server
+    assert "rsl-footer-cashapp" in server
 
 
 def test_shared_navigation_cleans_legacy_companion_calendar_and_account_markup():
