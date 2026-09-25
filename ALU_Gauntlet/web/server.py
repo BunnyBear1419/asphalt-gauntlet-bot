@@ -344,7 +344,7 @@ class WebControlCenter:
         # Force every rendered page to use the current shared shell stylesheet cache key.
         body = re.sub(
             r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
-            'href="/static/app.css?v=20260924-shell12"',
+            'href="/static/app.css?v=20260924-theme2"',
             body,
             flags=re.I
         )
@@ -757,9 +757,9 @@ window.rslGoogleTranslateInit=function(){
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-shell11">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260924-theme2">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
-                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-shell5"></head>', 1)
+                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260924-theme2"></head>', 1)
 
         # GLOBAL RSL PAGE SHELL: every HTML page receives the same Discord card and Help card.
         # Strip older page-specific copies first so the shared shell is always singular.
