@@ -110,3 +110,12 @@ def test_player_page_no_longer_exposes_legacy_setup_route_links():
     players = (ROOT / "ALU_Gauntlet" / "web" / "static" / "players.html").read_text(encoding="utf-8")
     assert 'href="/setup"' not in players
     assert 'href="/admin#section-settings"' in players
+
+
+def test_shared_header_has_canonical_community_shortcuts_on_all_pages():
+    server = SERVER.read_text(encoding="utf-8")
+    assert 'class="top-discord-link"' in server
+    assert 'class="top-cashapp-link"' in server
+    assert 'discord_href = html.escape' in server
+    assert 'cashapp_href = html.escape' in server
+    assert 'canonical_brand + social_markup' in server
