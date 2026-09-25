@@ -551,6 +551,14 @@ window.rslGoogleTranslateInit=function(){
             body,
             flags=re.S | re.I,
         )
+        # Remove any legacy/static Calendar nav entry before inserting the canonical one.
+        # This prevents duplicate Calendar buttons on pages with older headers.
+        body = re.sub(
+            r'<a\b[^>]*href=["\'](?:/calendar|https://asph\.discloud\.app/calendar)["\'][^>]*>.*?</a>',
+            "",
+            body,
+            flags=re.S | re.I,
+        )
         if "</nav>" in body:
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
