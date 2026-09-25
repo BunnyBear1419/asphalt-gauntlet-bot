@@ -955,6 +955,27 @@ html[data-theme] .rsl-search-input-wrap{background:var(--rsl-audit-panel)!import
 html[data-theme] .rsl-search-input-wrap input{background:transparent!important;color:var(--rsl-audit-text)!important}
 html[data-theme="light"] .top-nav nav>a,html[data-theme="light"] .top-nav .top-nav-dropdown-trigger,html[data-theme="light"] .rsl-profile-trigger,html[data-theme="light"] .rsl-search-trigger{color:#18283b!important}
 html[data-theme="light"] a,html[data-theme="light"] .rsl-footer a{color:#1769d1!important}
+html[data-theme] .discord-cta{background:linear-gradient(100deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important;box-shadow:0 8px 28px var(--rsl-audit-shadow)!important}
+html[data-theme] .discord-cta-kicker,html[data-theme] .discord-stat-label,html[data-theme] .discord-stat-value{color:var(--rsl-audit-text)!important}
+html[data-theme] .discord-cta p{color:var(--rsl-audit-muted)!important}
+html[data-theme] .discord-cta-stats{border-color:var(--rsl-audit-line)!important}
+html[data-theme] .discord-stat-icon{background:var(--rsl-audit-panel2)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .discord-stat-icon svg{stroke:var(--rsl-audit-accent)!important}
+html[data-theme] .discord-cta-icon svg{fill:var(--rsl-audit-accent)!important;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--rsl-audit-accent) 35%,transparent))!important}
+html[data-theme] .discord-cta-button{background:linear-gradient(90deg,var(--rsl-audit-strong),var(--rsl-audit-accent))!important;color:#fff!important}
+html[data-theme] .home-upcoming-panel{background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .home-upcoming-panel h2,html[data-theme] .home-upcoming-panel h3,html[data-theme] .home-upcoming-panel strong{color:var(--rsl-audit-text)!important}
+html[data-theme] .home-upcoming-panel p,html[data-theme] .home-upcoming-panel small,.home-upcoming-empty{color:var(--rsl-audit-muted)!important}
+html[data-theme] .home-upcoming-panel a{color:var(--rsl-audit-accent)!important}
+html[data-theme] .home-upcoming-panel svg{color:var(--rsl-audit-accent)!important;stroke:var(--rsl-audit-accent)!important;fill:currentColor}
+html[data-theme] .rsl-language-trigger{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .rsl-language-trigger:hover{color:var(--rsl-audit-accent)!important}
+html[data-theme] .rsl-language-globe{color:var(--rsl-audit-accent)!important}
+html[data-theme] .rsl-language-menu{background:linear-gradient(145deg,var(--rsl-audit-panel2),var(--rsl-audit-panel))!important;border-color:var(--rsl-audit-line)!important}
+html[data-theme] .rsl-language-option{color:var(--rsl-audit-text)!important}
+html[data-theme] .rsl-language-option:hover:not(:disabled),html[data-theme] .rsl-language-option.is-active{background:color-mix(in srgb,var(--rsl-audit-accent) 13%,var(--rsl-audit-panel))!important;color:var(--rsl-audit-accent)!important}
+html[data-theme] .home-feature-icon,html[data-theme] .home-help-arrow,html[data-theme] .home-info-card svg,html[data-theme] .home-feature-card svg,html[data-theme] .home-help-card svg{color:var(--rsl-audit-accent)!important;stroke:var(--rsl-audit-accent)!important}
+html[data-theme] .home-feature-icon svg,html[data-theme] .home-help-arrow svg{fill:currentColor!important}
 </style>'''
         body = body.replace("</body>", theme_audit_css + "\n</body>", 1)
         return web.Response(text=body, content_type="text/html")
