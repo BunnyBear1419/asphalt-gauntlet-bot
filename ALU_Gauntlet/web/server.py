@@ -2786,7 +2786,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             won=str(match.get("w_id",""))==uid; lost=str(match.get("l_id",""))==uid
             if not(won or lost): continue
             opp=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{other}"}) or {}
-            recent.append({"id":str(match.get("_id","")),"opponent":str(opp.get("game_id") or opp.get("username") or other),"result":"WIN" if won else "LOSS","courses":int(match.get("courses_beat",0) or 0),"score":f"{int(match.get("courses_beat",0) or 0)}-{5-int(match.get("courses_beat",0) or 0)}","rsl_performance_bonus":int(match.get("rsl_performance_bonus",0) or 0),"timestamp":match.get("timestamp") or 0})
+            courses_beat = int(match.get("courses_beat",0) or 0)
+            recent.append({"id":str(match.get("_id","")),"opponent":str(opp.get("game_id") or opp.get("username") or other),"result":"WIN" if won else "LOSS","courses":courses_beat,"score":f"{courses_beat}-{5-courses_beat}","rsl_performance_bonus":int(match.get("rsl_performance_bonus",0) or 0),"timestamp":match.get("timestamp") or 0})
         profile = await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{uid}"}) or {}
         dominance = profile.get("rsl_dominance") or {}
         return web.json_response({"active":active,"recent":recent,"dominance":{"total_matches":int(dominance.get("total_matches",0) or 0),"race_wins":int(dominance.get("race_wins",0) or 0),"race_losses":int(dominance.get("race_losses",0) or 0),"score_buckets":dominance.get("score_buckets") or {}}})
