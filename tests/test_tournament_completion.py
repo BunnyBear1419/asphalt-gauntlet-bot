@@ -82,3 +82,22 @@ def test_tournament_result_submission_modes_are_configurable_and_enforced():
     assert 'value="admin_only"' in page
     assert 'result_submission_mode_label' in server
     assert 't.result_submission_mode' in tournaments
+
+
+def test_admin_only_result_submission_advances_without_second_manual_review():
+    cog = COG.read_text(encoding="utf-8")
+    tournaments = TOURNAMENTS.read_text(encoding="utf-8")
+    assert 'if result_mode == "admin_only":' in cog
+    assert 'verify_match_on_discord(self.tournament_id, self.match_id, "approve", interaction.user.id)' in cog
+    assert 'const verified=await api("/api/tournaments/result/verify"' in tournaments
+    assert 'action:"approve"' in tournaments
+    assert 'Admin result entry: the submitted winner will be recorded and the bracket advanced immediately.' in tournaments
+
+
+def test_player_review_result_submission_still_requires_staff_verification():
+    server = SERVER.read_text(encoding="utf-8")
+    cog = COG.read_text(encoding="utf-8")
+    assert 'result_status":"pending"' in server
+    assert 'result_status":"pending"' in cog
+    assert 'Result submitted for staff verification.' in server
+    assert 'Staff verification is required before the bracket advances.' in cog
