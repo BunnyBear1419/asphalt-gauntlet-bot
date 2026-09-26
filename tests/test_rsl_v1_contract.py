@@ -183,7 +183,9 @@ def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
         "'$inc': {'gauntlet_tickets': -1}",
         "gauntlet_opponent_refresh_at",
         "4 * 60 * 60",
-        "random.sample(candidates, min(len(candidates), 3))",
+        "recent_blocked = {str(x.get('user_id')) for x in (user_profile.get('gauntlet_recent_opponents') or [])",
+        "rotation_pool = available_candidates or candidates",
+        "random.sample(rotation_pool, min(len(rotation_pool), 3))",
         "six-division performance tier",
     ):
         assert marker in challenges
