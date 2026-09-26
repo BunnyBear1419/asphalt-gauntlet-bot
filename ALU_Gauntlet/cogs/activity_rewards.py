@@ -36,9 +36,15 @@ class ActivityRewardsCog(commands.Cog):
 
         guild_id = str(message.guild.id)
         user_id = str(message.author.id)
+        profile_id = f"{guild_id}_{user_id}"
         profile = await self.bot.db.drivers.find_one(
-            {"_id": f"{guild_id}_{user_id}"},
-            {"activity_reward_date": 1, "activity_reward_count": 1, "activity_last_reward_at": 1},
+            {"_id": profile_id},
+            {
+                "activity_reward_date": 1,
+                "activity_reward_count": 1,
+                "activity_last_reward_at": 1,
+                "activity_reward_claims": 1,
+            },
         )
         if not profile:
             return
@@ -51,8 +57,14 @@ class ActivityRewardsCog(commands.Cog):
 
         if reward_date != today:
             await self.bot.db.drivers.update_one(
-                {"_id": f"{guild_id}_{user_id}"},
-                {"$set": {"activity_reward_date": today, "activity_reward_count": 0}},
+                {"_id": profile_id},
+                {
+                    "$set": {
+                        "activity_reward_date": today,
+                        "activity_reward_count": 0,
+                        "activity_reward_claims": [],
+                    }
+                },
             )
             reward_count = 0
             last_reward_at = None
@@ -66,35 +78,57 @@ class ActivityRewardsCog(commands.Cog):
         ):
             return
 
+        # Store the message ID with the reservation. This gives rollback an
+        # event-specific guard so it can never decrement another user's later
+        # successful reward reservation.
         claim = await self.bot.db.drivers.update_one(
             {
-                "_id": f"{guild_id}_{user_id}",
+                "_id": profile_id,
                 "activity_reward_date": today,
                 "activity_reward_count": {"$lt": DAILY_CHAT_REWARD_CAP},
+                "activity_reward_claims": {"$ne": str(message.id)},
                 "$or": [
                     {"activity_last_reward_at": {"$exists": False}},
                     {"activity_last_reward_at": {"$lte": now - 120}},
                 ],
             },
-            {"$inc": {"activity_reward_count": 1}, "$set": {"activity_last_reward_at": now}},
+            {
+                "$inc": {"activity_reward_count": 1},
+                "$set": {"activity_last_reward_at": now},
+                "$addToSet": {"activity_reward_claims": str(message.id)},
+            },
         )
         if getattr(claim, "modified_count", 0) != 1:
             return
+
         ledger = await apply_coin_transaction(
-            self.bot.db, guild_id=guild_id, user_id=user_id, amount=CHAT_CREDITS,
-            transaction_type="activity_reward", reference_id=f"chat:{message.id}",
-            reason="Qualified community activity", metadata={"message_id": str(message.id), "xp": CHAT_XP},
+            self.bot.db,
+            guild_id=guild_id,
+            user_id=user_id,
+            amount=CHAT_CREDITS,
+            transaction_type="activity_reward",
+            reference_id=f"chat:{message.id}",
+            reason="Qualified community activity",
+            metadata={"message_id": str(message.id), "xp": CHAT_XP},
         )
         if ledger.get("duplicate"):
             return
         if not ledger.get("ok"):
             await self.bot.db.drivers.update_one(
-                {"_id": f"{guild_id}_{user_id}", "activity_reward_count": {"$gt": 0}},
-                {"$inc": {"activity_reward_count": -1}},
+                {
+                    "_id": profile_id,
+                    "activity_reward_claims": str(message.id),
+                },
+                {
+                    "$inc": {"activity_reward_count": -1},
+                    "$pull": {"activity_reward_claims": str(message.id)},
+                },
             )
             return
+
         await self.bot.db.drivers.update_one(
-            {"_id": f"{guild_id}_{user_id}"}, {"$inc": {"activity_xp": CHAT_XP}}
+            {"_id": profile_id},
+            {"$inc": {"activity_xp": CHAT_XP}},
         )
 
 
