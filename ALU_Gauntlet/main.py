@@ -37,6 +37,20 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_tournament_action_lock",
     )
+    # Active registrations must be unique even when two requests race between
+    # the application-level existence check and the insert.
+    await db.tournament_registrations.create_index(
+        [("tournament_id", 1), ("user_id", 1)],
+        unique=True,
+        partialFilterExpression={"status": {"$in": ["pending", "accepted", "checked_in"]}},
+        name="uniq_active_tournament_player_registration",
+    )
+    await db.tournament_club_registrations.create_index(
+        [("tournament_id", 1), ("club_id", 1)],
+        unique=True,
+        partialFilterExpression={"status": {"$in": ["pending", "accepted", "checked_in"]}},
+        name="uniq_active_tournament_club_registration",
+    )
     await db.tournament_media.create_index(
         [("tournament_id", 1), ("status", 1), ("created_at", -1)],
         name="idx_tournament_media_gallery",
