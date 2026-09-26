@@ -17,11 +17,10 @@ The root `discloud.config` uses `TYPE=site`, `MAIN=main.py`, Python 3.12, 512 MB
 
 GitHub Actions is the repository's **single production deployment path**. The workflow in `.github/workflows/deploy.yml` runs tests first, uploads the committed tree to the existing Discloud app `asph`, restarts it, runs production smoke tests, and rolls back to the previous revision if the new deployment fails health checks.
 
-Do **not** enable Discloud GitHub Integration for automatic deployment of this same repository/branch. A second automatic deployment path can race the Actions deployment and produce duplicate uploads, rate limits, or conflicting production revisions.
+The production app ID is fixed to `asph` in the workflows. **No `DISCLOUD_APP_ID` GitHub secret is required.** This prevents an incorrect secret value from blocking deployment or health monitoring.\n\nDo **not** enable Discloud GitHub Integration for automatic deployment of this same repository/branch. A second automatic deployment path can race the Actions deployment and produce duplicate uploads, rate limits, or conflicting production revisions.
 
-The workflow requires these GitHub Actions secrets:
+The workflows require these GitHub Actions secrets:
 - `DISCLOUD_TOKEN`
-- `DISCLOUD_APP_ID` — must be exactly `asph`
 - `DISCORD_BOT_TOKEN`
 - `MONGO_URI`
 
