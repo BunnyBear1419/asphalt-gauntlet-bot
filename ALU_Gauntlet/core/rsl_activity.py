@@ -200,6 +200,16 @@ async def collect_overall_activity_stats(db, *, guild_id: str, season_number: in
         {"status": "approved", "guild_id": guild_id},
         {"uploaded_by": 1, "submitted_by": 1, "user_id": 1, "created_at": 1},
     ):
+        if start_at and end_at:
+            created = str(media.get("created_at") or "")
+            try:
+                created_ts = __import__("datetime").datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
+            except Exception:
+                created_ts = 0
+            if not (start_at <= created_ts < end_at):
+                continue
+        else:
+            continue
         owner = str(media.get("uploaded_by") or media.get("submitted_by") or media.get("user_id") or "")
         if owner:
             row(owner)["media_posts"] += 1
