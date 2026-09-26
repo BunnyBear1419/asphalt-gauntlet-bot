@@ -77,6 +77,7 @@
   <button data-section="settings">⚙️ Site Settings</button>
   <button data-section="management">🧩 Management</button>
   <button data-section="system">🛠️ Sync &amp; System</button>
+  <button data-section="fairness">🛡️ Fairness Review</button>
 </aside>
 
 <main class="admin-content">
@@ -208,6 +209,12 @@
     <a class="admin-tool" href="/help"><strong>Help Center</strong><span>Verify the public player-facing experience.</span></a>
   </div></div>
 </section>
+<section class="admin-section" id="section-fairness">
+  <div class="admin-card"><h2>Gauntlet Fairness Review</h2><p>Advisory signals only. These patterns are evidence for staff review, not automatic accusations, punishments, demotions, or bans.</p>
+    <div class="admin-actions"><button class="admin-btn primary" id="run-fairness">Scan Current Guild</button><span class="admin-status" id="fairness-status"></span></div>
+    <div id="fairness-results"></div>
+  </div>
+</section>
 </main>
 </div>
 </div>
@@ -309,6 +316,7 @@ $("upload-asset").onclick=async()=>{
   await loadBranding();setStatus("upload-status","Uploaded and assigned "+target+".");
  }catch(e){setStatus("upload-status",e.message,false)}
 };
+$("run-fairness").onclick=async()=>{try{setStatus("fairness-status","Scanning match history…");const d=await api("/api/admin/fairness"+q());const box=$("fairness-results");if(!d.reviews?.length){box.innerHTML='<div class="admin-card"><h3>No advisory signals</h3><p>No current patterns met the review thresholds.</p></div>';setStatus("fairness-status","Scan complete.");return;}box.innerHTML=d.reviews.map(x=>'<div class="admin-card"><h3>🛡️ '+escapeHtml(x.name)+'</h3><p><strong>'+escapeHtml(x.win_rate)+'% win rate</strong> • '+escapeHtml(x.wins)+'-'+escapeHtml(x.played-x.wins)+' matches • '+escapeHtml(x.elo)+' ELO • '+escapeHtml(x.garage_pi)+' PI</p><div class="admin-check">'+x.flags.map(f=>'<span>⚠️ '+escapeHtml(f)+'</span>').join('</div><div class="admin-check">')+'</div><p class="admin-status">Score mix: 5-0 '+x.score_counts["5-0"]+' • 4-1 '+x.score_counts["4-1"]+' • 3-2 '+x.score_counts["3-2"]+' • 2-3 '+x.score_counts["2-3"]+' • 1-4 '+x.score_counts["1-4"]+' • 0-5 '+x.score_counts["0-5"]+'</p></div>').join("");setStatus("fairness-status","Scan complete • "+d.reviews.length+" review signal(s).");}catch(e){setStatus("fairness-status",e.message,false)}};
 $("run-diagnostics").onclick=async()=>{try{const d=await api("/api/admin/diagnostics"+q());$("diagnostic-results").innerHTML=d.checks.map(x=>'<div class="admin-check"><span>'+escapeHtml(x.name)+'</span><b class="'+(x.ok?"ok":"bad")+'">'+(x.ok?"PASS":"FAIL")+(x.detail?" — "+escapeHtml(x.detail):"")+"</b></div>").join("")}catch(e){$("diagnostic-results").textContent=e.message}};
 $("force-sync").onclick=async()=>{try{const d=await api("/api/admin/sync"+q(),{method:"POST"});setStatus("diagnostic-results","Discord command sync complete: "+d.synced+" commands.")}catch(e){setStatus("diagnostic-results",e.message,false)}};
 async function loadAudit(){try{const d=await api("/api/admin/audit"+q());$("audit-log").innerHTML=d.events.length?d.events.map(x=>'<div class="admin-log-row"><strong>'+escapeHtml(x.action)+'</strong><br><small>'+escapeHtml(x.source)+' • '+escapeHtml(x.user_id)+'</small></div>').join(""):'<div class="admin-log-row">No audit events yet.</div>'}catch(e){$("audit-log").innerHTML='<div class="admin-log-row">'+escapeHtml(e.message)+'</div>'}}
