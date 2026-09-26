@@ -2375,11 +2375,83 @@ class ChallengeDropdown(discord.ui.Select):
         )
         await interaction.message.edit(view=self.view)
 
+async def refresh_challenge_opponents(guild_id: str, user_id: str):
+    """Refresh the three-opponent set using ALU-style escalating RSL credits."""
+    from .gauntlet_progression import refresh_cost, STARTING_RSL_CREDITS
+    guild_id, user_id = str(guild_id), str(user_id)
+    profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": guild_id})
+    if not profile:
+        return {"ok": False, "reason": "profile"}
+    refreshes = int(profile.get("gauntlet_refreshes", 0) or 0)
+    cost = refresh_cost(refreshes)
+    credits = int(profile.get("rsl_credits", STARTING_RSL_CREDITS) or 0)
+    if credits < cost:
+        return {"ok": False, "reason": "credits", "cost": cost, "credits": credits}
+    season = await get_current_season_number(guild_id)
+    division = get_division_for_pi(int(profile.get("garage_pi", 15500) or 15500))
+    candidates = await bot.db.drivers.find({
+        "guild_id": guild_id,
+        "user_id": {"$ne": user_id},
+        "garage_pi": division_mongo_query(division),
+        "season_registered": True,
+        "season_number": season,
+        "defense_locked.courses.4": {"$exists": True},
+    }).limit(50).to_list(length=50)
+    recent = {str(x.get("user_id")) for x in (profile.get("gauntlet_recent_opponents") or []) if isinstance(x, dict) and x.get("user_id")}
+    pool = [row for row in candidates if str(row.get("user_id")) not in recent] or candidates
+    if not pool:
+        return {"ok": False, "reason": "opponents", "cost": cost, "credits": credits}
+    selected = random.sample(pool, min(3, len(pool)))
+    updated = await bot.db.drivers.update_one(
+        {"_id": f"{guild_id}_{user_id}", "guild_id": guild_id, "rsl_credits": {"$gte": cost}},
+        {"$inc": {"rsl_credits": -cost, "gauntlet_refreshes": 1}, "$set": {
+            "gauntlet_opponents": [str(x.get("user_id")) for x in selected],
+            "gauntlet_opponent_refresh_at": time.time(),
+        }},
+    )
+    if getattr(updated, "modified_count", 0) != 1:
+        return {"ok": False, "reason": "race", "cost": cost}
+    return {"ok": True, "opponents": selected, "cost": cost, "credits": credits - cost}
+
+class ChallengeRefreshButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Refresh Opponents", style=discord.ButtonStyle.secondary, row=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        if str(interaction.user.id) != self.view.user_id:
+            await interaction.response.send_message("This is not your matchmaking session.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        result = await refresh_challenge_opponents(self.view.guild_id, self.view.user_id)
+        if not result.get("ok"):
+            if result.get("reason") == "credits":
+                await interaction.followup.send(f"Not enough RSL Credits. Refresh cost: {result.get('cost', 0):,} • Balance: {result.get('credits', 0):,}.", ephemeral=True)
+            elif result.get("reason") == "opponents":
+                await interaction.followup.send("No qualified opponents are available. Your credits were not charged.", ephemeral=True)
+            else:
+                await interaction.followup.send("Opponent refresh failed. Your credits were not charged.", ephemeral=True)
+            return
+        selected = result["opponents"]
+        profile = await bot.db.drivers.find_one({"_id": f"{self.view.guild_id}_{self.view.user_id}"})
+        data, options = {}, []
+        for opp in selected:
+            fair = fair_match_snapshot(profile, opp)
+            courses = opp["defense_locked"]["courses"]
+            data[opp["user_id"]] = {"courses": courses, "proof_url": opp["defense_locked"].get("proof_url"), "car_rank_total": opp["defense_locked"].get("car_rank_total", get_car_rank_total(courses))}
+            desc = f"{get_division_for_pi(int(opp.get('garage_pi', 0)))['name'][:32]} • {fair['summary']} • 5 courses"
+            options.append(discord.SelectOption(label=f"{opp.get('game_id', 'Driver')} | {opp.get('elo', 1000)} ELO", description=desc[:100], value=opp["user_id"], emoji="🏎️"))
+        self.view.clear_items()
+        self.view.add_item(ChallengeDropdown(options, data))
+        self.view.add_item(ChallengeRefreshButton())
+        await interaction.message.edit(view=self.view)
+        await interaction.followup.send(f"Opponents refreshed. {result['cost']:,} RSL Credits spent • {result['credits']:,} remaining.", ephemeral=True)
+
 class ChallengeView(discord.ui.View):
     def __init__(self, options_list: list[discord.SelectOption], defender_def_data: dict, guild_id: str, user_id: str):
-        super().__init__(timeout=60)
+        super().__init__(timeout=300)
         self.guild_id, self.user_id = guild_id, user_id
         self.add_item(ChallengeDropdown(options_list, defender_def_data))
+        self.add_item(ChallengeRefreshButton())
 
 class DashboardCategorySelect(discord.ui.Select):
     def __init__(self, owner_view):
