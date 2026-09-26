@@ -2,6 +2,7 @@ import re
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
+from ..core.rsl_activity import activity_level
 
 async def send_dashboard(interaction: discord.Interaction):
     """Send the canonical player dashboard without removing player access for staff."""
@@ -84,6 +85,10 @@ class PlayerCog(commands.Cog):
             recent.append(f"{result} • `{m.get('courses_beat', 0)}/5` • <t:{int(m.get('timestamp', now_ts()))}:R>")
         embed.add_field(name='👤 Pilot Credentials', value=f'• **User:** {target_user.mention}\n• **Game ID Node:** `{profile.get("game_id")}`', inline=True)
         embed.add_field(name='📊 Rating & Rank', value=f"**{int(profile.get('elo', 1000))} ELO**\nRank: **#{rank or '—'}**\n{get_division_for_pi(int(profile.get('garage_pi', 0)))['name']}\nSeason {current_season}", inline=True)
+        activity_xp = int(profile.get('activity_xp', 0) or 0)
+        activity_level_value = activity_level(activity_xp)
+        rsl_coins = int(profile.get('rsl_coins', 0) or 0)
+        embed.add_field(name='🪙 RSL Economy & Activity', value=f"**{rsl_coins:,} RSL Coins**\n⭐ Activity Level: **{activity_level_value}**\n✨ Activity XP: **{activity_xp:,}**", inline=True)
         dominance = profile.get("rsl_dominance") or {}
         buckets = dominance.get("score_buckets") or {}
         race_wins = int(dominance.get("race_wins", 0) or 0)
