@@ -915,6 +915,7 @@ try{
         # template and shared shell so every rendered page follows the account
         # theme without changing layout or artwork.
         theme_audit_css = r'''<style id="rsl-cross-page-theme-audit">
+html[data-theme="dark"]{--rsl-audit-bg:#020b18;--rsl-audit-panel:#071427;--rsl-audit-panel2:#0b1d34;--rsl-audit-line:#173b64;--rsl-audit-text:#dbe8f8;--rsl-audit-muted:#91a5c3;--rsl-audit-accent:#25dfff;--rsl-audit-strong:#087cff;--rsl-audit-success:#00e65b;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.38)}
 html[data-theme="light"]{--rsl-audit-bg:#eef3f8;--rsl-audit-panel:#f1f5f9;--rsl-audit-panel2:#e4ecf4;--rsl-audit-line:#c3d0dd;--rsl-audit-text:#18283b;--rsl-audit-muted:#5d7187;--rsl-audit-accent:#2878c8;--rsl-audit-strong:#1769d1;--rsl-audit-success:#087d5b;--rsl-audit-warn:#b87900;--rsl-audit-shadow:rgba(35,63,92,.10)}
 html[data-theme="ocean"]{--rsl-audit-bg:#03141c;--rsl-audit-panel:#062936;--rsl-audit-panel2:#0d3b4b;--rsl-audit-line:#15566b;--rsl-audit-text:#e0f7ff;--rsl-audit-muted:#8bb8c8;--rsl-audit-accent:#37e6ff;--rsl-audit-strong:#1599d8;--rsl-audit-success:#19d6ad;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.30)}
 html[data-theme="purple"]{--rsl-audit-bg:#0d0719;--rsl-audit-panel:#1a0e2d;--rsl-audit-panel2:#291440;--rsl-audit-line:#563b82;--rsl-audit-text:#f1e8ff;--rsl-audit-muted:#b9a9d1;--rsl-audit-accent:#b86cff;--rsl-audit-strong:#7b5cff;--rsl-audit-success:#50e0bb;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.34)}
