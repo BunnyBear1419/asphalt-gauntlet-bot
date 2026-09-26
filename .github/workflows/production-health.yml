@@ -22,12 +22,12 @@ jobs:
       - name: Check Discloud application status
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCLOUD_APP_ID: asph
         run: |
           set -euo pipefail
 
-          if [ -z "$DISCLOUD_TOKEN" ] || [ -z "$DISCLOUD_APP_ID" ]; then
-            echo "ERROR: Required Discloud secrets are missing."
+          if [ -z "$DISCLOUD_TOKEN" ]; then
+            echo "ERROR: DISCLOUD_TOKEN GitHub secret is missing."
             exit 1
           fi
 
