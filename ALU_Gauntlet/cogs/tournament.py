@@ -147,6 +147,10 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
             await bot.db.tournaments.update_one({"_id":tournament["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
         finally:
             await _release_action(self.tournament_id, self.match_id)
+        if result_mode == "admin_only":
+            ok, message = await verify_match_on_discord(self.tournament_id, self.match_id, "approve", interaction.user.id)
+            await interaction.response.send_message(("✅ " if ok else "❌ ") + message, ephemeral=True)
+            return
         cfg=await bot.db.settings.find_one({"_id":str(tournament.get("guild_id"))}) or {}
         channel=bot.get_channel(int(cfg["match_results_channel_id"])) if cfg.get("match_results_channel_id") else None
         if channel:
