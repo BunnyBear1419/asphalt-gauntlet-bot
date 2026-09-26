@@ -172,3 +172,27 @@ def test_v1_shared_shell_keeps_calendar_search_profile_and_companion_ordered():
     assert 'href="/gauntlet/career"' in source
     assert 'href="/my-tournaments"' in source
     assert 'href="/club"' in source
+
+
+def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
+    challenges = read(ROOT / "ALU_Gauntlet" / "cogs" / "challenges.py")
+    league = read(ROOT / "tests" / "test_core_league.py")
+    for marker in (
+        "gauntlet_ticket_date",
+        "'gauntlet_tickets': 5",
+        "'$inc': {'gauntlet_tickets': -1}",
+        "gauntlet_opponent_refresh_at",
+        "4 * 60 * 60",
+        "random.sample(candidates, min(len(candidates), 3))",
+        "six-division performance tier",
+    ):
+        assert marker in challenges
+    for marker in (
+        "Division 1 — Bronze Tier",
+        "Division 2 — Silver Tier",
+        "Division 3 — Gold Tier",
+        "Division 4 — Platinum Tier",
+        "Division 5 — Champ Tier",
+        "Division 6 — Legend Tier",
+    ):
+        assert marker in league
