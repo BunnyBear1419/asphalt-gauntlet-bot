@@ -100,7 +100,11 @@ if(save)save.addEventListener("click",async()=>{
 const register=$("#register");
 if(register)register.addEventListener("click",async()=>{
   const status=$("#registration-status");
-  const payload={game_id:$("#registration-game-id")?.value||"",garage_pi:$("#registration-pi")?.value||"",control:$("#registration-control")?.value||"",proof_url:$("#registration-proof")?.value||""};
+  const topFive=[1,2,3,4,5].map(n=>Number($("#registration-rank-"+n)?.value||0));
+  const total=topFive.reduce((sum,value)=>sum+value,0);
+  const summary=$("#registration-pi-summary"); if(summary)summary.textContent="Calculated Garage PI: "+(topFive.every(v=>v>0)?total.toLocaleString():"—");
+  if(topFive.length!==5||topFive.some(v=>!Number.isInteger(v)||v<=0)){if(status)status.textContent="Enter five positive whole-number car ratings.";return;}
+  const payload={game_id:$("#registration-game-id")?.value||"",garage_pi:total,top_five_car_ranks:topFive,control:$("#registration-control")?.value||"",proof_url:$("#registration-proof")?.value||""};
   if(status)status.textContent="Submitting registration…";
   register.disabled=true;
   try{
