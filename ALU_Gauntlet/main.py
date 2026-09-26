@@ -22,6 +22,11 @@ async def _ensure_database_indexes():
     if db is None:
         raise RuntimeError("MongoDB must be initialized before database indexes are created")
 
+    await db.rsl_activity_events.create_index(
+        [("guild_id", 1), ("user_id", 1), ("activity_type", 1), ("event_id", 1)],
+        unique=True,
+        name="uniq_rsl_activity_event",
+    )
     await db.club_members.create_index(
         [("guild_id", 1), ("user_id", 1)],
         unique=True,
