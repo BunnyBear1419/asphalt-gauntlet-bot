@@ -676,6 +676,7 @@ async def submit_registration_application(
     garage_pi: int,
     proof_screenshot,
     control_type,
+    top_five_car_ranks: list[int] | None = None,
 ):
     """Persist a registration submission and deliver its staff review card exactly once.
 
@@ -694,10 +695,18 @@ async def submit_registration_application(
     try:
         garage_pi = int(garage_pi)
     except (TypeError, ValueError):
-        await send("❌ **Invalid Value:** Garage PI must be a positive number.", ephemeral=True)
-        return
+        garage_pi = 0
+    if top_five_car_ranks is not None:
+        try:
+            top_five_car_ranks = [int(x) for x in top_five_car_ranks]
+        except (TypeError, ValueError):
+            top_five_car_ranks = []
+        if len(top_five_car_ranks) != 5 or any(x <= 0 for x in top_five_car_ranks):
+            await send("❌ **Invalid Value:** Exactly five positive top-car performance ratings are required.", ephemeral=True)
+            return
+        garage_pi = sum(top_five_car_ranks)
     if garage_pi <= 0:
-        await send("❌ **Invalid Value:** Garage PI must be a positive number.", ephemeral=True)
+        await send("❌ **Invalid Value:** Garage PI must be a positive whole number.", ephemeral=True)
         return
     content_type = getattr(proof_screenshot, "content_type", None) or ""
     proof_url = str(getattr(proof_screenshot, "url", "") or "").strip()
@@ -739,15 +748,17 @@ async def submit_registration_application(
     emb = discord.Embed(
         title="🔄 Garage Re-Registration" if is_rereg else "👤 New Driver Registration Application",
         description=(
-            f"Season **{season_number}** Garage verification packet. This is a **re-registration**; lifetime career statistics must be preserved.\n**Staff:** compare the declared Garage PI against the screenshot before approving."
+            f"Season **{season_number}** Garage verification packet. This is a **re-registration**; lifetime career statistics must be preserved.\n**Staff:** compare the declared Top 5 car ratings and calculated Garage PI against the screenshot before approving."
             if is_rereg else
-            "Incoming driver verification packet submitted by user.\n**Staff:** please compare the declared Garage PI against the attached screenshot before approving."
+            "Incoming driver verification packet submitted by user.\n**Staff:** please compare the declared Top 5 car ratings and calculated Garage PI against the screenshot before approving."
         ),
         color=ASPHALT_ADMIN_COLOR,
     )
     emb.add_field(name="Applicant User", value=interaction.user.mention, inline=True)
     emb.add_field(name="Declared Game ID", value=f"`{game_id}`", inline=True)
-    emb.add_field(name="Declared Garage PI", value=f"`{garage_pi:,} PI`", inline=True)
+    emb.add_field(name="Calculated Garage PI", value=f"`{garage_pi:,} PI`", inline=True)
+    if top_five_car_ranks:
+        emb.add_field(name="Top 5 Car Ratings", value=" • ".join(f"`{x:,}`" for x in top_five_car_ranks), inline=False)
     emb.add_field(name="Projected Division", value=division, inline=True)
     emb.add_field(name="Season", value=f"`{season_number}`", inline=True)
     if previous_pi is not None:
@@ -761,6 +772,7 @@ async def submit_registration_application(
             {"_id": pending_id, "season_number": {"$ne": season_number}},
             {"$set": {
                 "guild_id": guild_id, "user_id": user_id, "game_id": game_id, "rank": garage_pi,
+                "garage_pi": garage_pi, "top_five_car_ranks": top_five_car_ranks or [],
                 "control": control_value, "season_number": season_number, "is_reregistration": is_rereg,
                 "submitted_at": time.time(), "proof_url": proof_url, "delivery_status": "sending",
                 "submission_id": submission_id,
@@ -2086,6 +2098,12 @@ class VerificationView(discord.ui.View):
             game_id = str(pending.get("game_id", self.game_id))
             rank = int(pending.get("rank", self.rank))
             control = str(pending.get("control", self.control))
+            top_five_car_ranks = pending.get("top_five_car_ranks") or []
+            if len(top_five_car_ranks) == 5:
+                try:
+                    top_five_car_ranks = [int(x) for x in top_five_car_ranks]
+                except (TypeError, ValueError):
+                    top_five_car_ranks = []
             existing = await bot.db.drivers.find_one({"_id": f"{self.guild_id}_{self.user_id}"}, session=session)
             set_on_insert = {"career_wins": 0, "career_played": 0}
             if not existing:
@@ -2095,7 +2113,8 @@ class VerificationView(discord.ui.View):
                 {
                     "$set": {
                         "guild_id": str(self.guild_id), "user_id": str(self.user_id), "game_id": game_id,
-                        "garage_pi": rank, "verified": True, "season_registered": True,
+                        "garage_pi": rank, "top_five_car_ranks": top_five_car_ranks,
+                        "verified": True, "season_registered": True,
                         "season_number": season_number, "control": control, "registered_at": time.time(),
                     },
                     "$setOnInsert": set_on_insert,
