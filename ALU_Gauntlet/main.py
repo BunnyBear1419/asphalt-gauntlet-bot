@@ -37,6 +37,10 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_tournament_action_lock",
     )
+    await db.tournament_media.create_index(
+        [("tournament_id", 1), ("status", 1), ("created_at", -1)],
+        name="idx_tournament_media_gallery",
+    )
     # Notification delivery identity is event + user + lead-time reminder.
     # The previous index used a missing "phase" field, which made the event-time
     # reminder collide with the scheduled lead reminder for the same user/event.
