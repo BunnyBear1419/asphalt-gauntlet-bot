@@ -1619,6 +1619,11 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
                 "season_matches": 1}},
             session=session,
         )
+        await bot.db.matches.update_one(
+            {"_id": match_id, "guild_id": guild_id, "settlement_status": "pending"},
+            {"$set": {"settlement_status": "completed", "settled_at": time.time()}},
+            session=session,
+        )
 
     if bot.mongo_client:
         try:
