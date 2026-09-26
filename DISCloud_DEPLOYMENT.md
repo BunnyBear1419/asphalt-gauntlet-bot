@@ -71,7 +71,7 @@ This means the website and Discord bot do not need separate local processes or a
 
 ## Deployment safety
 
-The existing GitHub Actions workflow can remain in the repository for testing/optional automation, but **production deployment does not depend on GitHub Actions** when using Discloud's GitHub Integration.
+Production deployment is owned by the GitHub Actions `CI and Deploy` workflow. Do not configure a second automatic deployment path for the same `main` pushes, because overlapping uploads can trigger Discloud rate limits or race the production process.
 
 The repository also contains `.discloudignore` so Git metadata, development environments, tests, logs, backups, and local environment files are not included in the Discloud deployment package. Discloud recommends using `.discloudignore` to exclude unnecessary deployment files. citeturn1search1
 
