@@ -62,10 +62,13 @@ async def _ensure_database_indexes():
         await db.notification_deliveries.drop_index("uniq_notification_delivery")
     except Exception:
         pass
+    try:
+        await db.rsl_economy_transactions.drop_index("uniq_rsl_economy_message_transaction")
+    except Exception:
+        pass
     await db.rsl_economy_transactions.create_index(
-        [("guild_id", 1), ("user_id", 1), ("message_id", 1), ("type", 1)],
-        unique=True,
-        name="uniq_rsl_economy_message_transaction",
+        [("guild_id", 1), ("user_id", 1), ("created_at", -1)],
+        name="idx_rsl_economy_history",
     )
     await db.notification_deliveries.create_index(
         [("event_id", 1), ("user_id", 1), ("lead_days", 1)],
