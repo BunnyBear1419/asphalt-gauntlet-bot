@@ -24,6 +24,7 @@ from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
 from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application, get_current_season_number
 from ..core.match_scoring import apply_rsl_performance_bonus
+from ..core.fairness import fair_match_snapshot, build_fairness_review
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -2498,6 +2499,13 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             rows.append({"id":str(row.get("_id","")),"source":str(row.get("source","")),"user_id":str(row.get("user_id","")),"action":str(row.get("action",""))})
         return web.json_response({"events":rows})
 
+    async def admin_fairness(self, request: web.Request) -> web.Response:
+        """Return staff-only advisory Gauntlet fairness review signals."""
+        user, guild_id, _ = await self.require_admin(request)
+        report = await build_fairness_review(self.bot.db, str(guild_id), limit=100)
+        await self._audit(str(guild_id), str(user.user_id), "Viewed Gauntlet fairness review")
+        return web.json_response(report)
+
     async def admin_sync(self, request: web.Request) -> web.Response:
         user, guild_id, guild = await self.require_admin(request)
         tree=getattr(self.bot,"tree",None)
@@ -2600,6 +2608,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/assets/tournament-media/{media_id}", self.serve_tournament_media)
         self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
         self.app.router.add_get("/api/admin/audit", self.admin_audit)
+        self.app.router.add_get("/api/admin/fairness", self.admin_fairness)
         self.app.router.add_post("/api/admin/sync", self.admin_sync)
         self.app.router.add_get("/api/admin/backup", self.admin_backup)
         self.app.router.add_get("/api/search", self.site_search)
@@ -2768,15 +2777,19 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         current_season = await get_current_season_number(str(guild_id))
         async for item in self.bot.db.active_challenges.find({"guild_id":str(guild_id),"season_number":int(current_season),"$or":[{"challenger_id":uid},{"opponent_id":uid}],"status":{"$in":["active","processing"]}}).sort("created_at",-1).limit(10):
             oppid=str(item.get("opponent_id") if str(item.get("challenger_id"))==uid else item.get("challenger_id")); opp=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{oppid}"}) or {}
-            active.append({"id":str(item.get("_id","")),"status":str(item.get("status","active")),"role":"challenger" if str(item.get("challenger_id"))==uid else "defender","opponent_id":oppid,"opponent":str(opp.get("game_id") or opp.get("username") or oppid),"courses":item.get("defense_courses") or [],"created_at":item.get("created_at") or item.get("started_at") or time.time()})
+            viewer = await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{uid}"}) or {}
+            fair = fair_match_snapshot(viewer, opp)
+            active.append({"id":str(item.get("_id","")),"status":str(item.get("status","active")),"role":"challenger" if str(item.get("challenger_id"))==uid else "defender","opponent_id":oppid,"opponent":str(opp.get("game_id") or opp.get("username") or oppid),"courses":item.get("defense_courses") or [],"created_at":item.get("created_at") or item.get("started_at") or time.time(),"fair_match":fair})
         cursor=self.bot.db.matches.find({"guild_id":str(guild_id),"reverted":{"$ne":True},"$or":[{"challenger_id":uid},{"opponent_id":uid}]}).sort("timestamp",-1).limit(20)
         async for match in cursor:
             challenger=str(match.get("challenger_id","")); opponent=str(match.get("opponent_id","")); other=opponent if challenger==uid else challenger
             won=str(match.get("w_id",""))==uid; lost=str(match.get("l_id",""))==uid
             if not(won or lost): continue
             opp=await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{other}"}) or {}
-            recent.append({"id":str(match.get("_id","")),"opponent":str(opp.get("game_id") or opp.get("username") or other),"result":"WIN" if won else "LOSS","courses":int(match.get("courses_beat",0) or 0),"timestamp":match.get("timestamp") or 0})
-        return web.json_response({"active":active,"recent":recent})
+            recent.append({"id":str(match.get("_id","")),"opponent":str(opp.get("game_id") or opp.get("username") or other),"result":"WIN" if won else "LOSS","courses":int(match.get("courses_beat",0) or 0),"score":f"{int(match.get("courses_beat",0) or 0)}-{5-int(match.get("courses_beat",0) or 0)}","rsl_performance_bonus":int(match.get("rsl_performance_bonus",0) or 0),"timestamp":match.get("timestamp") or 0})
+        profile = await self.bot.db.drivers.find_one({"_id":f"{guild_id}_{uid}"}) or {}
+        dominance = profile.get("rsl_dominance") or {}
+        return web.json_response({"active":active,"recent":recent,"dominance":{"total_matches":int(dominance.get("total_matches",0) or 0),"race_wins":int(dominance.get("race_wins",0) or 0),"race_losses":int(dominance.get("race_losses",0) or 0),"score_buckets":dominance.get("score_buckets") or {}}})
 
     async def gauntlet_submit_match(self, request: web.Request) -> web.Response:
         """Submit five attack runs for the signed-in driver's active challenge."""
