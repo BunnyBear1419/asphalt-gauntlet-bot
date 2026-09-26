@@ -16,11 +16,11 @@ def _matches(bracket):
 
 
 def test_single_elimination_supports_non_power_of_two_limits():
-    bracket = generate_tournament_bracket("single_elimination", 32)
+    bracket = generate_tournament_bracket("single_elimination", 10)
     assert bracket["type"] == "single_elimination"
-    assert bracket["player_limit"] == 32
-    assert len(bracket["rounds"]) == 6
-    assert len(bracket["rounds"][0]["matches"]) == 16
+    assert bracket["player_limit"] == 10
+    assert len(bracket["rounds"]) == 4
+    assert len(bracket["rounds"][0]["matches"]) == 8
     assert len(bracket["rounds"][-1]["matches"]) == 1
 
 
@@ -42,6 +42,7 @@ def test_double_elimination_has_winners_losers_and_grand_final():
     assert bracket["losers"]
     assert bracket["grand_final"]["id"] == "GF-M1"
     assert bracket["grand_final_reset"]["if_necessary"] is True
+    assert [len(group["matches"]) for group in bracket["losers"]] == [4, 4, 2, 2, 1, 1]
 
     for match in matches.values():
         for field in ("winner_to", "loser_to"):
