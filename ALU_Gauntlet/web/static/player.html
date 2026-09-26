@@ -54,7 +54,18 @@
   <p class="server-sub">Register or re-register for the current Gauntlet season. Staff review the same submission used by Discord.</p>
   <div class="activity-list">
     <label><b>Asphalt Legends Player ID</b><input id="registration-game-id" type="text" maxlength="100" placeholder="Exact in-game Player ID"></label>
-    <label><b>Garage PI at Registration</b><input id="registration-pi" type="number" min="1" step="1" placeholder="Example: 2450"></label>
+    <div class="registration-top-five">
+      <b>Top 5 Cars — Performance Ratings</b>
+      <p class="server-sub">Enter the performance rating for your five highest-ranked cars. RSL calculates your Garage PI automatically from these five values.</p>
+      <div class="registration-rank-grid">
+        <label>Car 1<input id="registration-rank-1" type="number" min="1" step="1" required placeholder="Rating"></label>
+        <label>Car 2<input id="registration-rank-2" type="number" min="1" step="1" required placeholder="Rating"></label>
+        <label>Car 3<input id="registration-rank-3" type="number" min="1" step="1" required placeholder="Rating"></label>
+        <label>Car 4<input id="registration-rank-4" type="number" min="1" step="1" required placeholder="Rating"></label>
+        <label>Car 5<input id="registration-rank-5" type="number" min="1" step="1" required placeholder="Rating"></label>
+      </div>
+      <p id="registration-pi-summary" class="server-sub">Calculated Garage PI: —</p>
+    </div>
     <label><b>Controls</b><select id="registration-control"><option value="">Select controls…</option><option value="touchdrive">TouchDrive</option><option value="manual">Manual</option></select></label>
     <label><b>Proof image URL</b><input id="registration-proof" type="url" maxlength="2048" placeholder="Direct image URL to your Garage PI screenshot"></label>
     <button class="qa qa-purple" id="register" type="button">Submit Registration →</button>
