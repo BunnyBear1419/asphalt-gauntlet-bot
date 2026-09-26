@@ -5,6 +5,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "ALU_Gauntlet" / "web" / "server.py"
 PLAYER = ROOT / "ALU_Gauntlet" / "web" / "static" / "player.html"
 PLAYER_JS = ROOT / "ALU_Gauntlet" / "web" / "static" / "player.js"
+HELP = ROOT / "ALU_Gauntlet" / "web" / "static" / "help.html"
+TOURNAMENTS = ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.html"
+PROFILE = ROOT / "ALU_Gauntlet" / "web" / "static" / "profile.html"
 
 
 def test_competitive_apis_are_registered():
@@ -26,3 +29,12 @@ def test_player_dashboard_consumes_competitive_snapshot():
     assert '/api/competition/snapshot?guild_id=' in script
     for marker in ("snapshot-elo", "snapshot-record", "snapshot-streak", "snapshot-defense", "snapshot-season"):
         assert marker in script
+
+
+def test_competitive_profile_labels_are_consistent_across_site():
+    assert "My Garage" not in HELP.read_text(encoding="utf-8")
+    assert "My Garage" not in TOURNAMENTS.read_text(encoding="utf-8")
+    assert "My Garage" not in PROFILE.read_text(encoding="utf-8")
+    assert "Competitive Profile" in HELP.read_text(encoding="utf-8")
+    assert "Competitive Profile" in TOURNAMENTS.read_text(encoding="utf-8")
+    assert "Competitive Profile" in PROFILE.read_text(encoding="utf-8")
