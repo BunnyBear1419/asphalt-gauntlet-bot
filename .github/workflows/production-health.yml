@@ -81,7 +81,10 @@ jobs:
             exit 1
           fi
 
-          HTTP_CODE=$(curl -sS -o discord-user.json -w "%{http_code}"             -H "Authorization: Bot $DISCORD_BOT_TOKEN"             -H "Accept: application/json"             "https://discord.com/api/v10/users/@me")
+          HTTP_CODE=$(curl -sS -o discord-user.json -w "%{http_code}" \
+            -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+            -H "Accept: application/json" \
+            "https://discord.com/api/v10/users/@me")
 
           echo "Discord API HTTP status: $HTTP_CODE"
 
@@ -168,6 +171,9 @@ jobs:
           PY
           )
 
-          curl -sS -X POST             -H "Content-Type: application/json"             --data "$payload"             "$DISCORD_WEBHOOK_URL"
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            --data "$payload" \
+            "$DISCORD_WEBHOOK_URL"
 
           echo "Central monitoring notification sent."
