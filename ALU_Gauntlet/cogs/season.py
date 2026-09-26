@@ -8,6 +8,7 @@ from discord import app_commands
 
 from ..core.core import *
 from ..core.gauntlet_progression import season_reward_for_rank
+from ..core.rsl_economy_ledger import apply_coin_transaction
 
 
 async def announce_season_start(guild_id, season_number, reason="scheduled"):
@@ -133,11 +134,22 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
                     "season_reward": reward,
                 })
                 break
-        await bot.db.drivers.update_one(
-            {"_id": f"{guild_id}_{uid}", "season_number": current_season},
-            {"$inc": {"rsl_credits": int(reward["credits"]), "rsl_badges": int(reward["badges"])},
-             "$set": {"last_season_reward": {"season": current_season, **reward, "points_rank": points_rank[uid], "season_points": int(row.get("season_points", 0) or 0)}}},
+        ledger = await apply_coin_transaction(
+            bot.db, guild_id=guild_id, user_id=uid, amount=int(reward["credits"]),
+            transaction_type="season_reward",
+            reference_id=f"season:{current_season}:rank:{points_rank[uid]}",
+            reason=f"Season {current_season} {reward['tier']} reward",
+            metadata={"season": current_season, "points_rank": points_rank[uid],
+                      "season_points": int(row.get("season_points", 0) or 0)},
         )
+        if ledger.get("ok"):
+            await bot.db.drivers.update_one(
+                {"_id": f"{guild_id}_{uid}", "season_number": current_season},
+                {"$inc": {"rsl_badges": int(reward["badges"])},
+                 "$set": {"last_season_reward": {"season": current_season, **reward,
+                         "points_rank": points_rank[uid],
+                         "season_points": int(row.get("season_points", 0) or 0)}}},
+            )
 
     await bot.db.season_history.replace_one(
         {"_id": f"{guild_id}_{current_season}"},
