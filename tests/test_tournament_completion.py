@@ -126,7 +126,8 @@ def test_media_and_result_permissions_have_server_side_guards():
     server = SERVER.read_text(encoding="utf-8")
     assert "await self.require_user(request)" in server
     assert "Only tournament participants or tournament staff can upload media." in server
-    assert "if not staff and not participant:" in server or "if not staff and not participant" in server
+    assert "async def _tournament_media_participant" in server
+    assert 'status = "approved" if staff else "pending"' in server
     assert "This tournament is configured for Admin Only result submission." in server
 
 
