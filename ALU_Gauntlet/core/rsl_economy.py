@@ -5,6 +5,7 @@ without MongoDB or a live Discord session.
 """
 from __future__ import annotations
 
+from .rsl_economy_ledger import apply_coin_transaction
 from .gauntlet_progression import (
     FREE_DAILY_TICKETS,
     MAX_DAILY_TICKETS,
@@ -96,21 +97,28 @@ async def purchase_daily_ticket(db, *, guild_id: str, user_id: str, today: str) 
             "_id": driver_id,
             "gauntlet_ticket_date": today,
             "gauntlet_purchased_tickets": purchased,
-            "rsl_coins": {"$gte": cost},
             "gauntlet_tickets": {"$lt": MAX_DAILY_TICKETS},
         },
-        {"$inc": {
-            "rsl_coins": -cost,
-            "gauntlet_tickets": 1,
-            "gauntlet_purchased_tickets": 1,
-        }},
+        {"$inc": {"gauntlet_tickets": 1, "gauntlet_purchased_tickets": 1}},
     )
     if getattr(result, "modified_count", 0) != 1:
         return {"ok": False, "reason": "purchase_race_or_state_changed", "cost": cost}
 
+    ledger = await apply_coin_transaction(
+        db, guild_id=guild_id, user_id=user_id, amount=-cost,
+        transaction_type="ticket_purchase",
+        reference_id=f"ticket:{today}:{purchased + 1}",
+        reason=f"Extra Gauntlet Ticket #{purchased + 1}",
+        metadata={"date": today, "ticket_number": purchased + 1},
+    )
+    if not ledger.get("ok"):
+        await db.drivers.update_one(
+            {"_id": driver_id, "gauntlet_ticket_date": today, "gauntlet_purchased_tickets": purchased + 1},
+            {"$inc": {"gauntlet_tickets": -1, "gauntlet_purchased_tickets": -1}},
+        )
+        return {"ok": False, "reason": "insufficient_coins", "cost": cost}
+
     return {
-        "ok": True,
-        "cost": cost,
-        "purchased_tickets": purchased + 1,
+        "ok": True, "cost": cost, "purchased_tickets": purchased + 1,
         "tickets_remaining": min(MAX_DAILY_TICKETS, int(profile.get("gauntlet_tickets", FREE_DAILY_TICKETS) or 0) + 1),
     }
