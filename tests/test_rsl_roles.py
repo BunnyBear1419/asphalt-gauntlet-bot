@@ -29,10 +29,14 @@ def test_gauntlet_seasonal_roles_follow_current_season_stats():
         division_winners={1: "101", 2: "102", 6: "106"},
         champion_user_id="101",
         player_stats=[
-            {"user_id": "101", "overall_activity_score": 40, "wins": 8, "gauntlet_points": 120,
+            {"user_id": "101", "wins": 8, "gauntlet_points": 120,
              "defense_wins": 2, "challenge_wins": 6, "improvement": 5, "win_streak": 4},
-            {"user_id": "202", "overall_activity_score": 55, "wins": 10, "gauntlet_points": 140,
+            {"user_id": "202", "wins": 10, "gauntlet_points": 140,
              "defense_wins": 5, "challenge_wins": 4, "improvement": 12, "win_streak": 7},
+        ],
+        overall_activity_stats=[
+            {"user_id": "101", "overall_activity_score": 40},
+            {"user_id": "202", "overall_activity_score": 55},
         ],
     )
     assert roles["Division 1 Winner"] == ["101"]
