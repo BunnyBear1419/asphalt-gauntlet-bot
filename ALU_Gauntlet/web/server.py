@@ -28,6 +28,7 @@ from ..core.fairness import fair_match_snapshot, build_fairness_review
 from ..core.rsl_economy import purchase_daily_ticket, next_ticket_purchase
 from ..core.rsl_economy_ledger import recent_coin_transactions
 from ..core.gauntlet_progression import FREE_DAILY_TICKETS, MAX_DAILY_TICKETS
+from ..core.rsl_activity import collect_overall_activity_stats
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -2890,6 +2891,23 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                         if key == "w_id":
                             drivers[uid]["wins"] += 1
 
+        # Overall activity is rebuilt from authoritative RSL records rather than
+        # raw message volume. This keeps the public leaderboard aligned with the
+        # same cross-mode score used by the seasonal Top Active role.
+        activity_rows = await collect_overall_activity_stats(
+            self.bot.db,
+            guild_id=guild_id,
+            season_number=season_number,
+        )
+        activity_map = {str(item["user_id"]): item for item in activity_rows}
+        for uid, row in drivers.items():
+            activity = activity_map.get(uid, {})
+            row["overall_activity_score"] = int(activity.get("overall_activity_score", 0) or 0)
+            row["activity_breakdown"] = {
+                key: int(activity.get(key, 0) or 0)
+                for key in ("gauntlet_matches", "tournament_matches", "rsl_events", "media_posts", "defenses", "challenges", "approved_activity")
+            }
+
         rows = list(drivers.values())
 
         def division_for_pi(pi):
@@ -2920,7 +2938,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "divisions": {key: value for key, value in divisions.items()},
             "all": rows,
             "top_overall": rows[:5],
-            "most_active": sorted(rows, key=lambda x: (-x["played"], -x["wins"], -x["elo"], x["name"].casefold()))[:5],
+            "most_active": sorted(rows, key=lambda x: (-x["overall_activity_score"], -x["wins"], -x["elo"], x["name"].casefold()))[:5],
             "most_wins": sorted(rows, key=lambda x: (-x["wins"], -x["played"], -x["elo"], x["name"].casefold()))[:5],
             "past_seasons": archives,
         })
