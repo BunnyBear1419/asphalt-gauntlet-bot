@@ -36,6 +36,7 @@ def test_purchase_transaction_source_is_atomic_and_daily_reset_is_non_bankable()
     source = Path("ALU_Gauntlet/core/rsl_economy.py").read_text(encoding="utf-8")
     assert '"gauntlet_purchased_tickets": 0' in source
     assert '"gauntlet_tickets": FREE_DAILY_TICKETS' in source
-    assert '"rsl_coins": {"$gte": cost}' in source
+    assert "apply_coin_transaction" in source
+    assert "can_afford(" in source
     assert '"gauntlet_tickets": {"$lt": MAX_DAILY_TICKETS}' in source
-    assert '"rsl_coins": -cost' in source
+    assert 'transaction_type="ticket_purchase"' in source
