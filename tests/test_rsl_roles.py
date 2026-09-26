@@ -115,3 +115,13 @@ def test_permanent_achievements_never_appear_in_seasonal_removals():
         tournament_veteran=True,
         grand_champion=True,
     ) == ["Tournament Participant", "Tournament Veteran", "Grand Champion"]
+
+def test_discord_role_sync_is_wired_to_season_lifecycle():
+    sync = __import__("pathlib").Path("ALU_Gauntlet/core/rsl_role_sync.py").read_text(encoding="utf-8")
+    season = __import__("pathlib").Path("ALU_Gauntlet/cogs/season.py").read_text(encoding="utf-8")
+    assert "sync_gauntlet_season_roles" in sync
+    assert "clear_gauntlet_season_roles" in sync
+    assert "sync_xp_rank_role" in sync
+    assert "sync_gauntlet_season_roles(" in season
+    assert "clear_gauntlet_season_roles(" in season
+    assert "activity_level(" in season
