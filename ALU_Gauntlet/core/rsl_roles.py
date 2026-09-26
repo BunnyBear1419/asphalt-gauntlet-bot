@@ -104,6 +104,7 @@ def build_gauntlet_season_roles(
     division_winners: Mapping[int | str, Any],
     player_stats: Iterable[Mapping[str, Any]],
     champion_user_id: str | int | None = None,
+    overall_activity_stats: Iterable[Mapping[str, Any]] | None = None,
 ) -> dict[str, list[str]]:
     """Build current-season Gauntlet role assignments.
 
@@ -111,9 +112,10 @@ def build_gauntlet_season_roles(
     arbitrarily. Division winners and Season Champion are explicit inputs.
     """
     stats = list(player_stats)
+    overall_activity = list(overall_activity_stats) if overall_activity_stats is not None else stats
     result = role_for_division(division_winners)
     metrics = {
-        "Top Active": "activity_score",
+        "Top Active": "overall_activity_score",
         "Top Wins": "wins",
         "Top Player": "gauntlet_points",
         "Top Defender": "defense_wins",
@@ -122,7 +124,8 @@ def build_gauntlet_season_roles(
         "Win Streak": "win_streak",
     }
     for role, metric in metrics.items():
-        users = _top_users(stats, metric)
+        source = overall_activity if role == "Top Active" else stats
+        users = _top_users(source, metric)
         if users:
             result[role] = users
     if champion_user_id is not None:
