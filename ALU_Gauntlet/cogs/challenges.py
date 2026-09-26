@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
+from ..core.match_scoring import apply_rsl_performance_bonus
 
 class ChallengesCog(commands.Cog):
 
@@ -152,6 +153,10 @@ class ChallengesCog(commands.Cog):
             await interaction.followup.send('❌ The saved challenge data is incomplete. Please start a new challenge from `/dashboard` → **Challenges**.', ephemeral=True)
             return
         match_data = await process_match_result(guild_id, user_id, str(active['opponent_id']), defense, challenger_times, proof, active.get('defender_proof_url'), interaction.channel_id, settlement_id=f"{active['_id']}:match")
+        try:
+            match_data['rsl_performance_bonus'] = await apply_rsl_performance_bonus(bot.db, match_data)
+        except Exception:
+            logging.exception('Failed to apply RSL performance margin bonus for match %s', match_data.get('_id'))
         if not match_data:
             # Do not blindly release an uncertain settlement. A completed/pending
             # reservation is reconciled by the scheduler; only release when no match
