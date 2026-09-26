@@ -128,3 +128,7 @@ The Tournament Center supports single elimination, double elimination, and round
 Tournament media supports staff-published photos/videos and player submissions that remain pending until staff approval. Completed tournaments provide champion information, final standings, verified match history, and approved media through **Results & Rankings**.
 
 See `docs/TOURNAMENT_ADMIN_GUIDE.md` for the event workflow and `docs/PRODUCTION_MAINTENANCE.md` for production release and database-maintenance guidance.
+
+### RSL v1 regression contract
+
+The repository also includes `tests/test_rsl_v1_contract.py`, a source-level release gate covering the connected Player, Gauntlet, Clubs, Calendar, Discord notification, Tournament, navigation, authentication, upload, and MongoDB safeguards. It is designed to run in CI without requiring a personal browser session or live Discord/MongoDB access.
