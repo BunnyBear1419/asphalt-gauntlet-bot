@@ -127,3 +127,9 @@ def test_notification_delivery_index_matches_multi_phase_reminders():
     notifications = (ROOT / "ALU_Gauntlet" / "cogs" / "notifications.py").read_text(encoding="utf-8")
     assert 'lead_days:g' in notifications
     assert 'event_id' in notifications and 'user_id' in notifications
+
+def test_active_tournament_registration_indexes_are_unique():
+    source = (ROOT / "ALU_Gauntlet" / "main.py").read_text(encoding="utf-8")
+    assert 'uniq_active_tournament_player_registration' in source
+    assert 'uniq_active_tournament_club_registration' in source
+    assert 'partialFilterExpression={"status": {"$in": ["pending", "accepted", "checked_in"]}}' in source
