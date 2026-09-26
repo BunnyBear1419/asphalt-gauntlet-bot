@@ -110,8 +110,8 @@ def test_navigation_reserves_space_for_search_and_profile_controls():
     final_nav = css.index("FINAL NAVIGATION ACTION BAR")
     nav_block = css[final_nav:final_nav + 1800]
     assert ".top-nav>nav{\n  position:absolute!important;" in nav_block
-    assert "left:250px!important" in nav_block
-    assert "right:390px!important" in nav_block
+    assert "left:190px!important" in nav_block
+    assert "right:450px!important" in nav_block
     assert ".top-nav>.rsl-search-trigger{right:270px!important" in css
     assert ".top-nav>.rsl-profile-nav" in css
 
