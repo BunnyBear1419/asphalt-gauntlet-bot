@@ -2376,17 +2376,21 @@ class ChallengeDropdown(discord.ui.Select):
         await interaction.message.edit(view=self.view)
 
 async def refresh_challenge_opponents(guild_id: str, user_id: str):
-    """Refresh the three-opponent set using ALU-style escalating RSL credits."""
-    from .gauntlet_progression import refresh_cost, STARTING_RSL_CREDITS
+    """Refresh the three-opponent set with an idempotent RSL Coin spend."""
+    from .gauntlet_progression import refresh_cost
+
     guild_id, user_id = str(guild_id), str(user_id)
     profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}", "guild_id": guild_id})
     if not profile:
         return {"ok": False, "reason": "profile"}
-    refreshes = int(profile.get("gauntlet_refreshes", 0) or 0)
+
+    refreshes = max(0, int(profile.get("gauntlet_refreshes", 0) or 0))
+    next_refresh = refreshes + 1
     cost = refresh_cost(refreshes)
-    credits = int(profile.get("rsl_credits", STARTING_RSL_CREDITS) or 0)
-    if credits < cost:
-        return {"ok": False, "reason": "credits", "cost": cost, "credits": credits}
+    coins = int(profile.get("rsl_coins", 0) or 0)
+    if coins < cost:
+        return {"ok": False, "reason": "credits", "cost": cost, "credits": coins}
+
     season = await get_current_season_number(guild_id)
     division = get_division_for_pi(int(profile.get("garage_pi", 15500) or 15500))
     candidates = await bot.db.drivers.find({
@@ -2397,21 +2401,95 @@ async def refresh_challenge_opponents(guild_id: str, user_id: str):
         "season_number": season,
         "defense_locked.courses.4": {"$exists": True},
     }).limit(50).to_list(length=50)
-    recent = {str(x.get("user_id")) for x in (profile.get("gauntlet_recent_opponents") or []) if isinstance(x, dict) and x.get("user_id")}
-    pool = [row for row in candidates if str(row.get("user_id")) not in recent] or candidates
+
+    recent = {
+        str(x.get("user_id"))
+        for x in (profile.get("gauntlet_recent_opponents") or [])
+        if isinstance(x, dict) and x.get("user_id")
+    }
+    current = {str(x) for x in (profile.get("gauntlet_opponents") or [])}
+    pool = [row for row in candidates if str(row.get("user_id")) not in recent and str(row.get("user_id")) not in current]
     if not pool:
-        return {"ok": False, "reason": "opponents", "cost": cost, "credits": credits}
+        pool = [row for row in candidates if str(row.get("user_id")) not in recent] or candidates
+    if not pool:
+        return {"ok": False, "reason": "opponents", "cost": cost, "credits": coins}
+
     selected = random.sample(pool, min(3, len(pool)))
+    today = str(profile.get("gauntlet_ticket_date") or await get_guild_local_date(guild_id))
+    reference_id = f"gauntlet_refresh:{today}:{next_refresh}"
+    from .rsl_economy_ledger import apply_coin_transaction
+    ledger = await apply_coin_transaction(
+        bot.db,
+        guild_id=guild_id,
+        user_id=user_id,
+        amount=-cost,
+        transaction_type="gauntlet_refresh",
+        reference_id=reference_id,
+        reason=f"Gauntlet opponent refresh #{next_refresh}",
+        metadata={"date": today, "refresh_number": next_refresh},
+    )
+    if not ledger.get("ok"):
+        return {"ok": False, "reason": "credits", "cost": cost, "credits": coins}
+
+    # If a retry sees the same completed ledger transaction after a process
+    # interruption, finish the domain mutation without charging again.
+    current_profile = await bot.db.drivers.find_one(
+        {"_id": f"{guild_id}_{user_id}"},
+        {"gauntlet_refreshes": 1, "gauntlet_opponents": 1, "rsl_coins": 1},
+    )
+    current_count = max(0, int((current_profile or {}).get("gauntlet_refreshes", 0) or 0))
+    if ledger.get("duplicate") and current_count >= next_refresh:
+        current_ids = [str(x) for x in (current_profile or {}).get("gauntlet_opponents", [])][:3]
+        rows = await bot.db.drivers.find({
+            "guild_id": guild_id,
+            "user_id": {"$in": current_ids},
+            "season_registered": True,
+            "season_number": season,
+            "defense_locked.courses.4": {"$exists": True},
+        }).to_list(length=3)
+        by_id = {str(row.get("user_id")): row for row in rows}
+        return {
+            "ok": True,
+            "duplicate": True,
+            "opponents": [by_id[x] for x in current_ids if x in by_id],
+            "cost": 0,
+            "credits": int((current_profile or {}).get("rsl_coins", 0) or 0),
+        }
+
     updated = await bot.db.drivers.update_one(
-        {"_id": f"{guild_id}_{user_id}", "guild_id": guild_id, "rsl_credits": {"$gte": cost}},
-        {"$inc": {"rsl_credits": -cost, "gauntlet_refreshes": 1}, "$set": {
+        {"_id": f"{guild_id}_{user_id}", "guild_id": guild_id, "gauntlet_refreshes": refreshes},
+        {"$inc": {"gauntlet_refreshes": 1}, "$set": {
             "gauntlet_opponents": [str(x.get("user_id")) for x in selected],
             "gauntlet_opponent_refresh_at": time.time(),
         }},
     )
     if getattr(updated, "modified_count", 0) != 1:
+        after = await bot.db.drivers.find_one(
+            {"_id": f"{guild_id}_{user_id}"},
+            {"gauntlet_refreshes": 1, "rsl_coins": 1},
+        )
+        after_count = max(0, int((after or {}).get("gauntlet_refreshes", 0) or 0))
+        if after_count >= next_refresh:
+            return {"ok": True, "duplicate": True, "opponents": selected, "cost": 0, "credits": int((after or {}).get("rsl_coins", 0) or 0)}
+        await apply_coin_transaction(
+            bot.db,
+            guild_id=guild_id,
+            user_id=user_id,
+            amount=cost,
+            transaction_type="gauntlet_refresh_refund",
+            reference_id=f"{reference_id}:refund",
+            reason=f"Refund failed Gauntlet opponent refresh #{next_refresh}",
+            metadata={"date": today, "refresh_number": next_refresh},
+        )
         return {"ok": False, "reason": "race", "cost": cost}
-    return {"ok": True, "opponents": selected, "cost": cost, "credits": credits - cost}
+
+    return {
+        "ok": True,
+        "duplicate": False,
+        "opponents": selected,
+        "cost": cost,
+        "credits": int(ledger.get("balance_after", max(0, coins - cost)) or 0),
+    }
 
 class ChallengeRefreshButton(discord.ui.Button):
     def __init__(self):
