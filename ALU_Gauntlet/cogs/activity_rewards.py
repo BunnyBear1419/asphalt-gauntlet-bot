@@ -85,13 +85,9 @@ class ActivityRewardsCog(commands.Cog):
             transaction_type="activity_reward", reference_id=f"chat:{message.id}",
             reason="Qualified community activity", metadata={"message_id": str(message.id), "xp": CHAT_XP},
         )
-        if not ledger.get("ok"):
-            await self.bot.db.drivers.update_one(
-                {"_id": f"{guild_id}_{user_id}", "activity_reward_count": {"$gt": 0}},
-                {"$inc": {"activity_reward_count": -1}},
-            )
-            return
         if ledger.get("duplicate"):
+            return
+        if not ledger.get("ok"):
             await self.bot.db.drivers.update_one(
                 {"_id": f"{guild_id}_{user_id}", "activity_reward_count": {"$gt": 0}},
                 {"$inc": {"activity_reward_count": -1}},
