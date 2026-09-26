@@ -94,7 +94,8 @@ def test_v1_calendar_and_discord_notification_contract_is_complete():
     for marker in (
         "RSL EVENT SCHEDULE",
         "Gauntlet seasons and tournaments stay on one live schedule",
-        "Personal Reminders",
+        "Create Personal Reminder",
+        "My Reminders",
     ):
         assert marker in calendar
     calendar_script = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "calendar.js")
