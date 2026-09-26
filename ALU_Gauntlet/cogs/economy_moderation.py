@@ -44,7 +44,7 @@ class EconomyModerationCog(commands.Cog):
             {"_id": driver_id},
             {"moderation_last_content": 1, "moderation_last_content_at": 1,
              "moderation_repeat_count": 1, "moderation_penalty_date": 1,
-             "moderation_penalty_total": 1},
+             "moderation_penalty_total": 1, "moderation_last_penalty_message_id": 1},
         )
         if not profile:
             return
@@ -67,8 +67,9 @@ class EconomyModerationCog(commands.Cog):
         updated = await self.bot.db.drivers.update_one(
             {"_id": driver_id, "rsl_coins": {"$gte": penalty},
              "moderation_penalty_date": today,
-             "moderation_penalty_total": {"$lte": MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY - penalty}},
-            {"$inc": {"rsl_coins": -penalty, "moderation_penalty_total": penalty}},
+             "moderation_penalty_total": {"$lte": MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY - penalty},
+             "moderation_last_penalty_message_id": {"$ne": str(message.id)}},
+            {"$inc": {"rsl_coins": -penalty, "moderation_penalty_total": penalty}, "$set": {"moderation_last_penalty_message_id": str(message.id)}},
         )
         if getattr(updated, "modified_count", 0) != 1:
             return
