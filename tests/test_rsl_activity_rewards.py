@@ -20,7 +20,7 @@ def test_activity_levels_and_xp_thresholds_are_deterministic():
 
 
 def test_chat_rewards_have_cooldown_and_daily_cap():
-    assert CHAT_CREDITS == 500
+    assert CHAT_CREDITS == 100
     assert CHAT_XP == 10
     assert DAILY_CHAT_REWARD_CAP == 30
     assert chat_reward_available(last_reward_at=None, reward_date=None, today="2026-09-26", reward_count=0, now=1000)
