@@ -505,6 +505,28 @@ class WebControlCenter:
     trigger.addEventListener("click",e=>{e.stopPropagation();menu.hidden=!menu.hidden;trigger.setAttribute("aria-expanded",String(!menu.hidden));});
     document.addEventListener("click",e=>{if(!menu.contains(e.target)&&e.target!==trigger)close();});
     document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+    // Navigation dropdowns: open while hovered, close as soon as the pointer leaves.
+    // Click/tap remains supported for touch devices.
+    document.querySelectorAll(".top-nav details.top-nav-dropdown").forEach(dropdown=>{
+      const open=()=>dropdown.open=true;
+      const close=()=>dropdown.open=false;
+      dropdown.addEventListener("pointerenter",open);
+      dropdown.addEventListener("pointerleave",close);
+      const summary=dropdown.querySelector(":scope > summary");
+      if(summary){
+        summary.addEventListener("click",e=>{
+          if(e.pointerType==="mouse"){
+            e.preventDefault();
+            dropdown.open=!dropdown.open;
+          }
+        });
+      }
+    });
+    document.addEventListener("pointerenter",e=>{
+      if(!e.target.closest(".top-nav details.top-nav-dropdown")){
+        document.querySelectorAll(".top-nav details.top-nav-dropdown[open]").forEach(d=>d.open=false);
+      }
+    },true);
     syncAccountLanguage();
   };
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
