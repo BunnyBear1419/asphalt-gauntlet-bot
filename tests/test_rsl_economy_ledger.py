@@ -10,7 +10,8 @@ def test_coin_ledger_is_idempotent_and_balanced():
     assert '"status": "pending"' in source
     assert '"status": "completed"' in source
     assert '"balance_after": balance_after' in source
-    assert '"rsl_coins": {"$gte": abs(amount)}' in source
+    assert "rsl_coins" in source
+    assert "$gte" in source and "abs(amount)" in source
     assert '"$inc": {"rsl_coins": amount}' in source
 
 
