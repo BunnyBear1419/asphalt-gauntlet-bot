@@ -95,7 +95,7 @@ def test_v1_calendar_and_discord_notification_contract_is_complete():
         "RSL EVENT SCHEDULE",
         "Gauntlet seasons and tournaments stay on one live schedule",
         "/api/calendar",
-        "custom-reminder",
+        "Personal Reminders",
     ):
         assert marker in calendar
     for marker in (
