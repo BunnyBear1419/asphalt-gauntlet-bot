@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from discord.ext import commands
 
+from ..core.rsl_economy_ledger import apply_coin_transaction
 from ..core.rsl_activity import (
     CHAT_CREDITS,
     CHAT_XP,
@@ -65,7 +66,7 @@ class ActivityRewardsCog(commands.Cog):
         ):
             return
 
-        updated = await self.bot.db.drivers.update_one(
+        claim = await self.bot.db.drivers.update_one(
             {
                 "_id": f"{guild_id}_{user_id}",
                 "activity_reward_date": today,
@@ -75,17 +76,24 @@ class ActivityRewardsCog(commands.Cog):
                     {"activity_last_reward_at": {"$lte": now - 120}},
                 ],
             },
-            {
-                "$inc": {
-                    "rsl_coins": CHAT_CREDITS,
-                    "activity_xp": CHAT_XP,
-                    "activity_reward_count": 1,
-                },
-                "$set": {"activity_last_reward_at": now},
-            },
+            {"$inc": {"activity_reward_count": 1}, "$set": {"activity_last_reward_at": now}},
         )
-        if getattr(updated, "modified_count", 0) != 1:
+        if getattr(claim, "modified_count", 0) != 1:
             return
+        ledger = await apply_coin_transaction(
+            self.bot.db, guild_id=guild_id, user_id=user_id, amount=CHAT_CREDITS,
+            transaction_type="activity_reward", reference_id=f"chat:{message.id}",
+            reason="Qualified community activity", metadata={"message_id": str(message.id), "xp": CHAT_XP},
+        )
+        if not ledger.get("ok"):
+            await self.bot.db.drivers.update_one(
+                {"_id": f"{guild_id}_{user_id}", "activity_reward_count": {"$gt": 0}},
+                {"$inc": {"activity_reward_count": -1}},
+            )
+            return
+        await self.bot.db.drivers.update_one(
+            {"_id": f"{guild_id}_{user_id}"}, {"$inc": {"activity_xp": CHAT_XP}}
+        )
 
 
 async def setup(bot):
