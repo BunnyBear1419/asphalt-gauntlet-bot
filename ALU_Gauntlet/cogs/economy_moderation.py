@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone
 from discord.ext import commands
 from ..core.rsl_economy import MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY, moderation_penalty
+from ..core.rsl_economy_ledger import apply_coin_transaction
 
 _AD = re.compile(r"\b(?:buy|sell|promo|promotion|advertise|advertisement|discount|free\s+nitro|join\s+my\s+server)\b", re.I)
 _URL = re.compile(r"https?://\S+|discord\.gg/\S+", re.I)
@@ -64,22 +65,20 @@ class EconomyModerationCog(commands.Cog):
         penalty = moderation_penalty(category)
         if penalty <= 0 or penalty_total + penalty > MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY:
             return
+        ledger = await apply_coin_transaction(
+            self.bot.db, guild_id=guild_id, user_id=user_id, amount=-penalty,
+            transaction_type="moderation_penalty", reference_id=f"moderation:{message.id}",
+            reason=category, metadata={"message_id": str(message.id)},
+        )
+        if not ledger.get("ok"):
+            return
         updated = await self.bot.db.drivers.update_one(
-            {"_id": driver_id, "rsl_coins": {"$gte": penalty},
-             "moderation_penalty_date": today,
-             "moderation_penalty_total": {"$lte": MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY - penalty},
-             "moderation_last_penalty_message_id": {"$ne": str(message.id)}},
-            {"$inc": {"rsl_coins": -penalty, "moderation_penalty_total": penalty}, "$set": {"moderation_last_penalty_message_id": str(message.id)}},
+            {"_id": driver_id, "moderation_penalty_date": today,
+             "moderation_penalty_total": {"$lte": MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY - penalty}},
+            {"$inc": {"moderation_penalty_total": penalty}},
         )
         if getattr(updated, "modified_count", 0) != 1:
             return
-        try:
-            await self.bot.db.rsl_economy_transactions.insert_one({
-                "guild_id": guild_id, "user_id": user_id, "type": "moderation_penalty",
-                "reason": category, "amount": -penalty, "message_id": str(message.id), "created_at": now,
-            })
-        except Exception:
-            pass
 
 async def setup(bot):
     await bot.add_cog(EconomyModerationCog(bot))
