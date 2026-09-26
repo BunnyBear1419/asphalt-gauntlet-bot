@@ -18,5 +18,5 @@ class PlayerService:
     def _safe(row,include_id=False):
         if include_id: row["id"]=str(row.pop("_id",""))
         else: row.pop("_id",None)
-        allowed={"id","guild_id","user_id","username","global_name","game_id","elo","garage_pi","season_registered","season_number","streak","career_wins","career_played","defense_locked","game_name","about","location","links","created_at","updated_at"}
+        allowed={"id","guild_id","user_id","username","global_name","game_id","elo","garage_pi","season_registered","season_number","streak","career_wins","career_played","defense_locked","game_name","about","location","links","created_at","updated_at","rsl_dominance","gauntlet_recent_opponents"}
         return {k:v for k,v in row.items() if k in allowed}
