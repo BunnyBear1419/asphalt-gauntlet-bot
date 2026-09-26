@@ -1,6 +1,6 @@
 /* Image-2-inspired cinematic dashboard cards */
 .feature-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px!important;margin-top:18px!important}
-.feature{isolation:isolate;position:relative!important;overflow:hidden!important;min-height:250px!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:16px!important;background:#07101f!important;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease!important}
+.feature{isolation:isolate;position:relative!important;overflow:hidden!important;min-height:250px!important;border:1px solid #173b64!important;border-radius:16px!important;background:#071427!important;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease!important}
 .feature-picture{position:absolute!important;inset:0!important;z-index:0!important;width:100%!important;height:100%!important;margin:0!important;overflow:hidden!important}
 .feature-picture .art-img{position:absolute!important;width:100%!important;height:100%!important;inset:0!important;object-fit:cover!important;object-position:center!important;display:block!important;filter:saturate(1.1) contrast(1.06)!important;transition:transform .5s ease,filter .3s ease!important}
 .feature-picture:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,8,23,.04) 0%,rgba(2,8,23,.06) 38%,rgba(2,8,23,.62) 100%);z-index:1}
@@ -32,3 +32,19 @@
 @media (max-width:850px){.feature-row{grid-template-columns:1fr!important}.featured-garage-strip{grid-template-columns:1fr}.featured-garage-cars{grid-template-columns:repeat(4,1fr)}.featured-garage-link{justify-self:start}}
 @media (max-width:520px){.feature{min-height:220px!important}.feature-body{grid-template-columns:auto 1fr!important;padding:15px 15px 14px!important}.feature-body>b{grid-column:2;grid-row:1;justify-self:end;width:38px;height:38px;font-size:21px}.feature-body h2{font-size:20px!important}.feature-body p{font-size:11px!important}.featured-garage-cars{grid-template-columns:repeat(2,1fr)}}
 @media (prefers-reduced-motion:reduce){.feature,.feature-picture .art-img,.featured-garage-cars img{transition:none}.feature:hover{transform:none}.feature:hover .feature-picture .art-img{transform:none}}
+
+
+/* RSL card-layer correction: dashboard-cards.css loads after app.css. */
+.discord-cta.discord-cta{
+  border:1px solid #173b64!important;
+  background:#071427!important;
+  background-image:none!important;
+  color:#dbe8f8!important;
+  box-shadow:0 10px 26px rgba(0,0,0,.45)!important;
+  opacity:1!important;
+  outline:0!important;
+}
+.discord-cta .discord-cta-stats{
+  border-left:1px solid #173b64!important;
+  border-right:1px solid #173b64!important;
+}
