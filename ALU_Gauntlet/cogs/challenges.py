@@ -174,7 +174,7 @@ class ChallengesCog(commands.Cog):
                 await release_active_challenge(active['_id'])
             await interaction.followup.send('❌ Could not process this match. If a settlement reservation was created, the bot will reconcile it automatically.', ephemeral=True)
             return
-        result = await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id']}, '$unset': {'processing_at': ''}})
+        result = await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id'], 'ticket_burned': True, 'settlement_closed': True}, '$unset': {'processing_at': ''}})
         if getattr(result, 'modified_count', 0) != 1:
             logging.warning('Match %s settled but challenge %s could not be finalized immediately; scheduler will reconcile it.', match_data['_id'], active['_id'])
         season = current_season
