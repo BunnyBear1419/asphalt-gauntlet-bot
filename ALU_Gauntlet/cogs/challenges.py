@@ -7,7 +7,7 @@ from ..core.gauntlet_progression import FREE_DAILY_TICKETS
 
 class ChallengesCog(commands.Cog):
 
-    @app_commands.command(name='challenge', description='Fetches active 5-course defense ghosts for matchmaking (5 per day).')
+    @app_commands.command(name='challenge', description='Fetches active 5-course defense ghosts for matchmaking (up to 10 per day).')
     @app_commands.checks.cooldown(1, 45.0, key=lambda i: (i.guild_id, i.user.id))
     async def challenge_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
@@ -48,7 +48,7 @@ class ChallengesCog(commands.Cog):
         tickets = int(user_profile.get('gauntlet_tickets', 5) or 0)
         if tickets <= 0:
             await interaction.followup.send(
-                "⏳ **No Gauntlet Tickets Remaining:** Your 5 daily Gauntlet Tickets refresh with the daily Gauntlet reset.",
+                "⏳ **No Gauntlet Tickets Remaining:** Your daily 5 free tickets refresh with the daily Gauntlet reset.",
                 ephemeral=True,
             )
             return
@@ -106,7 +106,7 @@ class ChallengesCog(commands.Cog):
             fair = fair_match_snapshot(user_profile, opp)
             desc = f"{get_division_for_pi(int(opp.get('garage_pi', 0)))['name'][:32]} • {fair['summary']} • 5 courses"
             options_list.append(discord.SelectOption(label=f"{opp.get('game_id', 'Driver')} | {opp.get('elo', 1000)} ELO", description=desc[:100], value=opp['user_id'], emoji='🏎️'))
-        match_embed = discord.Embed(title='⚡ AUTOMATED MATCHMAKING MATRIX ONLINE', description=f'A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a locked 5-course defense. You will see their exact routes, cars, and times, then race those same 5 routes with your own attack cars. Win 3 out of 5 races to win the match.*\n\n📊 **Gauntlet Tickets remaining:** `{remaining}/5`', color=ASPHALT_THEME_COLOR)
+        match_embed = discord.Embed(title='⚡ AUTOMATED MATCHMAKING MATRIX ONLINE', description=f'A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a locked 5-course defense. You will see their exact routes, cars, and times, then race those same 5 routes with your own attack cars. Win 3 out of 5 races to win the match.*\n\n📊 **Gauntlet Tickets remaining:** `{remaining}/10`', color=ASPHALT_THEME_COLOR)
         match_embed.set_image(url=ASPHALT_MEDIA['banner_match'])
         await interaction.followup.send(embed=match_embed, view=ChallengeView(options_list, defender_data_map, guild_id, user_id))
 
