@@ -3,6 +3,7 @@ from discord import app_commands
 from ..core.core import *
 from ..core.match_scoring import apply_rsl_performance_bonus
 from ..core.fairness import fair_match_snapshot
+from ..core.gauntlet_progression import FREE_DAILY_TICKETS
 
 class ChallengesCog(commands.Cog):
 
@@ -34,13 +35,15 @@ class ChallengesCog(commands.Cog):
                 {'_id': f'{guild_id}_{user_id}'},
                 {'$set': {
                     'gauntlet_ticket_date': today,
-                    'gauntlet_tickets': 5,
+                    'gauntlet_tickets': FREE_DAILY_TICKETS,
+                    'gauntlet_purchased_tickets': 0,
                     'gauntlet_refreshes': 0,
                     'gauntlet_opponent_refresh_at': time.time(),
                 }},
             )
             user_profile['gauntlet_ticket_date'] = today
-            user_profile['gauntlet_tickets'] = 5
+            user_profile['gauntlet_tickets'] = FREE_DAILY_TICKETS
+            user_profile['gauntlet_purchased_tickets'] = 0
             user_profile['gauntlet_refreshes'] = 0
         tickets = int(user_profile.get('gauntlet_tickets', 5) or 0)
         if tickets <= 0:
