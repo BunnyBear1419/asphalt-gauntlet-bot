@@ -1588,6 +1588,11 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         "w_id": w_id, "l_id": l_id, "new_w_elo": new_w_elo, "new_l_elo": new_l_elo,
         "old_w_elo": old_w_elo, "old_l_elo": old_l_elo,
         "challenger_before": challenger_before, "defender_before": defender_before,
+        "season_points_challenger": courses_beat + (3 if challenger_won else 0),
+        "season_points_defender": (5 - courses_beat) + (3 if not challenger_won else 0),
+        "season_races_won_challenger": courses_beat,
+        "season_races_won_defender": 5 - courses_beat,
+        "settlement_version": 2, "settlement_id": match_id,
         "outcome_desc": outcome_desc, "display_color": display_color, "announce_title": announce_title,
         "proof_url": proof_url, "defender_proof_url": defender_proof_url,
         "defense_courses": defense_courses, "challenger_courses": challenger_times,
@@ -1600,12 +1605,18 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
         await bot.db.matches.insert_one(reservation, session=session)
         await bot.db.drivers.update_one(
             {"_id": f"{guild_id}_{w_id}"},
-            {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}},
+            {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1,
+                "season_points": int(reservation["season_points_challenger"] if w_id == challenger_id else reservation["season_points_defender"]),
+                "season_races_won": int(reservation["season_races_won_challenger"] if w_id == challenger_id else reservation["season_races_won_defender"]),
+                "season_matches": 1}},
             session=session,
         )
         await bot.db.drivers.update_one(
             {"_id": f"{guild_id}_{l_id}"},
-            {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}},
+            {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1,
+                "season_points": int(reservation["season_points_challenger"] if l_id == challenger_id else reservation["season_points_defender"]),
+                "season_races_won": int(reservation["season_races_won_challenger"] if l_id == challenger_id else reservation["season_races_won_defender"]),
+                "season_matches": 1}},
             session=session,
         )
 
@@ -1649,8 +1660,8 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
             if existing and existing.get("settlement_status") == "completed":
                 return existing
             raise
-        await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1}})
-        await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1}})
+        await bot.db.drivers.update_one({"_id": f"{guild_id}_{w_id}"}, {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1, "season_points": int(reservation["season_points_challenger"] if w_id == challenger_id else reservation["season_points_defender"]), "season_races_won": int(reservation["season_races_won_challenger"] if w_id == challenger_id else reservation["season_races_won_defender"]), "season_matches": 1}})
+        await bot.db.drivers.update_one({"_id": f"{guild_id}_{l_id}"}, {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1, "season_points": int(reservation["season_points_challenger"] if l_id == challenger_id else reservation["season_points_defender"]), "season_races_won": int(reservation["season_races_won_challenger"] if l_id == challenger_id else reservation["season_races_won_defender"]), "season_matches": 1}})
 
     match_record = {
         "_id": match_id,
@@ -4168,7 +4179,7 @@ async def claim_active_challenge(guild_id: str, user_id: str):
         return None
     now = time.time()
     if float(active.get("expires_at", now + 1)) <= now:
-        await bot.db.active_challenges.update_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id), "status": {"$in": ["active", "processing"]}}, {"$set": {"status": "expired", "expired_at": now}})
+        await bot.db.active_challenges.update_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id), "status": {"$in": ["active", "processing"]}}, {"$set": {"status": "expired", "expired_at": now, "abandon_reason": "timeout", "ticket_burned": True, "settlement_closed": True}})
         return None
     if active.get("status") == "processing":
         processing_at = float(active.get("processing_at", 0))
@@ -4193,10 +4204,21 @@ async def claim_active_challenge(guild_id: str, user_id: str):
     return active
 
 async def release_active_challenge(active_id: str):
+    """Return a processing lock to active without refunding a consumed ticket."""
     await bot.db.active_challenges.update_one(
         {"_id": active_id, "status": "processing"},
         {"$set": {"status": "active"}, "$unset": {"processing_at": ""}},
     )
+
+async def abandon_active_challenge(guild_id: str, user_id: str, reason: str = "quit"):
+    """Close an active challenge exactly once; committed tickets are not refunded."""
+    active_id = f"{guild_id}_{user_id}"
+    now = time.time()
+    result = await bot.db.active_challenges.update_one(
+        {"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id), "status": "active"},
+        {"$set": {"status": "abandoned", "abandon_reason": str(reason)[:80], "abandoned_at": now, "ticket_burned": True, "settlement_closed": True}},
+    )
+    return getattr(result, "modified_count", 0) == 1
 
 async def open_submitmatch_workflow(interaction: discord.Interaction):
     """Open the guided five-course match submission workflow from any supported UI."""
