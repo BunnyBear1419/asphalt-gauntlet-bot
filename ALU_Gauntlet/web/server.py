@@ -3460,10 +3460,14 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             total_matches += played; total_wins += wins; total_losses += losses
             status = str(t.get("status", "draft"))
             finish = "Champion" if str(t.get("champion_id", "")) in entrant_ids else ("Eliminated" if status == "completed" else "In progress")
-            rows.append({"id":tid,"name":t.get("name","Tournament"),"status":status,"format_label":{"single_elimination":"Single Elimination","double_elimination":"Double Elimination","round_robin":"Round Robin"}.get(t.get("format"),str(t.get("format","Tournament")).replace("_"," ").title()),"team_size":team_size,"start_time":t.get("start_time"),"wins":wins,"losses":losses,"matches_played":played,"current_round":highest_round,"finish":finish,"registration_status":(registration or {}).get("status") if registration else (club_regs[0].get("status") if club_regs else None)})
+            placement = None
+            if status == "completed":
+                result_payload = await self._tournament_result_payload({**t, "_id": t.get("_id")})
+                placement = next((int(x.get("placement")) for x in result_payload.get("standings", []) if str(x.get("entrant_id")) in entrant_ids and x.get("placement") is not None), None)
+            rows.append({"id":tid,"name":t.get("name","Tournament"),"status":status,"format_label":{"single_elimination":"Single Elimination","double_elimination":"Double Elimination","round_robin":"Round Robin"}.get(t.get("format"),str(t.get("format","Tournament")).replace("_"," ").title()),"team_size":team_size,"start_time":t.get("start_time"),"wins":wins,"losses":losses,"matches_played":played,"current_round":highest_round,"finish":finish,"placement":placement,"champion":bool(str(t.get("champion_id","")) in entrant_ids),"registration_status":(registration or {}).get("status") if registration else (club_regs[0].get("status") if club_regs else None)})
         rows.sort(key=lambda x: str(x.get("start_time") or ""), reverse=True)
         history = [r for r in rows if r["status"] == "completed"][:12]
-        return web.json_response({"tournaments":rows[:20],"upcoming":[r for r in rows if r["status"] in {"registration_open","open","live"}][:5],"history":history,"stats":{"entered":len(rows),"completed":len(history),"matches_played":total_matches,"wins":total_wins,"losses":total_losses,"win_rate":round((total_wins/total_matches)*100,1) if total_matches else 0}})
+        return web.json_response({"tournaments":rows[:20],"upcoming":[r for r in rows if r["status"] in {"registration_open","open","live"}][:5],"history":history,"stats":{"entered":len(rows),"completed":len(history),"championships":sum(1 for r in rows if r.get("champion")),"matches_played":total_matches,"wins":total_wins,"losses":total_losses,"win_rate":round((total_wins/total_matches)*100,1) if total_matches else 0}})
 
     async def my_tournaments_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
