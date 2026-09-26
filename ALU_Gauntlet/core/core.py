@@ -1940,6 +1940,25 @@ class LobbyUIButtons(discord.ui.View):
         super().__init__(timeout=1800)
         self.challenger_id, self.opponent_id, self.defense_courses = str(challenger_id), str(opponent_id), defense_courses
         self.defender_proof_url = defender_proof_url
+
+    @discord.ui.button(label="🚪 Quit Match", style=discord.ButtonStyle.danger, custom_id="lobby_quit_btn")
+    async def quit_match(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if str(interaction.user.id) != self.challenger_id:
+            await interaction.response.send_message("❌ Access Denied: Challenger only.", ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True)
+        closed = await abandon_active_challenge(str(interaction.guild_id), self.challenger_id, "quit")
+        for item in self.children:
+            item.disabled = True
+        try:
+            await interaction.message.edit(view=self)
+        except Exception:
+            pass
+        if closed:
+            await interaction.followup.send("🏁 **Match abandoned.** The committed Gauntlet ticket is consumed, matching the ALU quit behavior.", ephemeral=True)
+        else:
+            await interaction.followup.send("ℹ️ This match was already submitted, closed, or abandoned. No additional ticket action was taken.", ephemeral=True)
+
     @discord.ui.button(label="📤 Submit Match", style=discord.ButtonStyle.blurple, custom_id="lobby_report_btn")
     async def report_match(self, interaction: discord.Interaction, button: discord.ui.Button):
         if str(interaction.user.id) != self.challenger_id:
