@@ -70,3 +70,129 @@ def with_overall_activity_score(record: dict) -> dict:
     result = dict(record)
     result["overall_activity_score"] = overall_activity_score(record)
     return result
+
+
+async def record_activity_event(
+    db,
+    *,
+    guild_id: str,
+    user_id: str,
+    activity_type: str,
+    event_id: str,
+    season_number: int | None = None,
+    count: int = 1,
+) -> bool:
+    """Record one qualified activity event exactly once.
+
+    The unique event key makes retries/replays harmless. This ledger is
+    intentionally separate from competitive standings: activity recognition
+    can be rebuilt without changing Gauntlet ELO/points.
+    """
+    activity_type = str(activity_type).strip()
+    event_id = str(event_id).strip()
+    if not activity_type or not event_id or int(count or 0) <= 0:
+        return False
+    key = f"{guild_id}:{user_id}:{activity_type}:{event_id}"
+    doc = {
+        "_id": key,
+        "guild_id": str(guild_id),
+        "user_id": str(user_id),
+        "activity_type": activity_type,
+        "event_id": event_id,
+        "season_number": int(season_number) if season_number is not None else None,
+        "count": max(1, int(count)),
+        "created_at": __import__("time").time(),
+    }
+    try:
+        await db.rsl_activity_events.insert_one(doc)
+        return True
+    except Exception as exc:
+        if exc.__class__.__name__ in {"DuplicateKeyError"}:
+            return False
+        raise
+
+
+async def collect_overall_activity_stats(db, *, guild_id: str, season_number: int) -> list[dict]:
+    """Rebuild current-season Overall RSL Activity from authoritative records.
+
+    Competitive records remain authoritative; the activity ledger is used for
+    explicitly approved community activity. Re-running this function is
+    deterministic and therefore safe after restarts or partial failures.
+    """
+    guild_id = str(guild_id)
+    season_number = int(season_number)
+    stats: dict[str, dict] = {}
+
+    def row(user_id: str) -> dict:
+        user_id = str(user_id)
+        return stats.setdefault(user_id, {"user_id": user_id, **{k: 0 for k in ACTIVITY_WEIGHTS}})
+
+    match_cursor = db.matches.find(
+        {
+            "guild_id": guild_id,
+            "settlement_status": "completed",
+            "reverted": {"$ne": True},
+            "season_number": season_number,
+        },
+        {
+            "challenger_id": 1,
+            "opponent_id": 1,
+            "w_id": 1,
+        },
+    )
+    async for match in match_cursor:
+        challenger = str(match.get("challenger_id") or "")
+        defender = str(match.get("opponent_id") or "")
+        winner = str(match.get("w_id") or "")
+        if challenger:
+            row(challenger)["gauntlet_matches"] += 1
+            row(challenger)["challenges"] += 1
+        if defender:
+            row(defender)["gauntlet_matches"] += 1
+            row(defender)["defenses"] += 1
+
+    # Tournament brackets are embedded in tournament documents. Count only
+    # verified/completed matches from the current season and only real entrants.
+    async for tournament in db.tournaments.find(
+        {"guild_id": guild_id, "season_number": season_number},
+        {"bracket": 1, "status": 1},
+    ):
+        bracket = tournament.get("bracket") or {}
+        groups = []
+        for key in ("rounds", "winners", "losers"):
+            groups.extend(bracket.get(key) or [])
+        for key in ("grand_final", "grand_final_reset"):
+            if isinstance(bracket.get(key), dict):
+                groups.append({"matches": [bracket[key]]})
+        for group in groups:
+            for match in group.get("matches", []):
+                if match.get("status") != "completed" or match.get("result_status") != "verified":
+                    continue
+                for user_id in {str(x) for x in (match.get("player_slots") or []) if x}:
+                    row(user_id)["tournament_matches"] += 1
+
+    # Approved tournament media is a qualified community activity source.
+    async for media in db.tournament_media.find(
+        {"status": "approved", "guild_id": guild_id},
+        {"submitted_by": 1, "user_id": 1, "created_at": 1},
+    ):
+        owner = str(media.get("submitted_by") or media.get("user_id") or "")
+        if owner:
+            row(owner)["media_posts"] += 1
+
+    # Explicitly approved, non-competitive activities are idempotent ledger
+    # events. Chat XP is deliberately not included, preventing chat farming
+    # from becoming a competitive activity-ranking shortcut.
+    async for event in db.rsl_activity_events.find(
+        {"guild_id": guild_id, "season_number": season_number},
+        {"user_id": 1, "activity_type": 1, "count": 1},
+    ):
+        activity_type = str(event.get("activity_type") or "")
+        if activity_type in {"rsl_events", "approved_activity"}:
+            owner = str(event.get("user_id") or "")
+            if owner and activity_type in ACTIVITY_WEIGHTS:
+                row(owner)[activity_type] += max(0, int(event.get("count", 1) or 1))
+
+    result = [with_overall_activity_score(value) for value in stats.values()]
+    result.sort(key=lambda item: (-item["overall_activity_score"], str(item["user_id"])))
+    return result
