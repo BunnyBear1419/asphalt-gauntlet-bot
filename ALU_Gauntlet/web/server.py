@@ -5499,7 +5499,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         wins = int(player.get("career_wins", 0) or 0)
         prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
         connection = prefs.get("asphalt_connection") or {}
-        return web.json_response({"registered": season_active, "profile_exists": True, "rank": rank, "elo": elo, "garage_pi": int(player.get("garage_pi", 0) or 0), "career_wins": wins, "career_losses": max(0, played - wins), "streak": int(player.get("streak", 0) or 0), "defense_locked": bool(player.get("defense_locked", False)), "season_number": season, "player_season_number": player_season, "asphalt_verified": connection.get("status") == "verified"})
+        return web.json_response({"registered": season_active, "profile_exists": True, "rank": rank, "elo": elo, "garage_pi": int(player.get("garage_pi", 0) or 0), "top_five_car_ranks": [int(x) for x in (player.get("top_five_car_ranks") or [])[:5]], "career_wins": wins, "career_losses": max(0, played - wins), "streak": int(player.get("streak", 0) or 0), "defense_locked": bool(player.get("defense_locked", False)), "season_number": season, "player_season_number": player_season, "asphalt_verified": connection.get("status") == "verified"})
 
     async def competition_recent_matches(self, request: web.Request) -> web.Response:
         """Return the signed-in driver's recent verified Gauntlet match results."""
