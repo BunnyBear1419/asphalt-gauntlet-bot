@@ -142,7 +142,7 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             metadata={"season": current_season, "points_rank": points_rank[uid],
                       "season_points": int(row.get("season_points", 0) or 0)},
         )
-        if ledger.get("ok"):
+        if ledger.get("ok") and not ledger.get("duplicate"):
             await bot.db.drivers.update_one(
                 {"_id": f"{guild_id}_{uid}", "season_number": current_season},
                 {"$inc": {"rsl_badges": int(reward["badges"])},
