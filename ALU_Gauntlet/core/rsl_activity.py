@@ -127,13 +127,20 @@ async def collect_overall_activity_stats(db, *, guild_id: str, season_number: in
         user_id = str(user_id)
         return stats.setdefault(user_id, {"user_id": user_id, **{k: 0 for k in ACTIVITY_WEIGHTS}})
 
+    season_state = await db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+    start_at = float(season_state.get("starts_at", 0) or 0)
+    end_at = float(season_state.get("ends_at", 0) or 0)
+    match_filter = {
+        "guild_id": guild_id,
+        "settlement_status": "completed",
+        "reverted": {"$ne": True},
+    }
+    if start_at and end_at and end_at > start_at:
+        match_filter["timestamp"] = {"$gte": start_at, "$lt": end_at}
+    else:
+        match_filter["season_number"] = season_number
     match_cursor = db.matches.find(
-        {
-            "guild_id": guild_id,
-            "settlement_status": "completed",
-            "reverted": {"$ne": True},
-            "season_number": season_number,
-        },
+        match_filter,
         {
             "challenger_id": 1,
             "opponent_id": 1,
@@ -154,9 +161,26 @@ async def collect_overall_activity_stats(db, *, guild_id: str, season_number: in
     # Tournament brackets are embedded in tournament documents. Count only
     # verified/completed matches from the current season and only real entrants.
     async for tournament in db.tournaments.find(
-        {"guild_id": guild_id, "season_number": season_number},
-        {"bracket": 1, "status": 1},
+        {"guild_id": guild_id},
+        {"bracket": 1, "status": 1, "season_number": 1, "created_at": 1},
     ):
+        tournament_season = tournament.get("season_number")
+        if tournament_season is not None:
+            if int(tournament_season or 0) != season_number:
+                continue
+        elif start_at and end_at:
+            created = str(tournament.get("created_at") or "")
+            if created:
+                try:
+                    created_ts = __import__("datetime").datetime.fromisoformat(created.replace("Z", "+00:00")).timestamp()
+                except Exception:
+                    created_ts = 0
+                if not (start_at <= created_ts < end_at):
+                    continue
+            else:
+                continue
+        else:
+            continue
         bracket = tournament.get("bracket") or {}
         groups = []
         for key in ("rounds", "winners", "losers"):
@@ -174,9 +198,9 @@ async def collect_overall_activity_stats(db, *, guild_id: str, season_number: in
     # Approved tournament media is a qualified community activity source.
     async for media in db.tournament_media.find(
         {"status": "approved", "guild_id": guild_id},
-        {"submitted_by": 1, "user_id": 1, "created_at": 1},
+        {"uploaded_by": 1, "submitted_by": 1, "user_id": 1, "created_at": 1},
     ):
-        owner = str(media.get("submitted_by") or media.get("user_id") or "")
+        owner = str(media.get("uploaded_by") or media.get("submitted_by") or media.get("user_id") or "")
         if owner:
             row(owner)["media_posts"] += 1
 
