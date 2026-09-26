@@ -2,6 +2,7 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 from ..core.match_scoring import apply_rsl_performance_bonus
+from ..core.fairness import fair_match_snapshot
 
 class ChallengesCog(commands.Cog):
 
@@ -79,9 +80,14 @@ class ChallengesCog(commands.Cog):
         cached_ids = [str(x) for x in (user_profile.get('gauntlet_opponents') or [])][:3]
         cached_at = float(user_profile.get('gauntlet_opponent_refresh_at', 0) or 0)
         candidate_map = {str(row.get('user_id')): row for row in candidates}
-        selected_opponents = [candidate_map[x] for x in cached_ids if x in candidate_map] if cached_at and now - cached_at < (4 * 60 * 60) else []
+        recent_blocked = {str(x.get('user_id')) for x in (user_profile.get('gauntlet_recent_opponents') or []) if isinstance(x, dict) and x.get('user_id')}
+        available_candidates = [row for row in candidates if str(row.get('user_id')) not in recent_blocked]
+        # Do not hard-lock a thin division: if fewer than one fresh opponent exists,
+        # the system falls back to the qualified division pool instead of denying a ticket.
+        rotation_pool = available_candidates or candidates
+        selected_opponents = [candidate_map[x] for x in cached_ids if x in candidate_map and x not in recent_blocked] if cached_at and now - cached_at < (4 * 60 * 60) else []
         if len(selected_opponents) < 1:
-            selected_opponents = random.sample(candidates, min(len(candidates), 3))
+            selected_opponents = random.sample(rotation_pool, min(len(rotation_pool), 3))
             await bot.db.drivers.update_one(
                 {'_id': f'{guild_id}_{user_id}', 'gauntlet_ticket_date': today},
                 {'$set': {
@@ -92,7 +98,11 @@ class ChallengesCog(commands.Cog):
             )
         remaining = tickets
         defender_data_map = {opp['user_id']: {'courses': opp['defense_locked']['courses'], 'proof_url': opp['defense_locked'].get('proof_url'), 'car_rank_total': opp['defense_locked'].get('car_rank_total', get_car_rank_total(opp['defense_locked']['courses']))} for opp in selected_opponents}
-        options_list = [discord.SelectOption(label=f"{opp.get('game_id', 'Driver')} | {opp.get('elo', 1000)} ELO", description=f"{get_division_for_pi(int(opp.get('garage_pi', 0)))['name'][:55]} • Car Rating {opp.get('defense_locked', {}).get('car_rank_total', get_car_rank_total(opp.get('defense_locked', {}).get('courses', []))):,} • 5 courses", value=opp['user_id'], emoji='🏎️') for opp in selected_opponents]
+        options_list = []
+        for opp in selected_opponents:
+            fair = fair_match_snapshot(user_profile, opp)
+            desc = f"{get_division_for_pi(int(opp.get('garage_pi', 0)))['name'][:32]} • {fair['summary']} • 5 courses"
+            options_list.append(discord.SelectOption(label=f"{opp.get('game_id', 'Driver')} | {opp.get('elo', 1000)} ELO", description=desc[:100], value=opp['user_id'], emoji='🏎️'))
         match_embed = discord.Embed(title='⚡ AUTOMATED MATCHMAKING MATRIX ONLINE', description=f'A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a locked 5-course defense. You will see their exact routes, cars, and times, then race those same 5 routes with your own attack cars. Win 3 out of 5 races to win the match.*\n\n📊 **Gauntlet Tickets remaining:** `{remaining}/5`', color=ASPHALT_THEME_COLOR)
         match_embed.set_image(url=ASPHALT_MEDIA['banner_match'])
         await interaction.followup.send(embed=match_embed, view=ChallengeView(options_list, defender_data_map, guild_id, user_id))
