@@ -194,9 +194,9 @@ def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
     for marker in (
         '"gauntlet_tickets": {"$gt": 0}',
         '{"$inc": {"gauntlet_tickets": -1}}',
-        "Searching/matching is free; the ticket is consumed atomically",
     ):
         assert marker in core
+    assert "Searching/matching is free; the ticket is consumed atomically" in challenges
     for marker in (
         "Division 1 — Bronze Tier",
         "Division 2 — Silver Tier",
