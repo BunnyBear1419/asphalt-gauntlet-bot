@@ -34,7 +34,6 @@ def test_coin_balance_cannot_go_negative_for_affordability_checks():
 def test_purchase_transaction_source_is_atomic_and_daily_reset_is_non_bankable():
     from pathlib import Path
     source = Path("ALU_Gauntlet/core/rsl_economy.py").read_text(encoding="utf-8")
-    assert "gauntlet_purchased_tickets": 0 in source if False else True
     assert '"gauntlet_purchased_tickets": 0' in source
     assert '"gauntlet_tickets": FREE_DAILY_TICKETS' in source
     assert '"rsl_coins": {"$gte": cost}' in source
