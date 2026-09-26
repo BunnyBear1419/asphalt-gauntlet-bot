@@ -26,6 +26,7 @@ from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_ap
 from ..core.match_scoring import apply_rsl_performance_bonus
 from ..core.fairness import fair_match_snapshot, build_fairness_review
 from ..core.rsl_economy import purchase_daily_ticket, next_ticket_purchase
+from ..core.rsl_economy_ledger import recent_coin_transactions
 from ..core.gauntlet_progression import FREE_DAILY_TICKETS, MAX_DAILY_TICKETS
 
 log = logging.getLogger(__name__)
@@ -2635,6 +2636,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
         self.app.router.add_post("/api/player/tickets/purchase", self.player_ticket_purchase)
+        self.app.router.add_get("/api/player/economy/history", self.player_economy_history)
         self.app.router.add_get("/api/profile/tournaments", self.profile_tournaments)
         self.app.router.add_get("/api/tournaments", self.tournaments)
         self.app.router.add_get("/api/calendar", self.calendar)
@@ -5126,6 +5128,13 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "purchased_remaining": max(0, remaining - min(FREE_DAILY_TICKETS, remaining)),
         })
         return web.json_response({"ok": True, "cost": int(result.get("cost", 0)), "tickets": ticket_state})
+
+    async def player_economy_history(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        rows = await recent_coin_transactions(
+            self.bot.db, guild_id=str(guild_id), user_id=str(user.user_id), limit=20
+        )
+        return web.json_response({"transactions": rows})
 
     async def player_defense(self, request: web.Request) -> web.Response:
         """Return the player's current/pending five-course defense state."""
