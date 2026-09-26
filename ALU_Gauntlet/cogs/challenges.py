@@ -98,7 +98,6 @@ class ChallengesCog(commands.Cog):
                 {'$set': {
                     'gauntlet_opponents': [str(x.get('user_id')) for x in selected_opponents],
                     'gauntlet_opponent_refresh_at': now,
-                    'gauntlet_refreshes': int(user_profile.get('gauntlet_refreshes', 0) or 0) + 1,
                 }},
             )
         remaining = tickets
