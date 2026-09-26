@@ -54,17 +54,9 @@ class ChallengesCog(commands.Cog):
                 ephemeral=True,
             )
             return
-        ticket_claim = await bot.db.drivers.update_one(
-            {'_id': f'{guild_id}_{user_id}', 'gauntlet_ticket_date': today, 'gauntlet_tickets': {'$gt': 0}},
-            {'$inc': {'gauntlet_tickets': -1}},
-        )
-        if getattr(ticket_claim, 'modified_count', 0) != 1:
-            await interaction.followup.send(
-                "⏳ **No Gauntlet Tickets Remaining:** another challenge search used your last available ticket.",
-                ephemeral=True,
-            )
-            return
-        tickets -= 1
+        # Searching/matching is free; the ticket is consumed atomically only when
+        # the player actually selects an opponent and the active challenge is created.
+        # This prevents abandoned dropdowns or stale UI sessions from burning tickets.
         user_pi = user_profile.get('garage_pi', 15500)
         division = get_division_for_pi(user_pi)
         pi_query = division_mongo_query(division)
