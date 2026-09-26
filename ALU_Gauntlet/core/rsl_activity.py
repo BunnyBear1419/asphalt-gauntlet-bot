@@ -38,3 +38,35 @@ def chat_reward_available(*, last_reward_at: float | None, reward_date: str | No
     if last_reward_at is not None:
         return (now - float(last_reward_at)) >= CHAT_COOLDOWN_SECONDS
     return True
+
+
+# Canonical cross-RSL activity weights used by the seasonal Top Active role.
+# Inputs must already be validated/rate-limited by the event ingestion layer.
+ACTIVITY_WEIGHTS = {
+    "gauntlet_matches": 5,
+    "tournament_matches": 5,
+    "rsl_events": 3,
+    "media_posts": 2,
+    "defenses": 3,
+    "challenges": 3,
+    "approved_activity": 1,
+}
+
+
+def overall_activity_score(record: dict) -> int:
+    """Return the deterministic overall RSL activity score for a player."""
+    total = 0
+    for field, weight in ACTIVITY_WEIGHTS.items():
+        try:
+            count = max(0, int(record.get(field, 0) or 0))
+        except (TypeError, ValueError):
+            count = 0
+        total += count * weight
+    return total
+
+
+def with_overall_activity_score(record: dict) -> dict:
+    """Copy an activity record and attach its canonical overall score."""
+    result = dict(record)
+    result["overall_activity_score"] = overall_activity_score(record)
+    return result
