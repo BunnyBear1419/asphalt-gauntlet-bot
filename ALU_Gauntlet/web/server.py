@@ -3522,6 +3522,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         item["can_manage_results"] = bool(
             detail_guild and await self._is_live_tournament_staff(user, str(item.get("guild_id")), detail_guild)
         )
+        item["result_submission_mode"] = str(item.get("result_submission_mode") or "player_review")
+        item["result_submission_mode_label"] = "Admin Only" if item["result_submission_mode"] == "admin_only" else "Player Submission + Admin Verification"
         item["id"] = tournament_id
         item.pop("_id", None)
         registrations = []
@@ -3579,6 +3581,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPBadRequest(text="Team size must be 1v1, 2v2, 3v3, or 4v4.")
         if fmt not in {"single_elimination", "double_elimination", "round_robin"}:
             raise web.HTTPBadRequest(text="Unsupported tournament format.")
+        result_submission_mode = str(payload.get("result_submission_mode", "player_review")).strip().casefold()
+        if result_submission_mode not in {"admin_only", "player_review"}:
+            raise web.HTTPBadRequest(text="Result submission mode must be admin_only or player_review.")
         from ALU_Gauntlet.core.tournament import generate_tournament_bracket
         bracket = generate_tournament_bracket(fmt, max_players)
         now = datetime.now(timezone.utc).isoformat()
@@ -3598,6 +3603,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "format": fmt,
             "max_players": max_players,
             "team_size": team_size,
+            "result_submission_mode": result_submission_mode,
             "bracket": bracket,
             "bracket_version": 1,
             "gauntlet_only": bool(payload.get("gauntlet_only", False)),
@@ -3900,10 +3906,15 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             participant_ok = bool(reg)
         else:
             participant_ok = str(user.user_id) in slots
-        if not participant_ok:
-            match_guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(t.get("guild_id"))), None)
-            if match_guild is None or not await self._is_live_guild_staff(user, str(t.get("guild_id")), match_guild):
-                raise web.HTTPForbidden(text="Only a participant or staff member for this server can submit its result.")
+        match_guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(t.get("guild_id"))), None)
+        is_staff = bool(
+            match_guild is not None and await self._is_live_guild_staff(user, str(t.get("guild_id")), match_guild)
+        )
+        result_mode = str(t.get("result_submission_mode") or "player_review").casefold()
+        if result_mode == "admin_only" and not is_staff:
+            raise web.HTTPForbidden(text="This tournament is configured for Admin Only result submission.")
+        if not participant_ok and not is_staff:
+            raise web.HTTPForbidden(text="Only a participant or staff member for this server can submit its result.")
         if match.get("result_status") == "pending":
             raise web.HTTPConflict(text="This match already has a result waiting for staff verification.")
         if match.get("status") != "ready":
