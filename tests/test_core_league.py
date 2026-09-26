@@ -356,3 +356,22 @@ def test_dashboard_uses_bound_command_bridge_for_hidden_cog_commands():
     assert "invoke_hidden_group_command" in source
     assert 'getattr(cmd, "binding", None)' in source
     assert '"_hidden_groups"' in source
+
+
+def test_top_five_car_ratings_calculate_garage_pi_and_preserve_six_divisions():
+    ratings = [2200, 2100, 2000, 1900, 1800]
+    assert sum(ratings) == 10000
+    assert core.get_division_for_pi(sum(ratings))["name"].endswith("Silver Tier")
+
+
+def test_top_five_rating_boundaries_map_to_all_six_rsl_divisions():
+    cases = [
+        ([1600, 1600, 1600, 1600, 1600], "Division 1"),
+        ([1601, 1601, 1601, 1601, 1601], "Division 2"),
+        ([2301, 2300, 2300, 2300, 2300], "Division 3"),
+        ([3001, 3000, 3000, 3000, 3000], "Division 4"),
+        ([3701, 3700, 3700, 3700, 3700], "Division 5"),
+        ([4401, 4400, 4400, 4400, 4400], "Division 6"),
+    ]
+    for ratings, expected in cases:
+        assert core.get_division_for_pi(sum(ratings))["name"].startswith(expected)
