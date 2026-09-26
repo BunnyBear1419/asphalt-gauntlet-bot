@@ -61,8 +61,8 @@ class ChallengesCog(commands.Cog):
         user_pi = user_profile.get('garage_pi', 15500)
         division = get_division_for_pi(user_pi)
         pi_query = division_mongo_query(division)
-        cursor = bot.db.drivers.find({'guild_id': guild_id, 'user_id': {'$ne': user_id}, 'garage_pi': pi_query, 'defense_locked.courses.4': {'$exists': True}}).limit(10)
-        candidates = await cursor.to_list(length=10)
+        cursor = bot.db.drivers.find({'guild_id': guild_id, 'user_id': {'$ne': user_id}, 'garage_pi': pi_query, 'defense_locked.courses.4': {'$exists': True}}).limit(25)
+        candidates = await cursor.to_list(length=25)
         if not candidates:
             await bot.db.drivers.update_one(
                 {'_id': f'{guild_id}_{user_id}', 'gauntlet_ticket_date': today},
@@ -70,8 +70,26 @@ class ChallengesCog(commands.Cog):
             )
             await interaction.followup.send('⚠️ No matching opponents are qualified with active 5-course defenses yet inside your six-division performance tier.')
             return
+
+        # ALU-style opponent rotation: keep the same three opponents for four
+        # hours, then generate a new set. The six-division RSL bracket remains
+        # the matchmaking boundary for every rotation.
+        now = time.time()
+        cached_ids = [str(x) for x in (user_profile.get('gauntlet_opponents') or [])][:3]
+        cached_at = float(user_profile.get('gauntlet_opponent_refresh_at', 0) or 0)
+        candidate_map = {str(row.get('user_id')): row for row in candidates}
+        selected_opponents = [candidate_map[x] for x in cached_ids if x in candidate_map] if cached_at and now - cached_at < (4 * 60 * 60) else []
+        if len(selected_opponents) < 1:
+            selected_opponents = random.sample(candidates, min(len(candidates), 3))
+            await bot.db.drivers.update_one(
+                {'_id': f'{guild_id}_{user_id}', 'gauntlet_ticket_date': today},
+                {'$set': {
+                    'gauntlet_opponents': [str(x.get('user_id')) for x in selected_opponents],
+                    'gauntlet_opponent_refresh_at': now,
+                    'gauntlet_refreshes': int(user_profile.get('gauntlet_refreshes', 0) or 0) + 1,
+                }},
+            )
         remaining = tickets
-        selected_opponents = random.sample(candidates, min(len(candidates), 3))
         defender_data_map = {opp['user_id']: {'courses': opp['defense_locked']['courses'], 'proof_url': opp['defense_locked'].get('proof_url'), 'car_rank_total': opp['defense_locked'].get('car_rank_total', get_car_rank_total(opp['defense_locked']['courses']))} for opp in selected_opponents}
         options_list = [discord.SelectOption(label=f"{opp.get('game_id', 'Driver')} | {opp.get('elo', 1000)} ELO", description=f"{get_division_for_pi(int(opp.get('garage_pi', 0)))['name'][:55]} • Car Rating {opp.get('defense_locked', {}).get('car_rank_total', get_car_rank_total(opp.get('defense_locked', {}).get('courses', []))):,} • 5 courses", value=opp['user_id'], emoji='🏎️') for opp in selected_opponents]
         match_embed = discord.Embed(title='⚡ AUTOMATED MATCHMAKING MATRIX ONLINE', description=f'A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a locked 5-course defense. You will see their exact routes, cars, and times, then race those same 5 routes with your own attack cars. Win 3 out of 5 races to win the match.*\n\n📊 **Gauntlet Tickets remaining:** `{remaining}/5`', color=ASPHALT_THEME_COLOR)
