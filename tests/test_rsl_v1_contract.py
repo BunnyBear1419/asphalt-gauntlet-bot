@@ -181,8 +181,8 @@ def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
     league = read(ROOT / "tests" / "test_core_league.py")
     for marker in (
         "gauntlet_ticket_date",
-        "'gauntlet_tickets': 5",
-        "'$inc': {'gauntlet_tickets': -1}",
+        "gauntlet_tickets': FREE_DAILY_TICKETS",
+        "'gauntlet_tickets': {'$gt': 0}",
         "gauntlet_opponent_refresh_at",
         "4 * 60 * 60",
         "recent_blocked = {str(x.get('user_id')) for x in (user_profile.get('gauntlet_recent_opponents') or [])",
