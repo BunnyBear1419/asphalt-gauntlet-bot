@@ -24,6 +24,20 @@ def test_all_supported_themes_have_final_tokens():
         assert token in css
 
 
+def test_default_midnight_has_cross_page_audit_tokens():
+    server = SERVER.read_text(encoding="utf-8")
+    expected = (
+        'html[data-theme="dark"]{--rsl-audit-bg:#020b18',
+        '--rsl-audit-panel:#071427',
+        '--rsl-audit-panel2:#0b1d34',
+        '--rsl-audit-line:#173b64',
+        '--rsl-audit-text:#dbe8f8',
+        '--rsl-audit-accent:#25dfff',
+    )
+    for token in expected:
+        assert token in server
+
+
 def test_theme_layer_is_last_and_has_accessibility_contract():
     css = CSS.read_text(encoding="utf-8")
     marker = "RSL PRODUCTION UI HARDENING"
