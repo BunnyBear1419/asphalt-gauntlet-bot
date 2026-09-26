@@ -9,6 +9,8 @@ challenge outcome.
 
 from __future__ import annotations
 
+from .fairness import record_match_fairness_stats
+
 
 def rsl_performance_bonus(courses_beat: int) -> int:
     """Return the controlled ELO margin bonus for a five-race challenge.
@@ -45,6 +47,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
     )
 
     if margin == 0:
+        await record_match_fairness_stats(db, match_data)
         return 0
 
     # Atomically claim the one-time adjustment. Only the first settlement
@@ -85,4 +88,5 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
             "rsl_performance_loser_penalty": -margin,
         }},
     )
+    await record_match_fairness_stats(db, match_data)
     return margin if winner_id == challenger_id else -margin
