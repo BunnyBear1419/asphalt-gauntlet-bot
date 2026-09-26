@@ -55,6 +55,8 @@ async function load(){
   text("timezone",p.timezone||prefs.timezone||"UTC");
   text("about",p.about||prefs.about||"No About Me information added yet.");
   text("elo",Number(p.elo||0).toLocaleString());
+  const rslCoins=Number(p.rsl_coins||0); const activityXp=Number(p.activity_xp||0); const activityLevel=Math.max(1,Math.floor(Math.sqrt(Math.max(0,activityXp)/250))+1); const nextXp=Math.max(0,250*activityLevel*activityLevel-activityXp);
+  text("rsl-coins",rslCoins.toLocaleString()); text("activity-level",activityLevel); text("activity-xp",activityXp.toLocaleString()); text("activity-xp-next",nextXp.toLocaleString());
   text("wins",p.career_wins??0);
   text("played",p.career_played??0);
   text("streak",p.streak??0);
