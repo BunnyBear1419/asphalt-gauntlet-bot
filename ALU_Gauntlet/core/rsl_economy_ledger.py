@@ -19,12 +19,19 @@ async def apply_coin_transaction(db, *, guild_id: str, user_id: str, amount: int
                 "balance_after": existing.get("balance_after"), "transaction_id": transaction_id}
 
     now = time.time()
-    await db.rsl_economy_transactions.insert_one({
-        "_id": transaction_id, "guild_id": guild_id, "user_id": user_id,
-        "type": str(transaction_type), "reference_id": reference_id,
-        "reason": str(reason), "amount": amount, "status": "pending",
-        "created_at": now, "metadata": metadata or {},
-    })
+    try:
+        await db.rsl_economy_transactions.insert_one({
+            "_id": transaction_id, "guild_id": guild_id, "user_id": user_id,
+            "type": str(transaction_type), "reference_id": reference_id,
+            "reason": str(reason), "amount": amount, "status": "pending",
+            "created_at": now, "metadata": metadata or {},
+        })
+    except Exception:
+        existing = await db.rsl_economy_transactions.find_one({"_id": transaction_id})
+        if existing:
+            return {"ok": True, "duplicate": True, "amount": int(existing.get("amount", 0) or 0),
+                    "balance_after": existing.get("balance_after"), "transaction_id": transaction_id}
+        raise
     query = {"_id": f"{guild_id}_{user_id}"}
     if amount < 0:
         query["rsl_coins"] = {"$gte": abs(amount)}
