@@ -49,3 +49,15 @@ def test_core_contains_ticket_burn_and_deterministic_settlement_contract():
     assert 'ticket_burned": True' in source
     assert "async def abandon_active_challenge" in source
     assert "class ChallengeRefreshButton" in source
+
+
+def test_paid_refresh_is_ledger_backed_and_automatic_rotation_is_not_paid_refresh():
+    core = Path("ALU_Gauntlet/core/core.py").read_text(encoding="utf-8")
+    challenges = Path("ALU_Gauntlet/cogs/challenges.py").read_text(encoding="utf-8")
+    assert "transaction_type=\"gauntlet_refresh\"" in core
+    assert "reference_id = f\"gauntlet_refresh:{today}:{next_refresh}\"" in core
+    assert '"rsl_coins": 1' in core
+    assert '"gauntlet_refreshes": 1' in core
+    automatic_rotation = challenges.split("if len(selected_opponents) < 1:", 1)[1].split("remaining = tickets", 1)[0]
+    assert "'gauntlet_refreshes':" not in automatic_rotation
+    assert "RSL Credits" not in core
