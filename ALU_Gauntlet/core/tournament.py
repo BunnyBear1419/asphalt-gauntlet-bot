@@ -58,28 +58,50 @@ def _single_elimination(max_players: int) -> list[dict[str, Any]]:
 
 
 def _double_elimination(max_players: int) -> dict[str, Any]:
+    """Build a standard double-elimination winners/losers bracket.
+
+    The lower bracket alternates elimination rounds and merge rounds. For an
+    N-player power-of-two bracket its match counts are:
+    N/4, N/4, N/8, N/8, ... , 1, 1.
+    """
+
     winners = _single_elimination(max_players)
     size = _next_power_of_two(max_players)
     winner_rounds = len(winners)
-    losers_rounds = max(1, (winner_rounds - 1) * 2)
+    losers_rounds = max(2, (winner_rounds - 1) * 2)
+
     losers = []
     for round_number in range(1, losers_rounds + 1):
-        # Losers bracket alternates a "minor" round and a "major" round.
-        # Its match counts are size/4, size/4, size/8, size/8, ...
-        # so winners from the preceding minor round can be paired with the
-        # next Winners-bracket drop without creating duplicate destinations.
-        match_count = max(1, size // (2 ** ((round_number + 3) // 2)))
-        next_count = max(1, size // (2 ** ((round_number + 4) // 2))) if round_number < losers_rounds else 1
+        exponent = ((round_number + 1) // 2) + 1
+        match_count = max(1, size // (2**exponent))
         matches = []
+
         for index in range(match_count):
-            target = None
             if round_number < losers_rounds:
-                target_index = index if next_count == match_count else index // 2
-                target = f"LB-R{round_number + 1}-M{target_index}"
+                if round_number % 2:
+                    target = f"LB-R{round_number + 1}-M{index}"
+                else:
+                    target = f"LB-R{round_number + 1}-M{index // 2}"
             else:
                 target = "GF-M1"
-            matches.append({"id": f"LB-R{round_number}-M{index}", "bracket": "losers", "round": round_number, "player_slots": [None, None], "winner_to": target})
-        losers.append({"round": round_number, "name": f"Losers Round {round_number}", "matches": matches})
+
+            matches.append(
+                {
+                    "id": f"LB-R{round_number}-M{index}",
+                    "bracket": "losers",
+                    "round": round_number,
+                    "player_slots": [None, None],
+                    "winner_to": target,
+                }
+            )
+
+        losers.append(
+            {
+                "round": round_number,
+                "name": f"Losers Round {round_number}",
+                "matches": matches,
+            }
+        )
 
     for r_idx, group in enumerate(winners):
         for match in group["matches"]:
@@ -87,16 +109,36 @@ def _double_elimination(max_players: int) -> dict[str, Any]:
             if r_idx == winner_rounds - 1:
                 match["winner_to"] = "GF-M1"
                 match["loser_to"] = f"LB-R{losers_rounds}-M0"
-            elif r_idx == 0:
-                match["loser_to"] = f"LB-R1-M{index // 2}"
             else:
-                # Winners round 2 drops into Losers round 3, round 3 into
-                # round 5, etc. The Winners Final is the special case that
-                # drops into the final Losers round before the Grand Final.
-                loser_round = (2 * r_idx + 1) if r_idx < winner_rounds - 1 else losers_rounds
-                match["loser_to"] = f"LB-R{loser_round}-M{index // 2 if loser_round < losers_rounds else 0}"
+                # Winners bracket losses enter the next appropriate lower
+                # bracket elimination round: WB R1 -> LB R1, WB R2 -> LB R3,
+                # WB R3 -> LB R5, etc.
+                loser_round = 2 * r_idx + 1
+                match["loser_to"] = (
+                    f"LB-R{loser_round}-M{index // 2}"
+                )
 
-    return {"type": "double_elimination", "winners": winners, "losers": losers, "grand_final": {"id": "GF-M1", "bracket": "grand_final", "round": 1, "player_slots": [None, None], "status": "waiting"}, "grand_final_reset": {"id": "GF-M2", "bracket": "grand_final", "round": 2, "player_slots": [None, None], "status": "waiting", "if_necessary": True}}
+    return {
+        "type": "double_elimination",
+        "winners": winners,
+        "losers": losers,
+        "grand_final": {
+            "id": "GF-M1",
+            "bracket": "grand_final",
+            "round": 1,
+            "player_slots": [None, None],
+            "status": "waiting",
+        },
+        "grand_final_reset": {
+            "id": "GF-M2",
+            "bracket": "grand_final",
+            "round": 2,
+            "player_slots": [None, None],
+            "status": "waiting",
+            "if_necessary": True,
+        },
+    }
+
 def _round_robin(max_players: int) -> list[dict[str, Any]]:
     # Berger-style round robin schedule. For odd player counts, add a bye.
     slots = list(range(1, max_players + 1))
