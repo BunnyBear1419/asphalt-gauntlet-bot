@@ -61,4 +61,12 @@ def test_deployment_is_serialized_to_avoid_discloud_overlap():
     assert "group: discloud-production-deploy" in source
     assert "cancel-in-progress: false" in source
 
+def test_deployment_cleans_ci_artifacts_before_upload():
+    source = _source()
+    assert "Clean CI-generated files before Discloud upload" in source
+    assert "find . -type d -name __pycache__ -prune -exec rm -rf {} +" in source
+    assert "rm -rf .pytest_cache" in source
+    assert "discord-preflight.json" in source
+
+
 # CI trigger: run the full GitHub Actions test suite against current main.
