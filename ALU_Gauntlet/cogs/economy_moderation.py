@@ -65,20 +65,48 @@ class EconomyModerationCog(commands.Cog):
         penalty = moderation_penalty(category)
         if penalty <= 0 or penalty_total + penalty > MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY:
             return
+        transaction_id = f"{guild_id}:{user_id}:moderation:{message.id}"
+        existing = await self.bot.db.rsl_economy_transactions.find_one(
+            {"_id": transaction_id},
+            {"status": 1},
+        )
+        if existing:
+            return
+
+        # Reserve the daily moderation budget before debiting Coins. The atomic
+        # predicate prevents concurrent violations from pushing a driver above
+        # the 10,000-Coin daily cap.
+        reserved = await self.bot.db.drivers.update_one(
+            {
+                "_id": driver_id,
+                "moderation_penalty_date": today,
+                "moderation_penalty_total": {
+                    "$lte": MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY - penalty
+                },
+            },
+            {"$inc": {"moderation_penalty_total": penalty}},
+        )
+        if getattr(reserved, "modified_count", 0) != 1:
+            return
+
         ledger = await apply_coin_transaction(
             self.bot.db, guild_id=guild_id, user_id=user_id, amount=-penalty,
             transaction_type="moderation_penalty", reference_id=f"moderation:{message.id}",
             reason=category, metadata={"message_id": str(message.id)},
         )
-        if not ledger.get("ok"):
+        if ledger.get("ok"):
             return
-        updated = await self.bot.db.drivers.update_one(
-            {"_id": driver_id, "moderation_penalty_date": today,
-             "moderation_penalty_total": {"$lte": MAX_AUTOMATED_MODERATION_PENALTY_PER_DAY - penalty}},
-            {"$inc": {"moderation_penalty_total": penalty}},
+
+        # The Coin debit failed (usually an insufficient balance or a race).
+        # Release only the reservation made by this event.
+        await self.bot.db.drivers.update_one(
+            {
+                "_id": driver_id,
+                "moderation_penalty_date": today,
+                "moderation_penalty_total": {"$gte": penalty},
+            },
+            {"$inc": {"moderation_penalty_total": -penalty}},
         )
-        if getattr(updated, "modified_count", 0) != 1:
-            return
 
 async def setup(bot):
     await bot.add_cog(EconomyModerationCog(bot))
