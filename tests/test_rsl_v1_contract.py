@@ -63,7 +63,7 @@ def test_v1_player_profile_covers_identity_and_competitive_fields():
         "/api/player/me?guild_id=",
         "/api/player/profile",
         "/api/player/preferences",
-        "/api/profile/tournaments",
+        "/api/player/career?guild_id=",
         "/api/notifications",
         "/api/notifications/category",
         "/api/notifications/timing",
@@ -94,10 +94,11 @@ def test_v1_calendar_and_discord_notification_contract_is_complete():
     for marker in (
         "RSL EVENT SCHEDULE",
         "Gauntlet seasons and tournaments stay on one live schedule",
-        "/api/calendar",
         "Personal Reminders",
     ):
         assert marker in calendar
+    calendar_script = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "calendar.js")
+    assert "/api/calendar" in calendar_script
     for marker in (
         "_calendar_events",
         "season-start-",
