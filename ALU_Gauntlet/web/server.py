@@ -4245,7 +4245,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         media = await self.bot.db.tournament_media.find_one({"_id": media_id})
         if not media or media.get("status") != "approved": raise web.HTTPNotFound(text="Tournament media not found.")
         if str(media.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPForbidden(text="You are not a member of this server.")
-        return web.Response(body=media.get("data") or b"", content_type=str(media.get("mime_type") or "application/octet-stream"), headers={"Cache-Control":"public, max-age=3600"})
+        return web.Response(body=media.get("data") or b"", content_type=str(media.get("mime_type") or "application/octet-stream"), headers={"Cache-Control":"private, max-age=3600", "X-Content-Type-Options":"nosniff"})
 
     async def tournament_checkin(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
