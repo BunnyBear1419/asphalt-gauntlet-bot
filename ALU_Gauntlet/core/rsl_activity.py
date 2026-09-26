@@ -4,7 +4,7 @@ from __future__ import annotations
 from math import floor, sqrt
 
 CHAT_XP = 10
-CHAT_CREDITS = 500
+CHAT_CREDITS = 100
 CHAT_COOLDOWN_SECONDS = 120
 DAILY_CHAT_REWARD_CAP = 30
 
