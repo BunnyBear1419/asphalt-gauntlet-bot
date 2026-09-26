@@ -15,18 +15,16 @@ async function profile(){
   try{
     const d=await api("/api/player/me?guild_id="+id),p=d.player||{},prefs=d.preferences||{};
     const elo=p.elo??"—";
-    const pi=Number(p.garage_pi||0).toLocaleString();
-    const season=p.season_number??"Not registered";
+        const season=p.season_number??"Not registered";
     const defense=p.defense_locked?"LOCKED":"OPEN";
     const wins=p.career_wins??0;
     const losses=Math.max(0,(p.career_played??0)-wins);
     const streak=p.streak??0;
-    setText("elo",elo); setText("pi",pi); setText("profile-pi",pi);
-    setText("right-elo",Number(elo||0).toLocaleString()); setText("right-pi",pi);
+    setText("elo",elo); setText("right-elo",Number(elo||0).toLocaleString()); setText("snapshot-elo",Number(elo||0).toLocaleString());
     setText("season",season); setText("season-number",p.season_number??"—"); setText("season-number-text",p.season_number??"—");
     setText("defense",defense); setText("wins",wins); setText("losses",losses); setText("streak",streak);
     const played=Number(p.career_played||0); const winRate=played?Math.round((Number(wins)||0)/played*100):0; setText("win-rate",winRate+"%");
-    try{const lb=await api("/api/leaderboard?guild_id="+id+"&limit=100"); const me=(lb.players||[]).find(x=>String(x.user_id)===String(p.user_id||"")); setText("profile-rank",me?.competition_rank?"#"+me.competition_rank:"—")}catch(e){setText("profile-rank","—")}
+    try{const snapshot=await api("/api/competition/snapshot?guild_id="+id); const rank=snapshot.rank?("#"+snapshot.rank):"—"; const record=(snapshot.career_wins??0)+"-"+(snapshot.career_losses??0); setText("profile-rank",rank); setText("right-rank",rank); setText("snapshot-record",record); setText("snapshot-streak",snapshot.streak??0); setText("snapshot-defense",snapshot.defense_locked?"LOCKED":"OPEN"); setText("snapshot-season",snapshot.registered?("S"+snapshot.season_number):"NOT REGISTERED"); setText("profile-defense-state",snapshot.defense_locked?"LOCKED":"OPEN"); setText("profile-season-state",snapshot.registered?("S"+snapshot.season_number):"NOT REGISTERED");}catch(e){setText("profile-rank","—");setText("right-rank","—")}
     setText("profile-defense-state",defense); setText("profile-season-state",season);
     // The website profile identity is always the signed-in Discord account.
     // Use Discord's display name and avatar rather than the Asphalt/game identity.
@@ -54,7 +52,7 @@ async function profile(){
       options.forEach(([label,value])=>{const o=document.createElement("option");o.value=value;o.textContent=label;ptz.append(o)});
       ptz.value=prefs.timezone||"UTC";
     }
-    setText("profile-discord-name",p.global_name||p.username||"Driver");
+    setText("profile-discord-name",discordName);
     setText("profile-game-name",prefs.game_name||"");
     const aboutCounter=$("#profile-about-count"), aboutField=$("#profile-about"); if(aboutCounter&&aboutField){aboutCounter.textContent=String(aboutField.value.length); if(!aboutField.dataset.counterBound){aboutField.addEventListener("input",()=>aboutCounter.textContent=String(aboutField.value.length)); aboutField.dataset.counterBound="1";}}
     const conn=prefs.asphalt_connection||{}; setText("identity-summary-name",conn.game_name||prefs.game_name||"Not linked"); setText("identity-summary-id",conn.game_id||p.game_id||"Not linked"); const ist=$("#identity-summary-status"); if(ist)ist.className="identity-chip "+(conn.status==="verified"?"verified":conn.status==="pending"?"pending":""); setText("identity-summary-state",conn.status==="verified"?"VERIFIED":conn.status==="pending"?"PENDING REVIEW":"NOT LINKED");
@@ -71,7 +69,7 @@ async function profile(){
     const connectButton=$("#submit-asphalt-link");if(connectButton)connectButton.disabled=connection.status==="verified";
     const profile=$("#profile");
     if(profile){
-      profile.textContent=p.game_id?`${p.game_id} • ${wins} career wins • ${p.career_played||0} matches`:"No registered driver profile yet.";
+      profile.textContent=p.game_id?p.game_id+" • "+wins+"-"+losses+" career record • "+(p.career_played||0)+" matches":"No registered competitive profile yet.";
     }
   }catch(e){
     const profile=$("#profile"); if(profile)profile.textContent=e.message;
