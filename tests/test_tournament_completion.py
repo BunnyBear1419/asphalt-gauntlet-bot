@@ -29,6 +29,22 @@ def test_tournament_media_requires_approval_for_players():
     assert "Only tournament participants or tournament staff can upload media." in text
     assert "Tournament Media Pending Approval" in text
 
+
+def test_tournament_media_upload_is_bounded_and_private():
+    text = SERVER.read_text(encoding="utf-8")
+    assert "max_size = 12 * 1024 * 1024" in text
+    assert "if len(data) > max_size" in text
+    assert 'Cache-Control":"private, max-age=3600' in text
+    assert 'X-Content-Type-Options":"nosniff' in text
+
+
+def test_language_preference_is_account_scoped():
+    text = SERVER.read_text(encoding="utf-8")
+    assert 'add_get("/api/language", self.get_language)' in text
+    assert 'add_post("/api/language", self.set_language)' in text
+    assert 'web_user_preferences.find_one({"_id": str(user.user_id)})' in text
+    assert '{"language": language, "updated_at": time.time()}' in text
+
 def test_discord_media_moderation_is_persistent():
     text = COG.read_text(encoding="utf-8")
     assert "class TournamentMediaModerationView" in text
