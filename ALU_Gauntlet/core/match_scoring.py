@@ -39,7 +39,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
         {"_id": match_data["_id"]},
         {"$set": {
             "rsl_performance_bonus": margin if courses_beat >= 3 else -margin,
-            "rsl_performance_score": f"{courses_beat}-{'5-courses_beat'}",
+            "rsl_performance_score": f"{courses_beat}-{5 - courses_beat}",
             "rsl_performance_scoring_version": 1,
         }},
     )
