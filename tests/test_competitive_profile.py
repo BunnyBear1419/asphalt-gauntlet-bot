@@ -35,6 +35,9 @@ def test_competitive_profile_labels_are_consistent_across_site():
     assert "My Garage" not in HELP.read_text(encoding="utf-8")
     assert "My Garage" not in TOURNAMENTS.read_text(encoding="utf-8")
     assert "My Garage" not in PROFILE.read_text(encoding="utf-8")
-    assert "Competitive Profile" in HELP.read_text(encoding="utf-8")
-    assert "Competitive Profile" in TOURNAMENTS.read_text(encoding="utf-8")
-    assert "Competitive Profile" in PROFILE.read_text(encoding="utf-8")
+    help_page = HELP.read_text(encoding="utf-8")
+    tournaments_page = TOURNAMENTS.read_text(encoding="utf-8")
+    profile_page = PROFILE.read_text(encoding="utf-8")
+    assert "OPEN COMPETITIVE PROFILE" in help_page
+    assert "Open Competitive Profile" in tournaments_page
+    assert "Competitive Profile" in profile_page
