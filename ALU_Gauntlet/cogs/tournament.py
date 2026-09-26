@@ -421,6 +421,52 @@ async def build_tournament_view(tournament_id,user):
             view.add_item(reject)
     return view
 
+class TournamentMediaModerationView(discord.ui.View):
+    """Persistent Discord moderation controls for tournament media submissions."""
+    def __init__(self, media_id):
+        super().__init__(timeout=None)
+        self.media_id = str(media_id)
+        approve = discord.ui.Button(label="Approve & Publish", style=discord.ButtonStyle.success, custom_id=f"rsl_media_approve:{self.media_id}")
+        reject = discord.ui.Button(label="Reject", style=discord.ButtonStyle.danger, custom_id=f"rsl_media_reject:{self.media_id}")
+        approve.callback = self._approve
+        reject.callback = self._reject
+        self.add_item(approve)
+        self.add_item(reject)
+
+    async def _moderate(self, interaction, action):
+        if not await _is_tournament_staff(interaction):
+            await interaction.response.send_message("❌ Tournament staff access required.", ephemeral=True)
+            return
+        media = await bot.db.tournament_media.find_one({"_id": self.media_id})
+        if not media or media.get("status") != "pending":
+            await interaction.response.send_message("This media submission has already been reviewed or is no longer available.", ephemeral=True)
+            return
+        now = discord.utils.utcnow().isoformat()
+        await bot.db.tournament_media.update_one(
+            {"_id": self.media_id, "status": "pending"},
+            {"$set": {
+                "status": "approved" if action == "approve" else "rejected",
+                "approved_by": str(interaction.user.id) if action == "approve" else None,
+                "approved_at": now if action == "approve" else None,
+                "reviewed_by": str(interaction.user.id),
+                "reviewed_at": now,
+            }},
+        )
+        for child in self.children:
+            child.disabled = True
+        label = "published" if action == "approve" else "rejected"
+        await interaction.response.edit_message(
+            content=f"🏁 **Tournament Media {label.title()}**\n**{media.get('filename','Media')}** • <@{media.get('uploaded_by','0')}>",
+            view=self,
+        )
+
+    async def _approve(self, interaction):
+        await self._moderate(interaction, "approve")
+
+    async def _reject(self, interaction):
+        await self._moderate(interaction, "reject")
+
+
 class TournamentCog(commands.Cog):
     """Tournament backend/UI helpers.
 
@@ -432,3 +478,12 @@ class TournamentCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(TournamentCog(bot))
+    # Re-register moderation controls after every restart so pending media can
+    # still be approved/rejected from Discord without relying on a live web session.
+    try:
+        async for media in bot.db.tournament_media.find({"status": "pending"}, {"_id": 1}).limit(100):
+            bot.add_view(TournamentMediaModerationView(str(media["_id"])))
+    except Exception:
+        # MongoDB/index startup should remain authoritative; moderation views can
+        # still be posted for new submissions if this recovery query is unavailable.
+        pass
