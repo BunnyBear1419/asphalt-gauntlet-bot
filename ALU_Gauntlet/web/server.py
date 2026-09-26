@@ -23,6 +23,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
 from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application, get_current_season_number
+from ..core.match_scoring import apply_rsl_performance_bonus
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -2804,6 +2805,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             defense=active.get("defense_courses") or []
             result=await process_match_result(str(guild_id),uid,str(active["opponent_id"]),defense,attack,proof,active.get("defender_proof_url"),None,settlement_id=f"{active['_id']}:match")
             if not result: raise web.HTTPConflict(text="The match could not be settled.")
+            try:
+                result["rsl_performance_bonus"] = await apply_rsl_performance_bonus(self.bot.db, result)
+            except Exception:
+                log.exception("Failed to apply RSL performance margin bonus for match %s", result.get("_id"))
             await self.bot.db.active_challenges.update_one({"_id":active["_id"],"guild_id":str(guild_id),"challenger_id":uid,"status":"processing"},{"$set":{"status":"completed","completed_at":time.time(),"match_id":result["_id"]},"$unset":{"processing_at":""}})
             return web.json_response({"ok":True,"match_id":str(result["_id"]),"result":result.get("outcome_desc","Match submitted.")})
         except Exception:
