@@ -91,6 +91,12 @@ class ActivityRewardsCog(commands.Cog):
                 {"$inc": {"activity_reward_count": -1}},
             )
             return
+        if ledger.get("duplicate"):
+            await self.bot.db.drivers.update_one(
+                {"_id": f"{guild_id}_{user_id}", "activity_reward_count": {"$gt": 0}},
+                {"$inc": {"activity_reward_count": -1}},
+            )
+            return
         await self.bot.db.drivers.update_one(
             {"_id": f"{guild_id}_{user_id}"}, {"$inc": {"activity_xp": CHAT_XP}}
         )
