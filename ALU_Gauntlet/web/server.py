@@ -25,6 +25,8 @@ from .players import PlayerService
 from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application, get_current_season_number
 from ..core.match_scoring import apply_rsl_performance_bonus
 from ..core.fairness import fair_match_snapshot, build_fairness_review
+from ..core.rsl_economy import purchase_daily_ticket, next_ticket_purchase
+from ..core.gauntlet_progression import FREE_DAILY_TICKETS, MAX_DAILY_TICKETS
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -2632,6 +2634,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_delete("/api/news/{news_id}", self.delete_news)
         self.app.router.add_get("/api/guilds", self.guilds)
         self.app.router.add_get("/api/player/me", self.player_me)
+        self.app.router.add_post("/api/player/tickets/purchase", self.player_ticket_purchase)
         self.app.router.add_get("/api/profile/tournaments", self.profile_tournaments)
         self.app.router.add_get("/api/tournaments", self.tournaments)
         self.app.router.add_get("/api/calendar", self.calendar)
@@ -5071,11 +5074,58 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         user, guild_id, _ = await self.require_guild_member(request)
         player = await self.players.get_player(guild_id, user.user_id)
         preferences = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        today = datetime.now(timezone.utc).date().isoformat()
+        raw = player or {}
+        if raw.get("gauntlet_ticket_date") == today:
+            remaining = min(MAX_DAILY_TICKETS, max(0, int(raw.get("gauntlet_tickets", FREE_DAILY_TICKETS) or 0)))
+            purchased = min(5, max(0, int(raw.get("gauntlet_purchased_tickets", 0) or 0)))
+        else:
+            remaining, purchased = FREE_DAILY_TICKETS, 0
+        ticket_state = next_ticket_purchase(purchased, int(raw.get("rsl_coins", 0) or 0))
+        ticket_state.update({
+            "date": today,
+            "tickets_remaining": remaining,
+            "free_remaining": min(FREE_DAILY_TICKETS, remaining),
+            "purchased_remaining": max(0, remaining - min(FREE_DAILY_TICKETS, remaining)),
+        })
         return web.json_response({
             "player": player,
             "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
             "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "platform", "driver_type", "links", "asphalt_connection")},
+            "tickets": ticket_state,
         })
+
+    async def player_ticket_purchase(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        today = datetime.now(timezone.utc).date().isoformat()
+        result = await purchase_daily_ticket(
+            self.bot.db,
+            guild_id=str(guild_id),
+            user_id=str(user.user_id),
+            today=today,
+        )
+        if not result.get("ok"):
+            messages = {
+                "profile_not_found": "Register your RSL driver profile before buying an extra ticket.",
+                "purchase_limit": "You have reached the 5 purchased-ticket limit for today.",
+                "insufficient_coins": f"You need {int(result.get('cost', 0)):,} RSL Coins for your next ticket.",
+                "purchase_race_or_state_changed": "Your ticket state changed before the purchase completed. Refresh and try again.",
+            }
+            return web.json_response(
+                {"ok": False, "error": messages.get(result.get("reason"), "Ticket purchase could not be completed."), "reason": result.get("reason"), "cost": result.get("cost", 0)},
+                status=409,
+            )
+        player = await self.players.get_player(str(guild_id), str(user.user_id)) or {}
+        purchased = min(5, max(0, int(player.get("gauntlet_purchased_tickets", 0) or 0)))
+        remaining = min(MAX_DAILY_TICKETS, max(0, int(player.get("gauntlet_tickets", 0) or 0)))
+        ticket_state = next_ticket_purchase(purchased, int(player.get("rsl_coins", 0) or 0))
+        ticket_state.update({
+            "date": today,
+            "tickets_remaining": remaining,
+            "free_remaining": min(FREE_DAILY_TICKETS, remaining),
+            "purchased_remaining": max(0, remaining - min(FREE_DAILY_TICKETS, remaining)),
+        })
+        return web.json_response({"ok": True, "cost": int(result.get("cost", 0)), "tickets": ticket_state})
 
     async def player_defense(self, request: web.Request) -> web.Response:
         """Return the player's current/pending five-course defense state."""
