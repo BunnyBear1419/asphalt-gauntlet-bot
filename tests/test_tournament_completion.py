@@ -101,3 +101,39 @@ def test_player_review_result_submission_still_requires_staff_verification():
     assert 'result_status":"pending"' in cog
     assert 'Result submitted for staff verification.' in server
     assert 'Staff verification is required before the bracket advances.' in cog
+
+
+def test_tournament_center_covers_team_sizes_and_staff_workflows():
+    page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.html").read_text(encoding="utf-8")
+    assert 'value="2">2v2 Teams' in page
+    assert 'value="3">3v3 Teams' in page
+    assert 'value="4">4v4 Teams' in page
+    assert 'value="player_review"' in page
+    assert 'value="admin_only"' in page
+    assert "Admin Only is useful for streamed or closely supervised tournaments." in page
+
+
+def test_completed_tournament_archive_exposes_champion_standings_history_and_media():
+    page = RESULTS.read_text(encoding="utf-8")
+    assert "TOURNAMENT CHAMPION" in page
+    assert "Final Standings" in page
+    assert "Round-by-Round Results" in page
+    assert "Tournament Media" in page
+    assert "Open Live Bracket" in page
+
+
+def test_media_and_result_permissions_have_server_side_guards():
+    server = SERVER.read_text(encoding="utf-8")
+    assert "await self.require_user(request)" in server
+    assert "Only tournament participants or tournament staff can upload media." in server
+    assert "if not staff and not participant:" in server or "if not staff and not participant" in server
+    assert "This tournament is configured for Admin Only result submission." in server
+
+
+def test_tournament_admin_documentation_exists():
+    guide = (ROOT / "docs" / "TOURNAMENT_ADMIN_GUIDE.md").read_text(encoding="utf-8")
+    maintenance = (ROOT / "docs" / "PRODUCTION_MAINTENANCE.md").read_text(encoding="utf-8")
+    for phrase in ("Admin Only", "Player Submission + Admin Verification", "Pending Approval", "2v2", "3v3", "4v4"):
+        assert phrase in guide
+    for phrase in ("Discloud-first", "unique active player registration", "Calendar navigation", "CI is green"):
+        assert phrase in maintenance
