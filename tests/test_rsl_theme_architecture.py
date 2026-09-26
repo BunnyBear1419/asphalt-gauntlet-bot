@@ -24,6 +24,14 @@ def test_all_supported_themes_have_final_tokens():
         assert token in css
 
 
+def test_navigation_dropdowns_close_when_pointer_leaves():
+    server = SERVER.read_text(encoding="utf-8")
+    assert 'document.querySelectorAll(".top-nav details.top-nav-dropdown")' in server
+    assert 'dropdown.addEventListener("pointerenter",open)' in server
+    assert 'dropdown.addEventListener("pointerleave",close)' in server
+    assert 'dropdown.open=!dropdown.open' in server
+
+
 def test_default_midnight_has_cross_page_audit_tokens():
     server = SERVER.read_text(encoding="utf-8")
     expected = (
