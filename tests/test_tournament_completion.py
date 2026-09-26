@@ -66,3 +66,19 @@ def test_competitive_profile_links_to_tournament_results():
     text = PLAYER.read_text(encoding="utf-8")
     assert "/tournaments/results?tournament_id=" in text
     assert "career-championships" in text
+
+
+def test_tournament_result_submission_modes_are_configurable_and_enforced():
+    server = SERVER.read_text(encoding="utf-8")
+    cog = COG.read_text(encoding="utf-8")
+    tournaments = TOURNAMENTS.read_text(encoding="utf-8")
+    page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.html").read_text(encoding="utf-8")
+    assert '"result_submission_mode": result_submission_mode' in server
+    assert 'result_mode = str(t.get("result_submission_mode") or "player_review").casefold()' in server
+    assert 'This tournament is configured for Admin Only result submission.' in server
+    assert 'result_mode = str(tournament.get("result_submission_mode") or "player_review").casefold()' in cog
+    assert 'Admin Only result submission' in cog
+    assert 'name="result_submission_mode"' in page
+    assert 'value="admin_only"' in page
+    assert 'result_submission_mode_label' in server
+    assert 't.result_submission_mode' in tournaments
