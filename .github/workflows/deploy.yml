@@ -101,7 +101,11 @@ jobs:
               exit 1
             fi
           done
-          echo "Deployment secrets are present. Secret values are never printed."
+          if [ "$DISCLOUD_APP_ID" != "asph" ]; then
+            echo "ERROR: DISCLOUD_APP_ID must be 'asph' for the Racing Syndicate League production app."
+            exit 1
+          fi
+          echo "Deployment secrets are present and target app is asph. Secret values are never printed."
 
       - name: Validate Discord bot token before deployment
         env:
@@ -143,7 +147,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: asph
+          app_id: \${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -158,7 +162,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: asph
+          app_id: \${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -173,7 +177,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: asph
+          app_id: \${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -388,7 +392,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: asph
+          app_id: \${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
@@ -403,7 +407,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: asph
+          app_id: \${{ secrets.DISCLOUD_APP_ID }}
           glob: '**'
           team: false
 
