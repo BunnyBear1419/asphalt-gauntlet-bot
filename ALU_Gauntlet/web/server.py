@@ -2633,6 +2633,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/clubs/member", self.manage_club_member)
         self.app.router.add_post("/api/tournaments", self.create_tournament)
         self.app.router.add_post("/api/tournaments/register", self.register_tournament)
+        self.app.router.add_post("/api/tournaments/register/action", self.tournament_registration_action)
         self.app.router.add_post("/api/tournaments/checkin", self.tournament_checkin)
         self.app.router.add_post("/api/tournaments/clubs/lineup", self.tournament_club_lineup)
         self.app.router.add_post("/api/tournaments/result", self.tournament_match_result)
@@ -3614,6 +3615,15 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         except Exception:
             raise web.HTTPBadRequest(text="Invalid tournament ID.")
         tournament = await self.bot.db.tournaments.find_one({"_id": oid})
+        if tournament and tournament.get("registration_deadline"):
+            try:
+                deadline = datetime.fromisoformat(str(tournament["registration_deadline"]).replace("Z", "+00:00"))
+                if deadline.tzinfo is None:
+                    deadline = deadline.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) >= deadline.astimezone(timezone.utc):
+                    raise web.HTTPConflict(text="Tournament registration has closed.")
+            except ValueError:
+                raise web.HTTPConflict(text="This tournament has an invalid registration deadline.")
         if not tournament or str(tournament.get("guild_id")) not in set(str(x) for x in user.guild_ids):
             raise web.HTTPNotFound(text="Tournament not found.")
         if tournament.get("status") not in {"registration_open", "open"}:
@@ -3686,6 +3696,104 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 raise web.HTTPConflict(text="You are already registered for this tournament.")
             raise
         return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
+
+    async def tournament_registration_action(self, request: web.Request) -> web.Response:
+        """Approve or reject one pending tournament registration as tournament staff."""
+        user, guild_id, _ = await self.require_tournament_admin(request)
+        from bson import ObjectId
+
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
+
+        tournament_id = str(payload.get("tournament_id", "")).strip()
+        registration_id = str(payload.get("registration_id", "")).strip()
+        action = str(payload.get("action", "")).strip().casefold()
+
+        if not ObjectId.is_valid(tournament_id) or not ObjectId.is_valid(registration_id):
+            raise web.HTTPBadRequest(text="Invalid tournament or registration ID.")
+        if action not in {"approve", "reject"}:
+            raise web.HTTPBadRequest(text="Action must be approve or reject.")
+
+        tournament = await self.bot.db.tournaments.find_one(
+            {"_id": ObjectId(tournament_id), "guild_id": guild_id}
+        )
+        if not tournament:
+            raise web.HTTPNotFound(text="Tournament not found.")
+
+        if tournament.get("status") not in {"registration_open", "open"}:
+            raise web.HTTPConflict(text="Registration decisions are closed once the tournament is live.")
+
+        team_size = int(tournament.get("team_size", 1))
+        collection = (
+            self.bot.db.tournament_club_registrations
+            if team_size > 1
+            else self.bot.db.tournament_registrations
+        )
+        registration = await collection.find_one(
+            {"_id": ObjectId(registration_id), "tournament_id": tournament_id}
+        )
+        if not registration:
+            raise web.HTTPNotFound(text="Tournament registration not found.")
+
+        current_status = str(registration.get("status", "pending"))
+        if current_status != "pending":
+            raise web.HTTPConflict(
+                text=f"This registration has already been {current_status.replace('_', ' ')}."
+            )
+
+        if action == "approve":
+            accepted_statuses = {"accepted", "checked_in"}
+            accepted_count = await collection.count_documents(
+                {"tournament_id": tournament_id, "status": {"$in": list(accepted_statuses)}}
+            )
+            if accepted_count >= int(tournament.get("max_players", 32)):
+                raise web.HTTPConflict(text="The tournament has reached its entrant capacity.")
+
+            # Team entries must have a complete lineup before staff approval.
+            if team_size > 1:
+                lineup = registration.get("lineup") or []
+                if len(lineup) != team_size or len(set(map(str, lineup))) != team_size:
+                    raise web.HTTPConflict(
+                        text="The club must save a complete tournament lineup before approval."
+                    )
+
+            result = await collection.update_one(
+                {"_id": registration["_id"], "status": "pending"},
+                {"$set": {
+                    "status": "accepted",
+                    "approved_by": str(user.user_id),
+                    "approved_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }},
+            )
+            if not result.modified_count:
+                raise web.HTTPConflict(text="This registration was already processed.")
+            await self._audit(
+                guild_id,
+                user.user_id,
+                f"Tournament registration approved: {tournament_id}/{registration_id}",
+            )
+            return web.json_response({"ok": True, "status": "accepted", "message": "Registration approved."})
+
+        result = await collection.update_one(
+            {"_id": registration["_id"], "status": "pending"},
+            {"$set": {
+                "status": "rejected",
+                "rejected_by": str(user.user_id),
+                "rejected_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+        )
+        if not result.modified_count:
+            raise web.HTTPConflict(text="This registration was already processed.")
+        await self._audit(
+            guild_id,
+            user.user_id,
+            f"Tournament registration rejected: {tournament_id}/{registration_id}",
+        )
+        return web.json_response({"ok": True, "status": "rejected", "message": "Registration rejected."})
 
     async def tournament_club_lineup(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
