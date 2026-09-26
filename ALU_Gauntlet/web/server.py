@@ -223,7 +223,6 @@ class WebControlCenter:
                 "tournament-clubs.html": "/tournaments/clubs",
                 "clubs.html": "/clubs",
                 "club.html": "/club",
-                "club.html": "/club",
                 "calendar.html": "/calendar",
                 "help.html": "/help",
                 "legal.html": "/legal",
