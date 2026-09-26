@@ -23,24 +23,58 @@ class ChallengesCog(commands.Cog):
         if not has_5_course_defense(user_profile):
             await interaction.followup.send('❌ You need a locked 5-course defense before challenging. Open `/dashboard` → **Defense** to finish your defense setup.')
             return
+        # RSL keeps six PI divisions for fairer matchmaking while using the
+        # ALU-style five-ticket daily challenge economy.
         today = await get_guild_local_date(guild_id)
-        challenge_date = user_profile.get('challenge_date')
-        challenge_count = user_profile.get('challenge_count', 0)
-        if challenge_date == today and challenge_count >= 5:
-            await interaction.followup.send("⏳ **Daily Limit Reached:** You've used all 5 of your daily challenges. Come back tomorrow!", ephemeral=True)
+        ticket_date = user_profile.get('gauntlet_ticket_date')
+        if ticket_date != today:
+            await bot.db.drivers.update_one(
+                {'_id': f'{guild_id}_{user_id}'},
+                {'$set': {
+                    'gauntlet_ticket_date': today,
+                    'gauntlet_tickets': 5,
+                    'gauntlet_refreshes': 0,
+                    'gauntlet_opponent_refresh_at': time.time(),
+                }},
+            )
+            user_profile['gauntlet_ticket_date'] = today
+            user_profile['gauntlet_tickets'] = 5
+            user_profile['gauntlet_refreshes'] = 0
+        tickets = int(user_profile.get('gauntlet_tickets', 5) or 0)
+        if tickets <= 0:
+            await interaction.followup.send(
+                "⏳ **No Gauntlet Tickets Remaining:** Your 5 daily Gauntlet Tickets refresh with the daily Gauntlet reset.",
+                ephemeral=True,
+            )
             return
+        ticket_claim = await bot.db.drivers.update_one(
+            {'_id': f'{guild_id}_{user_id}', 'gauntlet_ticket_date': today, 'gauntlet_tickets': {'$gt': 0}},
+            {'$inc': {'gauntlet_tickets': -1}},
+        )
+        if getattr(ticket_claim, 'modified_count', 0) != 1:
+            await interaction.followup.send(
+                "⏳ **No Gauntlet Tickets Remaining:** another challenge search used your last available ticket.",
+                ephemeral=True,
+            )
+            return
+        tickets -= 1
         user_pi = user_profile.get('garage_pi', 15500)
-        pi_query = division_mongo_query(get_division_for_pi(user_pi))
+        division = get_division_for_pi(user_pi)
+        pi_query = division_mongo_query(division)
         cursor = bot.db.drivers.find({'guild_id': guild_id, 'user_id': {'$ne': user_id}, 'garage_pi': pi_query, 'defense_locked.courses.4': {'$exists': True}}).limit(10)
         candidates = await cursor.to_list(length=10)
         if not candidates:
-            await interaction.followup.send('⚠️ No matching opponents are qualified with active 5-course defenses yet inside your performance tier bracket.')
+            await bot.db.drivers.update_one(
+                {'_id': f'{guild_id}_{user_id}', 'gauntlet_ticket_date': today},
+                {'$inc': {'gauntlet_tickets': 1}},
+            )
+            await interaction.followup.send('⚠️ No matching opponents are qualified with active 5-course defenses yet inside your six-division performance tier.')
             return
-        remaining = 5 - (challenge_count + 1 if challenge_date == today else 1)
+        remaining = tickets
         selected_opponents = random.sample(candidates, min(len(candidates), 3))
         defender_data_map = {opp['user_id']: {'courses': opp['defense_locked']['courses'], 'proof_url': opp['defense_locked'].get('proof_url'), 'car_rank_total': opp['defense_locked'].get('car_rank_total', get_car_rank_total(opp['defense_locked']['courses']))} for opp in selected_opponents}
         options_list = [discord.SelectOption(label=f"{opp.get('game_id', 'Driver')} | {opp.get('elo', 1000)} ELO", description=f"{get_division_for_pi(int(opp.get('garage_pi', 0)))['name'][:55]} • Car Rating {opp.get('defense_locked', {}).get('car_rank_total', get_car_rank_total(opp.get('defense_locked', {}).get('courses', []))):,} • 5 courses", value=opp['user_id'], emoji='🏎️') for opp in selected_opponents]
-        match_embed = discord.Embed(title='⚡ AUTOMATED MATCHMAKING MATRIX ONLINE', description=f'A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a locked 5-course defense. You will see their exact routes, cars, and times, then race those same 5 routes with your own attack cars. Win 3 out of 5 races to win the match.*\n\n📊 **Daily challenges remaining:** `{remaining}/5`', color=ASPHALT_THEME_COLOR)
+        match_embed = discord.Embed(title='⚡ AUTOMATED MATCHMAKING MATRIX ONLINE', description=f'A competitive matchmaking target window has stabilized. Choose your opponent from the terminal menu dropdown below!\n\n⚠️ *Each opponent has a locked 5-course defense. You will see their exact routes, cars, and times, then race those same 5 routes with your own attack cars. Win 3 out of 5 races to win the match.*\n\n📊 **Gauntlet Tickets remaining:** `{remaining}/5`', color=ASPHALT_THEME_COLOR)
         match_embed.set_image(url=ASPHALT_MEDIA['banner_match'])
         await interaction.followup.send(embed=match_embed, view=ChallengeView(options_list, defender_data_map, guild_id, user_id))
 
