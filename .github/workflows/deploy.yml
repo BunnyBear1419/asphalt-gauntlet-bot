@@ -90,7 +90,7 @@ jobs:
       - name: Validate deployment secrets are present
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCLOUD_APP_ID: asph
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
@@ -147,7 +147,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: asph
           glob: '**'
           team: false
 
@@ -162,7 +162,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: asph
           glob: '**'
           team: false
 
@@ -177,7 +177,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: asph
           glob: '**'
           team: false
 
@@ -190,7 +190,7 @@ jobs:
       - name: Restart Discloud app after upload
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCLOUD_APP_ID: asph
         run: |
           set -euo pipefail
           restart_http=$(curl -sS -o discloud-restart.json -w "%{http_code}" -X PUT \
@@ -211,7 +211,7 @@ jobs:
         continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCLOUD_APP_ID: asph
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
           DEPLOY_STARTED_AT: ${{ steps.deployment.outputs.started_at }}
@@ -392,7 +392,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: asph
           glob: '**'
           team: false
 
@@ -407,7 +407,7 @@ jobs:
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
-          app_id: ${{ secrets.DISCLOUD_APP_ID }}
+          app_id: asph
           glob: '**'
           team: false
 
@@ -415,7 +415,7 @@ jobs:
         if: steps.smoke.outcome == 'failure'
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: ${{ secrets.DISCLOUD_APP_ID }}
+          DISCLOUD_APP_ID: asph
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
