@@ -36,7 +36,7 @@ Edit `.env` first and put in the real Discord token and MongoDB URI.
 
 ```powershell
 python -m py_compile main.py
-python tests/test_final.py
+pytest -q
 ```
 
 ## Discloud
@@ -119,3 +119,12 @@ For production monitoring, configure `HEALTH_WEBHOOK_URL`, `DISCORD_ALERT_WEBHOO
 - Health & Diagnostics is a single canonical staff diagnostic center; duplicate health/diagnostics entry points should not be added.
 
 <!-- CI verification trigger: production dashboard artwork deployment. -->
+
+
+## Tournament Center operations
+
+The Tournament Center supports single elimination, double elimination, and round robin events, including solo events and 2v2/3v3/4v4 team tournaments. Match results can be configured as **Player Submission + Admin Verification** or **Admin Only** for supervised/streamed events.
+
+Tournament media supports staff-published photos/videos and player submissions that remain pending until staff approval. Completed tournaments provide champion information, final standings, verified match history, and approved media through **Results & Rankings**.
+
+See `docs/TOURNAMENT_ADMIN_GUIDE.md` for the event workflow and `docs/PRODUCTION_MAINTENANCE.md` for production release and database-maintenance guidance.
