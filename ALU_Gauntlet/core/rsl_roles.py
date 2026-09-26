@@ -112,7 +112,7 @@ def build_gauntlet_season_roles(
     arbitrarily. Division winners and Season Champion are explicit inputs.
     """
     stats = list(player_stats)
-    overall_activity = list(overall_activity_stats) if overall_activity_stats is not None else stats
+    overall_activity = list(overall_activity_stats or ())
     result = role_for_division(division_winners)
     metrics = {
         "Top Active": "overall_activity_score",
