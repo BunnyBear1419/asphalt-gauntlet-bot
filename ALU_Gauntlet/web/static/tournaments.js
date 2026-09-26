@@ -125,16 +125,40 @@ function registrationReviewHtml(t){
   return '<section class="match-review glass-panel registration-review"><div class="panel-heading"><h3>Staff Registration Review</h3><span>'+((t.registrations||[]).filter(x=>x.status==="pending").length+(t.clubs||[]).filter(x=>x.status==="pending").length)+' pending</span></div>'+rows+'</section>';
 }
 
+function mediaGalleryHtml(t,media){
+  const items=media||[];
+  const gallery=items.filter(m=>m.status==="approved").map(m=>{
+    const body=m.type==="video"?'<video controls preload="metadata" src="'+esc(m.url)+'"></video>':'<img loading="lazy" src="'+esc(m.url)+'" alt="'+esc(m.title||m.filename)+'">';
+    return '<article class="media-card">'+body+'<div class="media-card-body"><strong>'+esc(m.title||m.filename)+'</strong>'+(m.caption?'<small>'+esc(m.caption)+'</small>':'')+'</div></article>';
+  }).join("");
+  const pending=items.filter(m=>m.status==="pending");
+  const review=t.can_manage_results&&pending.length?'<div class="media-review-list">'+pending.map(m=>'<div class="media-review-row"><div><strong>'+esc(m.title||m.filename)+'</strong><small>Pending media submission</small></div><div class="media-review-actions"><button class="qa qa-purple media-action" data-media="'+esc(m.id)+'" data-action="approve">Approve</button><button class="qa qa-blue media-action" data-media="'+esc(m.id)+'" data-action="reject">Reject</button></div></div>').join("")+'</div>':"";
+  return '<section class="media-section"><div class="media-toolbar"><div><h3>📸 Tournament Media</h3><small>Published photos and videos from this event.</small></div></div>'+(gallery?'<div class="media-gallery">'+gallery+'</div>':'<div class="tournament-empty">No published tournament media yet.</div>')+review+
+    '<form class="media-upload" id="tournament-media-form"><strong>Share Tournament Media</strong><small>Players and staff can upload photos or videos. Player submissions require staff approval before publication.</small><div class="media-upload-grid"><label>Title<input name="title" maxlength="120" placeholder="Round 2 finish"></label><label>File<input name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" required></label></div><label>Caption<textarea name="caption" maxlength="500" placeholder="What happened in this clip or photo?"></textarea></label><input type="hidden" name="tournament_id" value="'+esc(t.id)+'"><button class="qa qa-purple" type="submit">Upload Media →</button><p class="form-status" id="media-upload-status"></p></form></section>';
+}
+async function uploadTournamentMedia(t,form){
+  const status=form.querySelector("#media-upload-status"), button=form.querySelector("button[type=submit]");
+  const data=new FormData(form); button.disabled=true; button.textContent="Uploading…";
+  try{const r=await api("/api/tournaments/media",{method:"POST",body:data});toast(r.message||"Media uploaded.");await showTournament(t.id)}
+  catch(e){if(status)status.textContent=e.message||"Media upload failed.";toast(e.message,true)}
+  finally{button.disabled=false;button.textContent="Upload Media →"}
+}
+async function moderateTournamentMedia(t,mediaId,action,button){
+  if(button?.disabled)return; const original=button?.textContent;if(button){button.disabled=true;button.textContent=action==="approve"?"Approving…":"Rejecting…"}
+  try{const r=await api("/api/tournaments/media/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({media_id:mediaId,action})});toast(r.message||"Media updated.");await showTournament(t.id)}
+  catch(e){toast(e.message,true)}finally{if(button){button.disabled=false;button.textContent=original}}
+}
+
 async function showTournament(id){
   try{
-    const t=await api("/api/tournaments/"+encodeURIComponent(id)); const box=$("#tournament-detail"); box.hidden=false;
+    const t=await api("/api/tournaments/"+encodeURIComponent(id)); const media=await api("/api/tournaments/"+encodeURIComponent(id)+"/media"+(t.can_manage_results?"?include_pending=1":"")); const box=$("#tournament-detail"); box.hidden=false;
     const pending=allMatches(t.bracket).filter(m=>m.result_status==="pending" && m.winner_id);
     const champion=t.champion_id?entrantInfo(t,t.champion_id):null;
     box.innerHTML='<div class="panel-heading"><h2>'+esc(t.name)+'</h2><button class="qa qa-blue" id="close-tournament-detail">Close</button></div>'+
       '<p>'+esc(t.description||"")+'</p>'+
       (t.status==="completed"&&champion?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><button type="button" class="tournament-champion-link" data-identity-type="'+esc(champion.identityType||"")+'" data-identity-id="'+esc(champion.identityType==="club"?champion.clubId:(champion.userId||""))+'"><strong>'+esc(champion.name)+'</strong><small>'+esc(champion.detail||"")+'</small>'+verifiedBadge(champion)+'</button></section>':'')+
       '<div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button>'+((t.can_manage_results&&(t.status==="registration_open"||t.status==="open"))?'<button class="qa qa-gold" id="start-tournament">Start Tournament →</button>':'')+'</div>'+
-      registrationReviewHtml(t)+
+      registrationReviewHtml(t)+\n      mediaGalleryHtml(t,media.media||[])+
       (pending.length&&(window._me?.staff||t.can_manage_results)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+      (Number(t.team_size||1)>1&&((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).length)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>🏎️ Tournament Lineup</h3><span>'+Number(t.team_size||1)+' drivers required</span></div>'+((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).map(c=>'<div class="lineup-editor"><strong>'+esc(c.name)+'</strong><div class="lineup-list">'+(c.members||[]).map(m=>'<label><input class="lineup-member" data-club="'+esc(c.id)+'" type="checkbox" value="'+esc(m.user_id)+'" '+((c.lineup||[]).map(String).includes(String(m.user_id))?'checked':'')+'> '+esc(m.username)+'</label>').join('')+'</div><button class="qa qa-purple lineup-save" data-club="'+esc(c.id)+'">Save Lineup</button></div>').join(''))+'</section>':'')+
       '<div class="tournament-bracket">'+bracketText(t)+'</div>'+clubHtml(t);
     $("#close-tournament-detail").onclick=()=>box.hidden=true;
@@ -145,7 +169,7 @@ async function showTournament(id){
     const matches=allMatches(t.bracket);
     box.querySelectorAll(".match-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)submitResult(t,m)}});
     box.querySelectorAll(".verify-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"approve",b)}});
-    box.querySelectorAll(".registration-action").forEach(b=>{b.onclick=()=>reviewRegistration(t,b.dataset.registration,b.dataset.action,b)});
+    box.querySelectorAll(".registration-action").forEach(b=>{b.onclick=()=>reviewRegistration(t,b.dataset.registration,b.dataset.action,b)});\n    box.querySelectorAll(".media-action").forEach(b=>{b.onclick=()=>moderateTournamentMedia(t,b.dataset.media,b.dataset.action,b)});\n    box.querySelector("#tournament-media-form")?.addEventListener("submit",e=>{e.preventDefault();uploadTournamentMedia(t,e.target)});
     box.querySelectorAll(".reject-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"reject",b)}});
     box.querySelectorAll(".lineup-save").forEach(b=>{b.onclick=async()=>{if(b.disabled)return;const original=b.textContent;b.disabled=true;b.textContent="Saving…";
       const club=(t.clubs||[]).find(x=>String(x.id)===b.dataset.club); if(!club)return;
