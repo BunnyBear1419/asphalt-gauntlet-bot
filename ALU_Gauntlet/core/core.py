@@ -1124,7 +1124,7 @@ async def player_reminder_loop():
             active = await bot.db.active_challenges.find({"guild_id": guild_id, "status": "active"}).to_list(length=1000)
             for challenge in active:
                 if float(challenge.get("expires_at", now + 1)) <= now:
-                    await bot.db.active_challenges.update_one({"_id": challenge["_id"], "guild_id": guild_id, "status": "active"}, {"$set": {"status": "expired", "expired_at": now}})
+                    await bot.db.active_challenges.update_one({"_id": challenge["_id"], "guild_id": guild_id, "status": "active"}, {"$set": {"status": "expired", "expired_at": now, "ticket_burned": True, "settlement_closed": True, "abandon_reason": "timeout"}})
                     continue
                 created = float(challenge.get("created_at", now))
                 if now - created < 86400:
@@ -1442,7 +1442,7 @@ async def trigger_global_season_end(guild_id: str = None, forced_interaction: di
     await bot.db.season_state.update_one({"_id": state_id, "rollover_season": current_season_num}, {"$set": {"rollover_phase": "expiring_challenges"}})
     await bot.db.active_challenges.update_many(
         {"guild_id": guild_id, "status": {"$in": ["active", "processing"]}},
-        {"$set": {"status": "expired", "expired_at": now, "expired_season": current_season_num}},
+        {"$set": {"status": "expired", "expired_at": now, "expired_season": current_season_num, "ticket_burned": True, "settlement_closed": True, "abandon_reason": "season_end"}},
     )
     next_season = current_season_num + 1
     previous_start = float((state or {}).get("starts_at", 0) or 0)
@@ -2253,6 +2253,7 @@ class ChallengeDropdown(discord.ui.Select):
             "defender_proof_url": opponent_defense.get("proof_url"), "season_number": current_season,
             "status": "active", "created_at": time.time(), "last_reminder": 0,
             "expires_at": time.time() + (48 * 60 * 60),
+            "ticket_burned": True, "settlement_closed": False,
         }
         driver_id = f"{guild_id}_{user_id}"
         challenge_fields = dict(challenge_doc)
@@ -2275,8 +2276,23 @@ class ChallengeDropdown(discord.ui.Select):
                         cooldown_remaining = 45.0 - (time.time() - last_challenge_started_at)
                         if cooldown_remaining > 0:
                             raise RuntimeError(f"COOLDOWN:{cooldown_remaining:.0f}")
-                        if challenge_date == today and challenge_count >= 5:
-                            raise RuntimeError("DAILY_LIMIT")
+                        if profile.get("gauntlet_ticket_date") != today:
+                            await bot.db.drivers.update_one(
+                                {"_id": driver_id, "guild_id": guild_id},
+                                {"$set": {"gauntlet_ticket_date": today, "gauntlet_tickets": FREE_DAILY_TICKETS, "gauntlet_purchased_tickets": 0, "gauntlet_refreshes": 0, "gauntlet_opponent_refresh_at": time.time()}},
+                                session=session,
+                            )
+                            available_tickets = FREE_DAILY_TICKETS
+                        else:
+                            available_tickets = int(profile.get("gauntlet_tickets", 0) or 0)
+                        if available_tickets <= 0:
+                            raise RuntimeError("NO_TICKETS")
+                        ticket_result = await bot.db.drivers.update_one(
+                            {"_id": driver_id, "guild_id": guild_id, "gauntlet_ticket_date": today, "gauntlet_tickets": {"$gt": 0}},
+                            {"$inc": {"gauntlet_tickets": -1}}, session=session
+                        )
+                        if getattr(ticket_result, "modified_count", 0) != 1:
+                            raise RuntimeError("NO_TICKETS")
                         new_count = (challenge_count + 1) if challenge_date == today else 1
                         counter_update = (
                             {"$inc": {"challenge_count": 1}, "$set": {"last_challenge_started_at": time.time()}}
@@ -2301,8 +2317,8 @@ class ChallengeDropdown(discord.ui.Select):
                 if str(exc) == "ACTIVE_CHALLENGE_EXISTS":
                     await interaction.followup.send("🟡 You already have an unfinished challenge. Open `/dashboard` → **Challenges** → **Submit Match** to finish it first.", ephemeral=True)
                     return
-                if str(exc) == "DAILY_LIMIT":
-                    await interaction.followup.send("⏳ **Daily Limit Reached:** You've used all 5 of your daily challenges. Come back tomorrow!", ephemeral=True)
+                if str(exc) == "NO_TICKETS":
+                    await interaction.followup.send("⏳ **No Gauntlet Tickets Remaining:** Your 5 free tickets and up to 5 paid tickets reset every 24 hours. Unused tickets do not carry over.", ephemeral=True)
                     return
                 if str(exc).startswith("COOLDOWN:"):
                     seconds = max(1, int(float(str(exc).split(":", 1)[1])))
@@ -2339,9 +2355,21 @@ class ChallengeDropdown(discord.ui.Select):
                     seconds = max(1, int(cooldown_remaining))
                     await interaction.followup.send(f"⏳ **Matchmaking cooldown:** please wait `{seconds}s` before starting another challenge.", ephemeral=True)
                     return
-                if challenge_date == today and challenge_count >= 5:
-                    await bot.db.active_challenges.update_one({"_id": active_id, "guild_id": guild_id, "status": "active"}, {"$set": {"status": "cancelled", "cancelled_reason": "daily_limit_race"}})
-                    await interaction.followup.send("⏳ **Daily Limit Reached:** You've used all 5 of your daily challenges. Come back tomorrow!", ephemeral=True)
+                if challenge_date != today:
+                    await bot.db.drivers.update_one({"_id": driver_id, "guild_id": guild_id}, {"$set": {"gauntlet_ticket_date": today, "gauntlet_tickets": FREE_DAILY_TICKETS, "gauntlet_purchased_tickets": 0, "gauntlet_refreshes": 0, "gauntlet_opponent_refresh_at": time.time()}})
+                    profile = await bot.db.drivers.find_one({"_id": driver_id, "guild_id": guild_id})
+                available_tickets = int((profile or {}).get("gauntlet_tickets", 0) or 0)
+                if available_tickets <= 0:
+                    await bot.db.active_challenges.update_one({"_id": active_id, "guild_id": guild_id, "status": "active"}, {"$set": {"status": "cancelled", "cancelled_reason": "no_tickets"}})
+                    await interaction.followup.send("⏳ **No Gauntlet Tickets Remaining:** Your 5 free tickets and up to 5 paid tickets reset every 24 hours. Unused tickets do not carry over.", ephemeral=True)
+                    return
+                ticket_result = await bot.db.drivers.update_one(
+                    {"_id": driver_id, "guild_id": guild_id, "gauntlet_ticket_date": today, "gauntlet_tickets": {"$gt": 0}},
+                    {"$inc": {"gauntlet_tickets": -1}},
+                )
+                if getattr(ticket_result, "modified_count", 0) != 1:
+                    await bot.db.active_challenges.update_one({"_id": active_id, "guild_id": guild_id, "status": "active"}, {"$set": {"status": "cancelled", "cancelled_reason": "no_tickets"}})
+                    await interaction.followup.send("⏳ **No Gauntlet Tickets Remaining:** another challenge used your last ticket.", ephemeral=True)
                     return
                 new_count = (challenge_count + 1) if challenge_date == today else 1
                 await bot.db.drivers.update_one({"_id": driver_id, "guild_id": guild_id}, {"$set": {"challenge_count": new_count, "challenge_date": today, "last_challenge_started_at": time.time()}})
@@ -2349,7 +2377,7 @@ class ChallengeDropdown(discord.ui.Select):
                 await interaction.followup.send("🟡 You already have an unfinished challenge. Open `/dashboard` → **Challenges** → **Submit Match** to finish it first.", ephemeral=True)
                 return
 
-        remaining = 5 - new_count
+        remaining = int((await bot.db.drivers.find_one({"_id": driver_id}, {"gauntlet_tickets": 1}) or {}).get("gauntlet_tickets", 0) or 0)
         opponent_division = get_division_for_pi(int(opponent_profile.get("garage_pi", 0))) if opponent_profile else {"name": "Unknown Division"}
         opponent_elo = opponent_profile.get("elo", 1000) if opponent_profile else 1000
         embeds, files = build_course_embeds(
@@ -4660,6 +4688,13 @@ async def reconcile_processing_challenges(guild_id: str | None = None):
                 match["settlement_status"] = "completed"
                 await _reconcile_match_lap_times(match)
                 await bot.db.active_challenges.update_one({"_id": ch["_id"], "status": "processing"}, {"$set": {"status": "completed", "completed_at": time.time(), "match_id": match_id}, "$unset": {"processing_at": ""}})
+        elif not match:
+            processing_at = float(ch.get("processing_at", 0) or 0)
+            if processing_at and time.time() - processing_at > 15 * 60:
+                await bot.db.active_challenges.update_one(
+                    {"_id": ch["_id"], "status": "processing", "processing_at": ch.get("processing_at")},
+                    {"$set": {"status": "active", "last_reminder": 0}, "$unset": {"processing_at": ""}},
+                )
 
 async def get_current_season_number(guild_id: str) -> int:
     state = await bot.db.season_state.find_one({"_id": f"guild_{guild_id}"})
