@@ -68,6 +68,20 @@ async function load(){
     if(message && !message.textContent) message.textContent=nextCost>0?("Next ticket costs "+nextCost.toLocaleString()+" RSL Coins. Tickets reset daily and unused tickets expire."):"You have used all 5 purchased tickets for today.";
   };
   renderTickets(d.tickets||{});
+  const historyBox=$("#rsl-economy-history");
+  if(historyBox){
+    const history=await api("/api/player/economy/history?guild_id="+encodeURIComponent(guild.id)).catch(()=>({transactions:[]}));
+    const rows=history.transactions||[];
+    historyBox.innerHTML="";
+    if(!rows.length){historyBox.textContent="No Coin transactions recorded yet.";}
+    else rows.slice(0,20).forEach(tx=>{
+      const row=document.createElement("div"); row.className="profile-field"; row.style.marginBottom="10px";
+      const amount=Number(tx.amount||0), sign=amount>=0?"+":"";
+      const when=tx.created_at?new Date(Number(tx.created_at)*1000).toLocaleString():"";
+      row.innerHTML="<strong>"+esc(tx.reason||tx.type||"RSL Coin transaction")+"</strong><span style=\"display:block;margin-top:6px;color:#7188a7;font-size:11px\">"+sign+amount.toLocaleString()+" RSL Coins"+(tx.balance_after!=null?" • Balance "+Number(tx.balance_after).toLocaleString():"")+(when?" • "+esc(when):"")+"</span>";
+      historyBox.append(row);
+    });
+  }
   const ticketButton=$("#gauntlet-buy-ticket");
   if(ticketButton)ticketButton.addEventListener("click",async()=>{
     const message=$("#gauntlet-ticket-message");
