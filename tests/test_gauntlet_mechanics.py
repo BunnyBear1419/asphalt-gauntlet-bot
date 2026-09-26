@@ -61,3 +61,31 @@ def test_paid_refresh_is_ledger_backed_and_automatic_rotation_is_not_paid_refres
     automatic_rotation = challenges.split("if len(selected_opponents) < 1:", 1)[1].split("remaining = tickets", 1)[0]
     assert "'gauntlet_refreshes':" not in automatic_rotation
     assert "RSL Credits" not in core
+
+
+def test_ticket_is_consumed_only_when_an_opponent_is_selected():
+    challenges = Path("ALU_Gauntlet/cogs/challenges.py").read_text(encoding="utf-8")
+    core = Path("ALU_Gauntlet/core/core.py").read_text(encoding="utf-8")
+    # The search UI must not debit a ticket before the opponent is selected.
+    assert "ticket_claim = await bot.db.drivers.update_one" not in challenges
+    assert "Searching/matching is free; the ticket is consumed atomically" in challenges
+    # Production selection must debit the ticket inside the same Mongo transaction
+    # that creates the active challenge.
+    assert '"gauntlet_tickets": {"$gt": 0}' in core
+    assert '{"$inc": {"gauntlet_tickets": -1}}' in core
+    assert 'session=session' in core
+
+
+def test_legacy_daily_challenge_cap_is_not_authoritative():
+    core = Path("ALU_Gauntlet/core/core.py").read_text(encoding="utf-8")
+    assert 'raise RuntimeError("DAILY_LIMIT")' not in core
+    assert 'raise RuntimeError("NO_TICKETS")' in core
+    assert '"ticket_burned": True' in core
+    assert '"settlement_closed": True' in core
+
+
+def test_processing_recovery_reopens_only_without_a_settlement_reservation():
+    core = Path("ALU_Gauntlet/core/core.py").read_text(encoding="utf-8")
+    assert 'elif not match:' in core
+    assert 'time.time() - processing_at > 15 * 60' in core
+    assert '"status": "active", "last_reminder": 0' in core
