@@ -2503,7 +2503,7 @@ class ChallengeRefreshButton(discord.ui.Button):
         result = await refresh_challenge_opponents(self.view.guild_id, self.view.user_id)
         if not result.get("ok"):
             if result.get("reason") == "credits":
-                await interaction.followup.send(f"Not enough RSL Credits. Refresh cost: {result.get('cost', 0):,} • Balance: {result.get('credits', 0):,}.", ephemeral=True)
+                await interaction.followup.send(f"Not enough RSL Coins. Refresh cost: {result.get('cost', 0):,} • Balance: {result.get('credits', 0):,}.", ephemeral=True)
             elif result.get("reason") == "opponents":
                 await interaction.followup.send("No qualified opponents are available. Your credits were not charged.", ephemeral=True)
             else:
@@ -2522,7 +2522,7 @@ class ChallengeRefreshButton(discord.ui.Button):
         self.view.add_item(ChallengeDropdown(options, data))
         self.view.add_item(ChallengeRefreshButton())
         await interaction.message.edit(view=self.view)
-        await interaction.followup.send(f"Opponents refreshed. {result['cost']:,} RSL Credits spent • {result['credits']:,} remaining.", ephemeral=True)
+        await interaction.followup.send(f"Opponents refreshed. {result['cost']:,} RSL Coins spent • {result['credits']:,} remaining.", ephemeral=True)
 
 class ChallengeView(discord.ui.View):
     def __init__(self, options_list: list[discord.SelectOption], defender_def_data: dict, guild_id: str, user_id: str):
