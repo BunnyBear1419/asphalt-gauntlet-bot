@@ -3793,8 +3793,8 @@ html[data-theme] textarea:disabled{
 }
 .top-nav>nav{
   position:absolute!important;
-  left:250px!important;
-  right:390px!important;
+  left:190px!important;
+  right:450px!important;
   top:0!important;
   height:80px!important;
   display:flex!important;
