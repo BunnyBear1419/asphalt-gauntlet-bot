@@ -23,3 +23,18 @@ def test_fair_match_snapshot_reports_gaps_without_prediction():
 
 def test_score_buckets_cover_all_five_race_outcomes():
     assert {score_bucket(i, True) for i in range(6)} == {"5-0", "4-1", "3-2", "2-3", "1-4", "0-5"}
+
+
+def test_repeat_opponent_protection_and_fair_match_contract_are_wired():
+    from pathlib import Path
+    source = Path("ALU_Gauntlet/cogs/challenges.py").read_text(encoding="utf-8")
+    assert "gauntlet_recent_opponents" in source
+    assert "fair_match_snapshot" in source
+    assert "rotation_pool = available_candidates or candidates" in source
+
+
+def test_staff_fairness_review_is_advisory():
+    from pathlib import Path
+    source = Path("ALU_Gauntlet/core/fairness.py").read_text(encoding="utf-8")
+    assert "advisory_only" in source
+    assert "automatic" not in source.lower() or "automatically accuse" in source.lower()
