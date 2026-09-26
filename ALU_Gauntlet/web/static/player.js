@@ -277,7 +277,7 @@ const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.add
      setText("career-elo",Number(c.elo||0).toLocaleString());
      setText("career-record",(c.wins??0)+"-"+(c.losses??0));
      const wr=Number(c.played||0)?Math.round(Number(c.wins||0)/Number(c.played||0)*100):0;
-     setText("career-winrate",wr+"%"); setText("career-streak",c.streak??0);
+     setText("career-winrate",wr+"%"); setText("career-streak",c.streak??0); setText("career-championships",d.stats?.championships??0);
      setText("career-gauntlet-rank",c.rank?"#"+c.rank:"—");
      setText("career-gauntlet-status",c.registered?"REGISTERED":"NOT REGISTERED");
      setText("career-gauntlet-title",c.registered?"Season "+c.season+" Gauntlet":"Gauntlet Registration");
@@ -285,9 +285,9 @@ const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.add
      const list=document.querySelector("#career-tournaments"), rows=d.tournaments||[];
      setText("career-tournament-count",rows.length);
      if(list){list.textContent=""; if(!rows.length){const p=document.createElement("p");p.className="empty-state";p.textContent="No tournament history yet.";list.append(p);} else rows.forEach(t=>{
-       const row=document.createElement("a"); row.className="career-tournament"; row.href="/tournaments";
+       const row=document.createElement("a"); row.className="career-tournament"; row.href="/tournaments/results?tournament_id="+encodeURIComponent(t.id);
        const main=document.createElement("div"); const name=document.createElement("strong"); name.textContent=t.name; const meta=document.createElement("small"); meta.textContent=t.format+" • "+t.status; main.append(name,meta);
-       const result=document.createElement("div"); result.className="career-tournament-result"; const rank=document.createElement("strong"); rank.textContent=t.placement||"Active"; const rec=document.createElement("small"); rec.textContent=t.record+" record"; result.append(rank,rec);
+       const result=document.createElement("div"); result.className="career-tournament-result"; const rank=document.createElement("strong"); rank.textContent=t.placement||"Active"; const rec=document.createElement("small"); rec.textContent=(Number(t.wins||0)+"-"+Number(t.losses||0)+" record")+(t.champion?" • Champion":""); result.append(rank,rec);
        row.append(main,result); list.append(row);
      });}
    }catch(e){const list=document.querySelector("#career-tournaments");if(list){list.textContent="";const p=document.createElement("p");p.className="empty-state";p.textContent="Career history unavailable.";list.append(p);}}
