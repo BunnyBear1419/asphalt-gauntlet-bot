@@ -36,8 +36,8 @@ function resultDetail(t,media){
  const table=standings.length?'<table class="results-table"><thead><tr><th>PLACE</th><th>DRIVER / CLUB</th><th>W</th><th>L</th><th>PLAYED</th></tr></thead><tbody>'+standings.map(x=>'<tr><td><strong>'+esc(x.placement??"—")+'</strong></td><td>'+esc(x.name)+'</td><td>'+Number(x.wins||0)+'</td><td>'+Number(x.losses||0)+'</td><td>'+Number(x.matches_played||0)+'</td></tr>').join("")+'</tbody></table>':'<div class="tournament-empty">No final standings recorded.</div>';
  const matches=t.matches||[];
  const history=matches.length?'<div>'+matches.map(m=>{
-   const a=m.player_slots?.[0]||"—", b=m.player_slots?.[1]||"—";
-   const winner=m.winner_id||"";
+   const a=m.entrant_names?.[0]||m.player_slots?.[0]||"—", b=m.entrant_names?.[1]||m.player_slots?.[1]||"—";
+   const winner=m.winner_name||m.winner_id||"";
    return '<div class="completed-match"><small>'+esc(m.id)+'<br>R'+Number(m.round||0)+'</small><span>'+esc(a)+' vs '+esc(b)+'</span><strong>'+esc(winner?'Winner: '+winner:"Verified")+'</strong></div>';
  }).join("")+'</div>':'<div class="tournament-empty">No completed matches recorded.</div>';
  return '<div class="panel-heading"><div><span class="eyebrow">COMPLETED TOURNAMENT</span><h2>'+esc(t.name)+'</h2></div><span>'+esc(t.format||"")+'</span></div>'+
