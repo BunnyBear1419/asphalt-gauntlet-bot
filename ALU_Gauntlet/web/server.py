@@ -5211,12 +5211,16 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         control_raw = str(payload.get("control", "")).strip().casefold()
         if not game_id or len(game_id) > 100:
             raise web.HTTPBadRequest(text="Game ID is required and must be 100 characters or fewer.")
+        raw_ranks = payload.get("top_five_car_ranks")
+        if not isinstance(raw_ranks, list) or len(raw_ranks) != 5:
+            raise web.HTTPBadRequest(text="Exactly five top-car performance ratings are required.")
         try:
-            garage_pi = int(payload.get("garage_pi"))
+            top_five_car_ranks = [int(x) for x in raw_ranks]
         except (TypeError, ValueError):
-            raise web.HTTPBadRequest(text="Garage PI must be a positive whole number.")
-        if garage_pi <= 0:
-            raise web.HTTPBadRequest(text="Garage PI must be a positive whole number.")
+            raise web.HTTPBadRequest(text="Top-car performance ratings must be whole numbers.")
+        if any(x <= 0 for x in top_five_car_ranks):
+            raise web.HTTPBadRequest(text="Top-car performance ratings must all be positive.")
+        garage_pi = sum(top_five_car_ranks)
         if not proof_url.lower().startswith(("http://", "https://")):
             raise web.HTTPBadRequest(text="Proof must be a direct image URL beginning with http:// or https://.")
         if "touch" in control_raw:
@@ -5270,7 +5274,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             url = proof_url
 
         interaction = _WebInteraction()
-        await submit_registration_application(interaction, game_id, garage_pi, _Proof(), _ControlType())
+        await submit_registration_application(interaction, game_id, garage_pi, _Proof(), _ControlType(), top_five_car_ranks=top_five_car_ranks)
         if interaction.message.startswith(("❌", "⚠️", "⏳")):
             if interaction.message.startswith("⏳"):
                 raise web.HTTPConflict(text=interaction.message)
