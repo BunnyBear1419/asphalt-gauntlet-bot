@@ -1,4 +1,4 @@
-from ALU_Gauntlet.core.rsl_activity import overall_activity_score, with_overall_activity_score
+# Final RSL audit coverage: cross-mode Top Active scoring.\nfrom ALU_Gauntlet.core.rsl_activity import overall_activity_score, with_overall_activity_score
 
 
 def test_overall_activity_aggregates_cross_rsl_sources():
