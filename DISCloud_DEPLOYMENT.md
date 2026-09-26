@@ -13,22 +13,19 @@ This repository is designed to run the **Racing Syndicate League Discord bot and
 
 The root `discloud.config` uses `TYPE=site`, `MAIN=main.py`, Python 3.12, 512 MB RAM, and automatic restart. Discloud's site hosting routes the registered subdomain to the application's port; this application reads Discloud's `PORT` and defaults to 8080. citeturn1search1turn1search4
 
-## Recommended deployment path: Discloud GitHub Integration
+## Production deployment path: GitHub Actions → Discloud
 
-GitHub Actions is **not required** for production deployment. Discloud supports deploying directly from a GitHub repository.
+GitHub Actions is the repository's **single production deployment path**. The workflow in `.github/workflows/deploy.yml` runs tests first, uploads the committed tree to the existing Discloud app `asph`, restarts it, runs production smoke tests, and rolls back to the previous revision if the new deployment fails health checks.
 
-1. Open the Discloud Dashboard.
-2. Open **GitHub Integration**.
-3. Connect the GitHub account that owns this repository.
-4. Configure repository access and allow the `BunnyBear1419/asphalt-gauntlet-bot` repository.
-5. Use **Upload → GitHub**.
-6. Select this repository and the `main` branch.
-7. Keep the existing app ID as `asph` so the deployment targets the existing website/bot service.
-8. Enter the production environment variables listed below.
-9. Deploy.
-10. Verify `https://asph.discloud.app/healthz` returns a healthy response and then verify Discord bot connectivity.
+Do **not** enable Discloud GitHub Integration for automatic deployment of this same repository/branch. A second automatic deployment path can race the Actions deployment and produce duplicate uploads, rate limits, or conflicting production revisions.
 
-Discloud documents the GitHub Integration flow and requires a valid root-level `discloud.config`. citeturn1search0
+The workflow requires these GitHub Actions secrets:
+- `DISCLOUD_TOKEN`
+- `DISCLOUD_APP_ID` — must be exactly `asph`
+- `DISCORD_BOT_TOKEN`
+- `MONGO_URI`
+
+After a successful workflow, verify `https://asph.discloud.app/healthz` and Discord connectivity.
 
 ## Required production environment variables
 
