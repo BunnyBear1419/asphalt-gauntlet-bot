@@ -118,6 +118,17 @@ jobs:
           fi
           echo "Discord bot token preflight passed."
 
+      - name: Clean CI-generated files before Discloud upload
+        run: |
+          set -euo pipefail
+          # Discloud uploads the production workspace. Remove files created by
+          # CI checks so caches and preflight artifacts never enter production.
+          rm -f discord-preflight.json discloud-status.json web-health.json web-login.html web-home.html web-home-stale.html
+          rm -f hero-home.jpg web-css.css discord-user.json discloud-restart.json
+          find . -type d -name __pycache__ -prune -exec rm -rf {} +
+          rm -rf .pytest_cache
+          echo "CI-generated caches and preflight artifacts removed."
+
       - name: Capture pre-deployment heartbeat
         id: predeploy
         env:
