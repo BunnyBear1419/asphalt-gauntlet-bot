@@ -100,6 +100,31 @@ async function startTournament(id,button){
   }catch(e){toast(e.message,true)}
   finally{if(button){button.disabled=false;button.textContent=original}}
 }
+async function reviewRegistration(t,registrationId,action,button){
+  if(button?.disabled)return;
+  const original=button?.textContent;
+  if(button){button.disabled=true;button.textContent=action==="approve"?"Approving…":"Rejecting…"}
+  try{
+    const r=await api("/api/tournaments/register/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,registration_id:registrationId,action})});
+    toast(r.message||"Registration updated.");
+    await showTournament(t.id);
+    await load();
+  }catch(e){toast(e.message,true)}
+  finally{if(button){button.disabled=false;button.textContent=original}}
+}
+function registrationReviewHtml(t){
+  if(!t.can_manage_results)return "";
+  const rows=Number(t.team_size||1)>1?(t.clubs||[]).filter(x=>x.status==="pending").map(c=>{
+    const lineup=(c.lineup||[]).map(String);
+    const names=(c.members||[]).filter(m=>lineup.includes(String(m.user_id))).map(m=>m.username).join(" • ");
+    return '<div class="review-row"><div><strong>'+esc(c.name)+'</strong><span>Club registration'+(names?" • "+esc(names):" • Lineup incomplete")+'</span></div><div><button class="qa qa-purple registration-action" data-registration="'+esc(c.registration_id||"")+'" data-action="approve" '+(!c.registration_id||lineup.length!==Number(t.team_size||1)?"disabled":"")+'>Approve</button><button class="qa qa-blue registration-action" data-registration="'+esc(c.registration_id||"")+'" data-action="reject" '+(!c.registration_id?"disabled":"")+'>Reject</button></div></div>';
+  }).join(""):(t.registrations||[]).filter(x=>x.status==="pending").map(p=>
+    '<div class="review-row"><div><strong>'+esc(p.username||p.user_id)+'</strong><span>'+esc(p.asphalt_game_name||"Driver")+(p.asphalt_verified?" • Verified Asphalt":" • Asphalt not verified")+'</span></div><div><button class="qa qa-purple registration-action" data-registration="'+esc(p.registration_id||"")+'" data-action="approve" '+(!p.registration_id?"disabled":"")+'>Approve</button><button class="qa qa-blue registration-action" data-registration="'+esc(p.registration_id||"")+'" data-action="reject" '+(!p.registration_id?"disabled":"")+'>Reject</button></div></div>'
+  ).join("");
+  if(!rows)return "";
+  return '<section class="match-review glass-panel registration-review"><div class="panel-heading"><h3>Staff Registration Review</h3><span>'+((t.registrations||[]).filter(x=>x.status==="pending").length+(t.clubs||[]).filter(x=>x.status==="pending").length)+' pending</span></div>'+rows+'</section>';
+}
+
 async function showTournament(id){
   try{
     const t=await api("/api/tournaments/"+encodeURIComponent(id)); const box=$("#tournament-detail"); box.hidden=false;
@@ -109,7 +134,7 @@ async function showTournament(id){
       '<p>'+esc(t.description||"")+'</p>'+
       (t.status==="completed"&&champion?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><button type="button" class="tournament-champion-link" data-identity-type="'+esc(champion.identityType||"")+'" data-identity-id="'+esc(champion.identityType==="club"?champion.clubId:(champion.userId||""))+'"><strong>'+esc(champion.name)+'</strong><small>'+esc(champion.detail||"")+'</small>'+verifiedBadge(champion)+'</button></section>':'')+
       '<div class="tournament-detail-actions"><button class="qa qa-purple" id="checkin-tournament">Check In</button>'+((t.can_manage_results&&(t.status==="registration_open"||t.status==="open"))?'<button class="qa qa-gold" id="start-tournament">Start Tournament →</button>':'')+'</div>'+
-      (pending.length&&(window._me?.staff||t.can_manage_results)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+      (Number(t.team_size||1)>1&&((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).length)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>🏎️ Tournament Lineup</h3><span>'+Number(t.team_size||1)+' drivers required</span></div>'+((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).map(c=>'<div class="lineup-editor"><strong>'+esc(c.name)+'</strong><div class="lineup-list">'+(c.members||[]).map(m=>'<label><input class="lineup-member" data-club="'+esc(c.id)+'" type="checkbox" value="'+esc(m.user_id)+'" '+((c.lineup||[]).map(String).includes(String(m.user_id))?'checked':'')+'> '+esc(m.username)+'</label>').join('')+'</div><button class="qa qa-purple lineup-save" data-club="'+esc(c.id)+'">Save Lineup</button></div>').join(''))+'</section>':'')+
+      registrationReviewHtml(t)+\n      (pending.length&&(window._me?.staff||t.can_manage_results)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>Staff Result Review</h3><span>'+pending.length+' pending</span></div>'+pending.map(m=>{const w=entrantInfo(t,m.winner_id);return '<div class="review-row"><div><strong>'+esc(m.id)+'</strong><span>Winner submitted: '+esc(w.name)+'</span></div><div><button class="qa qa-purple verify-result" data-match="'+esc(m.id)+'">Approve</button><button class="qa qa-blue reject-result" data-match="'+esc(m.id)+'">Reject</button></div></div>'}).join('')+'</section>':'')+      (Number(t.team_size||1)>1&&((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).length)?'<section class="match-review glass-panel"><div class="panel-heading"><h3>🏎️ Tournament Lineup</h3><span>'+Number(t.team_size||1)+' drivers required</span></div>'+((t.clubs||[]).filter(c=>String(c.leader_id)===String(window._me?.id)).map(c=>'<div class="lineup-editor"><strong>'+esc(c.name)+'</strong><div class="lineup-list">'+(c.members||[]).map(m=>'<label><input class="lineup-member" data-club="'+esc(c.id)+'" type="checkbox" value="'+esc(m.user_id)+'" '+((c.lineup||[]).map(String).includes(String(m.user_id))?'checked':'')+'> '+esc(m.username)+'</label>').join('')+'</div><button class="qa qa-purple lineup-save" data-club="'+esc(c.id)+'">Save Lineup</button></div>').join(''))+'</section>':'')+
       '<div class="tournament-bracket">'+bracketText(t)+'</div>'+clubHtml(t);
     $("#close-tournament-detail").onclick=()=>box.hidden=true;
     $("#checkin-tournament").onclick=()=>checkin(id);
@@ -119,6 +144,7 @@ async function showTournament(id){
     const matches=allMatches(t.bracket);
     box.querySelectorAll(".match-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)submitResult(t,m)}});
     box.querySelectorAll(".verify-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"approve",b)}});
+    box.querySelectorAll(".registration-action").forEach(b=>{b.onclick=()=>reviewRegistration(t,b.dataset.registration,b.dataset.action,b)});
     box.querySelectorAll(".reject-result").forEach(b=>{b.onclick=()=>{const m=matches.find(x=>String(x.id)===b.dataset.match);if(m)verifyResult(t,m,"reject",b)}});
     box.querySelectorAll(".lineup-save").forEach(b=>{b.onclick=async()=>{if(b.disabled)return;const original=b.textContent;b.disabled=true;b.textContent="Saving…";
       const club=(t.clubs||[]).find(x=>String(x.id)===b.dataset.club); if(!club)return;
