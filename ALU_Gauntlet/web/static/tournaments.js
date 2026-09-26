@@ -72,7 +72,13 @@ async function submitResult(t,match){
   try{
     const data=await resultDialog(t,match); if(!data)return;
     const r=await api("/api/tournaments/result",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,match_id:match.id,...data})});
-    toast(r.message||"Result submitted."); await showTournament(t.id);
+    if((t.result_submission_mode||"player_review")==="admin_only" && t.can_manage_results){
+      const verified=await api("/api/tournaments/result/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tournament_id:t.id,match_id:match.id,action:"approve"})});
+      toast(verified.message||"Admin result recorded.");
+    }else{
+      toast(r.message||"Result submitted.");
+    }
+    await showTournament(t.id);
   }catch(e){toast(e.message,true)}
 }
 async function verifyResult(t,match,action,button){
