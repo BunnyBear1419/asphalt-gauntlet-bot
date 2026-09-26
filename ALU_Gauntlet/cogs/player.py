@@ -84,7 +84,13 @@ class PlayerCog(commands.Cog):
             recent.append(f"{result} • `{m.get('courses_beat', 0)}/5` • <t:{int(m.get('timestamp', now_ts()))}:R>")
         embed.add_field(name='👤 Pilot Credentials', value=f'• **User:** {target_user.mention}\n• **Game ID Node:** `{profile.get("game_id")}`', inline=True)
         embed.add_field(name='📊 Rating & Rank', value=f"**{int(profile.get('elo', 1000))} ELO**\nRank: **#{rank or '—'}**\n{get_division_for_pi(int(profile.get('garage_pi', 0)))['name']}\nSeason {current_season}", inline=True)
-        embed.add_field(name='📈 Career Performance', value=f"**{wins}-{losses}**\nWin rate: **{win_rate:.1f}%**\nMatches: `{played}`\n🔥 Streak: `{int(profile.get('streak', 0))}`\n🏆 Career wins: `{int(profile.get('career_wins', 0))}`\n🏁 Track records: `{records}`", inline=True)
+        dominance = profile.get("rsl_dominance") or {}
+        buckets = dominance.get("score_buckets") or {}
+        race_wins = int(dominance.get("race_wins", 0) or 0)
+        race_losses = int(dominance.get("race_losses", 0) or 0)
+        embed.add_field(name='📈 Career Performance', value=f"**{wins}-{losses}**\nWin rate: **{win_rate:.1f}%**\nMatches: `{played}`\n🔥 Streak: `{int(profile.get('streak', 0))}`\n🏆 Career wins: `{int(profile.get('career_wins', 0))}`\n🏁 Track records: `{records}`\n🏎️ Race record: `{race_wins}-{race_losses}`", inline=True)
+        if dominance:
+            embed.add_field(name='⚖️ Match Dominance', value=f"**5-0:** `{buckets.get("5-0", 0)}` • **4-1:** `{buckets.get("4-1", 0)}`\n**3-2:** `{buckets.get("3-2", 0)}` • **2-3:** `{buckets.get("2-3", 0)}`\n**1-4:** `{buckets.get("1-4", 0)}` • **0-5:** `{buckets.get("0-5", 0)}`", inline=True)
         if lap_rows:
             embed.add_field(name='⚡ Best Saved Laps', value='\n'.join(f"`{r.get('best_lap_time', '?')}` — {r.get('track', 'Unknown')}" for r in lap_rows[:5]), inline=False)
         if recent:
