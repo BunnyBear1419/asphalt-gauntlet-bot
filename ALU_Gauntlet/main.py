@@ -12,7 +12,7 @@ EXTENSIONS = [
     "ALU_Gauntlet.cogs.competition", "ALU_Gauntlet.cogs.staff", "ALU_Gauntlet.cogs.season",
     "ALU_Gauntlet.cogs.administration", "ALU_Gauntlet.cogs.help", "ALU_Gauntlet.cogs.system",
     "ALU_Gauntlet.cogs.operations", "ALU_Gauntlet.cogs.dashboard_setup_bridge",
-    "ALU_Gauntlet.cogs.tournament", "ALU_Gauntlet.cogs.notifications", "ALU_Gauntlet.cogs.activity_rewards", "ALU_Gauntlet.cogs.asphalt_account",
+    "ALU_Gauntlet.cogs.tournament", "ALU_Gauntlet.cogs.notifications", "ALU_Gauntlet.cogs.activity_rewards", "ALU_Gauntlet.cogs.economy_moderation", "ALU_Gauntlet.cogs.asphalt_account",
 ]
 
 
@@ -62,6 +62,11 @@ async def _ensure_database_indexes():
         await db.notification_deliveries.drop_index("uniq_notification_delivery")
     except Exception:
         pass
+    await db.rsl_economy_transactions.create_index(
+        [("guild_id", 1), ("user_id", 1), ("message_id", 1), ("type", 1)],
+        unique=True,
+        name="uniq_rsl_economy_message_transaction",
+    )
     await db.notification_deliveries.create_index(
         [("event_id", 1), ("user_id", 1), ("lead_days", 1)],
         unique=True,
