@@ -22,7 +22,7 @@ def test_discloud_action_is_pinned_to_commit():
     source = _source()
     assert "discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54" in source
     assert "discloud/deploy-action@v1" not in source
-    assert source.count("app_id: asph") == 2
+    assert source.count("app_id: asph") == 5
 
 
 def test_deployment_has_post_deploy_smoke_test():
