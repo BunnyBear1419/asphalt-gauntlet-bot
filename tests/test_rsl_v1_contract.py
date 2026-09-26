@@ -178,11 +178,11 @@ def test_v1_shared_shell_keeps_calendar_search_profile_and_companion_ordered():
 
 def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
     challenges = read(ROOT / "ALU_Gauntlet" / "cogs" / "challenges.py")
+    core = read(ROOT / "ALU_Gauntlet" / "core" / "core.py")
     league = read(ROOT / "tests" / "test_core_league.py")
     for marker in (
         "gauntlet_ticket_date",
         "gauntlet_tickets': FREE_DAILY_TICKETS",
-        "'gauntlet_tickets': {'$gt': 0}",
         "gauntlet_opponent_refresh_at",
         "4 * 60 * 60",
         "recent_blocked = {str(x.get('user_id')) for x in (user_profile.get('gauntlet_recent_opponents') or [])",
@@ -191,6 +191,12 @@ def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
         "six-division performance tier",
     ):
         assert marker in challenges
+    for marker in (
+        '"gauntlet_tickets": {"$gt": 0}',
+        '{"$inc": {"gauntlet_tickets": -1}}',
+        "Searching/matching is free; the ticket is consumed atomically",
+    ):
+        assert marker in core
     for marker in (
         "Division 1 — Bronze Tier",
         "Division 2 — Silver Tier",
