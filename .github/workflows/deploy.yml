@@ -90,22 +90,17 @@ jobs:
       - name: Validate deployment secrets are present
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
-          DISCLOUD_APP_ID: asph
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
           set -euo pipefail
-          for name in DISCLOUD_TOKEN DISCLOUD_APP_ID DISCORD_BOT_TOKEN MONGO_URI; do
+          for name in DISCLOUD_TOKEN DISCORD_BOT_TOKEN MONGO_URI; do
             if [ -z "${!name}" ]; then
               echo "ERROR: $name GitHub secret is missing from the deploy job."
               exit 1
             fi
           done
-          if [ "$DISCLOUD_APP_ID" != "asph" ]; then
-            echo "ERROR: DISCLOUD_APP_ID must be 'asph' for the Racing Syndicate League production app."
-            exit 1
-          fi
-          echo "Deployment secrets are present and target app is asph. Secret values are never printed."
+          echo "Deployment secrets are present. Production Discloud app is fixed to asph. Secret values are never printed."
 
       - name: Validate Discord bot token before deployment
         env:
