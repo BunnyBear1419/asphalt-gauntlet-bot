@@ -57,6 +57,35 @@ async function load(){
   text("elo",Number(p.elo||0).toLocaleString());
   const rslCoins=Number(p.rsl_coins||0); const activityXp=Number(p.activity_xp||0); const activityLevel=Math.max(1,Math.floor(Math.sqrt(Math.max(0,activityXp)/250))+1); const nextXp=Math.max(0,250*activityLevel*activityLevel-activityXp);
   text("rsl-coins",rslCoins.toLocaleString()); text("activity-level",activityLevel); text("activity-xp",activityXp.toLocaleString()); text("activity-xp-next",nextXp.toLocaleString());
+  const renderTickets=(t={})=>{
+    const remaining=Number(t.tickets_remaining??5), free=Number(t.free_remaining??Math.min(5,remaining)), purchased=Number(t.purchased_tickets??0), nextCost=Number(t.next_cost??0);
+    text("gauntlet-tickets",remaining+"/"+Number(t.max_daily_tickets??10));
+    text("gauntlet-free-tickets",free);
+    text("gauntlet-purchased-tickets",purchased+"/5");
+    text("gauntlet-next-ticket-cost",nextCost>0?nextCost.toLocaleString():"MAX");
+    const button=$("#gauntlet-buy-ticket"), message=$("#gauntlet-ticket-message");
+    if(button){button.disabled=nextCost<=0||remaining>=Number(t.max_daily_tickets??10)||rslCoins<nextCost;button.textContent=nextCost>0?"🎟️ Buy Extra Ticket":"🎟️ Daily Limit Reached";}
+    if(message && !message.textContent) message.textContent=nextCost>0?("Next ticket costs "+nextCost.toLocaleString()+" RSL Coins. Tickets reset daily and unused tickets expire."):"You have used all 5 purchased tickets for today.";
+  };
+  renderTickets(d.tickets||{});
+  const ticketButton=$("#gauntlet-buy-ticket");
+  if(ticketButton)ticketButton.addEventListener("click",async()=>{
+    const message=$("#gauntlet-ticket-message");
+    const current=await api("/api/player/me?guild_id="+encodeURIComponent(guild.id)).catch(()=>({tickets:{}}));
+    const nextCost=Number(current.tickets?.next_cost??0);
+    if(!nextCost){if(message)message.textContent="No extra ticket is available to purchase right now.";return;}
+    ticketButton.disabled=true;
+    if(message)message.textContent="Purchasing your extra ticket…";
+    try{
+      const response=await fetch("/api/player/tickets/purchase?guild_id="+encodeURIComponent(guild.id),{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"}});
+      const raw=await response.text(); let data={}; try{data=raw?JSON.parse(raw):{}}catch(_){}
+      if(!response.ok)throw new Error(data.error||"Ticket purchase could not be completed.");
+      if(message)message.textContent="🎟️ Purchased for "+Number(data.cost||0).toLocaleString()+" RSL Coins. Unused tickets expire at reset.";
+      const fresh=await api("/api/player/me?guild_id="+encodeURIComponent(guild.id));
+      const updated=fresh.player||{}; const newCoins=Number(updated.rsl_coins||0);
+      text("rsl-coins",newCoins.toLocaleString()); renderTickets(fresh.tickets||{});
+    }catch(e){if(message)message.textContent=e.message||"Ticket purchase could not be completed.";renderTickets(current.tickets||{});}
+  });
   text("wins",p.career_wins??0);
   text("played",p.career_played??0);
   text("streak",p.streak??0);
