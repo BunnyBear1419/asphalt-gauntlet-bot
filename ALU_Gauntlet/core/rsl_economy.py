@@ -111,12 +111,12 @@ async def purchase_daily_ticket(db, *, guild_id: str, user_id: str, today: str) 
         reason=f"Extra Gauntlet Ticket #{purchased + 1}",
         metadata={"date": today, "ticket_number": purchased + 1},
     )
-    if not ledger.get("ok"):
+    if not ledger.get("ok") or ledger.get("duplicate"):
         await db.drivers.update_one(
             {"_id": driver_id, "gauntlet_ticket_date": today, "gauntlet_purchased_tickets": purchased + 1},
             {"$inc": {"gauntlet_tickets": -1, "gauntlet_purchased_tickets": -1}},
         )
-        return {"ok": False, "reason": "insufficient_coins", "cost": cost}
+        return {"ok": False, "reason": "purchase_race_or_state_changed" if ledger.get("duplicate") else "insufficient_coins", "cost": cost}
 
     return {
         "ok": True, "cost": cost, "purchased_tickets": purchased + 1,
