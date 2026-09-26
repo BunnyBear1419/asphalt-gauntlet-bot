@@ -9,6 +9,8 @@ from discord import app_commands
 from ..core.core import *
 from ..core.gauntlet_progression import season_reward_for_rank
 from ..core.rsl_economy_ledger import apply_coin_transaction
+from ..core.rsl_activity import collect_overall_activity_stats, activity_level
+from ..core.rsl_role_sync import sync_gauntlet_season_roles, clear_gauntlet_season_roles, sync_xp_rank_role
 
 
 async def announce_season_start(guild_id, season_number, reason="scheduled"):
@@ -151,6 +153,74 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
                          "season_points": int(row.get("season_points", 0) or 0)}}},
             )
 
+    # Apply Discord recognition only after the season snapshot/rewards are built.
+    # Role failures are non-fatal: competitive settlement and the archived record
+    # remain authoritative even if Discord permissions/hierarchy block a role change.
+    try:
+        activity_stats = await collect_overall_activity_stats(
+            bot.db, guild_id=guild_id, season_number=current_season
+        )
+        player_stats = []
+        division_winners = {}
+        by_division = {}
+        for row in points_rows:
+            uid = str(row.get("user_id") or "")
+            standing = next((x for x in standings if x["user_id"] == uid), {})
+            wins = int(standing.get("season_wins", 0) or 0)
+            defense_wins = 0
+            challenge_wins = 0
+            for match in season_matches:
+                challenger = str(match.get("challenger_id") or "")
+                defender = str(match.get("opponent_id") or "")
+                winner = str(match.get("w_id") or match.get("winner_id") or "")
+                if winner == uid and challenger == uid:
+                    challenge_wins += 1
+                if winner == uid and defender == uid:
+                    defense_wins += 1
+            stat = {
+                "user_id": uid,
+                "wins": wins,
+                "gauntlet_points": int(row.get("season_points", 0) or 0),
+                "defense_wins": defense_wins,
+                "challenge_wins": challenge_wins,
+                "improvement": int(row.get("improvement", 0) or 0),
+                "win_streak": int(row.get("streak", 0) or 0),
+            }
+            player_stats.append(stat)
+            division = str(standing.get("division") or "Unranked")
+            if division.startswith("Division "):
+                try:
+                    division_number = int(division.split()[-1])
+                    by_division.setdefault(division_number, []).append(stat)
+                except ValueError:
+                    pass
+        for division_number, candidates in by_division.items():
+            winner = max(
+                candidates,
+                key=lambda x: (
+                    int(x.get("gauntlet_points", 0) or 0),
+                    int(x.get("wins", 0) or 0),
+                    str(x.get("user_id", "")),
+                ),
+            )
+            division_winners[division_number] = winner["user_id"]
+
+        guild = bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
+        if guild is not None:
+            await sync_gauntlet_season_roles(
+                guild,
+                division_winners=division_winners,
+                player_stats=player_stats,
+                overall_activity_stats=activity_stats,
+                champion_user_id=str(points_rows[0].get("user_id")) if points_rows else None,
+            )
+            for driver in drivers:
+                member = guild.get_member(int(driver["user_id"])) if str(driver.get("user_id", "")).isdigit() else None
+                if member is not None:
+                    await sync_xp_rank_role(member, activity_level(int(driver.get("activity_xp", 0) or 0)))
+    except Exception:
+        logging.exception("RSL Discord role synchronization failed for Season %s", current_season)
+
     await bot.db.season_history.replace_one(
         {"_id": f"{guild_id}_{current_season}"},
         {
@@ -171,6 +241,13 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
 
     next_season = current_season + 1
     if bool(start_next_season):
+        try:
+            guild = bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
+            if guild is not None:
+                await clear_gauntlet_season_roles(guild)
+        except Exception:
+            logging.exception("RSL seasonal role reset failed for new Season %s", next_season)
+
         season_duration = previous_end - previous_start
         if season_duration <= 0:
             season_duration = 30 * 24 * 60 * 60
