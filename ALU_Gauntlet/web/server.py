@@ -3519,6 +3519,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         async for row in self.bot.db.tournament_registrations.find(
             {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
         ).sort("registered_at", 1):
+            row["registration_id"] = str(row.get("_id", ""))
             row.pop("_id", None)
             registrations.append(row)
         for row in registrations:
@@ -3543,7 +3544,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     member["asphalt_game_name"] = connection.get("game_name", "")
                     member["asphalt_game_id"] = connection.get("game_id", "")
                     members.append(member)
-                clubs.append({"id": reg["club_id"], "name": club.get("name", "Club"), "image": club.get("image", ""), "about": club.get("about", ""), "status": reg.get("status", "pending"), "lineup": reg.get("lineup", []), "members": members, "registered_by": reg.get("registered_by"), "leader_id": club.get("leader_id")})
+                clubs.append({"id": reg["club_id"], "registration_id": str(reg.get("_id", "")), "name": club.get("name", "Club"), "image": club.get("image", ""), "about": club.get("about", ""), "status": reg.get("status", "pending"), "lineup": reg.get("lineup", []), "members": members, "registered_by": reg.get("registered_by"), "leader_id": club.get("leader_id")})
             item["clubs"] = clubs
             item["teams"] = []
         else:
