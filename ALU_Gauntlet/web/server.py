@@ -70,7 +70,7 @@ class WebControlCenter:
         self.port = port
         self.auth = DiscordOAuth(bot)
         self.players = PlayerService(bot)
-        self.app = web.Application(middlewares=[self._error_middleware], client_max_size=8 * 1024 * 1024)
+        self.app = web.Application(middlewares=[self._error_middleware], client_max_size=15 * 1024 * 1024)
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
         self._configure_routes()
@@ -2597,6 +2597,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/admin/select-guild", self.select_admin_guild)
         self.app.router.add_post("/api/admin/upload-asset", self.upload_brand_asset)
         self.app.router.add_get("/assets/tenant/{guild_id}/{asset_id}", self.serve_brand_asset)
+        self.app.router.add_get("/assets/tournament-media/{media_id}", self.serve_tournament_media)
         self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
         self.app.router.add_get("/api/admin/audit", self.admin_audit)
         self.app.router.add_post("/api/admin/sync", self.admin_sync)
@@ -2626,6 +2627,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/tournaments", self.tournaments)
         self.app.router.add_get("/api/calendar", self.calendar)
         self.app.router.add_get("/api/tournaments/{tournament_id}", self.tournament_detail)
+        self.app.router.add_get("/api/tournaments/results", self.tournament_results)
+        self.app.router.add_get("/api/tournaments/{tournament_id}/media", self.tournament_media)
         self.app.router.add_get("/api/clubs", self.clubs)
         self.app.router.add_post("/api/clubs", self.create_club)
         self.app.router.add_post("/api/clubs/update", self.update_club)
@@ -2638,6 +2641,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/tournaments/clubs/lineup", self.tournament_club_lineup)
         self.app.router.add_post("/api/tournaments/result", self.tournament_match_result)
         self.app.router.add_post("/api/tournaments/result/verify", self.tournament_verify_result)
+        self.app.router.add_post("/api/tournaments/media", self.tournament_media_upload)
+        self.app.router.add_post("/api/tournaments/media/action", self.tournament_media_action)
         self.app.router.add_post("/api/tournaments/start", self.tournament_start)
         self.app.router.add_get("/api/player/defense", self.player_defense)
         self.app.router.add_post("/api/player/defense", self.player_defense_action)
@@ -4073,6 +4078,169 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             except Exception:
                 log.exception("Unable to post tournament verification notice")
         return web.json_response({"ok": True, "message": message, "bracket": bracket, "champion_id": t.get("champion_id"), "standings": t.get("standings")})
+
+    async def _tournament_result_payload(self, tournament: dict[str, Any]) -> dict[str, Any]:
+        """Build normalized standings/history from the verified tournament bracket."""
+        bracket = tournament.get("bracket") or {}
+        groups = []
+        for key in ("rounds", "winners", "losers"):
+            groups.extend(bracket.get(key) or [])
+        for key in ("grand_final", "grand_final_reset"):
+            if isinstance(bracket.get(key), dict):
+                groups.append({"name": "Grand Final", "matches": [bracket[key]]})
+        matches = [m for group in groups for m in group.get("matches", [])]
+        entrant_ids, seen = [], set()
+        for m in matches:
+            for entrant in (m.get("player_slots") or []):
+                if entrant and str(entrant) not in seen:
+                    seen.add(str(entrant)); entrant_ids.append(str(entrant))
+        wins = {x: 0 for x in entrant_ids}; losses = {x: 0 for x in entrant_ids}; played = {x: 0 for x in entrant_ids}
+        last_loss, last_round = {}, {x: 0 for x in entrant_ids}
+        for m in matches:
+            if m.get("status") != "completed" and m.get("result_status") != "verified": continue
+            slots = [str(x) for x in (m.get("player_slots") or []) if x]; winner = str(m.get("winner_id") or "")
+            if winner not in slots: continue
+            round_no = int(m.get("round") or 0); when = str(m.get("verified_at") or m.get("submitted_at") or "")
+            for entrant in slots:
+                played[entrant] = played.get(entrant, 0) + 1
+                last_round[entrant] = max(last_round.get(entrant, 0), round_no)
+            wins[winner] = wins.get(winner, 0) + 1
+            loser = next((x for x in slots if x != winner), None)
+            if loser:
+                losses[loser] = losses.get(loser, 0) + 1
+                last_loss[loser] = (round_no, when, str(m.get("id") or ""))
+        champion_id = str(tournament.get("champion_id") or "")
+        ordered = list(entrant_ids)
+        ordered.sort(key=lambda x: (0 if x == champion_id else 1, -wins.get(x, 0), losses.get(x, 0), -last_round.get(x, 0), str(last_loss.get(x, ("", "", ""))[1]), x))
+        placements = {}
+        if champion_id: placements[champion_id] = 1
+        placement = 2
+        grouped = {}
+        for x in [x for x in ordered if x != champion_id]:
+            grouped.setdefault(last_loss.get(x, (0, "", ""))[0], []).append(x)
+        for key in sorted(grouped, reverse=True):
+            for x in grouped[key]: placements[x] = placement
+            placement += len(grouped[key])
+        rows = []
+        for x in ordered:
+            name = x
+            if int(tournament.get("team_size", 1)) > 1:
+                from bson import ObjectId
+                club = await self.bot.db.clubs.find_one({"_id": ObjectId(x)}) if ObjectId.is_valid(x) else None
+                name = str(club.get("name", x)) if club else x
+            else:
+                try:
+                    member = self.bot.get_user(int(x)) or await self.bot.fetch_user(int(x))
+                    name = str(getattr(member, "display_name", None) or getattr(member, "name", None) or x)
+                except Exception:
+                    name = x
+            rows.append({"entrant_id": x, "name": name, "placement": placements.get(x), "wins": wins.get(x, 0), "losses": losses.get(x, 0), "matches_played": played.get(x, 0)})
+        rows.sort(key=lambda x: (x["placement"] if x["placement"] is not None else 9999, -x["wins"], x["name"].casefold()))
+        return {"tournament_id": str(tournament.get("_id") or ""), "name": tournament.get("name", "Tournament"), "status": tournament.get("status", "draft"), "format": tournament.get("format", "single_elimination"), "team_size": int(tournament.get("team_size", 1)), "champion_id": champion_id or None, "champion_name": next((x["name"] for x in rows if x["entrant_id"] == champion_id), None), "standings": rows, "matches": [{"id": str(m.get("id") or ""), "round": int(m.get("round") or 0), "bracket": m.get("bracket", "winners"), "player_slots": [str(x) for x in (m.get("player_slots") or []) if x], "winner_id": str(m.get("winner_id") or ""), "status": m.get("status", "waiting"), "result_status": m.get("result_status", ""), "proof_url": m.get("proof_url", ""), "verified_at": m.get("verified_at", "")} for m in matches if m.get("status") == "completed" or m.get("result_status") == "verified"]}
+
+    async def tournament_results(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        guild_ids = {str(x) for x in getattr(user, "guild_ids", [])}
+        requested = str(request.query.get("tournament_id", "")).strip()
+        query = {"guild_id": {"$in": list(guild_ids)}, "status": "completed"}
+        if requested:
+            from bson import ObjectId
+            if not ObjectId.is_valid(requested): raise web.HTTPBadRequest(text="Invalid tournament ID.")
+            query["_id"] = ObjectId(requested)
+        rows = []
+        async for tournament in self.bot.db.tournaments.find(query).sort("completed_at", -1).limit(50):
+            result = await self._tournament_result_payload(tournament)
+            result["media_count"] = await self.bot.db.tournament_media.count_documents({"tournament_id": str(tournament["_id"]), "status": "approved"})
+            result["completed_at"] = tournament.get("completed_at")
+            rows.append(result)
+        if requested and not rows: raise web.HTTPNotFound(text="Completed tournament not found.")
+        return web.json_response({"tournaments": rows, "selected": rows[0] if requested and rows else None})
+
+    async def tournament_media(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        tournament_id = str(request.match_info.get("tournament_id", "")).strip()
+        from bson import ObjectId
+        if not ObjectId.is_valid(tournament_id): raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tournament_id)})
+        if not tournament or str(tournament.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPNotFound(text="Tournament not found.")
+        guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(tournament.get("guild_id"))), None)
+        staff = bool(guild and await self._is_live_tournament_staff(user, str(tournament.get("guild_id")), guild))
+        statuses = ["approved", "pending"] if staff and request.query.get("include_pending") == "1" else ["approved"]
+        rows = []
+        async for item in self.bot.db.tournament_media.find({"tournament_id": tournament_id, "status": {"$in": statuses}}).sort("created_at", -1).limit(100):
+            rows.append({"id": str(item["_id"]), "type": item.get("type", "image"), "mime_type": item.get("mime_type", ""), "filename": item.get("filename", "Tournament Media"), "title": item.get("title", ""), "caption": item.get("caption", ""), "status": item.get("status", "approved"), "uploaded_by": item.get("uploaded_by", ""), "created_at": item.get("created_at", ""), "url": f"/assets/tournament-media/{item['_id']}"})
+        return web.json_response({"tournament_id": tournament_id, "media": rows, "can_manage_media": staff})
+
+    async def _tournament_media_participant(self, user: Any, tournament: dict[str, Any]) -> bool:
+        tid = str(tournament["_id"]); uid = str(user.user_id)
+        if int(tournament.get("team_size", 1)) > 1:
+            async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tid, "status": {"$in": ["accepted", "checked_in"]}}):
+                if uid in {str(x) for x in (reg.get("lineup") or [])}: return True
+            return False
+        return bool(await self.bot.db.tournament_registrations.find_one({"tournament_id": tid, "user_id": uid, "status": {"$in": ["pending", "accepted", "checked_in"]}}))
+
+    async def tournament_media_upload(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        max_size = 12 * 1024 * 1024
+        reader = await request.multipart()
+        fields, file_field = {}, None
+        while True:
+            field = await reader.next()
+            if field is None: break
+            if field.name == "file": file_field = field
+            else: fields[field.name] = (await field.text())[:500]
+        tournament_id = str(fields.get("tournament_id", "")).strip()
+        from bson import ObjectId
+        if not ObjectId.is_valid(tournament_id): raise web.HTTPBadRequest(text="Invalid tournament ID.")
+        tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tournament_id)})
+        if not tournament or str(tournament.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPNotFound(text="Tournament not found.")
+        guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(tournament.get("guild_id"))), None)
+        staff = bool(guild and await self._is_live_tournament_staff(user, str(tournament.get("guild_id")), guild))
+        if not staff and not await self._tournament_media_participant(user, tournament): raise web.HTTPForbidden(text="Only tournament participants or tournament staff can upload media.")
+        if file_field is None: raise web.HTTPBadRequest(text="Choose an image or video to upload.")
+        content_type = str(file_field.headers.get("Content-Type", "")).lower().split(";", 1)[0]
+        allowed = {"image/jpeg": "image", "image/png": "image", "image/webp": "image", "image/gif": "image", "video/mp4": "video", "video/webm": "video", "video/quicktime": "video"}
+        media_type = allowed.get(content_type)
+        if not media_type: raise web.HTTPBadRequest(text="Supported media: JPG, PNG, WEBP, GIF, MP4, WEBM, or MOV.")
+        data = bytes(await file_field.read())
+        if not data: raise web.HTTPBadRequest(text="The selected file is empty.")
+        if len(data) > max_size: raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=len(data))
+        filename = Path(file_field.filename or ("tournament-media." + ("mp4" if media_type == "video" else "png"))).name[:160]
+        if media_type == "image":
+            try:
+                with Image.open(BytesIO(data)) as image: image.verify()
+            except Exception as exc: raise web.HTTPBadRequest(text="The selected image could not be validated.") from exc
+        media_id = hashlib.sha256(f"{tournament_id}:{user.user_id}:{time.time()}".encode() + data).hexdigest()[:32]
+        status = "approved" if staff else "pending"; now = datetime.now(timezone.utc).isoformat()
+        await self.bot.db.tournament_media.insert_one({"_id": media_id, "tournament_id": tournament_id, "guild_id": str(tournament.get("guild_id")), "type": media_type, "mime_type": content_type, "filename": filename, "title": str(fields.get("title", "")).strip()[:120], "caption": str(fields.get("caption", "")).strip()[:500], "data": data, "status": status, "uploaded_by": str(user.user_id), "created_at": now, "approved_by": str(user.user_id) if staff else None, "approved_at": now if staff else None})
+        if not staff:
+            cfg = await self.bot.db.settings.find_one({"_id": str(tournament.get("guild_id"))}) or {}
+            channel_id = cfg.get("review_channel_id") or cfg.get("match_results_channel_id")
+            channel = self.bot.get_channel(int(channel_id)) if channel_id else None
+            if channel is not None:
+                try:
+                    from .tournament import TournamentMediaModerationView
+                    await channel.send(f"📸 **Tournament Media Pending Approval**\n**{tournament.get('name','Tournament')}** • {filename}\nSubmitted by: <@{user.user_id}>\nUse the buttons below to publish or reject this media.", view=TournamentMediaModerationView(media_id))
+                except Exception: log.exception("Unable to post tournament media moderation notice")
+        return web.json_response({"ok": True, "status": status, "message": "Media uploaded and published." if staff else "Media uploaded for staff approval."})
+
+    async def tournament_media_action(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_tournament_admin(request)
+        payload = await request.json(); media_id = str(payload.get("media_id", "")).strip(); action = str(payload.get("action", "")).strip().casefold()
+        if action not in {"approve", "reject"}: raise web.HTTPBadRequest(text="Action must be approve or reject.")
+        media = await self.bot.db.tournament_media.find_one({"_id": media_id, "guild_id": guild_id})
+        if not media: raise web.HTTPNotFound(text="Media submission not found.")
+        if media.get("status") != "pending": raise web.HTTPConflict(text="This media submission has already been reviewed.")
+        now = datetime.now(timezone.utc).isoformat()
+        await self.bot.db.tournament_media.update_one({"_id": media_id}, {"$set": {"status": "approved" if action == "approve" else "rejected", "approved_by": str(user.user_id) if action == "approve" else None, "approved_at": now if action == "approve" else None, "reviewed_by": str(user.user_id), "reviewed_at": now}})
+        return web.json_response({"ok": True, "message": "Media approved and published." if action == "approve" else "Media rejected."})
+
+    async def serve_tournament_media(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request); media_id = str(request.match_info.get("media_id", ""))
+        media = await self.bot.db.tournament_media.find_one({"_id": media_id})
+        if not media or media.get("status") != "approved": raise web.HTTPNotFound(text="Tournament media not found.")
+        if str(media.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPForbidden(text="You are not a member of this server.")
+        return web.Response(body=media.get("data") or b"", content_type=str(media.get("mime_type") or "application/octet-stream"), headers={"Cache-Control":"public, max-age=3600"})
 
     async def tournament_checkin(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
