@@ -183,6 +183,8 @@ class ChallengesCog(commands.Cog):
         result_emb.add_field(name='Defender', value=f"<@{active['opponent_id']}>", inline=True)
         result_emb.set_image(url=proof)
         result_emb.set_footer(text=f"Best-of-5: {match_data['courses_beat']}/5 races won")
+        margin_bonus = int(match_data.get('rsl_performance_bonus', 0) or 0)
+        result_emb.add_field(name='RSL Performance Adjustment', value=f"{'+' if margin_bonus >= 0 else ''}{margin_bonus} ELO • race-margin scoring", inline=False)
         if results:
             await results.send(embed=result_emb, view=MatchResultPostView(match_data['_id']))
         await interaction.followup.send('✅ **Match submitted!** Results and ELO are updated.', ephemeral=True)
