@@ -7,6 +7,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 
 from ..core.core import *
+from ..core.gauntlet_progression import season_reward_for_rank
 
 
 async def announce_season_start(guild_id, season_number, reason="scheduled"):
@@ -105,6 +106,39 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             "career_played": int(driver.get("career_played", 0) or 0),
         })
 
+    # RSL season progression is points-first while the existing public leaderboard
+    # remains ELO-based. Points reward race wins, with a three-point match-win bonus.
+    points_rows = sorted(
+        drivers,
+        key=lambda row: (
+            -int(row.get("season_points", 0) or 0),
+            -int(row.get("season_races_won", 0) or 0),
+            -int(row.get("elo", 1000) or 1000),
+            str(row.get("game_id") or row.get("user_id") or "").casefold(),
+        ),
+    )
+    points_rank = {str(row.get("user_id")): rank for rank, row in enumerate(points_rows, 1)}
+    reward_map = {}
+    for row in points_rows:
+        uid = str(row.get("user_id") or "")
+        reward = season_reward_for_rank(points_rank[uid])
+        reward_map[uid] = reward
+        for standing in standings:
+            if standing["user_id"] == uid:
+                standing.update({
+                    "season_points": int(row.get("season_points", 0) or 0),
+                    "season_races_won": int(row.get("season_races_won", 0) or 0),
+                    "season_matches": int(row.get("season_matches", 0) or 0),
+                    "points_rank": points_rank[uid],
+                    "season_reward": reward,
+                })
+                break
+        await bot.db.drivers.update_one(
+            {"_id": f"{guild_id}_{uid}", "season_number": current_season},
+            {"$inc": {"rsl_credits": int(reward["credits"]), "rsl_badges": int(reward["badges"])},
+             "$set": {"last_season_reward": {"season": current_season, **reward, "points_rank": points_rank[uid], "season_points": int(row.get("season_points", 0) or 0)}}},
+        )
+
     await bot.db.season_history.replace_one(
         {"_id": f"{guild_id}_{current_season}"},
         {
@@ -134,6 +168,9 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             {"$set": {
                 "season_registered": False,
                 "season_number": next_season,
+                "season_points": 0,
+                "season_races_won": 0,
+                "season_matches": 0,
             }, "$unset": {
                 "defense_locked": "",
             }},
@@ -162,6 +199,9 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             {"$set": {
                 "season_registered": False,
                 "season_number": next_season,
+                "season_points": 0,
+                "season_races_won": 0,
+                "season_matches": 0,
             }, "$unset": {
                 "defense_locked": "",
             }},
@@ -416,7 +456,7 @@ class SeasonCog(commands.Cog):
             rows = archive.get('standings', [])
             lines = []
             for row in rows[:25]:
-                lines.append(f"**#{row.get('rank')}** <@{row.get('user_id')}> — **{row.get('elo', 1000)} ELO** — {row.get('division', 'Unranked')}")
+                lines.append(f"**#{row.get('rank')}** <@{row.get('user_id')}> — **{row.get('elo', 1000)} ELO** — **{row.get('season_points', 0)} GP** — {row.get('season_reward', {}).get('tier', 'No reward')} — {row.get('division', 'Unranked')}")
             desc = '\n'.join(lines) if lines else '*No archived standings.*'
             if len(rows) > 25:
                 desc += f'\n\n…and {len(rows) - 25} more drivers in the archived record.'
