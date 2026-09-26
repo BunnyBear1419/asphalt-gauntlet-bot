@@ -29,8 +29,12 @@ def xp_to_next_level(xp: int) -> int:
 def chat_reward_available(*, last_reward_at: float | None, reward_date: str | None,
                           today: str, reward_count: int, now: float) -> bool:
     """Pure guard used by the Discord activity listener and regression tests."""
+    # The daily cap belongs to the current UTC/local guild day. A prior day's
+    # count must never carry over and block today's first eligible reward.
+    if reward_date != today:
+        return True
     if reward_count >= DAILY_CHAT_REWARD_CAP:
         return False
-    if reward_date == today and last_reward_at is not None:
+    if last_reward_at is not None:
         return (now - float(last_reward_at)) >= CHAT_COOLDOWN_SECONDS
     return True
