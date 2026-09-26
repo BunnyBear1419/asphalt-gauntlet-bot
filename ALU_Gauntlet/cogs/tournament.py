@@ -118,7 +118,12 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
         if not match:
             await interaction.response.send_message("❌ Match not found.", ephemeral=True)
             return
-        if not await _is_participant(tournament, match, interaction.user.id) and not await _is_tournament_staff(interaction):
+        is_staff = await _is_tournament_staff(interaction)
+        result_mode = str(tournament.get("result_submission_mode") or "player_review").casefold()
+        if result_mode == "admin_only" and not is_staff:
+            await interaction.response.send_message("❌ This tournament is configured for Admin Only result submission.", ephemeral=True)
+            return
+        if not await _is_participant(tournament, match, interaction.user.id) and not is_staff:
             await interaction.response.send_message("❌ Only a participant in this match can submit the result.", ephemeral=True)
             return
         if self.winner_id not in [str(x) for x in (match.get("player_slots") or []) if x]:
@@ -165,7 +170,11 @@ class MatchResultView(discord.ui.View):
                 match=next((m for m in _matches(tournament or {}) if str(m.get("id"))==self.match_id),None)
                 if not tournament or not match:
                     await interaction.response.send_message("❌ Match not found.",ephemeral=True); return
-                if not await _is_participant(tournament,match,interaction.user.id) and not await _is_tournament_staff(interaction):
+                is_staff = await _is_tournament_staff(interaction)
+                result_mode = str(tournament.get("result_submission_mode") or "player_review").casefold()
+                if result_mode == "admin_only" and not is_staff:
+                    await interaction.response.send_message("❌ This tournament is configured for Admin Only result submission.",ephemeral=True); return
+                if not await _is_participant(tournament,match,interaction.user.id) and not is_staff:
                     await interaction.response.send_message("❌ You are not a participant in this match.",ephemeral=True); return
                 await interaction.response.send_modal(TournamentResultModal(self.tournament_id,self.match_id,entrant))
             button.callback=callback
