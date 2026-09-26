@@ -200,3 +200,28 @@ def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
         "Division 6 — Legend Tier",
     ):
         assert marker in league
+
+
+def test_v1_registration_uses_top_five_car_ratings_for_garage_pi():
+    core = read(ROOT / "ALU_Gauntlet" / "core" / "core.py")
+    server = read(ROOT / "ALU_Gauntlet" / "web" / "server.py")
+    player_html = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "player.html")
+    player_js = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "player.js")
+    for marker in (
+        "top_five_car_ranks: list[int] | None = None",
+        "garage_pi = sum(top_five_car_ranks)",
+        '"top_five_car_ranks": top_five_car_ranks or []',
+        '"top_five_car_ranks": top_five_car_ranks',
+    ):
+        assert marker in core
+    for marker in (
+        "Exactly five top-car performance ratings are required.",
+        "top_five_car_ranks=top_five_car_ranks",
+    ):
+        assert marker in server
+    for marker in (
+        "registration-rank-1",
+        "registration-rank-5",
+        "top_five_car_ranks:topFive",
+    ):
+        assert marker in player_html + player_js
