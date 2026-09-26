@@ -129,6 +129,14 @@ Tournament media supports staff-published photos/videos and player submissions t
 
 See `docs/TOURNAMENT_ADMIN_GUIDE.md` for the event workflow and `docs/PRODUCTION_MAINTENANCE.md` for production release and database-maintenance guidance.
 
+### Gauntlet mechanics alignment
+
+RSL's Gauntlet keeps the core five-course attack/defense structure of Asphalt Legends UNITE while intentionally extending matchmaking to **six RSL divisions** for finer player separation.
+
+The challenge economy now uses **five daily Gauntlet Tickets** instead of the previous hard five-challenge counter. Opponent sets are retained for a **four-hour rotation window**, with up to three opponents presented from the driver's RSL division. The RSL six-division structure is preserved as a deliberate league enhancement rather than being replaced by the game's five-division structure.
+
+RSL-specific features such as Discord/web dashboards, proof submission, staff moderation, historical records, clubs, notifications, tournament integration, and seasonal administration remain layered on top of the Gauntlet core.
+
 ### RSL v1 regression contract
 
 The repository also includes `tests/test_rsl_v1_contract.py`, a source-level release gate covering the connected Player, Gauntlet, Clubs, Calendar, Discord notification, Tournament, navigation, authentication, upload, and MongoDB safeguards. It is designed to run in CI without requiring a personal browser session or live Discord/MongoDB access.
