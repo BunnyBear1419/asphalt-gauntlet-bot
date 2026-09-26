@@ -4,6 +4,7 @@ from ..core.core import *
 from ..core.match_scoring import apply_rsl_performance_bonus
 from ..core.fairness import fair_match_snapshot
 from ..core.gauntlet_progression import FREE_DAILY_TICKETS
+from .ticket_economy import BuyTicketView
 
 class ChallengesCog(commands.Cog):
 
@@ -48,7 +49,8 @@ class ChallengesCog(commands.Cog):
         tickets = int(user_profile.get('gauntlet_tickets', 5) or 0)
         if tickets <= 0:
             await interaction.followup.send(
-                "⏳ **No Gauntlet Tickets Remaining:** Your daily 5 free tickets refresh with the daily Gauntlet reset.",
+                "⏳ **No Gauntlet Tickets Remaining:** Your 5 free tickets and up to 5 paid tickets reset every 24 hours. Unused tickets do not carry over.",
+                view=BuyTicketView(bot, guild_id, user_id, get_guild_local_date),
                 ephemeral=True,
             )
             return
