@@ -30,9 +30,10 @@ def test_chat_rewards_have_cooldown_and_daily_cap():
     assert chat_reward_available(last_reward_at=1000, reward_date="2026-09-25", today="2026-09-26", reward_count=30, now=1001)
 
 
-def test_activity_cog_uses_rsl_coin_and_xp_fields():
+def test_activity_cog_uses_shared_rsl_ledger_and_xp_fields():
     source = Path("ALU_Gauntlet/cogs/activity_rewards.py").read_text(encoding="utf-8")
-    assert "rsl_coins" in source
+    assert "apply_coin_transaction" in source
+    assert 'transaction_type="activity_reward"' in source
     assert "activity_xp" in source
     assert "message.author.bot" in source
 
