@@ -167,7 +167,7 @@ def test_v1_database_safeguards_cover_clubs_tournaments_and_notifications():
 
 def test_v1_shared_shell_keeps_calendar_search_profile_and_companion_ordered():
     source = read(SERVER)
-    assert 'calendar_markup + rules_markup + xp_markup + companion_markup' in source
+    assert 'calendar_markup + rules_markup + companion_markup' in source
     assert 'id="rsl-search-trigger"' in source
     assert 'id="rsl-profile-nav"' in source
     assert '<a href="/calendar">' in source
@@ -234,19 +234,23 @@ def test_v1_registration_uses_top_five_car_ratings_for_garage_pi():
         assert marker in player_html + player_js
 
 
-def test_v1_xp_surface_has_live_rankings_history_and_admin_controls():
-    xp_page = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "xp-rankings.html")
-    xp_js = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "xp-rankings.js")
+def test_v1_xp_is_consolidated_into_admin_and_player_profile():
+    admin = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html")
+    profile = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "profile.html")
+    profile_js = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "profile.js")
     core = read(ROOT / "ALU_Gauntlet" / "core" / "rsl_xp.py")
     server = read(SERVER)
-    for marker in ("All-Time", "Weekly", "Monthly", "Your XP History", "XP Administration", "Role Rewards"):
-        assert marker in xp_page
-    for marker in ("/api/xp/me", "/api/xp/leaderboard", "/api/xp/history", "/api/xp/settings", "data-period"):
-        assert marker in xp_js
+    for marker in ("XP &amp; Progression", "xp-curve", "xp-role-rewards", "xp-admin-save", "/api/xp/settings"):
+        assert marker in admin
+    for marker in ("XP &amp; Progression", "xp-level", "xp-total", "xp-rank", "xp-weekly", "xp-monthly", "xp-voice-time", "xp-reactions"):
+        assert marker in profile
+    for marker in ("/api/xp/me", "/api/xp/leaderboard", "xp-level", "needed_xp"):
+        assert marker in profile_js
     for marker in ("xp_is_allowed", "excluded_role_ids", "excluded_channel_ids", "allowed_channel_ids", "role_rewards", "async def xp_history"):
         assert marker in core
     assert 'add_get("/api/xp/history", self.xp_history)' in server
-
+    assert 'add_get("/xp", self.xp_page)' not in server
+    assert 'XP &amp; Rankings' not in server
 
 def test_v1_xp_remains_separate_from_competitive_scoring():
     xp = read(ROOT / "ALU_Gauntlet" / "core" / "rsl_xp.py")
