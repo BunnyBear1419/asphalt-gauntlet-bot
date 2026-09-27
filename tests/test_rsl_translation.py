@@ -18,8 +18,8 @@ def test_discord_translation_uses_shared_account_language_preference():
     text = COG.read_text(encoding="utf-8")
     assert "get_user_language" in text
     assert "set_user_language" in text
-    assert "@app_commands.context_menu(name="RSL Language")" in text
-    assert "@app_commands.context_menu(name="Translate Message")" in text
+    assert '@app_commands.context_menu(name="RSL Language")' in text
+    assert '@app_commands.context_menu(name="Translate Message")' in text
 
 
 def test_flag_reaction_translation_and_dismissal_are_present():
