@@ -288,6 +288,12 @@ let guildId="", branding=null;
 const sections=[...document.querySelectorAll(".admin-section")];
 document.querySelectorAll(".admin-side button").forEach(b=>b.addEventListener("click",()=>showSection(b.dataset.section)));
 document.querySelectorAll("[data-jump]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();showSection(a.dataset.jump)}));
+document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener("click",e=>{
+  const target=a.getAttribute("href");
+  if(!target||target==="#")return;
+  e.preventDefault();
+  showSection(target.slice(1));
+}));
 function showSection(name){
   name=String(name||"").replace(/^section-/,"");
   sections.forEach(s=>s.classList.toggle("active",s.id==="section-"+name));
