@@ -79,3 +79,15 @@ def test_dashboard_uses_browser_safe_raster_artwork():
     assert expected.issubset({p.name for p in assets.iterdir()})
     for name in expected:
         assert f"/assets/{name}" in source
+
+
+def test_web_setup_exposes_tournament_roles_and_channels():
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    setup=(STATIC/"setup.js").read_text(encoding="utf-8")
+    for marker in ("tournament_main_channel_id","tournament_log_channel_id","tournament_bracket_channel_id","tournament_admin_channel_id","tournament_announcement_channel_id","tournament_admin_role_id","tournament_player_announcement_role_id"):
+        assert marker in server and marker in setup
+
+def test_web_setup_uses_rsl_setup_labels():
+    setup=(STATIC/"setup.js").read_text(encoding="utf-8")
+    for label in ("Player Gauntlet Channel","Match Results Channel","Gauntlet Staff Channel","Gauntlet Logs Channel","Gauntlet Announcement Channel","Tournament Announcement Channel","Tournament Logs Channel","Player Tournament Channel","Tournament Admin Channel","Gauntlet Admin Role","Tournament Admin Role","Gauntlet Driver Role","Tournament Driver Role"):
+        assert label in setup
