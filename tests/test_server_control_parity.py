@@ -11,6 +11,8 @@ def test_discord_server_control_exists_without_new_public_command():
     admin = ADMIN.read_text(encoding="utf-8")
     staff = STAFF.read_text(encoding="utf-8")
     assert "class ServerControlView" in admin
+    assert "class CreateTournamentModal" in admin
+    assert "generate_tournament_bracket" in admin
     assert "class ServerControlModal" in admin
     assert "guild.create_role" in admin
     assert "guild.create_category" in admin
