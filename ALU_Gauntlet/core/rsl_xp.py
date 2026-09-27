@@ -110,18 +110,7 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
         if "duplicate" in str(exc).lower() or "e11000" in str(exc).lower():
             return {"ok": True, "duplicate": True, "amount": 0}
         raise
-    week, month = period_keys()
-    await db.drivers.update_one(
-        {"_id": f"{guild_id}_{user_id}"},
-        {"$inc": {
-            "rsl_xp": final_amount, "rsl_xp_weekly": final_amount,
-            "rsl_xp_monthly": final_amount,
-            "rsl_xp_message_count": 1 if source == "message" else 0,
-            "rsl_xp_reaction_count": 1 if source == "reaction" else 0,
-            "rsl_xp_voice_seconds": int(metadata.get("voice_seconds", 0)) if metadata else 0,
-        }, "$set": {"rsl_xp_week": week, "rsl_xp_month": month}},
-        upsert=False,
-    )
+    week, month = period_keys()\n    profile_id = f"{guild_id}_{user_id}"\n    await db.drivers.update_one({"_id": profile_id, "$or": [{"rsl_xp_week": {"$ne": week}}, {"rsl_xp_week": {"$exists": False}}]}, {"$set": {"rsl_xp_week": week, "rsl_xp_weekly": 0}})\n    await db.drivers.update_one({"_id": profile_id, "$or": [{"rsl_xp_month": {"$ne": month}}, {"rsl_xp_month": {"$exists": False}}]}, {"$set": {"rsl_xp_month": month, "rsl_xp_monthly": 0}})\n    await db.drivers.update_one({"_id": profile_id}, {"$inc": {"rsl_xp": final_amount, "rsl_xp_weekly": final_amount, "rsl_xp_monthly": final_amount, "rsl_xp_message_count": 1 if source == "message" else 0, "rsl_xp_reaction_count": 1 if source == "reaction" else 0, "rsl_xp_voice_seconds": int(metadata.get("voice_seconds", 0)) if metadata else 0}, "$set": {"rsl_xp_week": week, "rsl_xp_month": month}}, upsert=False)
     return {"ok": True, "duplicate": False, "amount": final_amount, "boost": boost}
 
 
