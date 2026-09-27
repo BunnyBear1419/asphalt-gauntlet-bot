@@ -1,14 +1,357 @@
 import re
+import base64
+import aiohttp
+from bson import ObjectId
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 from ..core.rsl_activity import activity_level
+
+
+async def _club_image_data(image_url: str) -> str:
+    """Download and normalize an optional club image for the shared club schema."""
+    image_url = str(image_url or "").strip()
+    if not image_url:
+        return ""
+    if not image_url.lower().startswith(("http://", "https://")):
+        raise ValueError("Club picture must be an http:// or https:// URL.")
+    timeout = aiohttp.ClientTimeout(total=8)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(image_url, allow_redirects=True) as response:
+            if response.status != 200:
+                raise ValueError("Club picture could not be downloaded.")
+            content_type = str(response.headers.get("Content-Type", "")).lower().split(";", 1)[0]
+            if content_type not in {"image/png", "image/jpeg", "image/webp", "image/gif"}:
+                raise ValueError("Club picture must be PNG, JPG, WEBP, or GIF.")
+            data = await response.read()
+    if len(data) > 3_000_000:
+        raise ValueError("Club picture must be 3 MB or smaller.")
+    return f"data:{content_type};base64,{base64.b64encode(data).decode('ascii')}"
+
+
+def _club_links(value: str) -> list[str]:
+    links = []
+    for raw in str(value or "").replace("\n", ",").split(",")[:5]:
+        link = raw.strip()
+        if not link:
+            continue
+        if not link.lower().startswith(("http://", "https://")):
+            raise ValueError("Club links must begin with http:// or https://.")
+        links.append(link[:300])
+    return links
+
+
+async def _club_for_user(guild_id: str, user_id: str):
+    member = await bot.db.club_members.find_one({"guild_id": guild_id, "user_id": user_id})
+    if not member:
+        return None, None
+    club = await bot.db.clubs.find_one({"_id": ObjectId(str(member["club_id"]))})
+    return club, member
+
+
+async def _club_embed(guild_id: str, user_id: str) -> discord.Embed:
+    club, membership = await _club_for_user(guild_id, user_id)
+    if not club:
+        clubs = await bot.db.clubs.find({"guild_id": guild_id}).sort("name_ci", 1).to_list(length=25)
+        lines = [
+            f"• **{c.get('name', 'Club')}** — {int(c.get('member_count', 0) or 0)}/20 drivers"
+            for c in clubs
+        ]
+        description = (
+            "You are not in a club yet.\n\n"
+            + ("\n".join(lines) if lines else "No clubs have been created in this server yet.")
+            + "\n\nUse **Create Club** or select a club below to join."
+        )
+        return discord.Embed(title="🏎️ RSL CLUB CENTER", description=description[:4096], color=ASPHALT_THEME_COLOR)
+
+    members = await bot.db.club_members.find({"club_id": str(club["_id"])}).sort("joined_at", 1).to_list(length=20)
+    wins = int(club.get("tournament_wins", 0) or 0)
+    losses = int(club.get("tournament_losses", 0) or 0)
+    role = str(membership.get("role", "member")).upper()
+    lines = []
+    for m in members:
+        marker = " 👑" if str(m.get("user_id")) == str(club.get("leader_id")) else ""
+        lines.append(f"• <@{m.get('user_id')}> — {str(m.get('role', 'member')).title()}{marker}")
+    embed = discord.Embed(
+        title=f"🏎️ {club.get('name', 'RSL Club')}",
+        description=str(club.get("about") or "No club description has been added yet."),
+        color=ASPHALT_THEME_COLOR,
+    )
+    embed.add_field(name="Club Record", value=f"**{wins}-{losses}**\n{int(club.get('member_count', len(members)) or len(members))}/20 drivers", inline=True)
+    embed.add_field(name="Your Role", value=f"**{role.title()}**", inline=True)
+    embed.add_field(name="Roster", value="\n".join(lines)[:1024] if lines else "No members found.", inline=False)
+    if club.get("discord"):
+        embed.add_field(name="Club Discord", value=str(club["discord"])[:1024], inline=False)
+    embed.set_footer(text="RSL Club Center • Website and Discord use the same club records")
+    return embed
+
+
+class CreateClubModal(discord.ui.Modal, title="Create RSL Club"):
+    name = discord.ui.TextInput(label="Club Name", max_length=40, required=True, placeholder="Night Racers")
+    about = discord.ui.TextInput(label="About the Club", style=discord.TextStyle.paragraph, max_length=500, required=False, placeholder="Tell drivers what your club is about.")
+    discord_link = discord.ui.TextInput(label="Club Discord Link", max_length=300, required=False, placeholder="https://discord.gg/...")
+    links = discord.ui.TextInput(label="Club Links (comma-separated, up to 5)", max_length=1200, required=False, placeholder="https://..., https://...")
+    image_url = discord.ui.TextInput(label="Club Picture URL", max_length=500, required=False, placeholder="https://.../club-picture.png")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+        if await bot.db.club_members.find_one({"guild_id": guild_id, "user_id": user_id}):
+            await interaction.followup.send("❌ You are already in a club in this server.", ephemeral=True)
+            return
+        name = str(self.name.value).strip()
+        if not name:
+            await interaction.followup.send("❌ Club name is required.", ephemeral=True)
+            return
+        if await bot.db.clubs.find_one({"guild_id": guild_id, "name_ci": name.casefold()}):
+            await interaction.followup.send("❌ That club name is already taken.", ephemeral=True)
+            return
+        discord_link = str(self.discord_link.value or "").strip()
+        if discord_link and not discord_link.lower().startswith(("http://", "https://")):
+            await interaction.followup.send("❌ Club Discord link must begin with http:// or https://.", ephemeral=True)
+            return
+        try:
+            links = _club_links(self.links.value)
+            image = await _club_image_data(self.image_url.value)
+        except ValueError as exc:
+            await interaction.followup.send(f"❌ {exc}", ephemeral=True)
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "leader_id": user_id, "member_count": 1, "created_at": now, "updated_at": now}
+        result = None
+        try:
+            result = await bot.db.clubs.insert_one(doc)
+            await bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": user_id, "username": str(interaction.user.global_name or interaction.user.name or user_id), "role": "leader", "joined_at": now})
+        except Exception as exc:
+            if result is not None:
+                await bot.db.clubs.delete_one({"_id": result.inserted_id})
+            await interaction.followup.send("❌ The club could not be created. No partial club was kept.", ephemeral=True)
+            return
+        await interaction.followup.send("✅ Club created.", embed=await _club_embed(guild_id, user_id), ephemeral=True)
+
+
+class EditClubModal(discord.ui.Modal, title="Edit RSL Club"):
+    name = discord.ui.TextInput(label="Club Name", max_length=40, required=True)
+    about = discord.ui.TextInput(label="About the Club", style=discord.TextStyle.paragraph, max_length=500, required=False)
+    discord_link = discord.ui.TextInput(label="Club Discord Link", max_length=300, required=False)
+    links = discord.ui.TextInput(label="Club Links (comma-separated, up to 5)", max_length=1200, required=False)
+    image_url = discord.ui.TextInput(label="Club Picture URL", max_length=500, required=False, placeholder="Leave blank to keep current picture")
+
+    def __init__(self, club):
+        super().__init__()
+        self.club = club
+        self.name.default = str(club.get("name", ""))[:40]
+        self.about.default = str(club.get("about", ""))[:500]
+        self.discord_link.default = str(club.get("discord", ""))[:300]
+        self.links.default = ", ".join(str(x) for x in (club.get("links") or [])[:5])[:1200]
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+        club = await bot.db.clubs.find_one({"_id": self.club["_id"], "guild_id": guild_id})
+        if not club or str(club.get("leader_id")) != user_id:
+            await interaction.followup.send("❌ Only the club leader can edit this club.", ephemeral=True)
+            return
+        name = str(self.name.value).strip()
+        duplicate = await bot.db.clubs.find_one({"_id": {"$ne": club["_id"]}, "guild_id": guild_id, "name_ci": name.casefold()})
+        if not name or duplicate:
+            await interaction.followup.send("❌ Club name is empty or already taken.", ephemeral=True)
+            return
+        discord_link = str(self.discord_link.value or "").strip()
+        if discord_link and not discord_link.lower().startswith(("http://", "https://")):
+            await interaction.followup.send("❌ Club Discord link must begin with http:// or https://.", ephemeral=True)
+            return
+        try:
+            links = _club_links(self.links.value)
+            image = await _club_image_data(self.image_url.value) if str(self.image_url.value or "").strip() else str(club.get("image", ""))
+        except ValueError as exc:
+            await interaction.followup.send(f"❌ {exc}", ephemeral=True)
+            return
+        await bot.db.clubs.update_one({"_id": club["_id"], "leader_id": user_id}, {"$set": {"name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        await interaction.followup.send("✅ Club profile updated.", embed=await _club_embed(guild_id, user_id), ephemeral=True)
+
+
+class ClubMemberSelect(discord.ui.Select):
+    def __init__(self, members):
+        options = [discord.SelectOption(label=str(m.get("username") or m.get("user_id"))[:100], value=str(m.get("user_id")), description=str(m.get("role", "member")).title()[:100]) for m in members[:20]]
+        super().__init__(placeholder="Select a club member", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        view = self.view
+        if not isinstance(view, ClubMemberActionView):
+            return
+        view.target_user_id = str(self.values[0])
+        await interaction.response.edit_message(embed=view.action_embed(), view=view)
+
+
+class ClubMemberActionView(discord.ui.View):
+    def __init__(self, club, owner_id):
+        super().__init__(timeout=900)
+        self.club = club
+        self.owner_id = str(owner_id)
+        self.target_user_id = None
+
+    def action_embed(self):
+        target = self.target_user_id or "No member selected"
+        return discord.Embed(title=f"🛠️ MANAGE {self.club.get('name', 'CLUB')}", description=f"Selected member: <@{target}>\nChoose an action below.", color=ASPHALT_ADMIN_COLOR)
+
+    async def apply(self, interaction, action):
+        if str(interaction.user.id) != self.owner_id:
+            await interaction.response.send_message("❌ This control belongs to another player session.", ephemeral=True)
+            return
+        if not self.target_user_id:
+            await interaction.response.send_message("❌ Select a member first.", ephemeral=True)
+            return
+        if str(self.target_user_id) == str(self.club.get("leader_id")):
+            await interaction.response.send_message("❌ The club leader cannot be changed from this control.", ephemeral=True)
+            return
+        member = await bot.db.club_members.find_one({"club_id": str(self.club["_id"]), "user_id": self.target_user_id})
+        if not member:
+            await interaction.response.send_message("❌ Club member not found.", ephemeral=True)
+            return
+        if action == "kick":
+            await bot.db.club_members.delete_one({"_id": member["_id"]})
+            await bot.db.clubs.update_one({"_id": self.club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            message = "✅ Member removed from the club."
+        elif action == "promote":
+            await bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": "officer"}})
+            message = "✅ Member promoted to officer."
+        elif action == "demote":
+            await bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": "member"}})
+            message = "✅ Member demoted to member."
+        else:
+            message = "❌ Unsupported member action."
+        await interaction.response.send_message(message, ephemeral=True)
+
+
+class ClubCenterView(discord.ui.View):
+    def __init__(self, guild_id, user_id, clubs, current_club=None, membership=None):
+        super().__init__(timeout=900)
+        self.guild_id = str(guild_id)
+        self.user_id = str(user_id)
+        self.clubs = clubs
+        self.current_club = current_club
+        self.membership = membership
+        if not current_club and clubs:
+            self.add_item(ClubPickerSelect(clubs))
+
+    @discord.ui.button(label="Create Club", style=discord.ButtonStyle.success, emoji="🏁")
+    async def create(self, interaction: discord.Interaction, button):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("❌ This control belongs to another player session.", ephemeral=True)
+            return
+        await interaction.response.send_modal(CreateClubModal())
+
+    @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary, emoji="🔄")
+    async def refresh(self, interaction: discord.Interaction, button):
+        await send_club_center(interaction, replace=True)
+
+    @discord.ui.button(label="Leave Club", style=discord.ButtonStyle.danger, emoji="🚪")
+    async def leave(self, interaction: discord.Interaction, button):
+        if not self.current_club:
+            await interaction.response.send_message("❌ You are not in a club.", ephemeral=True)
+            return
+        if str(self.current_club.get("leader_id")) == self.user_id:
+            await interaction.response.send_message("❌ Club leaders must transfer leadership before leaving.", ephemeral=True)
+            return
+        result = await bot.db.club_members.delete_one({"club_id": str(self.current_club["_id"]), "user_id": self.user_id})
+        if result.deleted_count:
+            await bot.db.clubs.update_one({"_id": self.current_club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+        await send_club_center(interaction, replace=True)
+
+    @discord.ui.button(label="Edit Club", style=discord.ButtonStyle.primary, emoji="✏️")
+    async def edit(self, interaction: discord.Interaction, button):
+        if not self.current_club or str(self.current_club.get("leader_id")) != self.user_id:
+            await interaction.response.send_message("❌ Only the club leader can edit the club.", ephemeral=True)
+            return
+        await interaction.response.send_modal(EditClubModal(self.current_club))
+
+    @discord.ui.button(label="Manage Members", style=discord.ButtonStyle.primary, emoji="👥")
+    async def manage(self, interaction: discord.Interaction, button):
+        if not self.current_club or str(self.current_club.get("leader_id")) != self.user_id:
+            await interaction.response.send_message("❌ Only the club leader can manage members.", ephemeral=True)
+            return
+        members = await bot.db.club_members.find({"club_id": str(self.current_club["_id"])}).sort("joined_at", 1).to_list(length=20)
+        members = [m for m in members if str(m.get("user_id")) != self.user_id]
+        if not members:
+            await interaction.response.send_message("ℹ️ There are no other club members to manage.", ephemeral=True)
+            return
+        view = ClubMemberActionView(self.current_club, self.user_id)
+        view.add_item(ClubMemberSelect(members))
+        class PromoteButton(discord.ui.Button):
+            def __init__(self): super().__init__(label="Promote", style=discord.ButtonStyle.success, emoji="⬆️")
+            async def callback(btn, inter): await view.apply(inter, "promote")
+        class DemoteButton(discord.ui.Button):
+            def __init__(self): super().__init__(label="Demote", style=discord.ButtonStyle.secondary, emoji="⬇️")
+            async def callback(btn, inter): await view.apply(inter, "demote")
+        class KickButton(discord.ui.Button):
+            def __init__(self): super().__init__(label="Kick", style=discord.ButtonStyle.danger, emoji="🦵")
+            async def callback(btn, inter): await view.apply(inter, "kick")
+        view.add_item(PromoteButton())
+        view.add_item(DemoteButton())
+        view.add_item(KickButton())
+        await interaction.response.send_message(embed=view.action_embed(), view=view, ephemeral=True)
+
+
+class ClubPickerSelect(discord.ui.Select):
+    def __init__(self, clubs):
+        options = [discord.SelectOption(label=str(c.get("name", "Club"))[:100], value=str(c.get("_id")), description=f"{int(c.get('member_count', 0) or 0)}/20 drivers"[:100]) for c in clubs[:25]]
+        super().__init__(placeholder="Select a club to join", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not self.view:
+            return
+        club_id = str(self.values[0])
+        guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+        club = await bot.db.clubs.find_one({"_id": ObjectId(club_id), "guild_id": guild_id})
+        if not club:
+            await interaction.response.send_message("❌ Club not found.", ephemeral=True)
+            return
+        if await bot.db.club_members.find_one({"guild_id": guild_id, "user_id": user_id}):
+            await interaction.response.send_message("❌ You are already in a club in this server.", ephemeral=True)
+            return
+        reservation = await bot.db.clubs.update_one({"_id": club["_id"], "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]}, {"$inc": {"member_count": 1}})
+        if not reservation.modified_count:
+            await interaction.response.send_message("❌ That club is full.", ephemeral=True)
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            await bot.db.club_members.insert_one({"club_id": str(club["_id"]), "guild_id": guild_id, "user_id": user_id, "username": str(interaction.user.global_name or interaction.user.name or user_id), "role": "member", "joined_at": now})
+        except Exception as exc:
+            await bot.db.clubs.update_one({"_id": club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            if exc.__class__.__name__ == "DuplicateKeyError":
+                await interaction.response.send_message("❌ You are already in a club in this server.", ephemeral=True)
+                return
+            await interaction.response.send_message("❌ The club join failed; no partial membership was kept.", ephemeral=True)
+            return
+        await send_club_center(interaction, replace=True)
+
+
+async def send_club_center(interaction: discord.Interaction, replace: bool = False):
+    guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+    club, membership = await _club_for_user(guild_id, user_id)
+    clubs = [] if club else await bot.db.clubs.find({"guild_id": guild_id}).sort("name_ci", 1).to_list(length=25)
+    embed = await _club_embed(guild_id, user_id)
+    view = ClubCenterView(guild_id, user_id, clubs, club, membership)
+    if replace and interaction.response.is_done():
+        await interaction.edit_original_response(embed=embed, view=view)
+    else:
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+
+class ClubCenterButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Club Center", style=discord.ButtonStyle.primary, emoji="🏎️")
+
+    async def callback(self, interaction: discord.Interaction):
+        await send_club_center(interaction)
 
 async def send_dashboard(interaction: discord.Interaction):
     """Send the canonical player dashboard without removing player access for staff."""
     guild_id = str(interaction.guild_id)
     user_id = str(interaction.user.id)
     view = DashboardView(guild_id, user_id, False)
+    view.add_item(ClubCenterButton())
     embed = discord.Embed(
         title='🏁 RACING SYNDICATE LEAGUE • PLAYER DASHBOARD',
         description='Race. Compete. Unite.\n\nUse the controls below to manage your driver profile, defense, challenges, rankings, and season activity.',
