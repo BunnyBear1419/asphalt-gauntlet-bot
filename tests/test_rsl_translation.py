@@ -57,7 +57,9 @@ def test_context_menus_are_module_level_and_registered_during_setup():
 def test_flag_reaction_listener_stays_on_translation_cog():
     text = COG.read_text(encoding="utf-8")
     class_start = text.index("class TranslationCog")
+    class_end = text.index("\n\nasync def setup(bot):", class_start)
     listener = text.index("    @commands.Cog.listener()\n    async def on_raw_reaction_add", class_start)
     context_menu = text.index('@app_commands.context_menu(name="RSL Language")')
-    assert listener < context_menu
+    assert class_start < listener < class_end
+    assert context_menu < class_start
     assert text.count("async def on_raw_reaction_add") == 1
