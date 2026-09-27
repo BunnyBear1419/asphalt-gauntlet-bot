@@ -594,11 +594,24 @@ window.rslGoogleTranslateInit=function(){
             flags=re.S | re.I,
         )
         if "</nav>" in body:
+            # Canonical navigation order: Calendar, then Rules, then Companion.
+            # Strip any legacy/static copies first so older templates cannot
+            # create duplicate or incorrectly ordered entries.
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
             rules_markup = '<a href="/rules"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>Rules</span></a>'
-            if 'href="/rules"' not in body:
-                body = body.replace("</nav>", rules_markup + "</nav>", 1)
-            body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
+            body = re.sub(
+                r'<a\\b[^>]*href=["\\\'](?:/calendar|https://asph\\.discloud\\.app/calendar)["\\\'][^>]*>.*?</a>',
+                "",
+                body,
+                flags=re.S | re.I,
+            )
+            body = re.sub(
+                r'<a\\b[^>]*href=["\\\']/rules["\\\'][^>]*>.*?</a>',
+                "",
+                body,
+                flags=re.S | re.I,
+            )
+            body = body.replace("</nav>", calendar_markup + rules_markup + companion_markup + "</nav>", 1)
 
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
         # This keeps every page on the same PNG-only navigation shell.
@@ -796,8 +809,6 @@ html[data-theme="light"] .rsl-footer-theme-control select{background:#f1f5f9;col
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
      <div class="rsl-footer-legal-links">
        <a href="/legal">Legal Center</a><span aria-hidden="true">|</span>
-       <a href="/rules">Rules</a><span aria-hidden="true">|</span>
-       <a href="/help">Help Center</a><span aria-hidden="true">|</span>
        <a href="https://cash.app/" target="_blank" rel="noopener noreferrer">Creator Donation</a><span aria-hidden="true">|</span>
        <a href="/legal#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
        <a href="/legal#security">Security</a><span aria-hidden="true">|</span>
