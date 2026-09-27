@@ -29,6 +29,7 @@ from ..core.rsl_economy import purchase_daily_ticket, next_ticket_purchase
 from ..core.rsl_economy_ledger import recent_coin_transactions
 from ..core.gauntlet_progression import FREE_DAILY_TICKETS, MAX_DAILY_TICKETS
 from ..core.rsl_activity import collect_overall_activity_stats
+from ..core.rsl_language import RSL_LANGUAGES, normalize_language
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -5138,7 +5139,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def get_language(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         record = await self.bot.db.web_user_preferences.find_one({"_id": str(user.user_id)}) or {}
-        language = str(record.get("language", "en")).strip() or "en"
+        language = normalize_language(record.get("language"))
         return web.json_response({"language": language})
 
     async def set_language(self, request: web.Request) -> web.Response:
@@ -5147,8 +5148,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             payload = await request.json()
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid language request.") from exc
-        language = str(payload.get("language", "en")).strip()
-        allowed = {"en", "zh-CN", "es", "ar", "pt", "ru", "fr", "de", "ms", "hi", "ja", "ko", "it", "tr", "nl", "pl", "th", "vi", "id", "uk"}
+        language = normalize_language(payload.get("language"))
+        allowed = set(RSL_LANGUAGES)
         if language not in allowed:
             raise web.HTTPBadRequest(text="Unsupported language.")
         await self.bot.db.web_user_preferences.update_one(
