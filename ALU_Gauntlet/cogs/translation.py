@@ -162,31 +162,41 @@ class TranslationCog(commands.Cog):
         self.bot = bot
         self._reaction_cooldowns: dict[tuple[int, int], float] = {}
 
-    @app_commands.context_menu(name="RSL Language")
-    async def language_context(self, interaction: discord.Interaction, message: discord.Message):
-        current = await get_user_language(self.bot, interaction.user.id)
-        await interaction.response.send_message(
-            f"{ui(current, 'settings')}\n{ui(current, 'choose')}\n\nCurrent: {language_flag(current)} **{language_name(current)}**",
-            view=LanguageView(self, current),
-            ephemeral=True,
-        )
+@app_commands.context_menu(name="RSL Language")
+async def language_context(interaction: discord.Interaction, message: discord.Message):
+    cog = interaction.client.get_cog("TranslationCog")
+    if cog is None:
+        await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
+        return
+    current = await get_user_language(cog.bot, interaction.user.id)
+    await interaction.response.send_message(
+        f"{ui(current, 'settings')}\n{ui(current, 'choose')}\n\nCurrent: {language_flag(current)} **{language_name(current)}**",
+        view=LanguageView(cog, current),
+        ephemeral=True,
+    )
 
-    @app_commands.context_menu(name="Translate Message")
-    async def translate_context(self, interaction: discord.Interaction, message: discord.Message):
-        if not message.content.strip():
-            await interaction.response.send_message("There is no text in this message to translate.", ephemeral=True)
-            return
-        target = await get_user_language(self.bot, interaction.user.id)
-        try:
-            translated = await translate_text(message.content, target)
-        except Exception:
-            log.exception("Message translation failed")
-            await interaction.response.send_message(ui(target, "failed"), ephemeral=True)
-            return
-        await interaction.response.send_message(
-            f"{language_flag(target)} **{ui(target, 'translation')} — {language_name(target)}**\n{translated}",
-            ephemeral=True,
-        )
+
+@app_commands.context_menu(name="Translate Message")
+async def translate_context(interaction: discord.Interaction, message: discord.Message):
+    cog = interaction.client.get_cog("TranslationCog")
+    if cog is None:
+        await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
+        return
+    target = await get_user_language(cog.bot, interaction.user.id)
+    if not message.content.strip():
+        await interaction.response.send_message(ui(target, "failed"), ephemeral=True)
+        return
+    try:
+        translated = await translate_text(message.content, target)
+    except Exception:
+        log.exception("Message translation failed")
+        await interaction.response.send_message(ui(target, "failed"), ephemeral=True)
+        return
+    await interaction.response.send_message(
+        f"{language_flag(target)} **{ui(target, 'translation')} — {language_name(target)}**\n{translated}",
+        ephemeral=True,
+    )
+
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -238,3 +248,5 @@ class TranslationCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(TranslationCog(bot))
+    bot.tree.add_command(language_context)
+    bot.tree.add_command(translate_context)
