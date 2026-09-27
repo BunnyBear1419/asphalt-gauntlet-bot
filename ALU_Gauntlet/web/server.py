@@ -612,6 +612,16 @@ window.rslGoogleTranslateInit=function(){
                 body,
                 flags=re.S | re.I,
             )
+            # Remove any page-specific Companion copy before rebuilding the canonical
+            # navigation order. This prevents Calendar/Rules/XP from being appended
+            # after an older Companion item.
+            body = re.sub(
+                r'<details class="top-nav-dropdown companion-nav-dropdown">.*?</details>',
+                "",
+                body,
+                count=1,
+                flags=re.S | re.I,
+            )
             body = body.replace("</nav>", calendar_markup + rules_markup + xp_markup + companion_markup + "</nav>", 1)
 
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
