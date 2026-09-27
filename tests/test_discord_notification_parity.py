@@ -18,6 +18,6 @@ def test_discord_notification_center_uses_shared_preferences():
 def test_notification_scheduler_reads_the_same_preference_fields():
     source = NOTIFICATIONS.read_text(encoding="utf-8")
     assert "notification_preferences" in source
-    assert "event["type"]}_notifications" in source
-    assert "event["type"]}_lead_days" in source
+    assert 'event["type"]}_notifications' in source
+    assert 'event["type"]}_lead_days' in source
     assert "event_lead_days" in source
