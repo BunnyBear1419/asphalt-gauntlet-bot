@@ -54,71 +54,174 @@ def next_ticket_purchase(purchased_count: int, balance: int) -> dict:
 
 
 async def purchase_daily_ticket(db, *, guild_id: str, user_id: str, today: str) -> dict:
-    """Atomically buy the next daily ticket after resetting an expired day.
+    """Buy the next daily ticket with the Coin debit and ticket grant in one transaction.
 
-    The purchase is one MongoDB update: the Coin balance must cover the
-    current escalating price and fewer than five paid tickets may exist.
+    The production path uses the same MongoDB transaction for the daily reset,
+    ticket increment, and Coin ledger entry. This prevents a crash between the
+    ticket grant and Coin charge from creating a free paid ticket (or charging
+    Coins without granting the ticket).
     """
     from .gauntlet_progression import FREE_DAILY_TICKETS
 
+    guild_id, user_id, today = str(guild_id), str(user_id), str(today)
     driver_id = f"{guild_id}_{user_id}"
-    profile = await db.drivers.find_one(
-        {"_id": driver_id},
-        {"gauntlet_ticket_date": 1, "gauntlet_tickets": 1,
-         "gauntlet_purchased_tickets": 1, "rsl_coins": 1},
-    )
-    if not profile:
-        return {"ok": False, "reason": "profile_not_found"}
+    reference_id = f"ticket:{today}:purchase"
+    transaction_id = f"{guild_id}:{user_id}:{reference_id}"
 
-    if profile.get("gauntlet_ticket_date") != today:
-        await db.drivers.update_one(
-            {"_id": driver_id, "gauntlet_ticket_date": {"$ne": today}},
-            {"$set": {
-                "gauntlet_ticket_date": today,
-                "gauntlet_tickets": FREE_DAILY_TICKETS,
-                "gauntlet_purchased_tickets": 0,
-            }},
-        )
+    client = getattr(db, "client", None)
+    if client is None:
+        # Lightweight/test DB compatibility. Production MongoDB uses the
+        # transaction path below.
         profile = await db.drivers.find_one(
             {"_id": driver_id},
             {"gauntlet_ticket_date": 1, "gauntlet_tickets": 1,
              "gauntlet_purchased_tickets": 1, "rsl_coins": 1},
         )
-
-    purchased = min(MAX_PURCHASED_TICKETS, max(0, int(profile.get("gauntlet_purchased_tickets", 0) or 0)))
-    cost = extra_ticket_cost(purchased)
-    if cost <= 0:
-        return {"ok": False, "reason": "purchase_limit", "cost": 0}
-    if not can_afford(int(profile.get("rsl_coins", 0) or 0), cost):
-        return {"ok": False, "reason": "insufficient_coins", "cost": cost}
-
-    result = await db.drivers.update_one(
-        {
-            "_id": driver_id,
-            "gauntlet_ticket_date": today,
-            "gauntlet_purchased_tickets": purchased,
-            "gauntlet_tickets": {"$lt": MAX_DAILY_TICKETS},
-        },
-        {"$inc": {"gauntlet_tickets": 1, "gauntlet_purchased_tickets": 1}},
-    )
-    if getattr(result, "modified_count", 0) != 1:
-        return {"ok": False, "reason": "purchase_race_or_state_changed", "cost": cost}
-
-    ledger = await apply_coin_transaction(
-        db, guild_id=guild_id, user_id=user_id, amount=-cost,
-        transaction_type="ticket_purchase",
-        reference_id=f"ticket:{today}:{purchased + 1}",
-        reason=f"Extra Gauntlet Ticket #{purchased + 1}",
-        metadata={"date": today, "ticket_number": purchased + 1},
-    )
-    if not ledger.get("ok") or ledger.get("duplicate"):
-        await db.drivers.update_one(
-            {"_id": driver_id, "gauntlet_ticket_date": today, "gauntlet_purchased_tickets": purchased + 1},
-            {"$inc": {"gauntlet_tickets": -1, "gauntlet_purchased_tickets": -1}},
+        if not profile:
+            return {"ok": False, "reason": "profile_not_found"}
+        if profile.get("gauntlet_ticket_date") != today:
+            await db.drivers.update_one(
+                {"_id": driver_id},
+                {"$set": {
+                    "gauntlet_ticket_date": today,
+                    "gauntlet_tickets": FREE_DAILY_TICKETS,
+                    "gauntlet_purchased_tickets": 0,
+                }},
+            )
+            profile = await db.drivers.find_one(
+                {"_id": driver_id},
+                {"gauntlet_ticket_date": 1, "gauntlet_tickets": 1,
+                 "gauntlet_purchased_tickets": 1, "rsl_coins": 1},
+            )
+        purchased = min(MAX_PURCHASED_TICKETS, max(0, int(profile.get("gauntlet_purchased_tickets", 0) or 0)))
+        cost = extra_ticket_cost(purchased)
+        if cost <= 0:
+            return {"ok": False, "reason": "purchase_limit", "cost": 0}
+        ledger = await apply_coin_transaction(
+            db, guild_id=guild_id, user_id=user_id, amount=-cost,
+            transaction_type="ticket_purchase",
+            reference_id=f"ticket:{today}:{purchased + 1}",
+            reason=f"Extra Gauntlet Ticket #{purchased + 1}",
+            metadata={"date": today, "ticket_number": purchased + 1},
         )
-        return {"ok": False, "reason": "purchase_race_or_state_changed" if ledger.get("duplicate") else "insufficient_coins", "cost": cost}
+        if not ledger.get("ok"):
+            return {"ok": False, "reason": ledger.get("reason", "insufficient_coins"), "cost": cost}
+        result = await db.drivers.update_one(
+            {"_id": driver_id, "gauntlet_ticket_date": today,
+             "gauntlet_purchased_tickets": purchased,
+             "gauntlet_tickets": {"$lt": MAX_DAILY_TICKETS}},
+            {"$inc": {"gauntlet_tickets": 1, "gauntlet_purchased_tickets": 1}},
+        )
+        if getattr(result, "modified_count", 0) != 1:
+            return {"ok": False, "reason": "purchase_race_or_state_changed", "cost": cost}
+        return {
+            "ok": True, "cost": cost, "purchased_tickets": purchased + 1,
+            "tickets_remaining": min(MAX_DAILY_TICKETS, int(profile.get("gauntlet_tickets", FREE_DAILY_TICKETS) or 0) + 1),
+        }
+
+    from time import time
+    now = time()
+    try:
+        async with await client.start_session() as session:
+            async with session.start_transaction():
+                profile = await db.drivers.find_one(
+                    {"_id": driver_id},
+                    {"gauntlet_ticket_date": 1, "gauntlet_tickets": 1,
+                     "gauntlet_purchased_tickets": 1, "rsl_coins": 1},
+                    session=session,
+                )
+                if not profile:
+                    raise ValueError("profile_not_found")
+
+                if profile.get("gauntlet_ticket_date") != today:
+                    await db.drivers.update_one(
+                        {"_id": driver_id},
+                        {"$set": {
+                            "gauntlet_ticket_date": today,
+                            "gauntlet_tickets": FREE_DAILY_TICKETS,
+                            "gauntlet_purchased_tickets": 0,
+                            "gauntlet_refreshes": 0,
+                        }},
+                        session=session,
+                    )
+                    profile = {
+                        **profile,
+                        "gauntlet_ticket_date": today,
+                        "gauntlet_tickets": FREE_DAILY_TICKETS,
+                        "gauntlet_purchased_tickets": 0,
+                        "gauntlet_refreshes": 0,
+                    }
+
+                purchased = min(MAX_PURCHASED_TICKETS, max(0, int(profile.get("gauntlet_purchased_tickets", 0) or 0)))
+                cost = extra_ticket_cost(purchased)
+                if cost <= 0:
+                    raise ValueError("purchase_limit")
+
+                balance = int(profile.get("rsl_coins", 0) or 0)
+                if not can_afford(balance, cost):
+                    raise ValueError("insufficient_coins")
+
+                existing = await db.rsl_economy_transactions.find_one(
+                    {"_id": transaction_id},
+                    session=session,
+                )
+                if existing:
+                    return _result(existing, transaction_id)
+
+                document = {
+                    "_id": transaction_id,
+                    "guild_id": guild_id,
+                    "user_id": user_id,
+                    "type": "ticket_purchase",
+                    "reference_id": reference_id,
+                    "reason": f"Extra Gauntlet Ticket #{purchased + 1}",
+                    "amount": -cost,
+                    "status": "pending",
+                    "created_at": now,
+                    "metadata": {"date": today, "ticket_number": purchased + 1},
+                }
+                await db.rsl_economy_transactions.insert_one(document, session=session)
+
+                result = await db.drivers.update_one(
+                    {
+                        "_id": driver_id,
+                        "gauntlet_ticket_date": today,
+                        "gauntlet_purchased_tickets": purchased,
+                        "gauntlet_tickets": {"$lt": MAX_DAILY_TICKETS},
+                        "rsl_coins": {"$gte": cost},
+                    },
+                    {"$inc": {
+                        "gauntlet_tickets": 1,
+                        "gauntlet_purchased_tickets": 1,
+                        "rsl_coins": -cost,
+                    }},
+                    session=session,
+                )
+                if getattr(result, "modified_count", 0) != 1:
+                    raise ValueError("purchase_race_or_state_changed")
+
+                profile_after = await db.drivers.find_one(
+                    {"_id": driver_id},
+                    {"rsl_coins": 1, "gauntlet_tickets": 1},
+                    session=session,
+                )
+                balance_after = int((profile_after or {}).get("rsl_coins", 0) or 0)
+                tickets_after = int((profile_after or {}).get("gauntlet_tickets", 0) or 0)
+                await db.rsl_economy_transactions.update_one(
+                    {"_id": transaction_id},
+                    {"$set": {
+                        "status": "completed",
+                        "balance_after": balance_after,
+                        "completed_at": time(),
+                    }},
+                    session=session,
+                )
+    except ValueError as exc:
+        return {"ok": False, "reason": str(exc), "cost": locals().get("cost", 0)}
 
     return {
-        "ok": True, "cost": cost, "purchased_tickets": purchased + 1,
-        "tickets_remaining": min(MAX_DAILY_TICKETS, int(profile.get("gauntlet_tickets", FREE_DAILY_TICKETS) or 0) + 1),
+        "ok": True,
+        "cost": cost,
+        "purchased_tickets": purchased + 1,
+        "tickets_remaining": min(MAX_DAILY_TICKETS, tickets_after),
     }
