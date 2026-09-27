@@ -174,6 +174,7 @@ def test_v1_shared_shell_keeps_calendar_search_profile_and_companion_ordered():
     assert 'href="/gauntlet/career"' in source
     assert 'href="/my-tournaments"' in source
     assert 'href="/club"' in source
+    assert source.index('Remove any page-specific Companion copy') < source.index('body = body.replace("</nav>", calendar_markup + rules_markup + xp_markup + companion_markup + "</nav>", 1)')
 
 
 def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
