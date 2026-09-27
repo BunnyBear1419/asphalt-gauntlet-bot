@@ -417,6 +417,23 @@ jobs:
           glob: '**'
           team: false
 
+      - name: Restart Discloud app after rollback upload
+        if: steps.smoke.outcome == 'failure'
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCLOUD_APP_ID: asph
+        run: |
+          set -euo pipefail
+          restart_http=$(curl -sS -o discloud-rollback-restart.json -w "%{http_code}" -X PUT \
+            -H "api-token: $DISCLOUD_TOKEN" \
+            -H "Accept: application/json" \
+            "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/restart" || true)
+          echo "Rollback Discloud restart HTTP status: $restart_http"
+          if [ "$restart_http" != "200" ]; then
+            cat discloud-rollback-restart.json || true
+            exit 1
+          fi
+          echo "Rollback Discloud restart requested successfully."
       - name: Verify rollback health
         if: steps.smoke.outcome == 'failure'
         env:
