@@ -416,4 +416,3 @@ def test_quit_cannot_close_a_challenge_after_submission_claimed_processing():
     assert '"status": "processing"' in claim
     assert '"status": "active"' in abandon
     assert '"status": "abandoned"' in abandon
-\n
