@@ -65,8 +65,6 @@ async def purchase_daily_ticket(db, *, guild_id: str, user_id: str, today: str) 
 
     guild_id, user_id, today = str(guild_id), str(user_id), str(today)
     driver_id = f"{guild_id}_{user_id}"
-    reference_id = f"ticket:{today}:purchase"
-    transaction_id = f"{guild_id}:{user_id}:{reference_id}"
 
     client = getattr(db, "client", None)
     if client is None:
@@ -161,6 +159,8 @@ async def purchase_daily_ticket(db, *, guild_id: str, user_id: str, today: str) 
                 if not can_afford(balance, cost):
                     raise ValueError("insufficient_coins")
 
+                reference_id = f"ticket:{today}:{purchased + 1}"
+                transaction_id = f"{guild_id}:{user_id}:{reference_id}"
                 existing = await db.rsl_economy_transactions.find_one(
                     {"_id": transaction_id},
                     session=session,
