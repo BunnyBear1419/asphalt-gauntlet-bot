@@ -140,7 +140,7 @@ def test_player_page_no_longer_exposes_legacy_setup_route_links():
 
 def test_admin_server_setup_hash_resolves_to_settings_section():
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
-    assert 'id="setup-link" href="/admin#settings"' in admin
+    assert 'id="setup-link" href="/setup"' in admin
     assert 'data-path="/admin" data-section="settings"' in admin
     assert 'name=String(name||"").replace(/^section-/,"");' in admin
     assert '#section-settings' not in admin
