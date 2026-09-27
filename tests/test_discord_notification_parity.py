@@ -11,10 +11,8 @@ def test_discord_notification_center_uses_shared_preferences():
     assert "DiscordNotificationSettingsView" in source
     assert "DiscordNotificationSettingsButton" in source
     assert "notification_preferences" in source
-    assert "gauntlet_notifications" in source
-    assert "tournament_notifications" in source
-    assert "gauntlet_lead_days" in source
-    assert "tournament_lead_days" in source
+    assert 'record.get(f\'{event["type"]}_notifications\', False)' in source
+    assert 'record.get(f\'{event["type"]}_lead_days\', 1)' in source
 
 
 def test_notification_scheduler_reads_the_same_preference_fields():
