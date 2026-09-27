@@ -49,3 +49,10 @@ def test_admin_page_has_guild_selector_and_branding_sections():
     assert 'id="section-media"' in ADMIN
     assert 'id="section-links"' in ADMIN
     assert 'id="section-system"' in ADMIN
+
+
+def test_admin_image_upload_supports_click_and_drag_drop():
+    assert 'id="asset-drop"' in ADMIN
+    assert 'dragover' in ADMIN
+    assert 'dataTransfer.files' in ADMIN
+    assert '8*1024*1024' in ADMIN
