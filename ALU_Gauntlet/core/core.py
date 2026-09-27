@@ -1529,8 +1529,8 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
     if p2.get("season_number") is not None and int(p2.get("season_number", 0)) != int(current_season):
         return None
 
-    challenger_before = {"career_wins": int(p1.get("career_wins", 0)), "career_played": int(p1.get("career_played", 0)), "streak": int(p1.get("streak", 0))}
-    defender_before = {"career_wins": int(p2.get("career_wins", 0)), "career_played": int(p2.get("career_played", 0)), "streak": int(p2.get("streak", 0))}
+    challenger_before = {"career_wins": int(p1.get("career_wins", 0)), "career_played": int(p1.get("career_played", 0)), "streak": int(p1.get("streak", 0)), "season_points": int(p1.get("season_points", 0)), "season_races_won": int(p1.get("season_races_won", 0)), "season_matches": int(p1.get("season_matches", 0))}
+    defender_before = {"career_wins": int(p2.get("career_wins", 0)), "career_played": int(p2.get("career_played", 0)), "streak": int(p2.get("streak", 0)), "season_points": int(p2.get("season_points", 0)), "season_races_won": int(p2.get("season_races_won", 0)), "season_matches": int(p2.get("season_matches", 0))}
 
     courses_beat = sum(1 for i in range(5) if challenger_times[i]["ms"] < defense_courses[i]["ms"])
     challenger_won = courses_beat >= 3
@@ -1774,7 +1774,7 @@ async def revert_match_settlement(guild_id: str, match_id: str, actor_id: str):
         if later:
             raise RuntimeError("LATER_MATCH_EXISTS")
 
-        if "challenger_elo_before" not in match or "defender_elo_before" not in match:
+        if "challenger_elo_before" not in match or "defender_elo_before" not in match or "season_points" not in match.get("challenger_before", {}) or "season_points" not in match.get("defender_before", {}):
             raise RuntimeError("LEGACY_MATCH_NO_SNAPSHOT")
 
         p1_filter = {"_id": f"{guild_id}_{match['challenger_id']}", "guild_id": guild_id}
@@ -1787,16 +1787,22 @@ async def revert_match_settlement(guild_id: str, match_id: str, actor_id: str):
         challenger_before = match.get("challenger_before", {})
         defender_before = match.get("defender_before", {})
         p1_expected = {
-            "elo": match.get("challenger_elo_after"),
+            "elo": expected_challenger_elo,
             "career_wins": int(challenger_before.get("career_wins", p1.get("career_wins", 0))) + (1 if match.get("w_id") == match.get("challenger_id") else 0),
             "career_played": int(challenger_before.get("career_played", p1.get("career_played", 0))) + 1,
             "streak": int(challenger_before.get("streak", p1.get("streak", 0))) + (1 if match.get("w_id") == match.get("challenger_id") else 0),
+            "season_points": int(challenger_before.get("season_points", 0)) + int(match.get("season_points_challenger", 0) or 0),
+            "season_races_won": int(challenger_before.get("season_races_won", 0)) + int(match.get("season_races_won_challenger", 0) or 0),
+            "season_matches": int(challenger_before.get("season_matches", 0)) + 1,
         }
         p2_expected = {
-            "elo": match.get("defender_elo_after"),
+            "elo": expected_defender_elo,
             "career_wins": int(defender_before.get("career_wins", p2.get("career_wins", 0))) + (1 if match.get("w_id") == match.get("opponent_id") else 0),
             "career_played": int(defender_before.get("career_played", p2.get("career_played", 0))) + 1,
             "streak": int(defender_before.get("streak", p2.get("streak", 0))) + (1 if match.get("w_id") == match.get("opponent_id") else 0),
+            "season_points": int(defender_before.get("season_points", 0)) + int(match.get("season_points_defender", 0) or 0),
+            "season_races_won": int(defender_before.get("season_races_won", 0)) + int(match.get("season_races_won_defender", 0) or 0),
+            "season_matches": int(defender_before.get("season_matches", 0)) + 1,
         }
         if any(p1.get(k) != v for k,v in p1_expected.items()) or any(p2.get(k) != v for k,v in p2_expected.items()):
             raise RuntimeError("PLAYER_STATE_CHANGED")
@@ -1808,6 +1814,9 @@ async def revert_match_settlement(guild_id: str, match_id: str, actor_id: str):
                 "career_wins": int(challenger_before.get("career_wins", p1.get("career_wins", 0))),
                 "career_played": int(challenger_before.get("career_played", p1.get("career_played", 0))),
                 "streak": int(challenger_before.get("streak", p1.get("streak", 0))),
+                    "season_points": int(challenger_before.get("season_points", p1.get("season_points", 0))),
+                    "season_races_won": int(challenger_before.get("season_races_won", p1.get("season_races_won", 0))),
+                    "season_matches": int(challenger_before.get("season_matches", p1.get("season_matches", 0))),
             }}, session=session,
         )
         r2 = await bot.db.drivers.update_one(
@@ -1817,6 +1826,9 @@ async def revert_match_settlement(guild_id: str, match_id: str, actor_id: str):
                 "career_wins": int(defender_before.get("career_wins", p2.get("career_wins", 0))),
                 "career_played": int(defender_before.get("career_played", p2.get("career_played", 0))),
                 "streak": int(defender_before.get("streak", p2.get("streak", 0))),
+                    "season_points": int(defender_before.get("season_points", p2.get("season_points", 0))),
+                    "season_races_won": int(defender_before.get("season_races_won", p2.get("season_races_won", 0))),
+                    "season_matches": int(defender_before.get("season_matches", p2.get("season_matches", 0))),
             }}, session=session,
         )
         if getattr(r1, "modified_count", 0) != 1 or getattr(r2, "modified_count", 0) != 1:
@@ -1870,176 +1882,27 @@ class MatchRevertView(discord.ui.View):
         if not await check_admin_privileges(interaction):
             await interaction.response.send_message("❌ Access Denied: Staff only.", ephemeral=True)
             return
-
-        match = await bot.db.matches.find_one({"_id": self.match_id, "guild_id": str(interaction.guild_id)})
-        if not match:
-            await interaction.response.send_message("❌ Match record not found.", ephemeral=True)
-            return
-        if match.get("reverted"):
-            await interaction.response.send_message("❌ This match has already been reverted.", ephemeral=True)
-            return
-
-        # Never undo a match after either player has participated in a later
-        # non-reverted match; doing so would corrupt legitimate later ratings/streaks.
-        match_time = float(match.get("timestamp", 0))
-        later = await bot.db.matches.find({
-            "guild_id": match["guild_id"],
-            "timestamp": {"$gt": match_time},
-            "reverted": {"$ne": True},
-            "$or": [
-                {"challenger_id": {"$in": [str(match["challenger_id"]), str(match["opponent_id"])]}},
-                {"opponent_id": {"$in": [str(match["challenger_id"]), str(match["opponent_id"])]}},
-            ],
-        }).to_list(length=1)
-        if later:
-            await interaction.response.send_message(
-                "❌ This match cannot be automatically reverted because one of these players has a later match. Use a manual staff adjustment instead.",
-                ephemeral=True,
-            )
-            return
-
-        p1_filter = {"_id": f"{match['guild_id']}_{match['challenger_id']}", "guild_id": str(interaction.guild_id)}
-        p2_filter = {"_id": f"{match['guild_id']}_{match['opponent_id']}", "guild_id": str(interaction.guild_id)}
-
-        # Legacy records without exact rollback snapshots are never auto-reverted.
-        if "challenger_elo_before" not in match or "defender_elo_before" not in match:
-            await interaction.response.send_message("❌ This legacy match lacks safe rollback snapshots. Use a manual staff adjustment.", ephemeral=True)
-            return
-
-        challenger_before = match.get("challenger_before", {})
-        defender_before = match.get("defender_before", {})
-        new_challenger_elo = max(100, int(match["challenger_elo_before"]))
-        new_defender_elo = max(100, int(match["defender_elo_before"]))
-
-        async def _rollback(session):
-            # Re-read everything inside the transaction so the safety checks and
-            # writes use one consistent database snapshot.
-            live_match = await bot.db.matches.find_one(
-                {"_id": self.match_id, "guild_id": str(interaction.guild_id), "reverted": {"$ne": True}},
-                session=session,
-            )
-            if not live_match:
-                raise RuntimeError("MATCH_ALREADY_REVERTED_OR_MISSING")
-
-            live_time = float(live_match.get("timestamp", 0))
-            later = await bot.db.matches.find({
-                "guild_id": str(interaction.guild_id),
-                "timestamp": {"$gt": live_time},
-                "reverted": {"$ne": True},
-                "$or": [
-                    {"challenger_id": {"$in": [str(live_match["challenger_id"]), str(live_match["opponent_id"])]}},
-                    {"opponent_id": {"$in": [str(live_match["challenger_id"]), str(live_match["opponent_id"])]}},
-                ],
-            }, session=session).to_list(length=1)
-            if later:
-                raise RuntimeError("LATER_MATCH_EXISTS")
-
-            live_p1 = await bot.db.drivers.find_one(p1_filter, session=session)
-            live_p2 = await bot.db.drivers.find_one(p2_filter, session=session)
-            if not live_p1 or not live_p2:
-                raise RuntimeError("PLAYER_PROFILE_MISSING")
-
-            # Only roll back if the players still have the exact post-match state.
-            # This prevents an old/stale revert button from overwriting newer changes.
-            p1_expected = {
-                "elo": live_match.get("challenger_elo_after"),
-                "career_wins": int(challenger_before.get("career_wins", live_p1.get("career_wins", 0))) + (1 if live_match.get("w_id") == live_match.get("challenger_id") else 0),
-                "career_played": int(challenger_before.get("career_played", live_p1.get("career_played", 0))) + 1,
+        await interaction.response.defer(ephemeral=True)
+        try:
+            match = await revert_match_settlement(str(interaction.guild_id), self.match_id, str(interaction.user.id))
+        except RuntimeError as exc:
+            messages = {
+                "MATCH_ALREADY_REVERTED_OR_MISSING": "❌ This match was already reverted or is no longer available.",
+                "LATER_MATCH_EXISTS": "❌ This match cannot be automatically reverted because one of these players has a later match. Use a manual staff adjustment instead.",
+                "LEGACY_MATCH_NO_SNAPSHOT": "❌ This legacy match lacks complete rollback snapshots. Use a manual staff adjustment.",
+                "PLAYER_PROFILE_MISSING": "❌ Player profiles not found.",
+                "PLAYER_STATE_CHANGED": "❌ Player state changed after this match. The revert was cancelled for safety.",
+                "TRANSACTIONS_REQUIRED": "❌ Automatic match rollback requires connected MongoDB transaction mode.",
             }
-            p2_expected = {
-                "elo": live_match.get("defender_elo_after"),
-                "career_wins": int(defender_before.get("career_wins", live_p2.get("career_wins", 0))) + (1 if live_match.get("w_id") == live_match.get("opponent_id") else 0),
-                "career_played": int(defender_before.get("career_played", live_p2.get("career_played", 0))) + 1,
-            }
-            p1_expected["streak"] = int(challenger_before.get("streak", live_p1.get("streak", 0))) + (1 if live_match.get("w_id") == live_match.get("challenger_id") else 0)
-            p2_expected["streak"] = int(defender_before.get("streak", live_p2.get("streak", 0))) + (1 if live_match.get("w_id") == live_match.get("opponent_id") else 0)
-            if any(live_p1.get(k) != v for k, v in p1_expected.items()) or any(live_p2.get(k) != v for k, v in p2_expected.items()):
-                raise RuntimeError("PLAYER_STATE_CHANGED")
-
-            r1 = await bot.db.drivers.update_one(
-                {**p1_filter, **p1_expected},
-                {"$set": {
-                    "elo": new_challenger_elo,
-                    "career_wins": int(challenger_before.get("career_wins", live_p1.get("career_wins", 0))),
-                    "career_played": int(challenger_before.get("career_played", live_p1.get("career_played", 0))),
-                    "streak": int(challenger_before.get("streak", live_p1.get("streak", 0))),
-                }}, session=session,
-            )
-            r2 = await bot.db.drivers.update_one(
-                {**p2_filter, **p2_expected},
-                {"$set": {
-                    "elo": new_defender_elo,
-                    "career_wins": int(defender_before.get("career_wins", live_p2.get("career_wins", 0))),
-                    "career_played": int(defender_before.get("career_played", live_p2.get("career_played", 0))),
-                    "streak": int(defender_before.get("streak", live_p2.get("streak", 0))),
-                }}, session=session,
-            )
-            if getattr(r1, "modified_count", 0) != 1 or getattr(r2, "modified_count", 0) != 1:
-                raise RuntimeError("PLAYER_STATE_CHANGED")
-
-            # Restore only lap records that this exact match currently owns.
-            # A later defense/reference change is never overwritten.
-            lap_history = await bot.db.lap_time_history.find({"match_id": self.match_id, "guild_id": str(interaction.guild_id)}, session=session).to_list(length=10)
-            for hist in lap_history:
-                current_lap = await bot.db.lap_times.find_one({
-                    "_id": f"{interaction.guild_id}_{hist['user_id']}_{hist['track']}",
-                    "source_match_id": self.match_id,
-                }, session=session)
-                if not current_lap:
-                    continue
-                previous_record = hist.get("previous_record")
-                if previous_record:
-                    previous_record = dict(previous_record)
-                    previous_record.pop("_id", None)
-                    await bot.db.lap_times.replace_one(
-                        {"_id": f"{interaction.guild_id}_{hist['user_id']}_{hist['track']}"},
-                        {"_id": f"{interaction.guild_id}_{hist['user_id']}_{hist['track']}", **previous_record},
-                        upsert=True, session=session,
-                    )
-                else:
-                    await bot.db.lap_times.delete_one({"_id": current_lap["_id"]}, session=session)
-
-            for track in sorted({str(h.get("track")) for h in lap_history if h.get("track")}):
-                await rebuild_universal_map_record(track, session=session)
-
-            rmatch = await bot.db.matches.update_one(
-                {"_id": self.match_id, "guild_id": str(interaction.guild_id), "reverted": {"$ne": True}},
-                {"$set": {"reverted": True, "reverted_at": time.time(), "reverted_by": str(interaction.user.id)}},
-                session=session,
-            )
-            if getattr(rmatch, "modified_count", 0) != 1:
-                raise RuntimeError("MATCH_ALREADY_REVERTED_OR_MISSING")
-
-        if bot.mongo_client:
-            try:
-                async with bot.mongo_client.start_session() as session:
-                    async with session.start_transaction():
-                        await _rollback(session)
-            except RuntimeError as exc:
-                reason = str(exc)
-                messages = {
-                    "MATCH_ALREADY_REVERTED_OR_MISSING": "❌ This match was already reverted or is no longer available.",
-                    "LATER_MATCH_EXISTS": "❌ This match cannot be automatically reverted because one of these players has a later match. Use a manual staff adjustment instead.",
-                    "PLAYER_PROFILE_MISSING": "❌ Player profiles not found.",
-                    "PLAYER_STATE_CHANGED": "❌ Player ratings changed after this match. The revert was cancelled to protect newer progress.",
-                }
-                await interaction.response.send_message(messages.get(reason, "❌ Revert cancelled for safety."), ephemeral=True)
-                return
-            except Exception:
-                logging.exception("Atomic match rollback failed: %s", self.match_id)
-                await interaction.response.send_message("❌ The match could not be reverted safely. No partial rollback was kept.", ephemeral=True)
-                return
-        else:
-            # Offline/mock mode has no transaction support. Refuse automatic rollback
-            # rather than risk leaving one player's ELO reverted and the other unchanged.
-            await interaction.response.send_message("❌ Automatic match rollback requires the connected MongoDB transaction mode. Use a manual staff adjustment in offline/mock mode.", ephemeral=True)
+            await interaction.followup.send(messages.get(str(exc), "❌ Revert cancelled for safety."), ephemeral=True)
             return
-
-        await interaction.response.send_message(f"✅ Match fully reverted. <@{match['challenger_id']}>: {p1.get('elo', 1000)} → {new_challenger_elo} | <@{match['opponent_id']}>: {p2.get('elo', 1000)} → {new_defender_elo}", ephemeral=True)
+        await interaction.followup.send(f"✅ Match fully reverted. Match ID: `{match.get('_id', self.match_id)}`.", ephemeral=True)
         for item in self.children:
             item.disabled = True
-        await interaction.message.edit(view=self)
-        await dispatch_audit_log(match["guild_id"], "⚠️ Match Reverted", f"Staff {interaction.user.mention} reverted ELO for match {self.match_id} between <@{match['challenger_id']}> and <@{match['opponent_id']}>.", color=0xe74c3c)
+        try:
+            await interaction.message.edit(view=self)
+        except Exception:
+            pass
 
     @discord.ui.button(label="Dismiss", style=discord.ButtonStyle.secondary, custom_id="dismiss_report_btn")
     async def dismiss(self, interaction: discord.Interaction, button: discord.ui.Button):
