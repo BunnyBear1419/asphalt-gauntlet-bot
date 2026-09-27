@@ -24,6 +24,17 @@ class RSLXPCog(commands.Cog):
         try:
             level = progress_for_xp(int(doc.get("rsl_xp", 0) or 0), settings)["level"]
             await sync_xp_rank_role(member, level)
+            for reward in settings.get("role_rewards", []) or []:
+                try:
+                    threshold = int(reward.get("level", 0) or 0)
+                    role = member.guild.get_role(int(reward.get("role_id", 0) or 0))
+                except (TypeError, ValueError):
+                    role, threshold = None, 0
+                if role and level >= threshold and role not in member.roles:
+                    try:
+                        await member.add_roles(role, reason="RSL XP role reward")
+                    except Exception:
+                        pass
         except Exception:
             pass
 
