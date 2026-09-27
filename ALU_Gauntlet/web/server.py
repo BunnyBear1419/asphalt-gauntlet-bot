@@ -5815,7 +5815,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "tournament_admin_channel_id", "tournament_announcement_channel_id",
             "tournament_admin_role_id", "tournament_player_announcement_role_id",
         )
-        return web.json_response({"settings": {key: settings.get(key) for key in fields} | {"timezone": settings.get("timezone", "UTC")}})
+        return web.json_response({"settings": {key: settings.get(key) for key in fields} | {"timezone": settings.get("timezone", "UTC"), "achievement_role_names": settings.get("achievement_role_names", {}), "achievement_role_ids": settings.get("achievement_role_ids", {})}})
 
     async def save_setup_settings(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
@@ -5829,11 +5829,47 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "tournament_admin_role_id", "tournament_player_announcement_role_id",
         }
         clean = {key: str(payload[key]).strip() for key in allowed if payload.get(key)}
+        role_name_payload = payload.get("achievement_role_names")
+        if role_name_payload is not None and not isinstance(role_name_payload, dict):
+            raise web.HTTPBadRequest(text="Invalid achievement role names.")
+        role_name_payload = role_name_payload or {}
+        managed_role_names = tuple(XP_LEVEL_ROLES.values()) + GAUNTLET_SEASONAL_ROLES + TOURNAMENT_SEASONAL_ROLES + PERMANENT_ACHIEVEMENT_ROLES
+        achievement_names = {}
+        for canonical in managed_role_names:
+            value = str(role_name_payload.get(canonical, canonical)).strip() or canonical
+            if len(value) > 100:
+                raise web.HTTPBadRequest(text=f"Achievement role name is too long: {canonical}.")
+            achievement_names[canonical] = value
+        used_names = {}
+        for canonical, desired in achievement_names.items():
+            owner = used_names.get(desired.casefold())
+            if owner and owner != canonical:
+                raise web.HTTPBadRequest(text=f"Achievement role name "{desired}" is used more than once.")
+            used_names[desired.casefold()] = canonical
+        clean["achievement_role_names"] = achievement_names
         if clean.get("timezone") not in {None, *(value for _, value in TIMEZONE_LABELS)}:
             raise web.HTTPBadRequest(text="Invalid timezone.")
         if not clean:
             raise web.HTTPBadRequest(text="Nothing to save.")
         guild = next(g for g in self.bot.guilds if str(g.id) == guild_id)
+        old_settings = await self.bot.db.settings.find_one({"_id": guild_id}, {"achievement_role_ids": 1}) or {}
+        old_ids = old_settings.get("achievement_role_ids", {})
+        achievement_ids = {}
+        for canonical, desired in achievement_names.items():
+            configured_id = str(old_ids.get(canonical) or "")
+            role = guild.get_role(int(configured_id)) if configured_id.isdigit() else None
+            if role is None:
+                role = next((r for r in guild.roles if not r.is_default() and not r.managed and r.name == canonical), None)
+            if role is not None:
+                if role.name != desired:
+                    try:
+                        await role.edit(name=desired, reason="RSL achievement role name configured by staff")
+                    except discord.Forbidden:
+                        raise web.HTTPForbidden(text=f"Discord permission prevents renaming the {canonical} role.")
+                    except Exception as exc:
+                        raise web.HTTPBadRequest(text=f"Could not rename {canonical}: {exc}")
+                achievement_ids[canonical] = str(role.id)
+        clean["achievement_role_ids"] = achievement_ids
         for key in SETUP_CHANNELS:
             value = clean.get(key[0])
             if value:
