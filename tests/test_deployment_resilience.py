@@ -34,6 +34,9 @@ def test_deployment_has_post_deploy_smoke_test():
     assert "Discord API" in source
     assert "MongoClient" in source
     assert "Discloud" in source
+    assert "seq 1 12" in source
+    assert "waiting 10 seconds" in source
+    assert "seq 1 6" in source
 
 
 def test_discloud_smoke_test_matches_working_production_monitor():
@@ -53,6 +56,8 @@ def test_failed_smoke_test_rolls_back_previous_revision():
     assert "ref: ${{ steps.revision.outputs.previous_sha }}" in source
     assert "Deploy rollback to Discloud" in source
     assert "Restart Discloud app after rollback upload" in source
+    assert "Install deployment check dependencies" in source
+    assert "cache: 'pip'" in source
     assert "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/restart" in source
     assert "Verify rollback health" in source
     assert "Mark deployment failed after successful recovery" in source
