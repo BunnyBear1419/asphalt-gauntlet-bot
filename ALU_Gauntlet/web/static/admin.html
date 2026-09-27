@@ -267,7 +267,7 @@
   <div class="admin-card"><h2>Audit Log</h2><div class="admin-log" id="audit-log"><div class="admin-log-row">Loading audit events…</div></div></div>
   <div class="admin-card"><h2>Maintenance &amp; Tests</h2><div class="admin-tools-grid">
     <a class="admin-tool" href="/healthz" target="_blank"><strong>Health Check</strong><span>Open the live production health endpoint.</span></a>
-    <a class="admin-tool" href="/admin#settings"><strong>Server Setup</strong><span>Operational channel, role and timezone configuration.</span></a>
+    <a class="admin-tool" id="system-setup-link" href="/setup" data-route="/setup" onclick="window.location.assign(this.dataset.route); return false;"><strong>Server Setup</strong><span>Manage channels, roles and timezone configuration.</span></a>
     <a class="admin-tool" href="/help"><strong>Help Center</strong><span>Verify the public player-facing experience.</span></a>
   </div></div>
 </section>
