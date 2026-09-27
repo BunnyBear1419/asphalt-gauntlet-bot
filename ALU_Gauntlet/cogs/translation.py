@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from collections import OrderedDict
 
@@ -25,7 +26,8 @@ log = logging.getLogger(__name__)
 
 # MyMemory is used through its public HTTP endpoint so RSL does not require
 # another Python dependency. Deployments can override it with RSL_TRANSLATION_URL.
-TRANSLATION_URL = "https://api.mymemory.translated.net/get"
+TRANSLATION_URL = os.getenv("RSL_TRANSLATION_URL", "https://api.mymemory.translated.net/get")
+TRANSLATION_EMAIL = os.getenv("RSL_TRANSLATION_EMAIL", "")
 MAX_TRANSLATION_CHARS = 1800
 TRANSLATION_TTL_SECONDS = 600
 TEMP_MESSAGE_SECONDS = 45
@@ -79,10 +81,11 @@ async def translate_text(text: str, target: str) -> str:
     params = {
         "q": text,
         "langpair": f"autodetect|{target}",
-        "de": "rsl@translation.invalid",
+        **({"de": TRANSLATION_EMAIL} if TRANSLATION_EMAIL else {}),
     }
     timeout = aiohttp.ClientTimeout(total=12)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
+    headers = {"User-Agent": "RacingSyndicateLeague/1.0"}
+    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
         async with session.get(TRANSLATION_URL, params=params) as response:
             response.raise_for_status()
             data = await response.json(content_type=None)
@@ -124,12 +127,12 @@ class LanguageView(discord.ui.View):
     def __init__(self, cog: "TranslationCog", current: str):
         super().__init__(timeout=300)
         self.add_item(LanguageSelect(cog, current))
-        self.add_item(DismissButton())
+        self.add_item(DismissButton(ui(current, "dismiss")))
 
 
 class DismissButton(discord.ui.Button):
-    def __init__(self):
-        super().__init__(label="Dismiss", style=discord.ButtonStyle.secondary, custom_id="rsl:dismiss")
+    def __init__(self, label: str = "Dismiss"):
+        super().__init__(label=label, style=discord.ButtonStyle.secondary, custom_id="rsl:dismiss")
 
     async def callback(self, interaction: discord.Interaction) -> None:
         await interaction.response.edit_message(content=" ", view=None, embed=None)
@@ -140,11 +143,11 @@ class TranslationDismissView(discord.ui.View):
         super().__init__(timeout=TEMP_MESSAGE_SECONDS)
         self.owner_id = owner_id
         self.label = label
-        self.add_item(self.Dismiss())
+        self.add_item(self.Dismiss(label))
 
     class Dismiss(discord.ui.Button):
-        def __init__(self):
-            super().__init__(label="Dismiss", style=discord.ButtonStyle.secondary, custom_id="rsl:translation-dismiss")
+        def __init__(self, label: str = "Dismiss"):
+            super().__init__(label=label, style=discord.ButtonStyle.secondary, custom_id="rsl:translation-dismiss")
 
         async def callback(self, interaction: discord.Interaction) -> None:
             parent = self.view
