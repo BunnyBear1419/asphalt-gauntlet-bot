@@ -30,6 +30,15 @@ DEFAULT_XP_SETTINGS = {
     "stack_boosters": True,
     "role_boosters": [],
     "channel_boosters": [],
+    "excluded_role_ids": [],
+    "excluded_channel_ids": [],
+    "allowed_channel_ids": [],
+    "role_rewards": [],
+    "leader_role_id": "",
+    "leader_role_period": "weekly",
+    "level_up_enabled": True,
+    "level_up_channel_id": "",
+    "level_up_message": "🏁 {mention} reached Level {level}!",
 }
 PERMANENT_LEVELS = {5: "Bronze", 10: "Silver", 25: "Gold", 50: "Platinum", 75: "Champion", 100: "Legend"}
 
@@ -73,6 +82,17 @@ def period_keys(now: datetime | None = None) -> tuple[str, str]:
     return f"{iso.year}-W{iso.week:02d}", f"{now.year}-{now.month:02d}"
 
 
+def xp_is_allowed(settings: dict, role_ids: list[str] | None = None, channel_id: str | None = None) -> bool:
+    role_ids = {str(x) for x in (role_ids or [])}
+    channel_id = str(channel_id or "")
+    if role_ids & {str(x) for x in (settings.get("excluded_role_ids") or [])}:
+        return False
+    if channel_id in {str(x) for x in (settings.get("excluded_channel_ids") or [])}:
+        return False
+    allowed = {str(x) for x in (settings.get("allowed_channel_ids") or [])}
+    return not allowed or channel_id in allowed
+
+
 def effective_boost(settings: dict, role_ids: list[str] | None = None, channel_id: str | None = None) -> float:
     role_ids = {str(x) for x in (role_ids or [])}
     boosts = []
@@ -95,6 +115,8 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
     if not amount:
         return {"ok": False, "duplicate": False, "amount": 0}
     settings = {**DEFAULT_XP_SETTINGS, **(settings or {})}
+    if not xp_is_allowed(settings, role_ids, channel_id):
+        return {"ok": False, "duplicate": False, "restricted": True, "amount": 0}
     boost = effective_boost(settings, role_ids, channel_id)
     final_amount = max(1, round(amount * boost))
     event = {
@@ -139,4 +161,12 @@ async def leaderboard(db, guild_id: str, *, period: str = "all", limit: int = 10
             "voice_seconds": int(doc.get("rsl_xp_voice_seconds", 0) or 0),
             "reactions": int(doc.get("rsl_xp_reaction_count", 0) or 0),
         })
+    return rows
+
+
+async def xp_history(db, guild_id: str, user_id: str, *, limit: int = 50) -> list[dict]:
+    rows = []
+    cursor = db.rsl_xp_events.find({"guild_id": str(guild_id), "user_id": str(user_id)}).sort("created_at", -1).limit(max(1, min(int(limit), 100)))
+    async for doc in cursor:
+        rows.append({"source": str(doc.get("source", "")), "amount": int(doc.get("amount", 0) or 0), "event_id": str(doc.get("event_id", "")), "created_at": doc.get("created_at").isoformat() if hasattr(doc.get("created_at"), "isoformat") else str(doc.get("created_at", "")), "metadata": doc.get("metadata") or {}})
     return rows
