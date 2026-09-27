@@ -55,6 +55,20 @@ async function load(){
   text("timezone",p.timezone||prefs.timezone||"UTC");
   text("about",p.about||prefs.about||"No About Me information added yet.");
   text("elo",Number(p.elo||0).toLocaleString());
+  const xpData=await api("/api/xp/me").catch(()=>({xp:0,level:1,next_xp:0,weekly_xp:0,monthly_xp:0,voice_seconds:0,reactions:0}));
+  text("xp-level",xpData.level??1); text("xp-total",Number(xpData.xp||0).toLocaleString());
+  text("xp-weekly",Number(xpData.weekly_xp||0).toLocaleString()); text("xp-monthly",Number(xpData.monthly_xp||0).toLocaleString());
+  text("xp-next",Number(xpData.next_xp||0).toLocaleString());
+  text("xp-voice-time",Math.floor(Number(xpData.voice_seconds||0)/60).toLocaleString()+" min");
+  text("xp-reactions",Number(xpData.reactions||0).toLocaleString());
+  const xpBoard=await api("/api/xp/leaderboard?period=all").catch(()=>({rows:[]}));
+  const xpRank=(xpBoard.rows||[]).findIndex(x=>String(x.user_id)===String(me.id));
+  text("xp-rank",xpRank>=0?"#"+(xpRank+1):"—");
+  const xpProgress=$("#xp-progress");
+  if(xpProgress){
+    const current=Number(xpData.xp||0), next=Number(xpData.next_xp||0);
+    xpProgress.textContent=next>0 ? "Level "+Number(xpData.level||1)+" • "+next.toLocaleString()+" XP to the next level." : "Level "+Number(xpData.level||1)+" • Maximum level reached.";
+  }
   const rslCoins=Number(p.rsl_coins||0); const activityXp=Number(p.activity_xp||0); const activityLevel=Math.max(1,Math.floor(Math.sqrt(Math.max(0,activityXp)/250))+1); const nextXp=Math.max(0,250*activityLevel*activityLevel-activityXp);
   text("rsl-coins",rslCoins.toLocaleString()); text("activity-level",activityLevel); text("activity-xp",activityXp.toLocaleString()); text("activity-xp-next",nextXp.toLocaleString());
   const renderTickets=(t={},balance=rslCoins)=>{
