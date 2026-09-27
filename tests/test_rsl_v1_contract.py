@@ -255,6 +255,18 @@ def test_v1_xp_remains_separate_from_competitive_scoring():
     assert "gauntlet_points" not in xp
 
 
+def test_xp_cooldowns_use_configured_reaction_and_voice_intervals():
+    cog = read(ROOT / "ALU_Gauntlet" / "cogs" / "rsl_xp.py")
+    for marker in (
+        "reaction_cooldown = int(settings.get(\"reaction_cooldown\", 300)",
+        "rsl_xp_last_reaction",
+        "voice_cooldown = max(1, int(settings.get(\"voice_cooldown\", 180)",
+        "rsl_xp_last_voice_bucket",
+        "metadata={\"voice_seconds\": voice_cooldown}",
+    ):
+        assert marker in cog
+
+
 def test_xp_level_up_controls_and_leader_role_are_wired():
     cog = read(ROOT / "ALU_Gauntlet" / "cogs" / "rsl_xp.py")
     page = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "xp-rankings.html")
