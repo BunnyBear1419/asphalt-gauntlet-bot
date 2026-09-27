@@ -139,10 +139,11 @@ class DismissButton(discord.ui.Button):
 
 
 class TranslationDismissView(discord.ui.View):
-    def __init__(self, owner_id: int, label: str):
+    def __init__(self, owner_id: int, label: str, language: str):
         super().__init__(timeout=TEMP_MESSAGE_SECONDS)
         self.owner_id = owner_id
         self.label = label
+        self.language = normalize_language(language)
         self.add_item(self.Dismiss(label))
 
     class Dismiss(discord.ui.Button):
@@ -152,7 +153,7 @@ class TranslationDismissView(discord.ui.View):
         async def callback(self, interaction: discord.Interaction) -> None:
             parent = self.view
             if parent and interaction.user.id != parent.owner_id:
-                await interaction.response.send_message("Only the person who requested this translation can dismiss it.", ephemeral=True)
+                await interaction.response.send_message(ui(parent.language, "owner"), ephemeral=True)
                 return
             await interaction.response.edit_message(content=" ", view=None)
 
@@ -235,7 +236,7 @@ class TranslationCog(commands.Cog):
             sent = await channel.send(
                 text,
                 allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=payload.user_id)]),
-                view=TranslationDismissView(payload.user_id, ui(target, "dismiss")),
+                view=TranslationDismissView(payload.user_id, ui(target, "dismiss"), target),
             )
             try:
                 await asyncio.sleep(TEMP_MESSAGE_SECONDS)
