@@ -207,17 +207,23 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
 
         guild = bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
         if guild is not None:
+            role_config = await bot.db.settings.find_one(
+                {"_id": guild_id},
+                {"achievement_role_names": 1, "achievement_role_ids": 1},
+            ) or {}
             await sync_gauntlet_season_roles(
                 guild,
                 division_winners=division_winners,
                 player_stats=player_stats,
                 overall_activity_stats=activity_stats,
                 champion_user_id=str(points_rows[0].get("user_id")) if points_rows else None,
+                role_names=role_config.get("achievement_role_names"),
+                role_ids=role_config.get("achievement_role_ids"),
             )
             for driver in drivers:
                 member = guild.get_member(int(driver["user_id"])) if str(driver.get("user_id", "")).isdigit() else None
                 if member is not None:
-                    await sync_xp_rank_role(member, activity_level(int(driver.get("activity_xp", 0) or 0)))
+                    await sync_xp_rank_role(member, activity_level(int(driver.get("activity_xp", 0) or 0)), role_config.get("achievement_role_names"), role_config.get("achievement_role_ids"))
     except Exception:
         logging.exception("RSL Discord role synchronization failed for Season %s", current_season)
 
