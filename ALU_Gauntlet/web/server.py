@@ -2694,6 +2694,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/gauntlet/leaderboard", self.gauntlet_leaderboard)
         self.app.router.add_get("/api/xp/leaderboard", self.xp_leaderboard)
         self.app.router.add_get("/api/xp/me", self.xp_me)
+        self.app.router.add_get("/api/xp/history", self.xp_history)
         self.app.router.add_get("/api/xp/settings", self.xp_settings)
         self.app.router.add_put("/api/xp/settings", self.save_xp_settings)
         self.app.router.add_get("/api/gauntlet/references", self.gauntlet_references)
@@ -2774,6 +2775,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         settings = await get_settings(self.bot.db, guild_id)
         xp = int(doc.get("rsl_xp", 0) or 0)
         return web.json_response({"user_id": str(user.user_id), "name": str(doc.get("game_id") or doc.get("username") or user.username), "xp": xp, **progress_for_xp(xp, settings), "weekly_xp": int(doc.get("rsl_xp_weekly", 0) or 0), "monthly_xp": int(doc.get("rsl_xp_monthly", 0) or 0), "voice_seconds": int(doc.get("rsl_xp_voice_seconds", 0) or 0), "reactions": int(doc.get("rsl_xp_reaction_count", 0) or 0), "activity": int(doc.get("overall_activity_score", 0) or 0)})
+
+    async def xp_history(self, request: web.Request) -> web.Response:
+        from ..core.rsl_xp import xp_history
+        user, guild_id, _ = await self.require_guild_member(request)
+        return web.json_response({"rows": await xp_history(self.bot.db, guild_id, str(user.user_id), limit=50)})
 
     async def xp_leaderboard(self, request: web.Request) -> web.Response:
         from ..core.rsl_xp import leaderboard
