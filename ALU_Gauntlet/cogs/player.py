@@ -346,12 +346,88 @@ class ClubCenterButton(discord.ui.Button):
     async def callback(self, interaction: discord.Interaction):
         await send_club_center(interaction)
 
+
+class DiscordNotificationSettingsView(discord.ui.View):
+    """Discord-side calendar notification controls backed by the shared web preferences."""
+    def __init__(self, user_id: str):
+        super().__init__(timeout=600)
+        self.user_id = str(user_id)
+
+    async def _load(self):
+        return await bot.db.notification_preferences.find_one({"_id": self.user_id}) or {}
+
+    async def _toggle(self, interaction, field: str):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("❌ This notification panel belongs to another player.", ephemeral=True)
+            return
+        record = await self._load()
+        value = not bool(record.get(field, False))
+        await bot.db.notification_preferences.update_one(
+            {"_id": self.user_id},
+            {"$set": {field: value, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+        await interaction.response.edit_message(embed=await build_notification_settings_embed(self.user_id), view=self)
+
+    async def _set_lead(self, interaction, days: float):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message("❌ This notification panel belongs to another player.", ephemeral=True)
+            return
+        await bot.db.notification_preferences.update_one(
+            {"_id": self.user_id},
+            {"$set": {"gauntlet_lead_days": days, "tournament_lead_days": days, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+        await interaction.response.edit_message(embed=await build_notification_settings_embed(self.user_id), view=self)
+
+    @discord.ui.button(label="Gauntlet: Toggle", style=discord.ButtonStyle.primary, row=0)
+    async def gauntlet(self, interaction, button):
+        await self._toggle(interaction, "gauntlet_notifications")
+
+    @discord.ui.button(label="Tournament: Toggle", style=discord.ButtonStyle.primary, row=0)
+    async def tournament(self, interaction, button):
+        await self._toggle(interaction, "tournament_notifications")
+
+    @discord.ui.button(label="7 Days", style=discord.ButtonStyle.secondary, row=1)
+    async def seven(self, interaction, button):
+        await self._set_lead(interaction, 7)
+
+    @discord.ui.button(label="3 Days", style=discord.ButtonStyle.secondary, row=1)
+    async def three(self, interaction, button):
+        await self._set_lead(interaction, 3)
+
+    @discord.ui.button(label="1 Day", style=discord.ButtonStyle.secondary, row=1)
+    async def one(self, interaction, button):
+        await self._set_lead(interaction, 1)
+
+async def build_notification_settings_embed(user_id: str):
+    record = await bot.db.notification_preferences.find_one({"_id": str(user_id)}) or {}
+    g = "ON" if record.get("gauntlet_notifications") else "OFF"
+    t = "ON" if record.get("tournament_notifications") else "OFF"
+    lead = record.get("gauntlet_lead_days", record.get("tournament_lead_days", 1))
+    try:
+        lead_text = f"{float(lead):g} day(s) before"
+    except (TypeError, ValueError):
+        lead_text = "1 day before"
+    return discord.Embed(
+        title="🔔 RSL CALENDAR NOTIFICATIONS",
+        description="Manage the same Discord DM notification preferences used by the RSL website Calendar.",
+        color=ASPHALT_THEME_COLOR,
+    ).add_field(name="Gauntlet Reminders", value=f"**{g}**", inline=True).add_field(name="Tournament Reminders", value=f"**{t}**", inline=True).add_field(name="Reminder Lead Time", value=f"**{lead_text}**", inline=True).set_footer(text="Personal calendar reminders remain available on the RSL website Calendar.")
+
+class DiscordNotificationSettingsButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Notifications", style=discord.ButtonStyle.secondary, emoji="🔔")
+    async def callback(self, interaction):
+        await interaction.response.send_message(embed=await build_notification_settings_embed(str(interaction.user.id)), view=DiscordNotificationSettingsView(str(interaction.user.id)), ephemeral=True)
+
 async def send_dashboard(interaction: discord.Interaction):
     """Send the canonical player dashboard without removing player access for staff."""
     guild_id = str(interaction.guild_id)
     user_id = str(interaction.user.id)
     view = DashboardView(guild_id, user_id, False)
     view.add_item(ClubCenterButton())
+    view.add_item(DiscordNotificationSettingsButton())
     embed = discord.Embed(
         title='🏁 RACING SYNDICATE LEAGUE • PLAYER DASHBOARD',
         description='Race. Compete. Unite.\n\nUse the controls below to manage your driver profile, defense, challenges, rankings, and season activity.',
