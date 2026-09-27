@@ -58,6 +58,21 @@ async function render(){
     }
     html+="</div></div>";
   }
+  const roleGroups=[
+    {title:"XP Achievement Roles",items:Object.entries({5:"Bronze",10:"Silver",25:"Gold",50:"Platinum",75:"Champion",100:"Legend"}).map(([level,name])=>[name,"Level "+level])},
+    {title:"Gauntlet Achievement Roles",items:["Division 1 Winner","Division 2 Winner","Division 3 Winner","Division 4 Winner","Division 5 Winner","Division 6 Winner","Top Active","Top Wins","Top Player","Top Defender","Top Challenger","Most Improved","Win Streak","Season Champion"].map(x=>[x,x])},
+    {title:"Tournament Achievement Roles",items:["Tournament Champion","Tournament Runner-Up","Tournament 3rd Place","Tournament Finalist","Tournament MVP","Top Tournament Wins","Tournament Leader","Tournament All-Star","Tournament Participant","Tournament Veteran","Perfect Tournament Run","Grand Champion"].map(x=>[x,x])}
+  ];
+  html+="<div class='setup-group achievement-role-group'><div class='setup-group-heading'><h3>🏅 Achievement Role Names</h3><p>Change the Discord display name of RSL XP, Gauntlet and Tournament achievement roles. The achievement rules themselves do not change.</p></div>";
+  for(const group of roleGroups){
+    html+="<div class='achievement-role-subgroup'><h4>"+esc(group.title)+"</h4><div class='setup-group-grid'>";
+    for(const [canonical,hint] of group.items){
+      const value=(s.achievement_role_names||{})[canonical]||canonical;
+      html+="<label>"+esc(hint)+"<input class='setup-role-name' data-role-name='"+esc(canonical)+"' maxlength='100' value='"+esc(value)+"'></label>";
+    }
+    html+="</div></div>";
+  }
+  html+="</div>";
   $("#fields").innerHTML=html;
 }
 
@@ -78,6 +93,8 @@ $("#save").addEventListener("click",async()=>{
   if(!guild?.value||button?.disabled)return;
   const payload={};
   document.querySelectorAll("[data-setting]").forEach(x=>payload[x.dataset.setting]=x.value);
+  payload.achievement_role_names={};
+  document.querySelectorAll("[data-role-name]").forEach(x=>payload.achievement_role_names[x.dataset.roleName]=x.value.trim());
   const original=button?.textContent;
   if(button){button.disabled=true;button.textContent="Saving…"}
   $("#status").textContent="Saving server settings…";
