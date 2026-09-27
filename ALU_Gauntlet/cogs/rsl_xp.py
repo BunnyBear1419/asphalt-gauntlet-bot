@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 from discord.ext import commands, tasks
 from ..core.rsl_role_sync import sync_xp_rank_role
-from ..core.rsl_xp import award_xp, get_settings, progress_for_xp
+from ..core.rsl_xp import award_xp, get_settings, progress_for_xp, xp_is_allowed
 
 class RSLXPCog(commands.Cog):
     def __init__(self, bot):
@@ -34,6 +34,8 @@ class RSLXPCog(commands.Cog):
         settings = await self._settings(message.guild.id)
         if not settings.get("message_enabled", True):
             return
+        if not xp_is_allowed(settings, [str(r.id) for r in message.author.roles], str(message.channel.id)):
+            return
         profile = await self.bot.db.drivers.find_one({"_id": f"{message.guild.id}_{message.author.id}"}, {"rsl_xp_last_message": 1, "rsl_xp": 1})
         if not profile:
             return
@@ -60,6 +62,8 @@ class RSLXPCog(commands.Cog):
         settings = await self._settings(reaction.message.guild.id)
         if not settings.get("reaction_enabled", True):
             return
+        if not xp_is_allowed(settings, [str(r.id) for r in getattr(user, "roles", [])], str(reaction.message.channel.id)):
+            return
         result = await award_xp(self.bot.db, guild_id=str(reaction.message.guild.id), user_id=str(user.id),
                        amount=int(settings.get("reaction_xp", 5) or 5), source="reaction",
                        event_id=f"{reaction.message.id}:{user.id}:{reaction.emoji}",
@@ -80,6 +84,8 @@ class RSLXPCog(commands.Cog):
                 if len(members) < int(settings.get("voice_min_members", 2) or 2):
                     continue
                 for member in members:
+                    if not xp_is_allowed(settings, [str(r.id) for r in member.roles], str(channel.id)):
+                        continue
                     result = await award_xp(self.bot.db, guild_id=str(guild.id), user_id=str(member.id),
                                    amount=int(settings.get("voice_xp", 10) or 10), source="voice",
                                    event_id=f"{channel.id}:{member.id}:{int(time.time()) // 180}",
