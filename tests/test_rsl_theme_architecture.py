@@ -106,7 +106,7 @@ def test_shared_navigation_keeps_calendar_before_companion_and_search_before_pro
     companion = 'companion_markup = r\'\'\'<details class="top-nav-dropdown companion-nav-dropdown">'
     assert calendar in server
     assert companion in server
-    assert "body = body.replace(\"</nav>\", calendar_markup + companion_markup + \"</nav>\", 1)" in server
+    assert "body = body.replace(\"</nav>\", calendar_markup + rules_markup + companion_markup + \"</nav>\", 1)" in server
     assert "search_markup" in server
     assert "profile_markup" in server
     assert "The search control belongs immediately to the left of the profile control." in server
