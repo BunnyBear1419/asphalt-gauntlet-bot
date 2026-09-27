@@ -32,24 +32,32 @@ async function render(){
   const guild=$("#guild");
   if(!guild?.value)return;
   const s=(await api("/api/setup/settings?guild_id="+encodeURIComponent(guild.value))).settings;
+  const groups=[
+    {title:"⚙️ Core Server Setup",description:"These settings control the main RSL Gauntlet experience.",fields:[
+      ["admin_role_id","Gauntlet Admin Role","role"],["player_role_id","Gauntlet Driver Role","role"],
+      ["registration_channel_id","Player Gauntlet Channel","channel"],["review_channel_id","Gauntlet Staff Channel","channel"],
+      ["log_channel_id","Gauntlet Logs Channel","channel"],["announcement_channel_id","Gauntlet Announcement Channel","channel"],
+      ["match_results_channel_id","Match Results Channel","channel"],["timezone","Server Timezone","timezone"]
+    ]},
+    {title:"🏆 Tournament Setup",description:"These settings control tournament registration, announcements, administration and match records.",fields:[
+      ["tournament_player_announcement_role_id","Tournament Driver Role","role"],["tournament_admin_role_id","Tournament Admin Role","role"],
+      ["tournament_main_channel_id","Player Tournament Channel","channel"],["tournament_log_channel_id","Tournament Logs Channel","channel"],
+      ["tournament_bracket_channel_id","Tournament Bracket / Results Channel","channel"],["tournament_admin_channel_id","Tournament Admin Channel","channel"],
+      ["tournament_announcement_channel_id","Tournament Announcement Channel","channel"]
+    ]}
+  ];
   let html="";
-  for(const [key,label] of [
-    ["registration_channel_id","Main / registration channel"],
-    ["review_channel_id","Staff review channel"],
-    ["log_channel_id","Log channel"],
-    ["announcement_channel_id","Announcement channel"],
-    ["match_results_channel_id","Match-results channel"],
-    ["admin_role_id","Staff / admin role"],
-    ["player_role_id","Player role"]
-  ]){
-    const vals=key.endsWith("_role_id")?options.roles:options.channels;
-    html+="<label>"+label+"<select data-setting='"+key+"'><option value=''>Select…</option>"+
-      vals.map(x=>"<option value='"+esc(x.id)+"' "+(s[key]===x.id?"selected":"")+">"+esc(x.name)+"</option>").join("")+
-      "</select></label>";
+  for(const group of groups){
+    html+="<div class='setup-group'><div class='setup-group-heading'><h3>"+group.title+"</h3><p>"+group.description+"</p></div><div class='setup-group-grid'>";
+    for(const [key,label,type] of group.fields){
+      let vals=[], selected=s[key]||"";
+      if(type==="role") vals=options.roles; else if(type==="channel") vals=options.channels; else vals=options.timezones;
+      html+="<label>"+esc(label)+"<select data-setting='"+esc(key)+"'><option value=''>Select…</option>"+
+        vals.map(x=>"<option value='"+esc(x.id||x.value)+"' "+(selected===(x.id||x.value)?"selected":"")+">"+esc(x.name||x.label)+"</option>").join("")+
+        "</select></label>";
+    }
+    html+="</div></div>";
   }
-  html+="<label>Timezone<select data-setting='timezone'>"+
-    options.timezones.map(x=>"<option value='"+esc(x.value)+"' "+(s.timezone===x.value?"selected":"")+">"+esc(x.label)+"</option>").join("")+
-    "</select></label>";
   $("#fields").innerHTML=html;
 }
 
