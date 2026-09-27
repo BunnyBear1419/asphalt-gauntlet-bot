@@ -28,6 +28,7 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -53,6 +54,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      - name: Set up Python for deployment checks
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install deployment check dependencies
+        run: python -m pip install --quiet pymongo
 
       - name: Validate homepage hero JPG
         run: |
@@ -135,8 +145,7 @@ jobs:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
           set -euo pipefail
-          python -m pip install --quiet pymongo
-          MONGO_URI="$MONGO_URI" python - <<'PY' >> "$GITHUB_OUTPUT"
+          MONGO_URI="$MONGO_URI" python - <<'PY >> "$GITHUB_OUTPUT"
           import os
           import time
           from pymongo import MongoClient
@@ -224,10 +233,8 @@ jobs:
           PREVIOUS_HEARTBEAT_AT: ${{ steps.predeploy.outputs.heartbeat_at }}
         run: |
           set -euo pipefail
-          python -m pip install --quiet pymongo
-
-          for attempt in $(seq 1 20); do
-            echo "Smoke test attempt $attempt/20"
+          for attempt in $(seq 1 12); do
+            echo "Smoke test attempt $attempt/12"
             ok=true
 
             DISCLOUD_HTTP=$(curl -sS -o discloud-status.json -w "%{http_code}" \
@@ -366,21 +373,56 @@ jobs:
               ok=false
             fi
 
-            # Discloud can report the app as healthy before the new process
-            # has written its first production heartbeat. Keep polling instead of
-            # treating that normal startup window as a failed deployment.
+            # Once the four core runtime signals are healthy, perform the deeper
+            # static/Discord/session checks once. This avoids downloading the same
+            # artwork/CSS repeatedly while Discloud is still starting.
             if [ "$ok" = true ]; then
-              echo "Post-deployment smoke test passed."
-              exit 0
+              echo "Core production health is ready; running deep smoke checks once."
+
+              for check in                 "https://asph.discloud.app/login"                 "https://asph.discloud.app/"                 "https://asph.discloud.app/static/app.css"; do
+                case "$check" in
+                  *"/login") output="web-login.html"; label="Web login" ;;
+                  *"/static/app.css") output="web-css.css"; label="Web static CSS" ;;
+                  *) output="web-home.html"; label="Web homepage" ;;
+                esac
+                HTTP=$(curl -sS -o "$output" -w "%{http_code}" "$check" || true)
+                echo "$label HTTP status: $HTTP"
+                if [ "$HTTP" != "200" ]; then ok=false; fi
+              done
+
+              HERO_JPG_HTTP=$(curl -sS -o hero-home.jpg -w "%{http_code}" "https://asph.discloud.app/assets/home-hero-4k.jpg?v=20260920-hero-jpg" || true)
+              echo "Homepage hero JPG HTTP status: $HERO_JPG_HTTP"
+              if [ "$HERO_JPG_HTTP" != "200" ] || ! file hero-home.jpg | grep -qi "JPEG image data"; then ok=false; fi
+
+              for asset in rsl-shield.png rsl-top-logo.png rsl-footer-mark.png; do
+                ASSET_HTTP=$(curl -sS -o "asset-$asset" -w "%{http_code}" "https://asph.discloud.app/assets/$asset" || true)
+                echo "PNG artwork $asset HTTP status: $ASSET_HTTP"
+                if [ "$ASSET_HTTP" != "200" ] || ! file "asset-$asset" | grep -qi 'PNG image'; then ok=false; fi
+              done
+
+              STALE_HOME_HTTP=$(curl -sS -o web-home-stale.html -w "%{http_code}"                 -H "Cookie: alu_web_session=invalid-production-smoke-session"                 "https://asph.discloud.app/" || true)
+              echo "Web homepage with stale session HTTP status: $STALE_HOME_HTTP"
+              if [ "$STALE_HOME_HTTP" != "200" ]; then ok=false; fi
+
+              DISCORD_HTTP=$(curl -sS -o discord-user.json -w "%{http_code}"                 -H "Authorization: Bot $DISCORD_BOT_TOKEN"                 -H "Accept: application/json"                 "https://discord.com/api/v10/users/@me" || true)
+              echo "Discord API HTTP status: $DISCORD_HTTP"
+              if [ "$DISCORD_HTTP" != "200" ]; then ok=false; fi
+
+              if [ "$ok" = true ]; then
+                echo "Post-deployment smoke test passed."
+                exit 0
+              fi
+              echo "Deep smoke checks failed."
+              break
             fi
 
-            if [ "$attempt" -lt 20 ]; then
-              echo "Production is still starting; waiting 15 seconds before the next health check."
-              sleep 15
+            if [ "$attempt" -lt 12 ]; then
+              echo "Production is still starting; waiting 10 seconds before the next health check."
+              sleep 10
             fi
           done
 
-          echo "Post-deployment smoke test failed after 20 attempts."
+          echo "Post-deployment smoke test failed after 12 startup attempts."
           exit 1
 
       - name: Roll back to previous known-good revision
@@ -443,10 +485,8 @@ jobs:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
           set -euo pipefail
-          python -m pip install --quiet pymongo
-
-          for attempt in $(seq 1 10); do
-            echo "Rollback verification attempt $attempt/10"
+          for attempt in $(seq 1 6); do
+            echo "Rollback verification attempt $attempt/6"
             discloud_http=$(curl -sS -o discloud-rollback.json -w "%{http_code}" \
               -H "api-token: $DISCLOUD_TOKEN" \
               -H "Accept: application/json" \
@@ -498,8 +538,8 @@ jobs:
               fi
             fi
 
-            if [ "$attempt" -lt 10 ]; then
-              sleep 15
+            if [ "$attempt" -lt 6 ]; then
+              sleep 10
             fi
           done
 
