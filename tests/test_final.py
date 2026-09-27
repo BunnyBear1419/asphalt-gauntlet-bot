@@ -95,7 +95,7 @@ def test_global_web_shell_contract_is_consistent():
     assert '"discord":"https://discord.gg/fmFk8Ejf2H"' in server
     assert '"cashapp":"https://cash.app/"' in server
     assert 'self._merge_branding({})' in server
-    assert 'calendar_markup + rules_markup + companion_markup' in server
+    assert 'calendar_markup + rules_markup + xp_markup + companion_markup' in server
     assert '/assets/icons/matches.png' in server
     assert '/assets/icons/results.png' in server
     assert '/assets/rsl-shield.svg' not in admin
