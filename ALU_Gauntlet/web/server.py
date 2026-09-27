@@ -598,6 +598,7 @@ window.rslGoogleTranslateInit=function(){
             # Strip any legacy/static copies first so older templates cannot
             # create duplicate or incorrectly ordered entries.
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
+            xp_markup = '<a href="/xp"><img class="nav-icon-img" src="/assets/icons/results.png" alt=""><span>XP &amp; Rankings</span></a>'
             rules_markup = '<a href="/rules"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>Rules</span></a>'
             body = re.sub(
                 r'<a\b[^>]*href=["\'](?:/calendar|https://asph\.discloud\.app/calendar)["\'][^>]*>.*?</a>',
@@ -611,7 +612,7 @@ window.rslGoogleTranslateInit=function(){
                 body,
                 flags=re.S | re.I,
             )
-            body = body.replace("</nav>", calendar_markup + rules_markup + companion_markup + "</nav>", 1)
+            body = body.replace("</nav>", calendar_markup + rules_markup + xp_markup + companion_markup + "</nav>", 1)
 
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
         # This keeps every page on the same PNG-only navigation shell.
@@ -2608,6 +2609,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/gauntlet/career", self.gauntlet_career_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/calendar", self.calendar_page)
+        self.app.router.add_get("/xp", self.xp_page)
         self.app.router.add_get("/tournaments/registration", self.tournament_registration_page)
         self.app.router.add_get("/tournaments/matches", self.tournament_matches_page)
         self.app.router.add_get("/tournaments/matches/", self.tournament_matches_page)
@@ -2690,6 +2692,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
         self.app.router.add_get("/api/gauntlet/leaderboard", self.gauntlet_leaderboard)
+        self.app.router.add_get("/api/xp/leaderboard", self.xp_leaderboard)
+        self.app.router.add_get("/api/xp/me", self.xp_me)
+        self.app.router.add_get("/api/xp/settings", self.xp_settings)
+        self.app.router.add_put("/api/xp/settings", self.save_xp_settings)
         self.app.router.add_get("/api/gauntlet/references", self.gauntlet_references)
         self.app.router.add_post("/api/gauntlet/references", self.create_gauntlet_reference)
         self.app.router.add_get("/api/gauntlet/matches", self.gauntlet_matches)
@@ -2756,6 +2762,48 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def tournament_clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("tournament-clubs.html", request)
+
+    async def xp_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("xp-rankings.html", request)
+
+    async def xp_me(self, request: web.Request) -> web.Response:
+        from ..core.rsl_xp import get_settings, progress_for_xp
+        user, guild_id, _ = await self.require_guild_member(request)
+        doc = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        settings = await get_settings(self.bot.db, guild_id)
+        xp = int(doc.get("rsl_xp", 0) or 0)
+        return web.json_response({"user_id": str(user.user_id), "name": str(doc.get("game_id") or doc.get("username") or user.username), "xp": xp, **progress_for_xp(xp, settings), "weekly_xp": int(doc.get("rsl_xp_weekly", 0) or 0), "monthly_xp": int(doc.get("rsl_xp_monthly", 0) or 0), "voice_seconds": int(doc.get("rsl_xp_voice_seconds", 0) or 0), "reactions": int(doc.get("rsl_xp_reaction_count", 0) or 0), "activity": int(doc.get("overall_activity_score", 0) or 0)})
+
+    async def xp_leaderboard(self, request: web.Request) -> web.Response:
+        from ..core.rsl_xp import leaderboard
+        user = await self.require_user(request)
+        guild_id = str(request.query.get("guild_id") or (user.guild_ids[0] if user.guild_ids else ""))
+        if guild_id not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPForbidden(text="You are not a member of that server.")
+        period = str(request.query.get("period", "all")).lower()
+        if period not in {"all", "weekly", "monthly"}:
+            raise web.HTTPBadRequest(text="Invalid leaderboard period.")
+        return web.json_response({"period": period, "rows": await leaderboard(self.bot.db, guild_id, period=period)})
+
+    async def xp_settings(self, request: web.Request) -> web.Response:
+        from ..core.rsl_xp import get_settings
+        _, guild_id, _ = await self.require_admin(request)
+        return web.json_response(await get_settings(self.bot.db, guild_id))
+
+    async def save_xp_settings(self, request: web.Request) -> web.Response:
+        from ..core.rsl_xp import DEFAULT_XP_SETTINGS
+        _, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        clean = {k: payload[k] for k in payload if k in DEFAULT_XP_SETTINGS}
+        if "curve" in clean and clean["curve"] not in {"linear", "exponential", "flat"}:
+            raise web.HTTPBadRequest(text="Invalid XP curve.")
+        if "multiplier" in clean:
+            clean["multiplier"] = max(0.1, min(10.0, float(clean["multiplier"])))
+        if "max_level" in clean:
+            clean["max_level"] = max(0, int(clean["max_level"]))
+        await self.bot.db.rsl_xp_settings.update_one({"_id": guild_id}, {"$set": clean}, upsert=True)
+        return web.json_response({"ok": True})
 
     async def gauntlet_leaderboard_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
