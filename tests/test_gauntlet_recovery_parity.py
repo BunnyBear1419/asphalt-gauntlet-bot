@@ -19,3 +19,11 @@ def test_gauntlet_quit_recovery_is_available_on_discord_and_web():
     assert 'data-quit-id' in page
     assert '/api/gauntlet/matches/abandon' in page
     assert "consumed ticket will not be restored" in page
+
+
+def test_web_submission_uses_reservation_aware_recovery():
+    server = (ROOT / "ALU_Gauntlet/web/server.py").read_text(encoding="utf-8")
+    assert "reconcile_processing_challenges" in server
+    assert 'reservation = await self.bot.db.matches.find_one' in server
+    assert 'if reservation:\n                await reconcile_processing_challenges(str(guild_id))' in server
+    assert 'else:\n                await release_active_challenge(active["_id"])' in server
