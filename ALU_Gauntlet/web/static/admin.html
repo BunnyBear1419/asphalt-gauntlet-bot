@@ -92,7 +92,7 @@
       <a class="admin-tool" href="#branding" data-jump="branding"><strong>🎨 Website Branding</strong><span>Name, logo, colors, favicon, tagline and terminology.</span></a>
       <a class="admin-tool" href="#media" data-jump="media"><strong>🖼️ Images &amp; Media</strong><span>Upload persistent community artwork and assign it to the site.</span></a>
       <a class="admin-tool" href="#links" data-jump="links"><strong>🔗 Links</strong><span>Site logo, Discord, donations and custom footer links.</span></a>
-      <a class="admin-tool admin-guild-link" data-path="/admin" data-section="section-settings"><strong>👥 Members &amp; Roles</strong><span>Choose server channels, admin roles, player roles and timezone.</span></a>
+      <a class="admin-tool admin-guild-link" data-path="/admin" data-section="settings"><strong>👥 Members &amp; Roles</strong><span>Choose server channels, admin roles, player roles and timezone.</span></a>
       <a class="admin-tool admin-guild-link" data-path="/gauntlet/leaderboard"><strong>🏁 Gauntlet Management</strong><span>Open the live Gauntlet management and player competition views.</span></a>
       <a class="admin-tool admin-guild-link" data-path="/tournaments"><strong>🏆 Tournament Management</strong><span>Open the Tournament Center for events, brackets and results.</span></a>
       <a class="admin-tool" href="/clubs"><strong>🏎️ Club Management</strong><span>Open clubs and community roster management.</span></a>
@@ -178,7 +178,7 @@
 <section class="admin-section" id="section-settings">
   <div class="admin-card"><h2>Site Settings</h2><p>Existing server configuration remains available here so branding and operational setup stay together.</p>
     <div class="admin-tools-grid">
-      <a class="admin-tool" id="setup-link" href="/admin#section-settings"><strong>Server Setup</strong><span>Channels, roles and timezone pickers.</span></a>
+      <a class="admin-tool" id="setup-link" href="/admin#settings"><strong>Server Setup</strong><span>Channels, roles and timezone pickers.</span></a>
       <a class="admin-tool" id="news-link" href="/news-admin"><strong>News &amp; Announcements</strong><span>Create and manage community news.</span></a>
       <a class="admin-tool" href="/calendar"><strong>Calendar</strong><span>Review the live event calendar.</span></a>
     </div>
@@ -267,7 +267,7 @@
   <div class="admin-card"><h2>Audit Log</h2><div class="admin-log" id="audit-log"><div class="admin-log-row">Loading audit events…</div></div></div>
   <div class="admin-card"><h2>Maintenance &amp; Tests</h2><div class="admin-tools-grid">
     <a class="admin-tool" href="/healthz" target="_blank"><strong>Health Check</strong><span>Open the live production health endpoint.</span></a>
-    <a class="admin-tool" href="/admin#section-settings"><strong>Server Setup</strong><span>Operational channel, role and timezone configuration.</span></a>
+    <a class="admin-tool" href="/admin#settings"><strong>Server Setup</strong><span>Operational channel, role and timezone configuration.</span></a>
     <a class="admin-tool" href="/help"><strong>Help Center</strong><span>Verify the public player-facing experience.</span></a>
   </div></div>
 </section>
@@ -289,6 +289,7 @@ const sections=[...document.querySelectorAll(".admin-section")];
 document.querySelectorAll(".admin-side button").forEach(b=>b.addEventListener("click",()=>showSection(b.dataset.section)));
 document.querySelectorAll("[data-jump]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();showSection(a.dataset.jump)}));
 function showSection(name){
+  name=String(name||"").replace(/^section-/,"");
   sections.forEach(s=>s.classList.toggle("active",s.id==="section-"+name));
   document.querySelectorAll(".admin-side button").forEach(b=>b.classList.toggle("active",b.dataset.section===name));
   history.replaceState(null,"","#"+name);
@@ -328,7 +329,7 @@ function fillForm(){
  $("preview-hero").style.backgroundImage="url('"+(m.hero_url||"")+"')";
  $("overview-title").textContent=(i.name||"Community")+" Administration";
  $("preview-link").href="/?guild_id="+encodeURIComponent(guildId);
- $("setup-link").href="/admin?guild_id="+encodeURIComponent(guildId)+"#section-settings";
+ $("setup-link").href="/admin?guild_id="+encodeURIComponent(guildId)+"#settings";
  $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
  $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);document.querySelectorAll(".admin-guild-link").forEach(a=>a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId)+(a.dataset.section?"#"+encodeURIComponent(a.dataset.section):""));
 }
