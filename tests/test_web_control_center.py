@@ -91,3 +91,14 @@ def test_web_setup_uses_rsl_setup_labels():
     setup=(STATIC/"setup.js").read_text(encoding="utf-8")
     for label in ("Player Gauntlet Channel","Match Results Channel","Gauntlet Staff Channel","Gauntlet Logs Channel","Gauntlet Announcement Channel","Tournament Announcement Channel","Tournament Logs Channel","Player Tournament Channel","Tournament Admin Channel","Gauntlet Admin Role","Tournament Admin Role","Gauntlet Driver Role","Tournament Driver Role"):
         assert label in setup
+
+
+def test_achievement_role_names_are_configurable_from_server_setup():
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    setup=(STATIC/"setup.js").read_text(encoding="utf-8")
+    role_sync=(ROOT/"ALU_Gauntlet/core/rsl_role_sync.py").read_text(encoding="utf-8")
+    for marker in ("achievement_role_names","achievement_role_ids","XP_LEVEL_ROLES","GAUNTLET_SEASONAL_ROLES","TOURNAMENT_SEASONAL_ROLES","PERMANENT_ACHIEVEMENT_ROLES"):
+        assert marker in server
+    for marker in ("Achievement Role Names","XP Achievement Roles","Gauntlet Achievement Roles","Tournament Achievement Roles","data-role-name","achievement_role_names"):
+        assert marker in setup
+    assert "role.edit(name=display_name" in role_sync
