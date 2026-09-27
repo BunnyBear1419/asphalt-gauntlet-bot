@@ -595,6 +595,9 @@ window.rslGoogleTranslateInit=function(){
         )
         if "</nav>" in body:
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
+            rules_markup = '<a href="/rules"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>Rules</span></a>'
+            if 'href="/rules"' not in body:
+                body = body.replace("</nav>", rules_markup + "</nav>", 1)
             body = body.replace("</nav>", calendar_markup + companion_markup + "</nav>", 1)
 
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
@@ -793,6 +796,8 @@ html[data-theme="light"] .rsl-footer-theme-control select{background:#f1f5f9;col
   <nav class="rsl-footer-legal" aria-label="Legal and privacy">
      <div class="rsl-footer-legal-links">
        <a href="/legal">Legal Center</a><span aria-hidden="true">|</span>
+       <a href="/rules">Rules</a><span aria-hidden="true">|</span>
+       <a href="/help">Help Center</a><span aria-hidden="true">|</span>
        <a href="https://cash.app/" target="_blank" rel="noopener noreferrer">Creator Donation</a><span aria-hidden="true">|</span>
        <a href="/legal#privacy">Privacy Policy</a><span aria-hidden="true">|</span>
        <a href="/legal#security">Security</a><span aria-hidden="true">|</span>
@@ -2574,6 +2579,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/robots.txt", self.robots_txt)
         self.app.router.add_get("/sitemap.xml", self.sitemap_xml)
         self.app.router.add_get("/help", self.help_page)
+        self.app.router.add_get("/rules", self.rules_page)
         self.app.router.add_get("/legal", self.legal_page)
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/setup", self.setup_page)
@@ -5726,6 +5732,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def help_page(self, request: web.Request) -> web.Response:
         """Render the public Help Center page."""
         return await self._page_response("help.html", request)
+
+    async def rules_page(self, request: web.Request) -> web.Response:
+        """Render the public RSL Rules Center page."""
+        return await self._page_response("rules.html", request)
 
     async def legal_page(self, request: web.Request) -> web.Response:
         """Render the public Legal Center page."""
