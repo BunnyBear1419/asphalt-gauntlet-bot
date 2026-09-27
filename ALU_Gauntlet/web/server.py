@@ -5810,7 +5810,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def setup_settings(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
         settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
-        return web.json_response({"settings": {key: settings.get(key) for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone": settings.get("timezone", "UTC")}})
+        fields = tuple(key for key, _ in SETUP_CHANNELS + SETUP_ROLES) + (
+            "tournament_main_channel_id", "tournament_log_channel_id", "tournament_bracket_channel_id",
+            "tournament_admin_channel_id", "tournament_announcement_channel_id",
+            "tournament_admin_role_id", "tournament_player_announcement_role_id",
+        )
+        return web.json_response({"settings": {key: settings.get(key) for key in fields} | {"timezone": settings.get("timezone", "UTC")}})
 
     async def save_setup_settings(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
@@ -5818,7 +5823,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             payload = await request.json()
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
-        allowed = {key for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone"}
+        allowed = {key for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone"} | {
+            "tournament_main_channel_id", "tournament_log_channel_id", "tournament_bracket_channel_id",
+            "tournament_admin_channel_id", "tournament_announcement_channel_id",
+            "tournament_admin_role_id", "tournament_player_announcement_role_id",
+        }
         clean = {key: str(payload[key]).strip() for key in allowed if payload.get(key)}
         if clean.get("timezone") not in {None, *(value for _, value in TIMEZONE_LABELS)}:
             raise web.HTTPBadRequest(text="Invalid timezone.")
@@ -5843,6 +5852,29 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                     valid = None
                 if valid is None:
                     raise web.HTTPBadRequest(text=f"Invalid role for {key[1]}.")
+        tournament_channels = (
+            ("tournament_main_channel_id", "Tournament player channel"),
+            ("tournament_log_channel_id", "Tournament log channel"),
+            ("tournament_bracket_channel_id", "Tournament bracket/results channel"),
+            ("tournament_admin_channel_id", "Tournament admin channel"),
+            ("tournament_announcement_channel_id", "Tournament announcement channel"),
+        )
+        tournament_roles = (
+            ("tournament_admin_role_id", "Tournament admin role"),
+            ("tournament_player_announcement_role_id", "Tournament driver role"),
+        )
+        for key, label in tournament_channels:
+            value = clean.get(key)
+            if value:
+                try: valid = guild.get_channel(int(value))
+                except (TypeError, ValueError): valid = None
+                if valid is None: raise web.HTTPBadRequest(text=f"Invalid channel for {label}.")
+        for key, label in tournament_roles:
+            value = clean.get(key)
+            if value:
+                try: valid = guild.get_role(int(value))
+                except (TypeError, ValueError): valid = None
+                if valid is None: raise web.HTTPBadRequest(text=f"Invalid role for {label}.")
         await self.bot.db.settings.update_one({"_id": guild_id}, {"$set": clean}, upsert=True)
         await self._audit(guild_id, user.user_id, "Web setup updated")
         return web.json_response({"ok": True, "settings": clean})
