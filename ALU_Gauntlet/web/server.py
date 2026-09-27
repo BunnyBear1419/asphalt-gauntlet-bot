@@ -5148,7 +5148,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             payload = await request.json()
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid language request.") from exc
-        language = normalize_language(payload.get("language"))
+        language = str(payload.get("language", "en")).strip()
         allowed = set(RSL_LANGUAGES)
         if language not in allowed:
             raise web.HTTPBadRequest(text="Unsupported language.")
