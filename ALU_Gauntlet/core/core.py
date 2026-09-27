@@ -1786,6 +1786,9 @@ async def revert_match_settlement(guild_id: str, match_id: str, actor_id: str):
 
         challenger_before = match.get("challenger_before", {})
         defender_before = match.get("defender_before", {})
+        bonus = int(match.get("rsl_performance_bonus", 0) or 0)
+        expected_challenger_elo = int(match.get("challenger_elo_after", 0) or 0) + bonus
+        expected_defender_elo = int(match.get("defender_elo_after", 0) or 0) - bonus
         p1_expected = {
             "elo": expected_challenger_elo,
             "career_wins": int(challenger_before.get("career_wins", p1.get("career_wins", 0))) + (1 if match.get("w_id") == match.get("challenger_id") else 0),
