@@ -162,40 +162,49 @@ class TranslationCog(commands.Cog):
         self.bot = bot
         self._reaction_cooldowns: dict[tuple[int, int], float] = {}
 
-@app_commands.context_menu(name="RSL Language")
-async def language_context(interaction: discord.Interaction, message: discord.Message):
-    cog = interaction.client.get_cog("TranslationCog")
-    if cog is None:
-        await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
-        return
-    current = await get_user_language(cog.bot, interaction.user.id)
-    await interaction.response.send_message(
-        f"{ui(current, 'settings')}\n{ui(current, 'choose')}\n\nCurrent: {language_flag(current)} **{language_name(current)}**",
-        view=LanguageView(cog, current),
-        ephemeral=True,
-    )
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        if payload.user_id == self.bot.user.id:
+            return
+        emoji = str(payload.emoji)
+        target = FLAG_TO_LANGUAGE.get(emoji)
+        if not target or not payload.guild_id:
+            return
 
+        key = (payload.user_id, payload.message_id)
+        now = time.monotonic()
+        if now - self._reaction_cooldowns.get(key, 0) < 5:
+            return
+        self._reaction_cooldowns[key] = now
 
-@app_commands.context_menu(name="Translate Message")
-async def translate_context(interaction: discord.Interaction, message: discord.Message):
-    cog = interaction.client.get_cog("TranslationCog")
-    if cog is None:
-        await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
-        return
-    target = await get_user_language(cog.bot, interaction.user.id)
-    if not message.content.strip():
-        await interaction.response.send_message(ui(target, "failed"), ephemeral=True)
-        return
-    try:
-        translated = await translate_text(message.content, target)
-    except Exception:
-        log.exception("Message translation failed")
-        await interaction.response.send_message(ui(target, "failed"), ephemeral=True)
-        return
-    await interaction.response.send_message(
-        f"{language_flag(target)} **{ui(target, 'translation')} — {language_name(target)}**\n{translated}",
-        ephemeral=True,
-    )
+        channel = self.bot.get_channel(payload.channel_id)
+        if channel is None:
+            try:
+                channel = await self.bot.fetch_channel(payload.channel_id)
+            except Exception:
+                return
+        try:
+            message = await channel.fetch_message(payload.message_id)
+        except Exception:
+            return
+        if message.author.bot or not message.content.strip():
+            return
+
+        try:
+            translated = await translate_text(message.content, target)
+            text = (
+                f"{language_flag(target)} **{ui(target, 'translation')} — {language_name(target)}** "
+                f"for <@{payload.user_id}>\n{translated}"
+            )
+            sent = await channel.send(
+                text,
+                allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=payload.user_id)]),
+                view=TranslationDismissView(payload.user_id, ui(target, "dismiss")),
+            )
+            try:
+                await asyncio.sleep(TEMP_MESSAGE_SECONDS)
+                await sent.delete()
+    
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.bot.user.id:
