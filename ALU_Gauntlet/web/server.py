@@ -2883,7 +2883,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         """Submit five attack runs for the signed-in driver's active challenge."""
         user,guild_id,_=await self.require_guild_member(request)
         payload=await request.json()
-        from ..core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge
+        from ..core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge, reconcile_processing_challenges
         uid=str(user.user_id); active=await claim_active_challenge(str(guild_id),uid)
         if not active: raise web.HTTPConflict(text="No active challenge is available to submit.")
         try:
@@ -2913,7 +2913,17 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             await self.bot.db.active_challenges.update_one({"_id":active["_id"],"guild_id":str(guild_id),"challenger_id":uid,"status":"processing"},{"$set":{"status":"completed","completed_at":time.time(),"match_id":result["_id"],"ticket_burned":True,"settlement_closed":True},"$unset":{"processing_at":""}})
             return web.json_response({"ok":True,"match_id":str(result["_id"]),"result":result.get("outcome_desc","Match submitted."),"courses_beat":int(result.get("courses_beat",0) or 0),"rsl_performance_bonus":int(result.get("rsl_performance_bonus",0) or 0)})
         except Exception:
-            await release_active_challenge(active["_id"])
+            # Mirror the Discord recovery path: never release a challenge blindly
+            # after settlement processing begins. If a deterministic reservation
+            # exists, reconcile it; otherwise the processing lock can safely reopen.
+            reservation = await self.bot.db.matches.find_one({
+                "_id": f"{active['_id']}:match",
+                "guild_id": str(guild_id),
+            })
+            if reservation:
+                await reconcile_processing_challenges(str(guild_id))
+            else:
+                await release_active_challenge(active["_id"])
             raise
 
     async def gauntlet_abandon_match(self, request: web.Request) -> web.Response:
