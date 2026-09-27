@@ -2632,6 +2632,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/me", self.me)
         self.app.router.add_get("/api/admin/guilds", self.admin_guilds)
         self.app.router.add_get("/api/admin/branding", self.admin_branding)
+        self.app.router.add_get("/api/admin/server-control", self.admin_server_control)
+        self.app.router.add_post("/api/admin/server-control/role", self.admin_create_role)
+        self.app.router.add_post("/api/admin/server-control/channel", self.admin_create_channel)
+        self.app.router.add_post("/api/admin/server-control/bot-identity", self.admin_bot_identity)
         self.app.router.add_put("/api/admin/branding", self.save_admin_branding)
         self.app.router.add_post("/api/admin/select-guild", self.select_admin_guild)
         self.app.router.add_post("/api/admin/upload-asset", self.upload_brand_asset)
@@ -5545,6 +5549,145 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if updates:
             await self.bot.db.web_preferences.update_one({"_id": f"{guild_id}_{user.user_id}"}, {"$set": {**updates, "guild_id": guild_id, "user_id": user.user_id}}, upsert=True)
         return web.json_response({"ok": True, "preferences": updates})
+
+    async def admin_server_control(self, request: web.Request) -> web.Response:
+        _, guild_id, guild = await self.require_admin(request)
+        me = guild.me
+        permissions = getattr(me, "guild_permissions", None)
+        return web.json_response({
+            "guild": {"id": guild_id, "name": str(getattr(guild, "name", guild_id))},
+            "bot": {
+                "id": str(self.bot.user.id) if self.bot.user else "",
+                "name": str(self.bot.user.name) if self.bot.user else "RSL Bot",
+                "avatar_url": str(self.bot.user.display_avatar.url) if self.bot.user else "",
+            },
+            "permissions": {
+                "manage_roles": bool(permissions and (permissions.manage_roles or permissions.administrator)),
+                "manage_channels": bool(permissions and (permissions.manage_channels or permissions.administrator)),
+            },
+            "roles": [
+                {"id": str(role.id), "name": role.name, "managed": bool(role.managed), "position": int(role.position)}
+                for role in guild.roles if not role.is_default()
+            ],
+            "channels": [
+                {"id": str(channel.id), "name": channel.name, "type": str(getattr(channel, "type", "")), "category_id": str(channel.category_id) if channel.category_id else ""}
+                for channel in guild.channels
+            ],
+        })
+
+    async def admin_create_role(self, request: web.Request) -> web.Response:
+        user, guild_id, guild = await self.require_admin(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        name = str(payload.get("name", "")).strip()[:100]
+        if not name:
+            raise web.HTTPBadRequest(text="Role name is required.")
+        me = guild.me
+        permissions = getattr(me, "guild_permissions", None)
+        if not permissions or not (permissions.manage_roles or permissions.administrator):
+            raise web.HTTPForbidden(text="The bot needs Manage Roles permission.")
+        colour_value = str(payload.get("colour", "")).strip().lstrip("#")
+        colour = discord.Colour.default()
+        if colour_value:
+            if not re.fullmatch(r"[0-9a-fA-F]{6}", colour_value):
+                raise web.HTTPBadRequest(text="Role colour must be a six-digit hex value.")
+            colour = discord.Colour(int(colour_value, 16))
+        try:
+            role = await guild.create_role(name=name, colour=colour, reason="RSL web server control")
+        except discord.Forbidden as exc:
+            raise web.HTTPForbidden(text="Discord denied role creation. Check bot role hierarchy and permissions.") from exc
+        await self._audit(guild_id, user.user_id, f"Created Discord role: {name}")
+        return web.json_response({"ok": True, "role": {"id": str(role.id), "name": role.name}})
+
+    async def admin_create_channel(self, request: web.Request) -> web.Response:
+        user, guild_id, guild = await self.require_admin(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        name = str(payload.get("name", "")).strip()[:100]
+        channel_type = str(payload.get("type", "text")).strip().lower()
+        category_id = str(payload.get("category_id", "")).strip()
+        if not name:
+            raise web.HTTPBadRequest(text="Channel name is required.")
+        me = guild.me
+        permissions = getattr(me, "guild_permissions", None)
+        if not permissions or not (permissions.manage_channels or permissions.administrator):
+            raise web.HTTPForbidden(text="The bot needs Manage Channels permission.")
+        category = None
+        if category_id:
+            try:
+                category = guild.get_channel(int(category_id))
+            except (TypeError, ValueError):
+                category = None
+            if category is None or not isinstance(category, discord.CategoryChannel):
+                raise web.HTTPBadRequest(text="Invalid category.")
+        try:
+            if channel_type == "voice":
+                channel = await guild.create_voice_channel(name=name, category=category, reason="RSL web server control")
+            else:
+                channel = await guild.create_text_channel(name=name, category=category, reason="RSL web server control")
+        except discord.Forbidden as exc:
+            raise web.HTTPForbidden(text="Discord denied channel creation. Check bot permissions.") from exc
+        await self._audit(guild_id, user.user_id, f"Created Discord channel: {name}")
+        return web.json_response({"ok": True, "channel": {"id": str(channel.id), "name": channel.name, "type": str(getattr(channel, "type", ""))}})
+
+    async def admin_bot_identity(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        if not self.bot.user:
+            raise web.HTTPServiceUnavailable(text="Discord bot identity is not ready.")
+        username = ""
+        avatar_bytes = None
+        if request.content_type.startswith("multipart/"):
+            try:
+                reader = await request.multipart()
+                while True:
+                    field = await reader.next()
+                    if field is None:
+                        break
+                    if field.name == "username":
+                        username = (await field.text()).strip()[:80]
+                    elif field.name == "avatar":
+                        data = await field.read(decode=False)
+                        if len(data) > 8 * 1024 * 1024:
+                            raise web.HTTPRequestEntityTooLarge(max_size=8 * 1024 * 1024, actual_size=len(data))
+                        if data:
+                            try:
+                                with Image.open(BytesIO(data)) as source:
+                                    source.load()
+                                    if source.width > 2048 or source.height > 2048:
+                                        source.thumbnail((2048, 2048))
+                                    output = BytesIO()
+                                    source.convert("RGBA").save(output, format="PNG")
+                                    avatar_bytes = output.getvalue()
+                            except (UnidentifiedImageError, OSError) as exc:
+                                raise web.HTTPBadRequest(text="Avatar must be a valid image.") from exc
+            except web.HTTPException:
+                raise
+            except Exception as exc:
+                raise web.HTTPBadRequest(text=f"Invalid identity upload: {str(exc)[:180]}") from exc
+        else:
+            try:
+                payload = await request.json()
+            except Exception:
+                raise web.HTTPBadRequest(text="Invalid JSON body.")
+            username = str(payload.get("username", "")).strip()[:80]
+        if not username and avatar_bytes is None:
+            raise web.HTTPBadRequest(text="Provide a new username and/or avatar.")
+        changed = []
+        try:
+            if username:
+                await self.bot.user.edit(username=username)
+                changed.append("username")
+            if avatar_bytes is not None:
+                await self.bot.user.edit(avatar=avatar_bytes)
+                changed.append("avatar")
+        except discord.HTTPException as exc:
+            raise web.HTTPBadRequest(text=f"Discord rejected the identity update: {exc}") from exc
+        await self._audit(guild_id, user.user_id, "Updated Discord bot identity: " + ", ".join(changed))
+        return web.json_response({"ok": True, "changed": changed, "bot": {"name": self.bot.user.name, "avatar_url": str(self.bot.user.display_avatar.url)}})
 
     async def setup_options(self, request: web.Request) -> web.Response:
         _, _, guild = await self.require_admin(request)
