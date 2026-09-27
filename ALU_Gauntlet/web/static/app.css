@@ -4585,3 +4585,15 @@ footer.rsl-footer-mark > span{
   border-right:1px solid #173b64!important;
 }
 }
+
+
+/* RSL Players Control Center layout */
+.players-page .lower-grid{display:block;margin-top:14px}
+.players-page .garage-card{height:auto;min-height:0}
+.players-page .garage-card[style]{grid-column:auto!important}
+.players-page .toolbar{display:grid;grid-template-columns:minmax(0,1fr) 260px auto;align-items:center;gap:10px;margin:0 16px 14px}
+.players-page .toolbar .search{min-width:0}
+.players-page .player-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:4px 16px 18px}
+.players-page .player-directory-card{min-width:0}
+@media(max-width:1120px){.players-page .player-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.players-page .toolbar{grid-template-columns:1fr;margin:0 12px 12px}.players-page .player-directory-grid{grid-template-columns:1fr;padding-left:12px;padding-right:12px}}
