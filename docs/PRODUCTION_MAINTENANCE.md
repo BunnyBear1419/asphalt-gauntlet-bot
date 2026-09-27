@@ -47,7 +47,7 @@ Any destructive cleanup should be reviewed before execution.
 - [ ] No stale top-level `/setup` Discord command is exposed.
 - [ ] Staff setup remains available through the staff/dashboard flow.
 - [ ] Public command surface remains `/dashboard` and `/staff`.
-- [ ] Calendar navigation appears before Rules, XP & Rankings, and Companion.
+- [ ] Calendar navigation appears before Rules and Companion; XP is available inside player profiles and Admin Tools.
 - [ ] Search remains left of Profile.
 - [ ] Account language preference remains persisted by user.
 - [ ] Tournament result mode is stored and enforced.
