@@ -161,3 +161,9 @@ def test_shared_navigation_cleans_legacy_companion_calendar_and_account_markup()
     assert 'href=["\\\']/calendar' in server
     assert 'class="top-user-area"' in server
     assert 'Normalize Calendar + Shohan\'s Companion on every page.' in server
+
+
+def test_admin_internal_hash_links_use_section_navigation():
+    admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
+    assert "document.querySelectorAll('a[href^=\"#\"]')" in admin
+    assert 'showSection(target.slice(1))' in admin
