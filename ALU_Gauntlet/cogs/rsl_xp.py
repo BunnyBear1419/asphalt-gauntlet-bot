@@ -38,6 +38,36 @@ class RSLXPCog(commands.Cog):
         except Exception:
             pass
 
+    async def _sync_leader_role(self, guild, settings):
+        role_id = str(settings.get("leader_role_id") or "")
+        if not role_id:
+            return
+        period = str(settings.get("leader_role_period") or "weekly")
+        if period not in {"all", "weekly", "monthly"}:
+            period = "weekly"
+        try:
+            role = guild.get_role(int(role_id))
+        except (TypeError, ValueError):
+            role = None
+        if not role:
+            return
+        field = {"all": "rsl_xp", "weekly": "rsl_xp_weekly", "monthly": "rsl_xp_monthly"}[period]
+        top = await self.bot.db.drivers.find_one({"guild_id": str(guild.id), "user_id": {"$exists": True}}, sort=[(field, -1)])
+        winner_id = str(top.get("user_id")) if top and int(top.get(field, 0) or 0) > 0 else ""
+        for member in guild.members:
+            has = role in member.roles
+            wants = str(member.id) == winner_id
+            if wants and not has:
+                try:
+                    await member.add_roles(role, reason="RSL XP leaderboard leader")
+                except Exception:
+                    pass
+            elif has and not wants:
+                try:
+                    await member.remove_roles(role, reason="RSL XP leaderboard rotation")
+                except Exception:
+                    pass
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if not message.guild or message.author.bot or not message.content.strip() or not getattr(self.bot, "db", None):
@@ -65,6 +95,7 @@ class RSLXPCog(commands.Cog):
                        role_ids=[str(r.id) for r in message.author.roles], channel_id=str(message.channel.id), settings=settings)
         if result.get("ok") and not result.get("duplicate"):
             await self._sync_level(message.guild.id, message.author.id, message.author, settings)
+            await self._sync_leader_role(message.guild if "message" in locals() else reaction.message.guild if "reaction" in locals() else guild, settings)
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -81,6 +112,7 @@ class RSLXPCog(commands.Cog):
                        role_ids=[str(r.id) for r in getattr(user, "roles", [])], channel_id=str(reaction.message.channel.id), settings=settings)
         if result.get("ok") and not result.get("duplicate"):
             await self._sync_level(reaction.message.guild.id, user.id, reaction.message.guild.get_member(user.id), settings)
+            await self._sync_leader_role(message.guild if "message" in locals() else reaction.message.guild if "reaction" in locals() else guild, settings)
 
     @tasks.loop(minutes=3)
     async def voice_tick(self):
@@ -104,6 +136,7 @@ class RSLXPCog(commands.Cog):
                                    metadata={"voice_seconds": 180}, settings=settings)
                     if result.get("ok") and not result.get("duplicate"):
                         await self._sync_level(guild.id, member.id, member, settings)
+            await self._sync_leader_role(message.guild if "message" in locals() else reaction.message.guild if "reaction" in locals() else guild, settings)
 
     @voice_tick.before_loop
     async def before_voice_tick(self):
