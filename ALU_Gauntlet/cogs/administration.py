@@ -6,6 +6,109 @@ from ..core.setup_wizard import launch_setup_wizard
 COMMAND_ARCHITECTURE_VERSION = 12
 command_architecture_version = COMMAND_ARCHITECTURE_VERSION
 
+class ServerControlModal(discord.ui.Modal, title="Create RSL Server Resource"):
+    resource = discord.ui.TextInput(label="Resource", placeholder="role, channel, or category", max_length=20)
+    name = discord.ui.TextInput(label="Name", placeholder="RSL Staff", max_length=100)
+
+    def __init__(self, guild_id: int, owner_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.owner_id = owner_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
+        guild = interaction.guild
+        if guild is None or guild.id != self.guild_id:
+            await interaction.response.send_message("This control is only valid in its original server.", ephemeral=True)
+            return
+        resource = str(self.resource.value).strip().lower()
+        name = str(self.name.value).strip()
+        try:
+            if resource == "role":
+                if not guild.me.guild_permissions.manage_roles and not guild.me.guild_permissions.administrator:
+                    raise RuntimeError("The bot needs Manage Roles permission.")
+                role = await guild.create_role(name=name, reason="RSL server control")
+                message = "Created role %s (%s)." % (role.name, role.id)
+            elif resource == "category":
+                if not guild.me.guild_permissions.manage_channels and not guild.me.guild_permissions.administrator:
+                    raise RuntimeError("The bot needs Manage Channels permission.")
+                category = await guild.create_category(name=name, reason="RSL server control")
+                message = "Created category %s (%s)." % (category.name, category.id)
+            elif resource == "channel":
+                if not guild.me.guild_permissions.manage_channels and not guild.me.guild_permissions.administrator:
+                    raise RuntimeError("The bot needs Manage Channels permission.")
+                channel = await guild.create_text_channel(name=name, reason="RSL server control")
+                message = "Created text channel #%s (%s)." % (channel.name, channel.id)
+            else:
+                await interaction.response.send_message("Resource must be role, channel, or category.", ephemeral=True)
+                return
+            await interaction.response.send_message("OK: " + message, ephemeral=True)
+            await audit_admin_action(interaction, "Server Control", "Created %s %s." % (resource, name))
+        except discord.Forbidden:
+            await interaction.response.send_message("Discord denied the operation. Check the bot Manage Roles/Channels permission and role hierarchy.", ephemeral=True)
+        except Exception as exc:
+            await interaction.response.send_message("Server control failed: %s" % str(exc)[:500], ephemeral=True)
+
+class ServerControlView(discord.ui.View):
+    def __init__(self, owner_id: int):
+        super().__init__(timeout=300)
+        self.owner_id = owner_id
+
+    async def _guard(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Create Role", style=discord.ButtonStyle.primary, emoji="🎭")
+    async def create_role(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._guard(interaction): return
+        modal = ServerControlModal(interaction.guild_id, self.owner_id)
+        modal.resource.default = "role"
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Create Channel", style=discord.ButtonStyle.primary, emoji="💬")
+    async def create_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._guard(interaction): return
+        modal = ServerControlModal(interaction.guild_id, self.owner_id)
+        modal.resource.default = "channel"
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Create Category", style=discord.ButtonStyle.secondary, emoji="🗂️")
+    async def create_category(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._guard(interaction): return
+        modal = ServerControlModal(interaction.guild_id, self.owner_id)
+        modal.resource.default = "category"
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Bot Identity", style=discord.ButtonStyle.success, emoji="🤖")
+    async def bot_identity(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._guard(interaction): return
+        await interaction.response.send_message("Use the existing Identity control to change the bot username/avatar. The website provides the same controls in Admin -> Server & Bot Control.", ephemeral=True)
+
+    @discord.ui.button(label="Server Setup Wizard", style=discord.ButtonStyle.secondary, emoji="⚙️")
+    async def setup_wizard(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._guard(interaction): return
+        from .dashboard_setup_bridge import launch_setup_wizard
+        await launch_setup_wizard(interaction)
+
+async def send_server_control(interaction: discord.Interaction):
+    if not interaction.guild or not await check_admin_privileges(interaction):
+        await interaction.response.send_message("Staff authorization required inside a Discord server.", ephemeral=True)
+        return
+    guild = interaction.guild
+    embed = discord.Embed(
+        title="RSL SERVER & BOT CONTROL",
+        description="Discord-side emergency control center. Create Discord resources, open Server Setup, and reach bot identity controls while the website is unavailable.",
+        color=ASPHALT_ADMIN_COLOR,
+    )
+    embed.add_field(name="Server", value="%s | Channels: %s | Roles: %s" % (guild.name, len(guild.channels), len(guild.roles)), inline=True)
+    embed.add_field(name="Bot", value="%s | ID: %s" % (bot.user.name if bot.user else "RSL Bot", bot.user.id if bot.user else "—"), inline=True)
+    embed.set_footer(text="Staff permissions required • Changes are audited")
+    await interaction.response.send_message(embed=embed, view=ServerControlView(interaction.user.id), ephemeral=True)
+
 class AdministrationCog(commands.Cog):
     admin_group = app_commands.Group(name="admin", description="[Staff Only] Driver-level admin overrides.")
 
