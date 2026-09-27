@@ -273,10 +273,8 @@ def test_xp_cooldowns_use_configured_reaction_and_voice_intervals():
 
 def test_xp_level_up_controls_and_leader_role_are_wired():
     cog = read(ROOT / "ALU_Gauntlet" / "cogs" / "rsl_xp.py")
-    page = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "xp-rankings.html")
-    js = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "xp-rankings.js")
+    admin = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html")
     for marker in ("_announce_level", "_sync_leader_role", "level_up_message", "leader_role_id"):
         assert marker in cog
     for marker in ("xp-level-channel", "xp-level-message", "xp-leader-role", "xp-leader-period"):
-        assert marker in page
-        assert marker in js
+        assert marker in admin
