@@ -17,6 +17,16 @@ class RSLXPCog(commands.Cog):
     async def _settings(self, guild_id):
         return await get_settings(self.bot.db, str(guild_id))
 
+    async def _sync_level(self, guild_id, user_id, member, settings):
+        if not member:
+            return
+        doc = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"}, {"rsl_xp": 1}) or {}
+        try:
+            level = progress_for_xp(int(doc.get("rsl_xp", 0) or 0), settings)["level"]
+            await sync_xp_rank_role(member, level)
+        except Exception:
+            pass
+
     @commands.Cog.listener()
     async def on_message(self, message):
         if not message.guild or message.author.bot or not message.content.strip() or not getattr(self.bot, "db", None):
@@ -37,9 +47,11 @@ class RSLXPCog(commands.Cog):
         minimum = int(settings.get("message_min", 15) or 15)
         maximum = max(minimum, int(settings.get("message_max", 30) or 30))
         amount = minimum if minimum == maximum else minimum + ((hash(str(message.id)) % (maximum - minimum + 1)))
-        await award_xp(self.bot.db, guild_id=str(message.guild.id), user_id=str(message.author.id),
+        result = await award_xp(self.bot.db, guild_id=str(message.guild.id), user_id=str(message.author.id),
                        amount=amount, source="message", event_id=str(message.id),
                        role_ids=[str(r.id) for r in message.author.roles], channel_id=str(message.channel.id), settings=settings)
+        if result.get("ok") and not result.get("duplicate"):
+            await self._sync_level(message.guild.id, message.author.id, message.author, settings)
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -48,10 +60,12 @@ class RSLXPCog(commands.Cog):
         settings = await self._settings(reaction.message.guild.id)
         if not settings.get("reaction_enabled", True):
             return
-        await award_xp(self.bot.db, guild_id=str(reaction.message.guild.id), user_id=str(user.id),
+        result = await award_xp(self.bot.db, guild_id=str(reaction.message.guild.id), user_id=str(user.id),
                        amount=int(settings.get("reaction_xp", 5) or 5), source="reaction",
                        event_id=f"{reaction.message.id}:{user.id}:{reaction.emoji}",
                        role_ids=[str(r.id) for r in getattr(user, "roles", [])], channel_id=str(reaction.message.channel.id), settings=settings)
+        if result.get("ok") and not result.get("duplicate"):
+            await self._sync_level(reaction.message.guild.id, user.id, reaction.message.guild.get_member(user.id), settings)
 
     @tasks.loop(minutes=3)
     async def voice_tick(self):
@@ -66,11 +80,13 @@ class RSLXPCog(commands.Cog):
                 if len(members) < int(settings.get("voice_min_members", 2) or 2):
                     continue
                 for member in members:
-                    await award_xp(self.bot.db, guild_id=str(guild.id), user_id=str(member.id),
+                    result = await award_xp(self.bot.db, guild_id=str(guild.id), user_id=str(member.id),
                                    amount=int(settings.get("voice_xp", 10) or 10), source="voice",
                                    event_id=f"{channel.id}:{member.id}:{int(time.time()) // 180}",
                                    role_ids=[str(r.id) for r in member.roles], channel_id=str(channel.id),
                                    metadata={"voice_seconds": 180}, settings=settings)
+                    if result.get("ok") and not result.get("duplicate"):
+                        await self._sync_level(guild.id, member.id, member, settings)
 
     @voice_tick.before_loop
     async def before_voice_tick(self):
