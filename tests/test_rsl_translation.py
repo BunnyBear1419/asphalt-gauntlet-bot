@@ -52,3 +52,12 @@ def test_context_menus_are_module_level_and_registered_during_setup():
     assert text.index('@app_commands.context_menu(name="Translate Message")') < class_start
     assert "bot.tree.add_command(language_context)" in text
     assert "bot.tree.add_command(translate_context)" in text
+
+
+def test_flag_reaction_listener_stays_on_translation_cog():
+    text = COG.read_text(encoding="utf-8")
+    class_start = text.index("class TranslationCog")
+    listener = text.index("    @commands.Cog.listener()\n    async def on_raw_reaction_add", class_start)
+    context_menu = text.index('@app_commands.context_menu(name="RSL Language")')
+    assert listener < context_menu
+    assert text.count("async def on_raw_reaction_add") == 1
