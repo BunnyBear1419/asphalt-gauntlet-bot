@@ -1,3 +1,4 @@
+import aiohttp
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
@@ -51,6 +52,52 @@ class ServerControlModal(discord.ui.Modal, title="Create RSL Server Resource"):
         except Exception as exc:
             await interaction.response.send_message("Server control failed: %s" % str(exc)[:500], ephemeral=True)
 
+class BotIdentityModal(discord.ui.Modal, title="Update RSL Bot Identity"):
+    username = discord.ui.TextInput(label="Bot Username", required=False, max_length=80)
+    avatar_url = discord.ui.TextInput(label="Avatar Image URL", required=False, max_length=1000, placeholder="https://...")
+
+    def __init__(self, guild_id: int, owner_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.owner_id = owner_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
+        if not bot.user:
+            await interaction.response.send_message("The Discord bot identity is not ready yet.", ephemeral=True)
+            return
+        username = str(self.username.value).strip()
+        avatar_url = str(self.avatar_url.value).strip()
+        if not username and not avatar_url:
+            await interaction.response.send_message("Enter a username and/or avatar image URL.", ephemeral=True)
+            return
+        try:
+            if username:
+                await bot.user.edit(username=username)
+            if avatar_url:
+                if not avatar_url.startswith(("https://", "http://")):
+                    await interaction.response.send_message("Avatar URL must start with http:// or https://.", ephemeral=True)
+                    return
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
+                        if response.status != 200:
+                            raise RuntimeError("Avatar URL returned HTTP %s." % response.status)
+                        data = await response.read()
+                if len(data) > 8 * 1024 * 1024:
+                    raise RuntimeError("Avatar image is larger than 8 MB.")
+                await bot.user.edit(avatar=data)
+            changed = []
+            if username: changed.append("username")
+            if avatar_url: changed.append("avatar")
+            await interaction.response.send_message("OK: Updated bot " + " and ".join(changed) + ".", ephemeral=True)
+            await audit_admin_action(interaction, "Bot Identity", "Updated bot " + " and ".join(changed) + ".")
+        except discord.HTTPException as exc:
+            await interaction.response.send_message("Discord rejected the identity update: %s" % exc, ephemeral=True)
+        except Exception as exc:
+            await interaction.response.send_message("Bot identity update failed: %s" % str(exc)[:500], ephemeral=True)
+
 class ServerControlView(discord.ui.View):
     def __init__(self, owner_id: int):
         super().__init__(timeout=300)
@@ -86,7 +133,7 @@ class ServerControlView(discord.ui.View):
     @discord.ui.button(label="Bot Identity", style=discord.ButtonStyle.success, emoji="🤖")
     async def bot_identity(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await self._guard(interaction): return
-        await interaction.response.send_message("Use the existing Identity control to change the bot username/avatar. The website provides the same controls in Admin -> Server & Bot Control.", ephemeral=True)
+        await interaction.response.send_modal(BotIdentityModal(interaction.guild_id, self.owner_id))
 
     @discord.ui.button(label="Server Setup Wizard", style=discord.ButtonStyle.secondary, emoji="⚙️")
     async def setup_wizard(self, interaction: discord.Interaction, button: discord.ui.Button):
