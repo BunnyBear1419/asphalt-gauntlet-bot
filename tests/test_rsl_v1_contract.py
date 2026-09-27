@@ -231,3 +231,25 @@ def test_v1_registration_uses_top_five_car_ratings_for_garage_pi():
         "top_five_car_ranks:topFive",
     ):
         assert marker in player_html + player_js
+
+
+def test_v1_xp_surface_has_live_rankings_history_and_admin_controls():
+    xp_page = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "xp-rankings.html")
+    xp_js = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "xp-rankings.js")
+    core = read(ROOT / "ALU_Gauntlet" / "core" / "rsl_xp.py")
+    server = read(SERVER)
+    for marker in ("All-Time", "Weekly", "Monthly", "Your XP History", "XP Administration", "Role Rewards"):
+        assert marker in xp_page
+    for marker in ("/api/xp/me", "/api/xp/leaderboard", "/api/xp/history", "/api/xp/settings", "data-period"):
+        assert marker in xp_js
+    for marker in ("xp_is_allowed", "excluded_role_ids", "excluded_channel_ids", "allowed_channel_ids", "role_rewards", "async def xp_history"):
+        assert marker in core
+    assert 'add_get("/api/xp/history", self.xp_history)' in server
+
+
+def test_v1_xp_remains_separate_from_competitive_scoring():
+    xp = read(ROOT / "ALU_Gauntlet" / "core" / "rsl_xp.py")
+    cog = read(ROOT / "ALU_Gauntlet" / "cogs" / "rsl_xp.py")
+    assert "independent XP layer" in cog
+    assert "rsl_xp_events" in xp
+    assert "gauntlet_points" not in xp
