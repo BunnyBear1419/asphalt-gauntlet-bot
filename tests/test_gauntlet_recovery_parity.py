@@ -53,3 +53,11 @@ def test_web_recovery_ui_exposes_report_and_admin_revert_controls():
     assert 'recovery-match-id' in admin
     assert 'recovery-revert' in admin
     assert '/api/admin/gauntlet/matches/revert' in admin
+
+def test_match_settlement_snapshots_cover_performance_and_season_rollback():
+    core = (ROOT / "ALU_Gauntlet/core/core.py").read_text(encoding="utf-8")
+    assert '"season_points": int(p1.get("season_points", 0))' in core
+    assert '"season_races_won": int(p1.get("season_races_won", 0))' in core
+    assert '"season_matches": int(p1.get("season_matches", 0))' in core
+    assert 'expected_challenger_elo = int(match.get("challenger_elo_after", 0) or 0) + bonus' in core
+    assert 'expected_defender_elo = int(match.get("defender_elo_after", 0) or 0) - bonus' in core
