@@ -2,12 +2,21 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 
+class ServerControlDashboardButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Server & Bot Control", style=discord.ButtonStyle.secondary, emoji="🛠️", row=4)
+
+    async def callback(self, interaction: discord.Interaction):
+        from .administration import send_server_control
+        await send_server_control(interaction)
+
 async def send_admin_dashboard(interaction: discord.Interaction):
     """Open the canonical staff dashboard view for /staff."""
     guild_id = str(interaction.guild_id)
     # StaffDashboardView ownership is per-admin session, not per-guild.
     # Passing guild_id here makes every component interaction fail its owner check.
     view = StaffDashboardView(str(interaction.user.id))
+    view.add_item(ServerControlDashboardButton())
     embed = discord.Embed(
         title='🛠️ RACING SYNDICATE LEAGUE • STAFF CONTROL CENTER',
         description='Manage players, seasons, defenses, setup, diagnostics, backups, and league operations from the staff dashboard below.',
