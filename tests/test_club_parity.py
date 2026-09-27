@@ -20,7 +20,7 @@ def test_discord_dashboard_exposes_club_center_without_new_slash_command():
 
 def test_discord_club_center_matches_shared_club_contract():
     for marker in (
-        "member_count": 1,
+        '"member_count": 1',
         '"member_count": {"$lt": 20}',
         "leader_id",
         "tournament_wins",
@@ -53,7 +53,7 @@ def test_website_club_leave_and_member_controls_are_registered():
 
 
 def test_club_cap_and_shared_fields_remain_explicit():
-    assert "member_count": 1 in SERVER
+    assert '"member_count": 1' in SERVER
     assert '{"member_count": {"$lt": 20}}' in SERVER
     assert '"image": ""' in SERVER
     assert '"leader_id": str(user.user_id)' in SERVER
