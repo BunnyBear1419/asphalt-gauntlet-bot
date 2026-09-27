@@ -19,7 +19,7 @@ class RSLXPCog(commands.Cog):
 
     async def _sync_level(self, guild_id, user_id, member, settings):
         if not member:
-            return
+            return 0
         doc = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"}, {"rsl_xp": 1}) or {}
         try:
             level = progress_for_xp(int(doc.get("rsl_xp", 0) or 0), settings)["level"]
@@ -35,6 +35,24 @@ class RSLXPCog(commands.Cog):
                         await member.add_roles(role, reason="RSL XP role reward")
                     except Exception:
                         pass
+            return level
+        except Exception:
+            return 0
+
+    async def _announce_level(self, guild, member, level, channel):
+        settings = await self._settings(guild.id)
+        if not settings.get("level_up_enabled", True) or not channel:
+            return
+        template = str(settings.get("level_up_message") or "🏁 {mention} reached Level {level}!")
+        text = template.replace("{mention}", member.mention).replace("{username}", member.display_name).replace("{level}", str(level))
+        target = channel
+        if settings.get("level_up_channel_id"):
+            try:
+                target = guild.get_channel(int(settings["level_up_channel_id"])) or channel
+            except (TypeError, ValueError):
+                target = channel
+        try:
+            await target.send(text)
         except Exception:
             pass
 
@@ -94,8 +112,11 @@ class RSLXPCog(commands.Cog):
                        amount=amount, source="message", event_id=str(message.id),
                        role_ids=[str(r.id) for r in message.author.roles], channel_id=str(message.channel.id), settings=settings)
         if result.get("ok") and not result.get("duplicate"):
-            await self._sync_level(message.guild.id, message.author.id, message.author, settings)
-            await self._sync_leader_role(message.guild if "message" in locals() else reaction.message.guild if "reaction" in locals() else guild, settings)
+            old_level = progress_for_xp(int(profile.get("rsl_xp", 0) or 0), settings)["level"]
+            new_level = await self._sync_level(message.guild.id, message.author.id, message.author, settings)
+            if new_level > old_level:
+                await self._announce_level(message.guild, message.author, new_level, message.channel)
+            await self._sync_leader_role(message.guild, settings)
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
@@ -111,8 +132,14 @@ class RSLXPCog(commands.Cog):
                        event_id=f"{reaction.message.id}:{user.id}:{reaction.emoji}",
                        role_ids=[str(r.id) for r in getattr(user, "roles", [])], channel_id=str(reaction.message.channel.id), settings=settings)
         if result.get("ok") and not result.get("duplicate"):
-            await self._sync_level(reaction.message.guild.id, user.id, reaction.message.guild.get_member(user.id), settings)
-            await self._sync_leader_role(message.guild if "message" in locals() else reaction.message.guild if "reaction" in locals() else guild, settings)
+            member = reaction.message.guild.get_member(user.id)
+            if member:
+                old_doc = await self.bot.db.drivers.find_one({"_id": f"{reaction.message.guild.id}_{user.id}"}, {"rsl_xp": 1}) or {}
+                old_level = progress_for_xp(max(0, int(old_doc.get("rsl_xp", 0) or 0) - int(result.get("amount", 0) or 0)), settings)["level"]
+                new_level = await self._sync_level(reaction.message.guild.id, user.id, member, settings)
+                if new_level > old_level:
+                    await self._announce_level(reaction.message.guild, member, new_level, reaction.message.channel)
+            await self._sync_leader_role(reaction.message.guild, settings)
 
     @tasks.loop(minutes=3)
     async def voice_tick(self):
@@ -136,7 +163,7 @@ class RSLXPCog(commands.Cog):
                                    metadata={"voice_seconds": 180}, settings=settings)
                     if result.get("ok") and not result.get("duplicate"):
                         await self._sync_level(guild.id, member.id, member, settings)
-            await self._sync_leader_role(message.guild if "message" in locals() else reaction.message.guild if "reaction" in locals() else guild, settings)
+            await self._sync_leader_role(guild, settings)
 
     @voice_tick.before_loop
     async def before_voice_tick(self):
