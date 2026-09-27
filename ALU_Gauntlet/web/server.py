@@ -600,13 +600,13 @@ window.rslGoogleTranslateInit=function(){
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
             rules_markup = '<a href="/rules"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>Rules</span></a>'
             body = re.sub(
-                r'<a\\b[^>]*href=["\\\'](?:/calendar|https://asph\\.discloud\\.app/calendar)["\\\'][^>]*>.*?</a>',
+                r'<a\b[^>]*href=["\'](?:/calendar|https://asph\.discloud\.app/calendar)["\'][^>]*>.*?</a>',
                 "",
                 body,
                 flags=re.S | re.I,
             )
             body = re.sub(
-                r'<a\\b[^>]*href=["\\\']/rules["\\\'][^>]*>.*?</a>',
+                r'<a\b[^>]*href=["\']/rules["\'][^>]*>.*?</a>',
                 "",
                 body,
                 flags=re.S | re.I,
