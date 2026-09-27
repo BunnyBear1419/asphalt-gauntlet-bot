@@ -5844,7 +5844,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         for canonical, desired in achievement_names.items():
             owner = used_names.get(desired.casefold())
             if owner and owner != canonical:
-                raise web.HTTPBadRequest(text=f"Achievement role name "{desired}" is used more than once.")
+                raise web.HTTPBadRequest(text=f"Achievement role name '{desired}' is used more than once.")
             used_names[desired.casefold()] = canonical
         clean["achievement_role_names"] = achievement_names
         if clean.get("timezone") not in {None, *(value for _, value in TIMEZONE_LABELS)}:
