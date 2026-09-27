@@ -1746,6 +1746,117 @@ class MatchResultPostView(discord.ui.View):
         button.disabled = True
         await interaction.message.edit(view=self)
 
+async def revert_match_settlement(guild_id: str, match_id: str, actor_id: str):
+    """Safely reverse one completed match using its stored settlement snapshots."""
+    guild_id = str(guild_id)
+    match_id = str(match_id)
+    actor_id = str(actor_id)
+
+    async def _rollback(session):
+        match = await bot.db.matches.find_one(
+            {"_id": match_id, "guild_id": guild_id, "reverted": {"$ne": True}},
+            session=session,
+        )
+        if not match:
+            raise RuntimeError("MATCH_ALREADY_REVERTED_OR_MISSING")
+
+        match_time = float(match.get("timestamp", 0))
+        player_ids = [str(match.get("challenger_id")), str(match.get("opponent_id"))]
+        later = await bot.db.matches.find({
+            "guild_id": guild_id,
+            "timestamp": {"$gt": match_time},
+            "reverted": {"$ne": True},
+            "$or": [
+                {"challenger_id": {"$in": player_ids}},
+                {"opponent_id": {"$in": player_ids}},
+            ],
+        }, session=session).to_list(length=1)
+        if later:
+            raise RuntimeError("LATER_MATCH_EXISTS")
+
+        if "challenger_elo_before" not in match or "defender_elo_before" not in match:
+            raise RuntimeError("LEGACY_MATCH_NO_SNAPSHOT")
+
+        p1_filter = {"_id": f"{guild_id}_{match['challenger_id']}", "guild_id": guild_id}
+        p2_filter = {"_id": f"{guild_id}_{match['opponent_id']}", "guild_id": guild_id}
+        p1 = await bot.db.drivers.find_one(p1_filter, session=session)
+        p2 = await bot.db.drivers.find_one(p2_filter, session=session)
+        if not p1 or not p2:
+            raise RuntimeError("PLAYER_PROFILE_MISSING")
+
+        challenger_before = match.get("challenger_before", {})
+        defender_before = match.get("defender_before", {})
+        p1_expected = {
+            "elo": match.get("challenger_elo_after"),
+            "career_wins": int(challenger_before.get("career_wins", p1.get("career_wins", 0))) + (1 if match.get("w_id") == match.get("challenger_id") else 0),
+            "career_played": int(challenger_before.get("career_played", p1.get("career_played", 0))) + 1,
+            "streak": int(challenger_before.get("streak", p1.get("streak", 0))) + (1 if match.get("w_id") == match.get("challenger_id") else 0),
+        }
+        p2_expected = {
+            "elo": match.get("defender_elo_after"),
+            "career_wins": int(defender_before.get("career_wins", p2.get("career_wins", 0))) + (1 if match.get("w_id") == match.get("opponent_id") else 0),
+            "career_played": int(defender_before.get("career_played", p2.get("career_played", 0))) + 1,
+            "streak": int(defender_before.get("streak", p2.get("streak", 0))) + (1 if match.get("w_id") == match.get("opponent_id") else 0),
+        }
+        if any(p1.get(k) != v for k,v in p1_expected.items()) or any(p2.get(k) != v for k,v in p2_expected.items()):
+            raise RuntimeError("PLAYER_STATE_CHANGED")
+
+        r1 = await bot.db.drivers.update_one(
+            {**p1_filter, **p1_expected},
+            {"$set": {
+                "elo": max(100, int(match["challenger_elo_before"])),
+                "career_wins": int(challenger_before.get("career_wins", p1.get("career_wins", 0))),
+                "career_played": int(challenger_before.get("career_played", p1.get("career_played", 0))),
+                "streak": int(challenger_before.get("streak", p1.get("streak", 0))),
+            }}, session=session,
+        )
+        r2 = await bot.db.drivers.update_one(
+            {**p2_filter, **p2_expected},
+            {"$set": {
+                "elo": max(100, int(match["defender_elo_before"])),
+                "career_wins": int(defender_before.get("career_wins", p2.get("career_wins", 0))),
+                "career_played": int(defender_before.get("career_played", p2.get("career_played", 0))),
+                "streak": int(defender_before.get("streak", p2.get("streak", 0))),
+            }}, session=session,
+        )
+        if getattr(r1, "modified_count", 0) != 1 or getattr(r2, "modified_count", 0) != 1:
+            raise RuntimeError("PLAYER_STATE_CHANGED")
+
+        histories = await bot.db.lap_time_history.find({"match_id": match_id, "guild_id": guild_id}, session=session).to_list(length=10)
+        for hist in histories:
+            lap_id = f"{guild_id}_{hist['user_id']}_{hist['track']}"
+            current = await bot.db.lap_times.find_one({"_id": lap_id, "source_match_id": match_id}, session=session)
+            if not current:
+                continue
+            previous = hist.get("previous_record")
+            if previous:
+                previous = dict(previous)
+                previous.pop("_id", None)
+                await bot.db.lap_times.replace_one({"_id": lap_id}, {"_id": lap_id, **previous}, upsert=True, session=session)
+            else:
+                await bot.db.lap_times.delete_one({"_id": lap_id}, session=session)
+
+        for track in sorted({str(h.get("track")) for h in histories if h.get("track")}):
+            await rebuild_universal_map_record(track, session=session)
+
+        result = await bot.db.matches.update_one(
+            {"_id": match_id, "guild_id": guild_id, "reverted": {"$ne": True}},
+            {"$set": {"reverted": True, "reverted_at": time.time(), "reverted_by": actor_id}},
+            session=session,
+        )
+        if getattr(result, "modified_count", 0) != 1:
+            raise RuntimeError("MATCH_ALREADY_REVERTED_OR_MISSING")
+        return match
+
+    if not bot.mongo_client:
+        raise RuntimeError("TRANSACTIONS_REQUIRED")
+
+    async with bot.mongo_client.start_session() as session:
+        async with session.start_transaction():
+            match = await _rollback(session)
+    await dispatch_audit_log(guild_id, "⚠️ Match Reverted", f"Staff {actor_id} reverted match {match_id}.", color=0xe74c3c)
+    return match
+
 class MatchRevertView(discord.ui.View):
     """View for admins to fully reverse a reported match."""
     def __init__(self, match_id: str):
