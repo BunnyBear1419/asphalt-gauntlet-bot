@@ -98,6 +98,62 @@ class BotIdentityModal(discord.ui.Modal, title="Update RSL Bot Identity"):
         except Exception as exc:
             await interaction.response.send_message("Bot identity update failed: %s" % str(exc)[:500], ephemeral=True)
 
+class CreateTournamentModal(discord.ui.Modal, title="Host RSL Tournament"):
+    name = discord.ui.TextInput(label="Tournament Name", max_length=100)
+    max_players = discord.ui.TextInput(label="Maximum Entrants", default="32", max_length=3)
+    format = discord.ui.TextInput(label="Format", default="single_elimination", max_length=30)
+    team_size = discord.ui.TextInput(label="Team Size", default="1", max_length=1)
+    result_mode = discord.ui.TextInput(label="Result Mode", default="player_review", max_length=20)
+
+    def __init__(self, guild_id: int, owner_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.owner_id = owner_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
+        name = str(self.name.value).strip()
+        try:
+            max_players = int(str(self.max_players.value).strip())
+            team_size = int(str(self.team_size.value).strip())
+        except ValueError:
+            await interaction.response.send_message("Maximum entrants and team size must be numbers.", ephemeral=True)
+            return
+        fmt = str(self.format.value).strip().casefold()
+        result_mode = str(self.result_mode.value).strip().casefold()
+        if not name or not 2 <= max_players <= 256:
+            await interaction.response.send_message("Tournament name is required and maximum entrants must be 2-256.", ephemeral=True)
+            return
+        if team_size not in {1, 2, 3, 4}:
+            await interaction.response.send_message("Team size must be 1, 2, 3, or 4.", ephemeral=True)
+            return
+        if fmt not in {"single_elimination", "double_elimination", "round_robin"}:
+            await interaction.response.send_message("Unsupported tournament format.", ephemeral=True)
+            return
+        if result_mode not in {"player_review", "admin_only"}:
+            await interaction.response.send_message("Result mode must be player_review or admin_only.", ephemeral=True)
+            return
+        try:
+            from ALU_Gauntlet.core.tournament import generate_tournament_bracket
+            now = discord.utils.utcnow().isoformat()
+            bracket = generate_tournament_bracket(fmt, max_players)
+            doc = {
+                "guild_id": str(self.guild_id), "name": name, "description": "",
+                "format": fmt, "max_players": max_players, "team_size": team_size,
+                "result_submission_mode": result_mode, "bracket": bracket, "bracket_version": 1,
+                "gauntlet_only": False, "registration_deadline": None, "start_time": None, "end_time": None,
+                "status": "registration_open", "created_by": str(interaction.user.id),
+                "created_at": now, "updated_at": now,
+            }
+            result = await bot.db.tournaments.insert_one(doc)
+            tournament_id = str(result.inserted_id)
+            await interaction.response.send_message("OK: Hosted %s. Registration is open. Tournament ID: %s." % (name, tournament_id), ephemeral=True)
+            await audit_admin_action(interaction, "Tournament Hosted", "Created tournament %s (%s)." % (name, tournament_id))
+        except Exception as exc:
+            await interaction.response.send_message("Tournament creation failed: %s" % str(exc)[:500], ephemeral=True)
+
 class ServerControlView(discord.ui.View):
     def __init__(self, owner_id: int):
         super().__init__(timeout=300)
@@ -130,12 +186,17 @@ class ServerControlView(discord.ui.View):
         modal.resource.default = "category"
         await interaction.response.send_modal(modal)
 
-    @discord.ui.button(label="Bot Identity", style=discord.ButtonStyle.success, emoji="🤖")
+    @discord.ui.button(label="Bot Identity", style=discord.ButtonStyle.success, emoji="🤖", row=3)
     async def bot_identity(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await self._guard(interaction): return
         await interaction.response.send_modal(BotIdentityModal(interaction.guild_id, self.owner_id))
 
-    @discord.ui.button(label="Server Setup Wizard", style=discord.ButtonStyle.secondary, emoji="⚙️")
+    @discord.ui.button(label="Host Tournament", style=discord.ButtonStyle.primary, emoji="🏆", row=4)
+    async def host_tournament(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self._guard(interaction): return
+        await interaction.response.send_modal(CreateTournamentModal(interaction.guild_id, self.owner_id))
+
+    @discord.ui.button(label="Server Setup Wizard", style=discord.ButtonStyle.secondary, emoji="⚙️", row=3)
     async def setup_wizard(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await self._guard(interaction): return
         from .dashboard_setup_bridge import launch_setup_wizard
