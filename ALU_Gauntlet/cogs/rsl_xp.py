@@ -29,7 +29,7 @@ class RSLXPCog(commands.Cog):
         now = time.time()
         if now - float(profile.get("rsl_xp_last_message", 0) or 0) < int(settings.get("message_cooldown", 60)):
             return
-        await self.bot.db.drivers.update_one({"_id": profile["_id"], "rsl_xp_last_message": profile.get("rsl_xp_last_message", {"$exists": False})}, {"$set": {"rsl_xp_last_message": now}})
+        await self.bot.db.drivers.update_one({"_id": profile["_id"], "$or": [{"rsl_xp_last_message": {"$exists": False}}, {"rsl_xp_last_message": {"$lte": now - int(settings.get("message_cooldown", 60))}}]}, {"$set": {"rsl_xp_last_message": now}})
         # The existing activity reward remains the RSL Coin reward; this is the independent XP layer.
         minimum = int(settings.get("message_min", 15) or 15)
         maximum = max(minimum, int(settings.get("message_max", 30) or 30))
