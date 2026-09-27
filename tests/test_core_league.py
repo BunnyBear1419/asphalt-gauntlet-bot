@@ -375,3 +375,45 @@ def test_top_five_rating_boundaries_map_to_all_six_rsl_divisions():
     ]
     for ratings, expected in cases:
         assert core.get_division_for_pi(sum(ratings))["name"].startswith(expected)
+
+def test_abandon_active_challenge_is_idempotent_and_burns_ticket(monkeypatch):
+    async def run():
+        fake_db = FakeDB()
+        monkeypatch.setattr(core.bot, "db", fake_db)
+        fake_db.active_challenges.docs["guild_user"] = {
+            "_id": "guild_user",
+            "guild_id": "guild",
+            "status": "active",
+            "challenger_id": "user",
+            "ticket_burned": True,
+            "settlement_closed": False,
+            "expires_at": __import__("time").time() + 3600,
+        }
+
+        closed = await core.abandon_active_challenge("guild", "user", "quit")
+        assert closed is True
+        doc = fake_db.active_challenges.docs["guild_user"]
+        assert doc["status"] == "abandoned"
+        assert doc["ticket_burned"] is True
+        assert doc["settlement_closed"] is True
+        assert doc["abandon_reason"] == "quit"
+
+        second = await core.abandon_active_challenge("guild", "user", "quit")
+        assert second is False
+        assert fake_db.active_challenges.docs["guild_user"]["status"] == "abandoned"
+
+    asyncio.run(run())
+
+
+def test_quit_cannot_close_a_challenge_after_submission_claimed_processing():
+    source = _project_source()
+    start = source.index("async def claim_active_challenge")
+    end = source.index("async def release_active_challenge", start)
+    claim = source[start:end]
+    abandon_start = source.index("async def abandon_active_challenge")
+    abandon_end = source.index("async def open_submitmatch_workflow", abandon_start)
+    abandon = source[abandon_start:abandon_end]
+    assert '"status": "processing"' in claim
+    assert '"status": "active"' in abandon
+    assert '"status": "abandoned"' in abandon
+\n
