@@ -3,7 +3,8 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 from discord.ext import commands, tasks
-from ..core.rsl_xp import award_xp, get_settings
+from ..core.rsl_role_sync import sync_xp_rank_role
+from ..core.rsl_xp import award_xp, get_settings, progress_for_xp
 
 class RSLXPCog(commands.Cog):
     def __init__(self, bot):
@@ -29,7 +30,9 @@ class RSLXPCog(commands.Cog):
         now = time.time()
         if now - float(profile.get("rsl_xp_last_message", 0) or 0) < int(settings.get("message_cooldown", 60)):
             return
-        await self.bot.db.drivers.update_one({"_id": profile["_id"], "$or": [{"rsl_xp_last_message": {"$exists": False}}, {"rsl_xp_last_message": {"$lte": now - int(settings.get("message_cooldown", 60))}}]}, {"$set": {"rsl_xp_last_message": now}})
+        claim = await self.bot.db.drivers.update_one({"_id": profile["_id"], "$or": [{"rsl_xp_last_message": {"$exists": False}}, {"rsl_xp_last_message": {"$lte": now - int(settings.get("message_cooldown", 60))}}]}, {"$set": {"rsl_xp_last_message": now}})
+        if getattr(claim, "modified_count", 0) != 1:
+            return
         # The existing activity reward remains the RSL Coin reward; this is the independent XP layer.
         minimum = int(settings.get("message_min", 15) or 15)
         maximum = max(minimum, int(settings.get("message_max", 30) or 30))
@@ -59,7 +62,7 @@ class RSLXPCog(commands.Cog):
             if not settings.get("voice_enabled", True):
                 continue
             for channel in guild.voice_channels:
-                members = [m for m in channel.members if not m.bot and not m.voice.afk and not m.voice.self_deaf and not m.voice.deaf]
+                members = [m for m in channel.members if not m.bot and not m.voice.afk and not m.voice.self_deaf and not m.voice.deaf and not m.voice.self_mute and not m.voice.mute]
                 if len(members) < int(settings.get("voice_min_members", 2) or 2):
                     continue
                 for member in members:
