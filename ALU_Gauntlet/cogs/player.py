@@ -458,6 +458,37 @@ class TicketEconomyButton(discord.ui.Button):
             ephemeral=True,
         )
 
+class AbandonGauntletButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Quit Active Match", style=discord.ButtonStyle.danger, emoji="🛑", row=4)
+
+    async def callback(self, interaction):
+        guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
+        active = await bot.db.active_challenges.find_one({
+            "_id": f"{guild_id}_{user_id}",
+            "guild_id": guild_id,
+            "challenger_id": user_id,
+            "status": "active",
+        })
+        if not active:
+            await interaction.response.send_message(
+                "ℹ️ You do not have an active Gauntlet match that can be quit.",
+                ephemeral=True,
+            )
+            return
+        await interaction.response.defer(ephemeral=True)
+        closed = await abandon_active_challenge(guild_id, user_id, "quit")
+        if not closed:
+            await interaction.followup.send(
+                "⚠️ This match changed state before the quit could be recorded. Refresh your dashboard.",
+                ephemeral=True,
+            )
+            return
+        await interaction.followup.send(
+            "🛑 **Active Gauntlet match closed.** The match was marked abandoned and its consumed ticket was not restored.",
+            ephemeral=True,
+        )
+
 async def send_dashboard(interaction: discord.Interaction):
     """Send the canonical player dashboard without removing player access for staff."""
     guild_id = str(interaction.guild_id)
@@ -466,6 +497,7 @@ async def send_dashboard(interaction: discord.Interaction):
     view.add_item(ClubCenterButton())
     view.add_item(DiscordNotificationSettingsButton())
     view.add_item(TicketEconomyButton())
+    view.add_item(AbandonGauntletButton())
     embed = discord.Embed(
         title='🏁 RACING SYNDICATE LEAGUE • PLAYER DASHBOARD',
         description='Race. Compete. Unite.\n\nUse the controls below to manage your driver profile, defense, challenges, rankings, and season activity.',
