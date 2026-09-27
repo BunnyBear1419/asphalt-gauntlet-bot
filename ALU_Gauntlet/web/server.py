@@ -2714,6 +2714,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/gauntlet/references", self.create_gauntlet_reference)
         self.app.router.add_get("/api/gauntlet/matches", self.gauntlet_matches)
         self.app.router.add_post("/api/gauntlet/matches/submit", self.gauntlet_submit_match)
+        self.app.router.add_post("/api/gauntlet/matches/abandon", self.gauntlet_abandon_match)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/player/career", self.player_career)
@@ -2914,6 +2915,28 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         except Exception:
             await release_active_challenge(active["_id"])
             raise
+
+    async def gauntlet_abandon_match(self, request: web.Request) -> web.Response:
+        """Quit the signed-in driver's active Gauntlet challenge through the shared settlement path."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        uid = str(user.user_id)
+        from ..core.core import abandon_active_challenge
+        active = await self.bot.db.active_challenges.find_one({
+            "_id": f"{guild_id}_{uid}",
+            "guild_id": str(guild_id),
+            "challenger_id": uid,
+            "status": "active",
+        })
+        if not active:
+            raise web.HTTPConflict(text="No active Gauntlet match is available to quit.")
+        closed = await abandon_active_challenge(str(guild_id), uid, "quit")
+        if not closed:
+            raise web.HTTPConflict(text="This match changed state before the quit could be recorded.")
+        return web.json_response({
+            "ok": True,
+            "status": "abandoned",
+            "message": "Active Gauntlet match closed as abandoned. The consumed ticket was not restored.",
+        })
 
     async def gauntlet_leaderboard(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
