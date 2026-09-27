@@ -58,6 +58,8 @@
       document.getElementById("xp-voice-min").value = s.voice_min_members ?? 2;
       document.getElementById("xp-leader-role").value = s.leader_role_id || "";
       document.getElementById("xp-leader-period").value = s.leader_role_period || "weekly";
+      document.getElementById("xp-level-channel").value = s.level_up_channel_id || "";
+      document.getElementById("xp-level-message").value = s.level_up_message || "🏁 {mention} reached Level {level}!";
       document.getElementById("xp-role-rewards").value = (s.role_rewards || []).map(x => (x.level || "") + ":" + (x.role_id || "")).join("\n");
       document.getElementById("xp-excluded-roles").value = (s.excluded_role_ids || []).join("\n");
       document.getElementById("xp-excluded-channels").value = (s.excluded_channel_ids || []).join("\n");
@@ -81,6 +83,9 @@
       voice_min_members:Number(document.getElementById("xp-voice-min").value || 2),
       leader_role_id:String(document.getElementById("xp-leader-role").value || "").trim(),
       leader_role_period:document.getElementById("xp-leader-period").value,
+      level_up_enabled:true,
+      level_up_channel_id:String(document.getElementById("xp-level-channel").value || "").trim(),
+      level_up_message:String(document.getElementById("xp-level-message").value || "🏁 {mention} reached Level {level}!"),
       role_rewards:rewards,
       excluded_role_ids:lines("xp-excluded-roles"),
       excluded_channel_ids:lines("xp-excluded-channels"),
