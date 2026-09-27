@@ -37,3 +37,8 @@ def test_web_setup_route_remains_private_and_is_not_the_discord_command():
     assert 'add_get("/setup", self.setup_page)' in server
     assert "async def setup_page" in server
     assert "await self.require_admin(request)" in server
+
+
+def test_admin_server_setup_button_opens_dedicated_setup_page():
+    admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
+    assert 'id="setup-link" href="/setup"' in admin
