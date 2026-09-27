@@ -167,7 +167,7 @@ def test_v1_database_safeguards_cover_clubs_tournaments_and_notifications():
 
 def test_v1_shared_shell_keeps_calendar_search_profile_and_companion_ordered():
     source = read(SERVER)
-    assert 'calendar_markup + rules_markup + companion_markup' in source
+    assert 'calendar_markup + rules_markup + xp_markup + companion_markup' in source
     assert 'id="rsl-search-trigger"' in source
     assert 'id="rsl-profile-nav"' in source
     assert '<a href="/calendar">' in source
