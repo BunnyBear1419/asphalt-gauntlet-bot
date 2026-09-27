@@ -2715,6 +2715,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/gauntlet/matches", self.gauntlet_matches)
         self.app.router.add_post("/api/gauntlet/matches/submit", self.gauntlet_submit_match)
         self.app.router.add_post("/api/gauntlet/matches/abandon", self.gauntlet_abandon_match)
+        self.app.router.add_post("/api/gauntlet/matches/report", self.gauntlet_report_match)
+        self.app.router.add_post("/api/admin/gauntlet/matches/revert", self.admin_revert_gauntlet_match)
         self.app.router.add_get("/api/competition/snapshot", self.competition_snapshot)
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/player/career", self.player_career)
@@ -2946,6 +2948,63 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "ok": True,
             "status": "abandoned",
             "message": "Active Gauntlet match closed as abandoned. The consumed ticket was not restored.",
+        })
+
+    async def gauntlet_report_match(self, request: web.Request) -> web.Response:
+        """Report a completed Gauntlet result for staff review."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        payload = await request.json()
+        match_id = str(payload.get("match_id") or "").strip()
+        reason = str(payload.get("reason") or "").strip()[:500]
+        if not match_id:
+            raise web.HTTPBadRequest(text="match_id is required.")
+        match = await self.bot.db.matches.find_one({"_id": match_id, "guild_id": str(guild_id)})
+        if not match:
+            raise web.HTTPNotFound(text="Match record not found.")
+        if match.get("reverted"):
+            raise web.HTTPConflict(text="This match has already been reverted.")
+        await self.bot.db.matches.update_one(
+            {"_id": match_id, "guild_id": str(guild_id), "reverted": {"$ne": True}},
+            {"$set": {
+                "reported": True,
+                "reported_by": str(user.user_id),
+                "reported_at": time.time(),
+                "report_reason": reason,
+            }},
+        )
+        await self._audit(str(guild_id), str(user.user_id), f"Gauntlet match reported: {match_id}")
+        return web.json_response({"ok": True, "status": "reported", "match_id": match_id})
+
+    async def admin_revert_gauntlet_match(self, request: web.Request) -> web.Response:
+        """Staff-only safe Gauntlet match rollback using the shared settlement service."""
+        user, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        match_id = str(payload.get("match_id") or "").strip()
+        if not match_id:
+            raise web.HTTPBadRequest(text="match_id is required.")
+        from ..core.core import revert_match_settlement
+        try:
+            match = await revert_match_settlement(str(guild_id), match_id, str(user.user_id))
+        except RuntimeError as exc:
+            messages = {
+                "MATCH_ALREADY_REVERTED_OR_MISSING": "This match was already reverted or is no longer available.",
+                "LATER_MATCH_EXISTS": "This match cannot be automatically reverted because a later match exists for one of these players.",
+                "LEGACY_MATCH_NO_SNAPSHOT": "This legacy match lacks safe rollback snapshots.",
+                "PLAYER_PROFILE_MISSING": "Player profiles required for rollback were not found.",
+                "PLAYER_STATE_CHANGED": "Player state changed after this match; rollback was cancelled for safety.",
+                "TRANSACTIONS_REQUIRED": "Automatic rollback requires the connected MongoDB transaction mode.",
+            }
+            reason = str(exc)
+            if reason in {"MATCH_ALREADY_REVERTED_OR_MISSING", "LATER_MATCH_EXISTS", "LEGACY_MATCH_NO_SNAPSHOT", "PLAYER_PROFILE_MISSING", "PLAYER_STATE_CHANGED"}:
+                raise web.HTTPConflict(text=messages[reason])
+            raise web.HTTPServiceUnavailable(text=messages.get(reason, "The match could not be reverted safely.")) from exc
+        await self._audit(str(guild_id), str(user.user_id), f"Web Gauntlet match reverted: {match_id}")
+        return web.json_response({
+            "ok": True,
+            "status": "reverted",
+            "match_id": str(match.get("_id", match_id)),
+            "challenger_id": str(match.get("challenger_id", "")),
+            "opponent_id": str(match.get("opponent_id", "")),
         })
 
     async def gauntlet_leaderboard(self, request: web.Request) -> web.Response:
