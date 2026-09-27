@@ -34,3 +34,12 @@ def test_translation_cog_is_loaded_without_adding_a_slash_command():
     text = MAIN.read_text(encoding="utf-8")
     assert '"ALU_Gauntlet.cogs.translation"' in text
     assert '"/setup"' not in text
+
+
+def test_discord_translation_provider_is_configurable_and_ui_dismiss_labels_are_localized():
+    text = COG.read_text(encoding="utf-8")
+    assert "RSL_TRANSLATION_URL" in text
+    assert "RSL_TRANSLATION_EMAIL" in text
+    assert "ClientSession(timeout=timeout, headers=headers)" in text
+    assert "DismissButton(ui(current, \"dismiss\"))" in text
+    assert "self.Dismiss(label)" in text
