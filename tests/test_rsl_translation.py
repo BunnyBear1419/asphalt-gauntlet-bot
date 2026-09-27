@@ -43,3 +43,12 @@ def test_discord_translation_provider_is_configurable_and_ui_dismiss_labels_are_
     assert "ClientSession(timeout=timeout, headers=headers)" in text
     assert "DismissButton(ui(current, \"dismiss\"))" in text
     assert "self.Dismiss(label)" in text
+
+
+def test_context_menus_are_module_level_and_registered_during_setup():
+    text = COG.read_text(encoding="utf-8")
+    class_start = text.index("class TranslationCog")
+    assert text.index('@app_commands.context_menu(name="RSL Language")') < class_start
+    assert text.index('@app_commands.context_menu(name="Translate Message")') < class_start
+    assert "bot.tree.add_command(language_context)" in text
+    assert "bot.tree.add_command(translate_context)" in text
