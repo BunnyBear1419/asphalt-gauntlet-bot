@@ -127,6 +127,19 @@ class RSLXPCog(commands.Cog):
             return
         if not xp_is_allowed(settings, [str(r.id) for r in getattr(user, "roles", [])], str(reaction.message.channel.id)):
             return
+        reaction_now = time.time()
+        reaction_cooldown = int(settings.get("reaction_cooldown", 300) or 300)
+        reaction_profile_id = f"{reaction.message.guild.id}_{user.id}"
+        reaction_claim = await self.bot.db.drivers.update_one(
+            {"_id": reaction_profile_id, "$or": [
+                {"rsl_xp_last_reaction": {"$exists": False}},
+                {"rsl_xp_last_reaction": {"$lte": reaction_now - reaction_cooldown}},
+            ]},
+            {"$set": {"rsl_xp_last_reaction": reaction_now}},
+            upsert=False,
+        )
+        if getattr(reaction_claim, "modified_count", 0) != 1:
+            return
         result = await award_xp(self.bot.db, guild_id=str(reaction.message.guild.id), user_id=str(user.id),
                        amount=int(settings.get("reaction_xp", 5) or 5), source="reaction",
                        event_id=f"{reaction.message.id}:{user.id}:{reaction.emoji}",
@@ -156,11 +169,25 @@ class RSLXPCog(commands.Cog):
                 for member in members:
                     if not xp_is_allowed(settings, [str(r.id) for r in member.roles], str(channel.id)):
                         continue
+                    voice_cooldown = max(1, int(settings.get("voice_cooldown", 180) or 180))
+                    voice_now = time.time()
+                    voice_profile_id = f"{guild.id}_{member.id}"
+                    voice_bucket = int(voice_now // voice_cooldown)
+                    voice_claim = await self.bot.db.drivers.update_one(
+                        {"_id": voice_profile_id, "$or": [
+                            {"rsl_xp_last_voice_bucket": {"$exists": False}},
+                            {"rsl_xp_last_voice_bucket": {"$ne": voice_bucket}},
+                        ]},
+                        {"$set": {"rsl_xp_last_voice_bucket": voice_bucket}},
+                        upsert=False,
+                    )
+                    if getattr(voice_claim, "modified_count", 0) != 1:
+                        continue
                     result = await award_xp(self.bot.db, guild_id=str(guild.id), user_id=str(member.id),
                                    amount=int(settings.get("voice_xp", 10) or 10), source="voice",
-                                   event_id=f"{channel.id}:{member.id}:{int(time.time()) // 180}",
+                                   event_id=f"{channel.id}:{member.id}:{voice_bucket}",
                                    role_ids=[str(r.id) for r in member.roles], channel_id=str(channel.id),
-                                   metadata={"voice_seconds": 180}, settings=settings)
+                                   metadata={"voice_seconds": voice_cooldown}, settings=settings)
                     if result.get("ok") and not result.get("duplicate"):
                         await self._sync_level(guild.id, member.id, member, settings)
             await self._sync_leader_role(guild, settings)
