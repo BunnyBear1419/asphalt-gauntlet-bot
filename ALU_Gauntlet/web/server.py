@@ -598,7 +598,6 @@ window.rslGoogleTranslateInit=function(){
             # Strip any legacy/static copies first so older templates cannot
             # create duplicate or incorrectly ordered entries.
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
-            xp_markup = '<a href="/xp"><img class="nav-icon-img" src="/assets/icons/results.png" alt=""><span>XP &amp; Rankings</span></a>'
             rules_markup = '<a href="/rules"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>Rules</span></a>'
             body = re.sub(
                 r'<a\b[^>]*href=["\'](?:/calendar|https://asph\.discloud\.app/calendar)["\'][^>]*>.*?</a>',
@@ -622,7 +621,7 @@ window.rslGoogleTranslateInit=function(){
                 count=1,
                 flags=re.S | re.I,
             )
-            body = body.replace("</nav>", calendar_markup + rules_markup + xp_markup + companion_markup + "</nav>", 1)
+            body = body.replace("</nav>", calendar_markup + rules_markup + companion_markup + "</nav>", 1)
 
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
         # This keeps every page on the same PNG-only navigation shell.
@@ -2619,7 +2618,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/gauntlet/career", self.gauntlet_career_page)
         self.app.router.add_get("/tournaments", self.tournaments_page)
         self.app.router.add_get("/calendar", self.calendar_page)
-        self.app.router.add_get("/xp", self.xp_page)
         self.app.router.add_get("/tournaments/registration", self.tournament_registration_page)
         self.app.router.add_get("/tournaments/matches", self.tournament_matches_page)
         self.app.router.add_get("/tournaments/matches/", self.tournament_matches_page)
@@ -2773,10 +2771,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     async def tournament_clubs_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
         return await self._page_response("tournament-clubs.html", request)
-
-    async def xp_page(self, request: web.Request) -> web.StreamResponse:
-        await self.require_user(request)
-        return await self._page_response("xp-rankings.html", request)
 
     async def xp_me(self, request: web.Request) -> web.Response:
         from ..core.rsl_xp import get_settings, progress_for_xp
