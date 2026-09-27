@@ -145,16 +145,8 @@ jobs:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
           set -euo pipefail
-          MONGO_URI="$MONGO_URI" python - <<'PY' > heartbeat-output.txt
-          import os
-          from pymongo import MongoClient
-          client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000)
-          hb = client["asphalt_gauntlet"].system_events.find_one({"_id": "production_heartbeat"})
-          client.close()
-          timestamp = float(hb.get("timestamp", 0)) if hb else 0
-          print(f"heartbeat_at={timestamp}")
-          PY
-          cat heartbeat-output.txt >> "$GITHUB_OUTPUT"
+          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)')
+          echo "heartbeat_at=$heartbeat_at" >> "$GITHUB_OUTPUT"
       # Retry transient Discloud deployment failures, including temporary 429s.
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
