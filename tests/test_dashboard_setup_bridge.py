@@ -42,3 +42,5 @@ def test_web_setup_route_remains_private_and_is_not_the_discord_command():
 def test_admin_server_setup_button_opens_dedicated_setup_page():
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
     assert 'id="setup-link" href="/setup"' in admin
+    assert 'data-route="/setup"' in admin
+    assert "window.location.assign(this.dataset.route)" in admin
