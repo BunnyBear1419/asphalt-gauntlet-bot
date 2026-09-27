@@ -23,7 +23,7 @@ class RSLXPCog(commands.Cog):
         doc = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"}, {"rsl_xp": 1}) or {}
         try:
             level = progress_for_xp(int(doc.get("rsl_xp", 0) or 0), settings)["level"]
-            await sync_xp_rank_role(member, level)
+            await sync_xp_rank_role(member, level, settings.get("achievement_role_names"), settings.get("achievement_role_ids"))
             for reward in settings.get("role_rewards", []) or []:
                 try:
                     threshold = int(reward.get("level", 0) or 0)
