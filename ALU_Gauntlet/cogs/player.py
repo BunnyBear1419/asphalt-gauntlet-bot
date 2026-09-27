@@ -6,6 +6,7 @@ from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
 from ..core.rsl_activity import activity_level
+from .ticket_economy import BuyTicketView
 
 
 async def _club_image_data(image_url: str) -> str:
@@ -420,6 +421,42 @@ class DiscordNotificationSettingsButton(discord.ui.Button):
         super().__init__(label="Notifications", style=discord.ButtonStyle.secondary, emoji="🔔")
     async def callback(self, interaction):
         await interaction.response.send_message(embed=await build_notification_settings_embed(str(interaction.user.id)), view=DiscordNotificationSettingsView(str(interaction.user.id)), ephemeral=True)
+class TicketEconomyButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Tickets & Coins", style=discord.ButtonStyle.secondary, emoji="🎟️")
+
+    async def callback(self, interaction):
+        guild_id = str(interaction.guild_id)
+        user_id = str(interaction.user.id)
+        profile = await bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"}) or {}
+        today = await get_guild_local_date(guild_id)
+        ticket_date = str(profile.get("gauntlet_ticket_date") or "")
+        if ticket_date != today:
+            free = 5
+            purchased = 0
+            total = 5
+        else:
+            free = int(profile.get("gauntlet_free_tickets", 0) or 0)
+            purchased = int(profile.get("gauntlet_purchased_tickets", 0) or 0)
+            total = int(profile.get("gauntlet_tickets", free + purchased) or 0)
+        coins = int(profile.get("rsl_coins", 0) or 0)
+        embed = discord.Embed(
+            title="🎟️ RSL TICKETS & COINS",
+            description=(
+                f"**Tickets available:** {total}/10\n"
+                f"**Free tickets:** {free}/5\n"
+                f"**Purchased today:** {purchased}/5\n"
+                f"**RSL Coins:** {coins:,}\n\n"
+                "Unused tickets expire at the daily reset. Purchasing a ticket is atomic with its Coin debit."
+            ),
+            color=ASPH_THEME_COLOR,
+        )
+        embed.set_footer(text="RSL Economy • Daily ticket cycle")
+        await interaction.response.send_message(
+            embed=embed,
+            view=BuyTicketView(bot, guild_id, user_id, get_guild_local_date),
+            ephemeral=True,
+        )
 
 async def send_dashboard(interaction: discord.Interaction):
     """Send the canonical player dashboard without removing player access for staff."""
@@ -428,6 +465,7 @@ async def send_dashboard(interaction: discord.Interaction):
     view = DashboardView(guild_id, user_id, False)
     view.add_item(ClubCenterButton())
     view.add_item(DiscordNotificationSettingsButton())
+    view.add_item(TicketEconomyButton())
     embed = discord.Embed(
         title='🏁 RACING SYNDICATE LEAGUE • PLAYER DASHBOARD',
         description='Race. Compete. Unite.\n\nUse the controls below to manage your driver profile, defense, challenges, rankings, and season activity.',
