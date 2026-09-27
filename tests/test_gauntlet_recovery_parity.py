@@ -44,3 +44,12 @@ def test_match_report_and_safe_revert_are_available_on_the_web():
     assert "async def gauntlet_report_match" in server
     assert "async def admin_revert_gauntlet_match" in server
     assert "revert_match_settlement" in server
+
+def test_web_recovery_ui_exposes_report_and_admin_revert_controls():
+    matches = (ROOT / "ALU_Gauntlet/web/static/gauntlet-matches.html").read_text(encoding="utf-8")
+    admin = (ROOT / "ALU_Gauntlet/web/static/admin.html").read_text(encoding="utf-8")
+    assert 'data-report-id' in matches
+    assert '/api/gauntlet/matches/report' in matches
+    assert 'recovery-match-id' in admin
+    assert 'recovery-revert' in admin
+    assert '/api/admin/gauntlet/matches/revert' in admin
