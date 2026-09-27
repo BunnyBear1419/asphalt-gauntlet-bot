@@ -31,6 +31,9 @@
 .admin-field input:focus,.admin-field textarea:focus{border-color:#25dfff;box-shadow:0 0 0 2px #25dfff12}
 .admin-field textarea{min-height:76px;resize:vertical}
 .admin-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
+.admin-upload-drop{border:1px dashed #28639a;background:#04101f;border-radius:8px;padding:18px;text-align:center;color:#91a5c3;cursor:pointer;transition:.15s ease;margin-top:8px}
+.admin-upload-drop:hover,.admin-upload-drop.is-dragover{border-color:#25dfff;background:#071b33;color:#fff;box-shadow:0 0 0 2px #25dfff12}
+.admin-upload-drop strong{display:block;color:#fff;font-size:13px;margin-bottom:5px}.admin-upload-drop small{display:block;color:#7188a7;font-size:10px}
 .admin-btn{border:1px solid #25dfff;background:#071a31;color:#fff;border-radius:6px;padding:10px 14px;font-weight:800;cursor:pointer}
 .admin-btn.primary{background:linear-gradient(90deg,#1878ff,#25dfff);border-color:#25dfff}
 .admin-btn:hover{filter:brightness(1.12)}
@@ -138,7 +141,7 @@
 <section class="admin-section" id="section-media">
   <div class="admin-card"><h2>Images &amp; Media</h2><p>Upload images in common formats. The website automatically converts every uploaded image to a real PNG before storing it, so you do not need to convert files yourself. Files are stored in MongoDB and scoped to the selected guild; the upload limit is 8 MB per asset.</p>
     <div class="admin-grid">
-      <div class="admin-field full"><label>Upload Asset</label><input id="asset-file" type="file" accept="image/*"></div>
+      <div class="admin-field full"><label>Upload Asset</label><input id="asset-file" type="file" accept="image/*"><label class="admin-upload-drop" id="asset-drop" for="asset-file"><strong>Drop an image here</strong><span>or click to choose a file</span><small>PNG, JPG, WEBP, GIF and other browser-supported image formats • max 8 MB</small></label><small id="asset-file-name" style="color:#8198b5"></small></div>
       <div class="admin-field"><label>Assign Uploaded Asset To</label><select id="asset-target"><option value="logo_url">Main Logo</option><option value="favicon_url">Favicon</option><option value="hero_url">Hero Banner</option><option value="welcome_url">Welcome Image</option><option value="gauntlet_url">Gauntlet Image</option><option value="tournament_url">Tournament Image</option><option value="club_url">Club Image</option><option value="login_url">Login Image</option><option value="background_url">Site Background</option></select></div>
     </div>
     <div class="admin-actions"><button class="admin-btn primary" id="upload-asset">Upload &amp; Assign</button><span class="admin-status" id="upload-status"></span></div>
@@ -305,9 +308,20 @@ function collectCustomLinks(){
 function addCustomLink(){if(!branding.links.custom)branding.links.custom=[];if(branding.links.custom.length>=10){setStatus("links-status","You can add up to 10 footer links.",false);return}branding.links.custom.push({name:"",url:"",icon:"",enabled:true});renderCustomLinks();}
 $("add-footer-link").onclick=addCustomLink;
 $("save-branding").onclick=()=>save("save");$("save-media").onclick=()=>save("media");$("save-links").onclick=async()=>{branding.links.custom=collectCustomLinks();await save("links");};
+const assetInput=$("asset-file"),assetDrop=$("asset-drop"),assetFileName=$("asset-file-name");
+function setAssetFile(file){
+ if(!file)return;
+ const transfer=new DataTransfer();transfer.items.add(file);assetInput.files=transfer.files;
+ if(assetFileName)assetFileName.textContent=file.name+" • "+Math.max(1,Math.round(file.size/1024))+" KB";
+}
+assetInput.addEventListener("change",()=>setAssetFile(assetInput.files[0]));
+["dragenter","dragover"].forEach(type=>assetDrop.addEventListener(type,e=>{e.preventDefault();e.stopPropagation();assetDrop.classList.add("is-dragover")}));
+["dragleave","drop"].forEach(type=>assetDrop.addEventListener(type,e=>{e.preventDefault();e.stopPropagation();assetDrop.classList.remove("is-dragover")}));
+assetDrop.addEventListener("drop",e=>{const file=[...e.dataTransfer.files].find(x=>x.type.startsWith("image/"));if(!file){setStatus("upload-status","Drop an image file.",false);return;}setAssetFile(file)});
 $("upload-asset").onclick=async()=>{
  try{
-  const file=$("asset-file").files[0];if(!file)throw new Error("Choose an image first.");
+  const file=assetInput.files[0];if(!file)throw new Error("Choose or drop an image first.");
+  if(file.size>8*1024*1024)throw new Error("Image exceeds the 8 MB upload limit.");
   const fd=new FormData();fd.append("file",file);
   const target=$("asset-target").value;
   const d=await api(uploadUrl(target),{method:"POST",body:fd});
