@@ -196,54 +196,52 @@ async def translate_context(interaction: discord.Interaction, message: discord.M
         f"{language_flag(target)} **{ui(target, 'translation')} — {language_name(target)}**\n{translated}",
         ephemeral=True,
     )
+@commands.Cog.listener()
+async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+    if payload.user_id == self.bot.user.id:
+        return
+    emoji = str(payload.emoji)
+    target = FLAG_TO_LANGUAGE.get(emoji)
+    if not target or not payload.guild_id:
+        return
 
+    key = (payload.user_id, payload.message_id)
+    now = time.monotonic()
+    if now - self._reaction_cooldowns.get(key, 0) < 5:
+        return
+    self._reaction_cooldowns[key] = now
 
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        if payload.user_id == self.bot.user.id:
-            return
-        emoji = str(payload.emoji)
-        target = FLAG_TO_LANGUAGE.get(emoji)
-        if not target or not payload.guild_id:
-            return
-
-        key = (payload.user_id, payload.message_id)
-        now = time.monotonic()
-        if now - self._reaction_cooldowns.get(key, 0) < 5:
-            return
-        self._reaction_cooldowns[key] = now
-
-        channel = self.bot.get_channel(payload.channel_id)
-        if channel is None:
-            try:
-                channel = await self.bot.fetch_channel(payload.channel_id)
-            except Exception:
-                return
+    channel = self.bot.get_channel(payload.channel_id)
+    if channel is None:
         try:
-            message = await channel.fetch_message(payload.message_id)
+        channel = await self.bot.fetch_channel(payload.channel_id)
         except Exception:
-            return
-        if message.author.bot or not message.content.strip():
-            return
+        return
+    try:
+        message = await channel.fetch_message(payload.message_id)
+    except Exception:
+        return
+    if message.author.bot or not message.content.strip():
+        return
 
+    try:
+        translated = await translate_text(message.content, target)
+        text = (
+        f"{language_flag(target)} **{ui(target, 'translation')} — {language_name(target)}** "
+        f"for <@{payload.user_id}>\n{translated}"
+        )
+        sent = await channel.send(
+        text,
+        allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=payload.user_id)]),
+        view=TranslationDismissView(payload.user_id, ui(target, "dismiss")),
+        )
         try:
-            translated = await translate_text(message.content, target)
-            text = (
-                f"{language_flag(target)} **{ui(target, 'translation')} — {language_name(target)}** "
-                f"for <@{payload.user_id}>\n{translated}"
-            )
-            sent = await channel.send(
-                text,
-                allowed_mentions=discord.AllowedMentions(users=[discord.Object(id=payload.user_id)]),
-                view=TranslationDismissView(payload.user_id, ui(target, "dismiss")),
-            )
-            try:
-                await asyncio.sleep(TEMP_MESSAGE_SECONDS)
-                await sent.delete()
-            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-                pass
-        except Exception:
-            log.exception("Reaction translation failed for message %s", payload.message_id)
+        await asyncio.sleep(TEMP_MESSAGE_SECONDS)
+        await sent.delete()
+        except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+        pass
+    except Exception:
+        log.exception("Reaction translation failed for message %s", payload.message_id)
 
 
 async def setup(bot):
