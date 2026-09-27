@@ -13,6 +13,7 @@ EXTENSIONS = [
     "ALU_Gauntlet.cogs.administration", "ALU_Gauntlet.cogs.help", "ALU_Gauntlet.cogs.system",
     "ALU_Gauntlet.cogs.operations", "ALU_Gauntlet.cogs.dashboard_setup_bridge",
     "ALU_Gauntlet.cogs.tournament", "ALU_Gauntlet.cogs.notifications", "ALU_Gauntlet.cogs.activity_rewards", "ALU_Gauntlet.cogs.rsl_xp", "ALU_Gauntlet.cogs.economy_moderation", "ALU_Gauntlet.cogs.asphalt_account",
+    "ALU_Gauntlet.cogs.translation",
 ]
 
 
@@ -47,8 +48,6 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_tournament_action_lock",
     )
-    # Active registrations must be unique even when two requests race between
-    # the application-level existence check and the insert.
     await db.tournament_registrations.create_index(
         [("tournament_id", 1), ("user_id", 1)],
         unique=True,
@@ -65,9 +64,6 @@ async def _ensure_database_indexes():
         [("tournament_id", 1), ("status", 1), ("created_at", -1)],
         name="idx_tournament_media_gallery",
     )
-    # Notification delivery identity is event + user + lead-time reminder.
-    # The previous index used a missing "phase" field, which made the event-time
-    # reminder collide with the scheduled lead reminder for the same user/event.
     try:
         await db.notification_deliveries.drop_index("uniq_notification_delivery")
     except Exception:
@@ -131,9 +127,6 @@ async def runner():
 
     await web_center.start()
 
-    # bot.start() runs discord.py's setup_hook first. setup_hook initializes
-    # MongoDB, so database-dependent cogs must not be loaded until that work
-    # has completed and bot.db is available.
     bot_task = asyncio.create_task(bot.start(token))
     try:
         await _wait_for_database()
