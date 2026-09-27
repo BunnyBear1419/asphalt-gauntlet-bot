@@ -27,6 +27,11 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_rsl_activity_event",
     )
+    await db.rsl_xp_events.create_index(
+        [("guild_id", 1), ("user_id", 1), ("source", 1), ("event_id", 1)],
+        unique=True,
+        name="uniq_rsl_xp_event",
+    )
     await db.club_members.create_index(
         [("guild_id", 1), ("user_id", 1)],
         unique=True,
