@@ -78,6 +78,7 @@
   <button data-section="media">🖼️ Images &amp; Media</button>
   <button data-section="links">🔗 Links</button>
   <button data-section="settings">⚙️ Site Settings</button>
+  <button data-section="server-control">🛡️ Server &amp; Bot Control</button>
   <button data-section="management">🧩 Management</button>
   <button data-section="xp">⭐ XP &amp; Progression</button>
   <button data-section="system">🛠️ Sync &amp; System</button>
@@ -224,6 +225,29 @@
   </div>
 </section>
 
+<section class="admin-section" id="section-server-control">
+  <div class="admin-card"><h2>Server &amp; Bot Control</h2><p>This is the website-side emergency control center. Changes are applied directly to Discord so this interface can repair server setup even when other RSL pages are unavailable.</p>
+    <div class="admin-grid">
+      <div class="admin-field"><label>Bot Username</label><input id="bot-username" maxlength="80"></div>
+      <div class="admin-field"><label>Bot Avatar</label><input id="bot-avatar" type="file" accept="image/png,image/jpeg,image/webp"></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn primary" id="save-bot-identity">Save Bot Identity</button><span class="admin-status" id="bot-identity-status"></span></div>
+  </div>
+  <div class="admin-card"><h2>Create Discord Role</h2><div class="admin-grid">
+    <div class="admin-field"><label>Role Name</label><input id="server-role-name" maxlength="100" placeholder="RSL Staff"></div>
+    <div class="admin-field"><label>Role Colour</label><input id="server-role-colour" type="text" value="#25dfff" placeholder="#25dfff"></div>
+  </div><div class="admin-actions"><button class="admin-btn primary" id="create-server-role">Create Role</button><span class="admin-status" id="server-role-status"></span></div></div>
+  <div class="admin-card"><h2>Create Discord Channel</h2><div class="admin-grid">
+    <div class="admin-field"><label>Channel Name</label><input id="server-channel-name" maxlength="100" placeholder="rsl-announcements"></div>
+    <div class="admin-field"><label>Channel Type</label><select id="server-channel-type"><option value="text">Text</option><option value="voice">Voice</option></select></div>
+    <div class="admin-field"><label>Category</label><select id="server-channel-category"><option value="">No category</option></select></div>
+  </div><div class="admin-actions"><button class="admin-btn primary" id="create-server-channel">Create Channel</button><span class="admin-status" id="server-channel-status"></span></div></div>
+  <div class="admin-card"><h2>Live Discord Resources</h2><div class="admin-grid">
+    <div class="admin-field full"><label>Bot Permissions</label><div id="server-control-permissions" class="admin-status">Loading…</div></div>
+    <div class="admin-field full"><label>Roles</label><div id="server-control-roles" class="admin-log"></div></div>
+    <div class="admin-field full"><label>Channels</label><div id="server-control-channels" class="admin-log"></div></div>
+  </div></div>
+</section>
 <section class="admin-section" id="section-system">
   <div class="admin-card"><h2>Sync, Diagnostics &amp; Maintenance</h2><p>Administrative operations are scoped to the selected guild and recorded in the audit log.</p>
     <div class="admin-actions">
@@ -277,6 +301,7 @@ async function loadGuilds(){
  select.addEventListener("change",async()=>{guildId=select.value;await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});await loadBranding();});
  await loadBranding();
  await loadXpSettings();
+ await loadServerControl();
 }
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function setVal(id,v){if($(id))$(id).value=v??""}
@@ -300,6 +325,47 @@ function fillForm(){
  $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
  $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);document.querySelectorAll(".admin-guild-link").forEach(a=>a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId)+(a.dataset.section?"#"+encodeURIComponent(a.dataset.section):""));
 }
+async function loadServerControl(){
+ try{
+  const d=await api("/api/admin/server-control"+q());
+  setVal("bot-username",d.bot?.name||"");
+  const perms=d.permissions||{};
+  const p=$("server-control-permissions");
+  if(p)p.textContent="Manage Roles: "+(perms.manage_roles?"YES":"NO")+" • Manage Channels: "+(perms.manage_channels?"YES":"NO");
+  const cat=$("server-channel-category");
+  if(cat)cat.innerHTML='<option value="">No category</option>'+(d.channels||[]).filter(x=>String(x.type).includes("category")).map(x=>'<option value="'+x.id+'">'+escapeHtml(x.name)+'</option>').join("");
+  const roles=$("server-control-roles");
+  if(roles)roles.innerHTML=(d.roles||[]).map(x=>'<div class="admin-log-row">'+escapeHtml(x.name)+' • '+x.id+(x.managed?" • managed":"")+'</div>').join("")||'<div class="admin-log-row">No roles found.</div>';
+  const channels=$("server-control-channels");
+  if(channels)channels.innerHTML=(d.channels||[]).map(x=>'<div class="admin-log-row">#'+escapeHtml(x.name)+' • '+escapeHtml(x.type)+' • '+x.id+'</div>').join("")||'<div class="admin-log-row">No channels found.</div>';
+ }catch(e){setStatus("bot-identity-status",e.message||"Unable to load Discord controls.",false);}
+}
+const botIdentityButton=$("save-bot-identity");
+if(botIdentityButton)botIdentityButton.addEventListener("click",async()=>{
+ const file=$("bot-avatar")?.files?.[0], username=getVal("bot-username");
+ if(!username&&!file){setStatus("bot-identity-status","Enter a username or choose an avatar.",false);return;}
+ const form=new FormData();if(username)form.append("username",username);if(file)form.append("avatar",file);
+ botIdentityButton.disabled=true;setStatus("bot-identity-status","Updating Discord bot identity…");
+ try{await api("/api/admin/server-control/bot-identity"+q(),{method:"POST",body:form});setStatus("bot-identity-status","Bot identity updated.");await loadServerControl();}
+ catch(e){setStatus("bot-identity-status",e.message||"Identity update failed.",false);}
+ finally{botIdentityButton.disabled=false;}
+});
+const roleButton=$("create-server-role");
+if(roleButton)roleButton.addEventListener("click",async()=>{
+ const name=getVal("server-role-name"),colour=getVal("server-role-colour");
+ if(!name){setStatus("server-role-status","Role name is required.",false);return;}
+ roleButton.disabled=true;
+ try{await api("/api/admin/server-control/role"+q(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,colour})});setStatus("server-role-status","Role created.");setVal("server-role-name","");await loadServerControl();}
+ catch(e){setStatus("server-role-status",e.message||"Role creation failed.",false);}finally{roleButton.disabled=false;}
+});
+const channelButton=$("create-server-channel");
+if(channelButton)channelButton.addEventListener("click",async()=>{
+ const name=getVal("server-channel-name"),type=getVal("server-channel-type"),category_id=getVal("server-channel-category");
+ if(!name){setStatus("server-channel-status","Channel name is required.",false);return;}
+ channelButton.disabled=true;
+ try{await api("/api/admin/server-control/channel"+q(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,type,category_id})});setStatus("server-channel-status","Channel created.");setVal("server-channel-name","");await loadServerControl();}
+ catch(e){setStatus("server-channel-status",e.message||"Channel creation failed.",false);}finally{channelButton.disabled=false;}
+});
 function setListVal(id,arr){setVal(id,(Array.isArray(arr)?arr:[]).join("\n"))}
 function getListVal(id){return getVal(id).split(/\\s*[,\\n]\\s*/).map(x=>x.trim()).filter(Boolean)}
 function fillXpForm(s){
