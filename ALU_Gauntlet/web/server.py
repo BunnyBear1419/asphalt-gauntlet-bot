@@ -2679,6 +2679,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/clubs", self.create_club)
         self.app.router.add_post("/api/clubs/update", self.update_club)
         self.app.router.add_post("/api/clubs/join", self.join_club)
+        self.app.router.add_post("/api/clubs/leave", self.leave_club)
         self.app.router.add_post("/api/clubs/member", self.manage_club_member)
         self.app.router.add_post("/api/tournaments", self.create_tournament)
         self.app.router.add_post("/api/tournaments/register", self.register_tournament)
@@ -3236,6 +3237,25 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 raise web.HTTPConflict(text="You are already in a club in this server.")
             raise
         return web.json_response({"ok": True, "message": "You joined the club."})
+
+    async def leave_club(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid club ID.") from exc
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        if str(club.get("leader_id")) == str(user.user_id):
+            raise web.HTTPConflict(text="Club leaders must transfer leadership before leaving.")
+        removed = await self.bot.db.club_members.delete_one({"club_id": str(oid), "user_id": str(user.user_id)})
+        if not removed.deleted_count:
+            raise web.HTTPConflict(text="You are not a member of this club.")
+        await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+        return web.json_response({"ok": True, "message": "You left the club."})
 
     async def manage_club_member(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
