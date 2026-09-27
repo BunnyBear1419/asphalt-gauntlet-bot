@@ -79,6 +79,7 @@
   <button data-section="links">🔗 Links</button>
   <button data-section="settings">⚙️ Site Settings</button>
   <button data-section="management">🧩 Management</button>
+  <button data-section="xp">⭐ XP &amp; Progression</button>
   <button data-section="system">🛠️ Sync &amp; System</button>
   <button data-section="fairness">🛡️ Fairness Review</button>
 </aside>
@@ -183,6 +184,33 @@
   </div>
 </section>
 
+<section class="admin-section" id="section-xp">
+  <div class="admin-card"><h2>XP &amp; Progression</h2><p>Configure RSL XP, level progression, boosters, restrictions, role rewards, leader roles and level-up announcements. XP remains separate from competitive Gauntlet and Tournament scoring.</p>
+    <div class="admin-grid three">
+      <div class="admin-field"><label>XP Curve</label><select id="xp-curve"><option value="linear">Linear</option><option value="exponential">Exponential</option><option value="flat">Flat</option></select></div>
+      <div class="admin-field"><label>Multiplier</label><input id="xp-multiplier" type="number" min="0.1" max="10" step="0.1"></div>
+      <div class="admin-field"><label>Max Level (0 = unlimited)</label><input id="xp-max-level" type="number" min="0"></div>
+      <div class="admin-field"><label>Message XP Min</label><input id="xp-message-min" type="number" min="0"></div>
+      <div class="admin-field"><label>Message XP Max</label><input id="xp-message-max" type="number" min="0"></div>
+      <div class="admin-field"><label>Message Cooldown (sec)</label><input id="xp-message-cooldown" type="number" min="0"></div>
+      <div class="admin-field"><label>Voice XP / Interval</label><input id="xp-voice-xp" type="number" min="0"></div>
+      <div class="admin-field"><label>Voice Cooldown (sec)</label><input id="xp-voice-cooldown" type="number" min="0"></div>
+      <div class="admin-field"><label>Minimum Voice Members</label><input id="xp-voice-min-members" type="number" min="1"></div>
+      <div class="admin-field"><label>Reaction XP</label><input id="xp-reaction-xp" type="number" min="0"></div>
+      <div class="admin-field"><label>Reaction Cooldown (sec)</label><input id="xp-reaction-cooldown" type="number" min="0"></div>
+      <div class="admin-field"><label>Level-Up Channel ID</label><input id="xp-level-channel"></div>
+      <div class="admin-field full"><label>Level-Up Message ({mention}, {username}, {level})</label><input id="xp-level-message"></div>
+      <div class="admin-field full"><label>Role Rewards — one per line: level:role_id</label><textarea id="xp-role-rewards"></textarea></div>
+      <div class="admin-field"><label>Top XP Role ID</label><input id="xp-leader-role"></div>
+      <div class="admin-field"><label>Top XP Role Period</label><select id="xp-leader-period"><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+      <div class="admin-field"><label>Excluded Role IDs</label><textarea id="xp-excluded-roles"></textarea></div>
+      <div class="admin-field"><label>Excluded Channel IDs</label><textarea id="xp-excluded-channels"></textarea></div>
+      <div class="admin-field"><label>Allowed Channel IDs (blank = all)</label><textarea id="xp-allowed-channels"></textarea></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn primary" id="xp-admin-save">Save XP Settings</button><span class="admin-status" id="xp-admin-status"></span></div>
+  </div>
+</section>
+
 <section class="admin-section" id="section-management">
   <div class="admin-card"><h2>Management Centers</h2><p>Open the existing live areas of the website. Admin authorization is still enforced by each route.</p>
     <div class="admin-tools-grid">
@@ -248,6 +276,7 @@ async function loadGuilds(){
  await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});
  select.addEventListener("change",async()=>{guildId=select.value;await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});await loadBranding();});
  await loadBranding();
+ await loadXpSettings();
 }
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function setVal(id,v){if($(id))$(id).value=v??""}
@@ -271,6 +300,27 @@ function fillForm(){
  $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
  $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);document.querySelectorAll(".admin-guild-link").forEach(a=>a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId)+(a.dataset.section?"#"+encodeURIComponent(a.dataset.section):""));
 }
+function setListVal(id,arr){setVal(id,(Array.isArray(arr)?arr:[]).join("\n"))}
+function getListVal(id){return getVal(id).split(/\\s*[,\\n]\\s*/).map(x=>x.trim()).filter(Boolean)}
+function fillXpForm(s){
+ setVal("xp-curve",s.curve||"linear");setVal("xp-multiplier",s.multiplier??1);setVal("xp-max-level",s.max_level??0);
+ setVal("xp-message-min",s.message_min??15);setVal("xp-message-max",s.message_max??30);setVal("xp-message-cooldown",s.message_cooldown??60);
+ setVal("xp-voice-xp",s.voice_xp??10);setVal("xp-voice-cooldown",s.voice_cooldown??180);setVal("xp-voice-min-members",s.voice_min_members??2);
+ setVal("xp-reaction-xp",s.reaction_xp??5);setVal("xp-reaction-cooldown",s.reaction_cooldown??300);
+ setVal("xp-level-channel",s.level_up_channel_id||"");setVal("xp-level-message",s.level_up_message||"");
+ setListVal("xp-role-rewards",(s.role_rewards||[]).map(x=>Array.isArray(x)?x.join(":"):x));setVal("xp-leader-role",s.leader_role_id||"");setVal("xp-leader-period",s.leader_role_period||"weekly");
+ setListVal("xp-excluded-roles",s.excluded_role_ids);setListVal("xp-excluded-channels",s.excluded_channel_ids);setListVal("xp-allowed-channels",s.allowed_channel_ids);
+}
+async function loadXpSettings(){
+ try{const s=await api("/api/xp/settings"+q());fillXpForm(s)}catch(e){setStatus("xp-admin-status",e.message,false)}
+}
+$("xp-admin-save").onclick=async()=>{
+ try{
+  const roleLines=getListVal("xp-role-rewards"); const rewards=roleLines.map(line=>{const [level,role_id]=line.split(":").map(x=>x.trim());return [Number(level),role_id]}).filter(x=>Number.isFinite(x[0])&&x[0]>0&&x[1]);
+  const payload={curve:getVal("xp-curve"),multiplier:Number(getVal("xp-multiplier")||1),max_level:Number(getVal("xp-max-level")||0),message_min:Number(getVal("xp-message-min")||0),message_max:Number(getVal("xp-message-max")||0),message_cooldown:Number(getVal("xp-message-cooldown")||0),voice_xp:Number(getVal("xp-voice-xp")||0),voice_cooldown:Number(getVal("xp-voice-cooldown")||0),voice_min_members:Number(getVal("xp-voice-min-members")||1),reaction_xp:Number(getVal("xp-reaction-xp")||0),reaction_cooldown:Number(getVal("xp-reaction-cooldown")||0),level_up_channel_id:getVal("xp-level-channel"),level_up_message:getVal("xp-level-message"),role_rewards:rewards,leader_role_id:getVal("xp-leader-role"),leader_role_period:getVal("xp-leader-period"),excluded_role_ids:getListVal("xp-excluded-roles"),excluded_channel_ids:getListVal("xp-excluded-channels"),allowed_channel_ids:getListVal("xp-allowed-channels")};
+  await api("/api/xp/settings"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});setStatus("xp-admin-status","XP settings saved.");
+ }catch(e){setStatus("xp-admin-status",e.message,false)}
+};
 async function loadBranding(){const d=await api("/api/admin/branding"+q());branding=d.branding;fillForm();await loadAudit()}
 function buildBranding(){
  const b=JSON.parse(JSON.stringify(branding));
