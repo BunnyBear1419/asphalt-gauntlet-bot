@@ -1,7 +1,7 @@
 """Runtime release identity for deployment and recovery verification."""
 from pathlib import Path
 
-_MARKER = Path(__file__).resolve().parents[1] / ".rsl-release-sha"
+_MARKER = Path(__file__).resolve().parents[1] / "rsl-release-sha.txt"
 
 
 def current_release_revision() -> str:
