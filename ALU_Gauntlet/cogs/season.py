@@ -7,7 +7,6 @@ from discord.ext import commands, tasks
 from discord import app_commands
 
 from ..core.core import *
-from ..core.authorization import require_admin
 from .translation import localize_text
 from ..core.gauntlet_progression import season_reward_for_rank
 from ..core.rsl_economy_ledger import apply_coin_transaction
@@ -410,7 +409,6 @@ class SeasonCog(commands.Cog):
     @season_group.command(name='auto', description='Control whether a scheduled season end automatically starts the next season.')
     @app_commands.describe(mode='Choose whether scheduled season endings may automatically roll into the next season')
     @app_commands.choices(mode=[app_commands.Choice(name="Enable automatic season rollover", value="on"), app_commands.Choice(name="Disable automatic season rollover", value="off")])
-    @require_admin()
     async def season_auto_cmd(self, interaction: discord.Interaction, mode: app_commands.Choice[str]):
         await interaction.response.defer(ephemeral=True)
         enabled = mode.value == 'on'
@@ -425,7 +423,6 @@ class SeasonCog(commands.Cog):
 
     @season_group.command(name='schedule', description='Sets custom calendar horizons for active tournament season grids.')
     @app_commands.describe(start_date='Start date mapping (YYYY-MM-DD HH:MM)', end_date='Closing deadline boundary (YYYY-MM-DD HH:MM)')
-    @require_admin()
     async def season_schedule_cmd(self, interaction: discord.Interaction, start_date: str, end_date: str):
         await interaction.response.defer(ephemeral=True)
         try:
@@ -459,7 +456,6 @@ class SeasonCog(commands.Cog):
     @season_group.command(name='reset', description="Reset this server's season numbering back to Season 1.")
     @app_commands.describe(mode='Choose whether to reset only the season number or clean all pre-launch test season data')
     @app_commands.choices(mode=[app_commands.Choice(name='Season number only', value='counter'), app_commands.Choice(name='Full pre-launch/test reset', value='full')])
-    @require_admin()
     async def season_reset_cmd(self, interaction: discord.Interaction, mode: app_commands.Choice[str]):
         full = mode.value == 'full'
         if full:
@@ -472,7 +468,6 @@ class SeasonCog(commands.Cog):
         )
 
     @season_group.command(name='start', description='Start the scheduled season early; its scheduled end still applies.')
-    @require_admin()
     async def season_start_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
@@ -529,7 +524,6 @@ class SeasonCog(commands.Cog):
         await audit_admin_action(interaction, 'Season Start', f'Explicitly started Season {season_number}.')
 
     @season_group.command(name='status', description='Show the current season schedule and automation state.')
-    @require_admin()
     async def season_status_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
@@ -563,7 +557,6 @@ class SeasonCog(commands.Cog):
         )
 
     @season_group.command(name='end', description='Force-closes the season; the next season will not roll over automatically.')
-    @require_admin()
     async def season_end_cmd(self, interaction: discord.Interaction):
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
