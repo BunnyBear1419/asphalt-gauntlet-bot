@@ -115,3 +115,9 @@ def test_xp_level_up_announcements_use_shared_localization():
     text = (ROOT / "ALU_Gauntlet" / "cogs" / "rsl_xp.py").read_text(encoding="utf-8")
     assert "from .translation import localize_text" in text
     assert "await localize_text(self.bot, member.id" in text
+
+
+def test_calendar_notifications_use_shared_localization():
+    text = (ROOT / "ALU_Gauntlet" / "cogs" / "notifications.py").read_text(encoding="utf-8")
+    assert "from .translation import localize_text" in text
+    assert "await localize_text(self.bot, int(user_id)" in text
