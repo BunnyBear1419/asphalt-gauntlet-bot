@@ -141,7 +141,7 @@ jobs:
           find . -type d -name __pycache__ -prune -exec rm -rf {} +
           rm -rf .pytest_cache
           echo "CI-generated caches and preflight artifacts removed."
-          printf "%s\n" "$GITHUB_SHA" > .rsl-release-sha
+          printf "%s\n" "$GITHUB_SHA" > rsl-release-sha.txt
           echo "Release marker written for $GITHUB_SHA."
 
       - name: Capture pre-deployment heartbeat
