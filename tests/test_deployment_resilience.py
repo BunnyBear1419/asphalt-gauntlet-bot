@@ -117,3 +117,11 @@ def test_rollback_recovery_requires_web_health_endpoint():
     assert 'Rollback web health HTTP status' in source
     assert 'rollback_web_ok' in source
     assert '[ "$rollback_web_ok" = "true" ]' in source
+
+def test_rollback_recovery_requires_fresh_heartbeat():
+    source = _source()
+    assert "Capture pre-rollback heartbeat" in source
+    assert "PREVIOUS_ROLLBACK_HEARTBEAT_AT" in source
+    assert "timestamp <= previous" in source
+    assert "time.time() - timestamp > 120" in source
+    assert "fresh post-rollback heartbeat" in source
