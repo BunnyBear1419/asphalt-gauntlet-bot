@@ -261,6 +261,36 @@ jobs:
           PY
             fi
 
+            HEARTBEAT_OK=$(MONGO_URI="$MONGO_URI" PREVIOUS_HEARTBEAT_AT="$PREVIOUS_HEARTBEAT_AT" python - <<'PY'
+import os
+import time
+from pymongo import MongoClient
+
+client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000)
+client.admin.command("ping")
+hb = client["asphalt_gauntlet"].system_events.find_one({"_id": "production_heartbeat"})
+client.close()
+
+if not hb or not hb.get("ready") or not hb.get("db_ok"):
+    print("false")
+    raise SystemExit
+
+timestamp = float(hb.get("timestamp", 0))
+previous = float(os.environ.get("PREVIOUS_HEARTBEAT_AT", "0") or 0)
+age = time.time() - timestamp
+if age > 120 or (previous and timestamp <= previous):
+    print("false")
+    raise SystemExit
+
+print("true")
+PY
+            )
+            echo "Production heartbeat gate: $HEARTBEAT_OK"
+            if [ "$HEARTBEAT_OK" != "true" ]; then
+              echo "Production heartbeat is missing, unhealthy, stale, or has not advanced past the pre-deploy heartbeat."
+              ok=false
+            fi
+
             WEB_HTTP=$(curl -sS -o web-health.json -w "%{http_code}" "https://asph.discloud.app/healthz" || true)
             echo "Web health HTTP status: $WEB_HTTP"
             if [ "$WEB_HTTP" != "200" ]; then
