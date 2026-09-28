@@ -164,7 +164,7 @@ async def language_context(interaction: discord.Interaction, message: discord.Me
     if cog is None:
         await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
         return
-    current = await get_user_language(cog.bot, interaction.user.id)
+    current = await get_user_language(cog.bot, interaction.user.id, interaction.locale)
     await interaction.response.send_message(
         f"{ui(current, 'settings')}\n{ui(current, 'choose')}\n\nCurrent: {language_flag(current)} **{language_name(current)}**",
         view=LanguageView(cog, current),
@@ -178,7 +178,7 @@ async def translate_context(interaction: discord.Interaction, message: discord.M
     if cog is None:
         await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
         return
-    target = await get_user_language(cog.bot, interaction.user.id)
+    target = await get_user_language(cog.bot, interaction.user.id, interaction.locale)
     if not message.content.strip():
         await interaction.response.send_message(ui(target, "failed"), ephemeral=True)
         return
