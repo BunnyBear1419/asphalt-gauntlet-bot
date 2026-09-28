@@ -190,3 +190,9 @@ def test_rollback_revision_must_be_a_distinct_committed_predecessor():
     assert 'Rollback revision resolves to the release being deployed.' in source
     assert 'git merge-base --is-ancestor "$previous" "$current"' in source
     assert "Rollback revision is a committed predecessor of the release." in source
+
+
+def test_discloud_ignore_excludes_ci_and_test_artifacts():
+    ignore = (ROOT / ".discloudignore").read_text(encoding="utf-8")
+    for entry in [".git", ".github", "tests", "__pycache__", ".pytest_cache", "*.pyc", "*.pyo", ".coverage"]:
+        assert entry in ignore
