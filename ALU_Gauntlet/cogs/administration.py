@@ -2,6 +2,7 @@ import aiohttp
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
+from .translation import localize_text
 from ..core.setup_wizard import launch_setup_wizard
 
 COMMAND_ARCHITECTURE_VERSION = 12
@@ -18,11 +19,11 @@ class ServerControlModal(discord.ui.Modal, title="Create RSL Server Resource"):
 
     async def on_submit(self, interaction: discord.Interaction):
         if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
-            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Staff authorization required.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         guild = interaction.guild
         if guild is None or guild.id != self.guild_id:
-            await interaction.response.send_message("This control is only valid in its original server.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "This control is only valid in its original server.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         resource = str(self.resource.value).strip().lower()
         name = str(self.name.value).strip()
@@ -43,12 +44,12 @@ class ServerControlModal(discord.ui.Modal, title="Create RSL Server Resource"):
                 channel = await guild.create_text_channel(name=name, reason="RSL server control")
                 message = "Created text channel #%s (%s)." % (channel.name, channel.id)
             else:
-                await interaction.response.send_message("Resource must be role, channel, or category.", ephemeral=True)
+                await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Resource must be role, channel, or category.", getattr(interaction, "locale", None)), ephemeral=True)
                 return
             await interaction.response.send_message("OK: " + message, ephemeral=True)
             await audit_admin_action(interaction, "Server Control", "Created %s %s." % (resource, name))
         except discord.Forbidden:
-            await interaction.response.send_message("Discord denied the operation. Check the bot Manage Roles/Channels permission and role hierarchy.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Discord denied the operation. Check the bot Manage Roles/Channels permission and role hierarchy.", getattr(interaction, "locale", None)), ephemeral=True)
         except Exception as exc:
             await interaction.response.send_message("Server control failed: %s" % str(exc)[:500], ephemeral=True)
 
@@ -63,22 +64,22 @@ class BotIdentityModal(discord.ui.Modal, title="Update RSL Bot Identity"):
 
     async def on_submit(self, interaction: discord.Interaction):
         if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
-            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Staff authorization required.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         if not bot.user:
-            await interaction.response.send_message("The Discord bot identity is not ready yet.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "The Discord bot identity is not ready yet.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         username = str(self.username.value).strip()
         avatar_url = str(self.avatar_url.value).strip()
         if not username and not avatar_url:
-            await interaction.response.send_message("Enter a username and/or avatar image URL.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Enter a username and/or avatar image URL.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         try:
             if username:
                 await bot.user.edit(username=username)
             if avatar_url:
                 if not avatar_url.startswith(("https://", "http://")):
-                    await interaction.response.send_message("Avatar URL must start with http:// or https://.", ephemeral=True)
+                    await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Avatar URL must start with http:// or https://.", getattr(interaction, "locale", None)), ephemeral=True)
                     return
                 async with aiohttp.ClientSession() as session:
                     async with session.get(avatar_url, timeout=aiohttp.ClientTimeout(total=15)) as response:
@@ -112,28 +113,28 @@ class CreateTournamentModal(discord.ui.Modal, title="Host RSL Tournament"):
 
     async def on_submit(self, interaction: discord.Interaction):
         if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
-            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Staff authorization required.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         name = str(self.name.value).strip()
         try:
             max_players = int(str(self.max_players.value).strip())
             team_size = int(str(self.team_size.value).strip())
         except ValueError:
-            await interaction.response.send_message("Maximum entrants and team size must be numbers.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Maximum entrants and team size must be numbers.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         fmt = str(self.format.value).strip().casefold()
         result_mode = str(self.result_mode.value).strip().casefold()
         if not name or not 2 <= max_players <= 256:
-            await interaction.response.send_message("Tournament name is required and maximum entrants must be 2-256.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Tournament name is required and maximum entrants must be 2-256.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         if team_size not in {1, 2, 3, 4}:
-            await interaction.response.send_message("Team size must be 1, 2, 3, or 4.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Team size must be 1, 2, 3, or 4.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         if fmt not in {"single_elimination", "double_elimination", "round_robin"}:
-            await interaction.response.send_message("Unsupported tournament format.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Unsupported tournament format.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         if result_mode not in {"player_review", "admin_only"}:
-            await interaction.response.send_message("Result mode must be player_review or admin_only.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Result mode must be player_review or admin_only.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         try:
             from ALU_Gauntlet.core.tournament import generate_tournament_bracket
@@ -161,7 +162,7 @@ class ServerControlView(discord.ui.View):
 
     async def _guard(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.owner_id or not await check_admin_privileges(interaction):
-            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Staff authorization required.", getattr(interaction, "locale", None)), ephemeral=True)
             return False
         return True
 
@@ -204,7 +205,7 @@ class ServerControlView(discord.ui.View):
 
 async def send_server_control(interaction: discord.Interaction):
     if not interaction.guild or not await check_admin_privileges(interaction):
-        await interaction.response.send_message("Staff authorization required inside a Discord server.", ephemeral=True)
+        await interaction.response.send_message(await localize_text(bot, interaction.user.id, "Staff authorization required inside a Discord server.", getattr(interaction, "locale", None)), ephemeral=True)
         return
     guild = interaction.guild
     embed = discord.Embed(
@@ -244,17 +245,17 @@ class AdministrationCog(commands.Cog):
     @app_commands.choices(image_type=[app_commands.Choice(name='Help Banner', value='banner_help'), app_commands.Choice(name='Match Banner', value='banner_match'), app_commands.Choice(name='Leaderboard Banner', value='banner_leaderboard'), app_commands.Choice(name='Profile Thumbnail', value='thumb_profile'), app_commands.Choice(name='Diagnostics Thumbnail', value='thumb_diagnostics')])
     async def setimage_cmd(self, interaction: discord.Interaction, image_type: app_commands.Choice[str], image: discord.Attachment):
         if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
-            await interaction.response.send_message('❌ Access Denied: Admin only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Access Denied: Admin only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild_id)
         if not image.content_type or not image.content_type.startswith('image/'):
-            await interaction.followup.send('❌ The uploaded file must be an image (PNG, JPG, GIF, etc.).', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ The uploaded file must be an image (PNG, JPG, GIF, etc.).', getattr(interaction, "locale", None)), ephemeral=True)
             return
         cfg = await bot.db.settings.find_one({'_id': guild_id})
         log_chan = bot.get_channel(int(cfg['log_channel_id'])) if cfg and cfg.get('log_channel_id') else None
         if not log_chan:
-            await interaction.followup.send('❌ Log channel not configured. Ask staff to complete **Server Setup** from `/staff`.', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ Log channel not configured. Ask staff to complete **Server Setup** from `/staff`.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         import io as _io
         img_data = await image.read()
@@ -263,7 +264,7 @@ class AdministrationCog(commands.Cog):
         if sent_msg.attachments:
             cdn_url = sent_msg.attachments[0].url
         else:
-            await interaction.followup.send('❌ Failed to re-upload image. Please try again.', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ Failed to re-upload image. Please try again.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         image_key = image_type.value
         ASPHALT_MEDIA[image_key] = cdn_url
@@ -279,12 +280,12 @@ class AdministrationCog(commands.Cog):
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
         if int(new_pi) < 0 or int(new_pi) > 100000:
-            await interaction.response.send_message('❌ PI must be between 0 and 100,000.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ PI must be between 0 and 100,000.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         result = await bot.db.drivers.update_one({'_id': f'{str(interaction.guild_id)}_{str(racer.id)}'}, {'$set': {'garage_pi': int(new_pi)}})
         if getattr(result, 'modified_count', 0) == 0:
-            await interaction.followup.send('❌ Driver profile not found or PI was unchanged.', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ Driver profile not found or PI was unchanged.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.followup.send(f"✅ Forced {racer.mention}'s profile rating to `{new_pi:,} PI`.")
         await audit_admin_action(interaction, 'Set PI', f"Changed <@{racer.id}>'s Garage PI to `{new_pi:,}`.")
@@ -296,7 +297,7 @@ class AdministrationCog(commands.Cog):
             return
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(racer.id)}'})
         if not profile:
-            await interaction.response.send_message(f"ℹ️ {racer.name} doesn't have a driver profile to remove.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, f"ℹ️ {racer.name} doesn't have a driver profile to remove.", getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.send_message(f"⚠️ **Confirm Purge:** This will permanently delete {racer.mention}'s driver profile (`{profile.get('elo', 1000)} ELO`, `{profile.get('career_wins', 0)} wins`). This cannot be undone.", view=ConfirmRemoveRacerView(interaction.guild_id, racer), ephemeral=True)
         await audit_admin_action(interaction, 'Remove Racer', f'Opened a purge confirmation for <@{racer.id}>.', color=ASPHALT_ALERT_COLOR)
@@ -305,11 +306,11 @@ class AdministrationCog(commands.Cog):
     @app_commands.describe(racer='Driver whose active registration should be reset')
     async def delete_id_cmd(self, interaction: discord.Interaction, racer: discord.Member):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('⛔ Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '⛔ Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         profile = await bot.db.drivers.find_one({'_id': f'{interaction.guild_id}_{racer.id}'})
         if not profile:
-            await interaction.response.send_message('ℹ️ No driver record was found for that player.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, 'ℹ️ No driver record was found for that player.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.send_message(f"⚠️ **Confirm active registration reset**\n\nThis will remove {racer.mention}'s current registration, game ID, garage PI and current defense workflow state. **Career wins, matches and history are preserved.**\n\nContinue?", view=ConfirmActiveRegistrationResetView(interaction.guild_id, racer.id), ephemeral=True)
         await audit_admin_action(interaction, 'Delete ID', f'Opened active-registration reset confirmation for <@{racer.id}>.', color=ASPHALT_ALERT_COLOR)
@@ -318,10 +319,10 @@ class AdministrationCog(commands.Cog):
     @app_commands.describe(username='New bot username (leave blank to keep the current one)', avatar='Upload an image to use as the new avatar (leave blank to keep the current one)')
     async def identity_cmd(self, interaction: discord.Interaction, username: str=None, avatar: discord.Attachment=None):
         if not interaction.guild:
-            await interaction.response.send_message('❌ This command can only be used inside a server.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ This command can only be used inside a server.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
-            await interaction.response.send_message('❌ Access Denied: Administrator or configured admin role required.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Access Denied: Administrator or configured admin role required.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         changed = []
@@ -332,29 +333,29 @@ class AdministrationCog(commands.Cog):
                 changed.append(f'**Username:** `{username_value}`')
             if avatar is not None:
                 if not avatar.content_type or not avatar.content_type.startswith('image/'):
-                    await interaction.followup.send('❌ The uploaded file must be an image.', ephemeral=True)
+                    await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ The uploaded file must be an image.', getattr(interaction, "locale", None)), ephemeral=True)
                     return
                 avatar_bytes = await avatar.read()
                 await bot.user.edit(avatar=avatar_bytes)
                 changed.append('**Avatar:** Updated from the uploaded image.')
             if not changed:
-                await interaction.followup.send('ℹ️ No identity changes were requested.', ephemeral=True)
+                await interaction.followup.send_message(await localize_text(bot, interaction.user.id, 'ℹ️ No identity changes were requested.', getattr(interaction, "locale", None)), ephemeral=True)
                 return
             embed = discord.Embed(title='✅ Bot Identity Updated', description='\n'.join(changed), color=ASPHALT_VICTORY_COLOR)
             embed.set_footer(text=f'Updated by {interaction.user}')
             await interaction.followup.send(embed=embed, ephemeral=True)
             await audit_admin_action(interaction, 'Bot Identity', 'Updated the bot username and/or avatar.')
         except discord.HTTPException as exc:
-            await interaction.followup.send(f'❌ Discord rejected the identity update: `{exc}`', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Discord rejected the identity update: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
         except Exception as exc:
             logging.exception('Bot identity update failed')
-            await interaction.followup.send(f'❌ Identity update failed: `{exc}`', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Identity update failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
 
     @app_commands.command(name='sync', description='[Admin Only] Synchronize slash commands with Discord.')
     @app_commands.describe(full_cleanup='Also clear stale per-server command overrides (slower; only needed occasionally, not on every deploy).')
     async def sync_cmd(self, interaction: discord.Interaction, full_cleanup: bool=False):
         if not interaction.user.guild_permissions.administrator and (not await check_admin_privileges(interaction)):
-            await interaction.response.send_message('❌ Access Denied: Administrator or configured admin role required.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Access Denied: Administrator or configured admin role required.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         try:
@@ -373,7 +374,7 @@ class AdministrationCog(commands.Cog):
             await audit_admin_action(interaction, 'Sync', f'Synchronized {len(synced)} global application commands.' + (f' Cleared {cleaned_count} server override(s).' if cleaned_count is not None else ''))
         except Exception as exc:
             logging.exception('Manual /admin sync failed')
-            await interaction.followup.send(f'❌ Slash command synchronization failed:\n`{exc}`', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Slash command synchronization failed:\n`{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
 
 async def setup(bot):
     cog = AdministrationCog(bot)
