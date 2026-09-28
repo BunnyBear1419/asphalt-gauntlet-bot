@@ -397,7 +397,7 @@ jobs:
           # upload contains only the known-good Git revision.
           git clean -fdx
           echo "Rollback workspace restored to the exact committed revision."
-          printf "%s\n" "${{ steps.revision.outputs.previous_sha }}" > .rsl-release-sha
+          printf "%s\n" "${{ steps.revision.outputs.previous_sha }}" > rsl-release-sha.txt
           echo "Rollback release marker written for ${{ steps.revision.outputs.previous_sha }}."
 
       - name: Capture pre-rollback heartbeat
