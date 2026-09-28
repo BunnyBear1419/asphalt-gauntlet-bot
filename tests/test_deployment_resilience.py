@@ -92,3 +92,11 @@ def test_rollback_cleans_failed_release_workspace_before_upload():
     assert "Clean failed-release workspace before rollback upload" in source
     assert "git clean -fdx" in source
     assert "known-good Git revision" in source
+
+
+def test_production_health_checks_web_health_endpoint():
+    source = (ROOT / ".github" / "workflows" / "production-health.yml").read_text(encoding="utf-8")
+    assert "Check production web health endpoint" in source
+    assert 'https://asph.discloud.app/healthz' in source
+    assert 'web-health.json' in source
+    assert 'data.get("ok")' in source
