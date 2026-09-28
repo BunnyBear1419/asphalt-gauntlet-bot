@@ -410,6 +410,9 @@ class SeasonCog(commands.Cog):
     @app_commands.describe(mode='Choose whether scheduled season endings may automatically roll into the next season')
     @app_commands.choices(mode=[app_commands.Choice(name="Enable automatic season rollover", value="on"), app_commands.Choice(name="Disable automatic season rollover", value="off")])
     async def season_auto_cmd(self, interaction: discord.Interaction, mode: app_commands.Choice[str]):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
         await interaction.response.defer(ephemeral=True)
         enabled = mode.value == 'on'
         await bot.db.settings.update_one({'_id': str(interaction.guild_id)}, {'$set': {'automatic_season_end': enabled}}, upsert=True)
@@ -424,6 +427,9 @@ class SeasonCog(commands.Cog):
     @season_group.command(name='schedule', description='Sets custom calendar horizons for active tournament season grids.')
     @app_commands.describe(start_date='Start date mapping (YYYY-MM-DD HH:MM)', end_date='Closing deadline boundary (YYYY-MM-DD HH:MM)')
     async def season_schedule_cmd(self, interaction: discord.Interaction, start_date: str, end_date: str):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
         await interaction.response.defer(ephemeral=True)
         try:
             config = await bot.db.settings.find_one({'_id': str(interaction.guild_id)})
@@ -457,6 +463,9 @@ class SeasonCog(commands.Cog):
     @app_commands.describe(mode='Choose whether to reset only the season number or clean all pre-launch test season data')
     @app_commands.choices(mode=[app_commands.Choice(name='Season number only', value='counter'), app_commands.Choice(name='Full pre-launch/test reset', value='full')])
     async def season_reset_cmd(self, interaction: discord.Interaction, mode: app_commands.Choice[str]):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
         full = mode.value == 'full'
         if full:
             warning = '⚠️ **FULL PRE-LAUNCH/TEST RESET**\n\nThis will return the server to Season 1, delete archived season history, clear pending/challenges/lap-time data, and reset registered drivers to an unregistered Season 1 state with ELO/career counters at zero. This is intended to erase test data before launch.'
@@ -469,6 +478,9 @@ class SeasonCog(commands.Cog):
 
     @season_group.command(name='start', description='Start the scheduled season early; its scheduled end still applies.')
     async def season_start_cmd(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
         await interaction.response.defer(ephemeral=True)
@@ -525,6 +537,9 @@ class SeasonCog(commands.Cog):
 
     @season_group.command(name='status', description='Show the current season schedule and automation state.')
     async def season_status_cmd(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
         await interaction.response.defer(ephemeral=True)
@@ -558,6 +573,9 @@ class SeasonCog(commands.Cog):
 
     @season_group.command(name='end', description='Force-closes the season; the next season will not roll over automatically.')
     async def season_end_cmd(self, interaction: discord.Interaction):
+        if not await check_admin_privileges(interaction):
+            await interaction.response.send_message("Staff authorization required.", ephemeral=True)
+            return
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
         await interaction.response.send_message(
