@@ -49,7 +49,7 @@ def test_player_profile_and_settings_are_separate_routes():
     assert 'add_get("/player/settings", self.player_settings_page)' in server
     assert 'Location": "/player/profile"' in server
     player=PLAYER.read_text(encoding="utf-8")
-    assert 'data-rsl-player-mode="profile"' in server
+    assert 'data-rsl-player-mode="{mode}"' in server
     assert 'My Profile' in player
     assert 'My Settings' in player
     assert 'href="/player/settings"' in player
