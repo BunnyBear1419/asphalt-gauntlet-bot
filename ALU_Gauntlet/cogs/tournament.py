@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import bot
+from .translation import localize_text
 
 MAX_MATCH_BUTTONS = 5
 
