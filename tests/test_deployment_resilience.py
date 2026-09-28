@@ -251,3 +251,23 @@ def test_failed_discloud_deploy_attempts_enter_recovery_path():
     assert "Deploy rollback to Discloud" in source
     assert "Restart Discloud app after rollback upload" in source
     assert "Verify rollback health" in source
+
+
+def test_deployment_marks_and_verifies_exact_runtime_revision():
+    source = _source()
+    assert 'printf "%s\\n" "$GITHUB_SHA" > .rsl-release-sha' in source
+    assert 'printf "%s\\n" "${{ steps.revision.outputs.previous_sha }}" > .rsl-release-sha' in source
+    assert 'EXPECTED_ROLLBACK_SHA: ${{ steps.revision.outputs.previous_sha }}' in source
+    assert 'Rollback revision mismatch: expected' in source
+    assert 'Rollback heartbeat revision mismatch: expected' in source
+
+
+def test_runtime_release_identity_is_exposed_by_health_and_heartbeat():
+    server = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet" / "core" / "core.py").read_text(encoding="utf-8")
+    release = (ROOT / "ALU_Gauntlet" / "release.py").read_text(encoding="utf-8")
+    assert "current_release_revision" in server
+    assert '"release_sha": current_release_revision()' in server
+    assert "current_release_revision" in core
+    assert '"release_sha": current_release_revision()' in core
+    assert "Path(__file__).resolve().parents[1] / \".rsl-release-sha\"" in release
