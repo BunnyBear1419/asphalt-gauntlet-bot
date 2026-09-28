@@ -198,16 +198,24 @@ jobs:
           DISCLOUD_APP_ID: asph
         run: |
           set -euo pipefail
-          restart_http=$(curl -sS -o discloud-restart.json -w "%{http_code}" -X PUT \
-            -H "api-token: $DISCLOUD_TOKEN" \
-            -H "Accept: application/json" \
-            "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/restart" || true)
-          echo "Discloud restart HTTP status: $restart_http"
-          if [ "$restart_http" != "200" ]; then
+          for attempt in 1 2 3; do
+            restart_http=$(curl -sS -o discloud-restart.json -w "%{http_code}" -X PUT \
+              -H "api-token: $DISCLOUD_TOKEN" \
+              -H "Accept: application/json" \
+              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/restart" || true)
+            echo "Discloud restart attempt $attempt/3 HTTP status: $restart_http"
+            if [ "$restart_http" = "200" ]; then
+              echo "Discloud restart requested successfully."
+              exit 0
+            fi
             cat discloud-restart.json || true
-            exit 1
-          fi
-          echo "Discloud restart requested successfully."
+            if [ "$attempt" -lt 3 ]; then
+              echo "Restart request did not succeed; retrying in 20 seconds."
+              sleep 20
+            fi
+          done
+          echo "ERROR: Discloud restart failed after 3 attempts."
+          exit 1
       # Use the exact curl/header pattern from production-health.yml. The prior
       # implementation used Python urllib for Discloud and received HTTP 403
       # while the production monitor using curl remained healthy.
@@ -430,16 +438,24 @@ PY
           DISCLOUD_APP_ID: asph
         run: |
           set -euo pipefail
-          restart_http=$(curl -sS -o discloud-rollback-restart.json -w "%{http_code}" -X PUT \
-            -H "api-token: $DISCLOUD_TOKEN" \
-            -H "Accept: application/json" \
-            "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/restart" || true)
-          echo "Rollback Discloud restart HTTP status: $restart_http"
-          if [ "$restart_http" != "200" ]; then
+          for attempt in 1 2 3; do
+            restart_http=$(curl -sS -o discloud-rollback-restart.json -w "%{http_code}" -X PUT \
+              -H "api-token: $DISCLOUD_TOKEN" \
+              -H "Accept: application/json" \
+              "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/restart" || true)
+            echo "Rollback Discloud restart attempt $attempt/3 HTTP status: $restart_http"
+            if [ "$restart_http" = "200" ]; then
+              echo "Rollback Discloud restart requested successfully."
+              exit 0
+            fi
             cat discloud-rollback-restart.json || true
-            exit 1
-          fi
-          echo "Rollback Discloud restart requested successfully."
+            if [ "$attempt" -lt 3 ]; then
+              echo "Rollback restart request did not succeed; retrying in 20 seconds."
+              sleep 20
+            fi
+          done
+          echo "ERROR: Rollback Discloud restart failed after 3 attempts."
+          exit 1
       - name: Verify rollback health
         id: rollback_verify
         if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_restart.outcome == 'success'
