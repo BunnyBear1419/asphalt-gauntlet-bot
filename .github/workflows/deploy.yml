@@ -384,7 +384,10 @@ PY
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
           set -euo pipefail
-          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)')
+          # Rollback must not be blocked by a transient Mongo outage. A zero
+          # baseline simply means the later verification must still prove a
+          # fresh, healthy post-rollback heartbeat.
+          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)') || heartbeat_at=0
           echo "heartbeat_at=$heartbeat_at" >> "$GITHUB_OUTPUT"
           echo "Pre-rollback heartbeat: $heartbeat_at"
 
@@ -479,6 +482,7 @@ PY
                  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
                  -H "Accept: application/json" \
                  "https://discord.com/api/v10/users/@me"; then
+              rollback_heartbeat_ok=false
               if MONGO_URI="$MONGO_URI" python - <<'PY'
           import os
           import time
@@ -498,6 +502,12 @@ PY
           print("Rollback heartbeat verification passed with a fresh post-rollback heartbeat.")
           PY
               then
+                rollback_heartbeat_ok=true
+              else
+                echo "Rollback heartbeat probe failed or is not fresh yet; retrying."
+              fi
+
+              if [ "$rollback_heartbeat_ok" = "true" ]; then
                 python - <<'PY'
           import json
           from pathlib import Path
