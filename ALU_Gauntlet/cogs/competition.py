@@ -1,6 +1,7 @@
 import hashlib
 from discord.ext import commands
 from discord import app_commands
+from .translation import localize_text
 from ..core.core import *
 
 class CompetitionCog(commands.Cog):
@@ -36,7 +37,7 @@ class CompetitionCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         routes = [t for t in ALU_TRACKS if map_name_from_track(t).lower() == map_name.lower()]
         if not routes:
-            await interaction.followup.send('❌ Please choose a map from the map list.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Please choose a map from the map list.', interaction.locale), ephemeral=True)
             return
         map_name_only = map_name_from_track(routes[0])
         embed = discord.Embed(title=f'🗺️ {map_name_only}', description='\n'.join((f'🏁 **Route {i + 1}:** `{route}`' for i, route in enumerate(routes))), color=ASPHALT_THEME_COLOR)
@@ -62,7 +63,7 @@ class CompetitionCog(commands.Cog):
             return
         await interaction.response.defer()
         if map_name not in ALU_TRACKS:
-            await interaction.followup.send('❌ Please choose a map from the track list.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Please choose a map from the track list.', interaction.locale), ephemeral=True)
             return
         await send_driver_best_time(interaction, driver, map_name)
 
@@ -74,7 +75,7 @@ class CompetitionCog(commands.Cog):
             return
         await interaction.response.defer()
         if map_name not in ALU_TRACKS:
-            await interaction.followup.send('❌ Please choose a map from the track list.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Please choose a map from the track list.', interaction.locale), ephemeral=True)
             return
         ref_id = re.sub('[^a-z0-9]+', '_', map_name.lower()).strip('_')
         ref = await bot.db.map_references.find_one({'_id': ref_id})
@@ -98,39 +99,39 @@ class CompetitionCog(commands.Cog):
             return
         await interaction.response.defer(ephemeral=True)
         if map_name not in ALU_TRACKS:
-            await interaction.followup.send('❌ Please choose a map from the track list.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Please choose a map from the track list.', interaction.locale), ephemeral=True)
             return
         ms = parse_lap_time(lap_time)
         if ms <= 0:
-            await interaction.followup.send('❌ Lap time must be a positive `MM:SS.MS` value with seconds from 00–59.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Lap time must be a positive `MM:SS.MS` value with seconds from 00–59.', interaction.locale), ephemeral=True)
             return
         if not video_reference.lower().startswith(('http://', 'https://')):
-            await interaction.followup.send('❌ Video reference must be a valid URL.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Video reference must be a valid URL.', interaction.locale), ephemeral=True)
             return
         ref_id = re.sub('[^a-z0-9]+', '_', map_name.lower()).strip('_')
         current = await bot.db.map_references.find_one({'_id': ref_id})
         if current and ms >= int(current.get('best_ms', 10 ** 18)):
-            await interaction.followup.send(f"ℹ️ `{lap_time}` is not faster than the current approved reference `{current['best_lap_time']}`.", ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f"ℹ️ `{lap_time}` is not faster than the current approved reference `{current['best_lap_time']}`.", interaction.locale), ephemeral=True)
             return
         guild_id = str(interaction.guild_id)
         season = await get_current_season_number(guild_id)
         submitter = await bot.db.drivers.find_one({'_id': f'{guild_id}_{interaction.user.id}'})
         if not submitter or not submitter.get('season_registered') or int(submitter.get('season_number', 0)) != season:
-            await interaction.followup.send(f'❌ You must be registered for Season {season} before submitting a reference lap.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ You must be registered for Season {season} before submitting a reference lap.', interaction.locale), ephemeral=True)
             return
         cfg = await bot.db.settings.find_one({'_id': guild_id})
         review_chan = bot.get_channel(int(cfg['review_channel_id'])) if cfg and cfg.get('review_channel_id') else None
         if not review_chan:
-            await interaction.followup.send('❌ Staff review channel is not configured.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Staff review channel is not configured.', interaction.locale), ephemeral=True)
             return
         fingerprint = hashlib.sha256(f'{guild_id}:{interaction.user.id}:{map_name.lower()}:{ms}:{video_reference.strip()}'.encode()).hexdigest()
         existing_submission = await bot.db.reference_pending.find_one({'fingerprint': fingerprint, 'guild_id': guild_id})
         if existing_submission:
             if existing_submission.get('status') == 'pending' and existing_submission.get('review_message_id'):
-                await interaction.followup.send('⏳ This exact reference submission is already pending staff review.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, '⏳ This exact reference submission is already pending staff review.', interaction.locale), ephemeral=True)
                 return
             if existing_submission.get('status') == 'approved':
-                await interaction.followup.send('ℹ️ This exact reference submission has already been approved.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ This exact reference submission has already been approved.', interaction.locale), ephemeral=True)
                 return
         submission_id = f'{guild_id}_{interaction.user.id}_{int(time.time() * 1000)}'
         submission = {'_id': submission_id, 'guild_id': guild_id, 'user_id': str(interaction.user.id), 'track': map_name, 'lap_time': lap_time, 'ms': ms, 'video_url': video_reference.strip(), 'status': 'pending', 'delivery_status': 'sending', 'submitted_at': time.time(), 'fingerprint': fingerprint}
@@ -138,7 +139,7 @@ class CompetitionCog(commands.Cog):
             await bot.db.reference_pending.insert_one(submission)
         except DuplicateKeyError:
             existing_submission = await bot.db.reference_pending.find_one({'fingerprint': fingerprint, 'guild_id': guild_id})
-            await interaction.followup.send('⏳ This exact reference submission is already pending staff review.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '⏳ This exact reference submission is already pending staff review.', interaction.locale), ephemeral=True)
             return
         emb = discord.Embed(title='🎥 New Reference Lap Submission', description=f'<@{interaction.user.id}> submitted a potential new reference for **{map_name}**.\n\n**Lap:** `{lap_time}`\n**Video:** {video_reference}', color=ASPHALT_ADMIN_COLOR)
         emb.set_footer(text=f'ALU Reference Submission: {submission_id}')
@@ -154,9 +155,9 @@ class CompetitionCog(commands.Cog):
                 await bot.db.reference_pending.update_one({'_id': submission_id, 'status': 'pending'}, {'$set': {'review_channel_id': int(review_chan.id), 'review_message_id': int(found.id), 'delivery_status': 'delivered'}})
             else:
                 await bot.db.reference_pending.delete_one({'_id': submission_id, 'status': 'pending'})
-                await interaction.followup.send('❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', interaction.locale), ephemeral=True)
                 return
-        await interaction.followup.send('📥 Reference submitted to staff for approval. If approved, it replaces the current reference for that map.', ephemeral=True)
+        await interaction.followup.send(await localize_text(bot, interaction.user.id, '📥 Reference submitted to staff for approval. If approved, it replaces the current reference for that map.', interaction.locale), ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(CompetitionCog(bot))
