@@ -300,7 +300,7 @@ jobs:
           raise SystemExit
 
           print("true")
-PY
+          PY
             ) || HEARTBEAT_OK=false
             echo "Production heartbeat gate: $HEARTBEAT_OK"
             if [ "$HEARTBEAT_OK" != "true" ]; then
