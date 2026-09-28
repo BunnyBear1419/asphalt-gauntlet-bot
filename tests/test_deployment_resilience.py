@@ -164,3 +164,10 @@ def test_recovery_success_requires_rollback_restart_and_verification():
     assert "steps.rollback_restart.outcome == 'success'" in source
     assert "Fail recovery if rollback restart or verification failed" in source
     assert "Rollback upload completed, but rollback restart or health verification failed" in source
+
+
+def test_deployment_start_time_is_not_dead_state():
+    source = _source()
+    assert "Record deployment start time" not in source
+    assert "DEPLOY_STARTED_AT" not in source
+    assert "steps.deployment.outputs.started_at" not in source
