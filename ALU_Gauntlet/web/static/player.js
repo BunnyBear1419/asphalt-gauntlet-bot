@@ -268,7 +268,6 @@ if(saveProfile)saveProfile.addEventListener("click",async()=>{
         game_name:$("#profile-game-name")?.value||"",
         about:$("#profile-about")?.value||"",
         location:$("#profile-location")?.value||"",
-        timezone:$("#profile-timezone")?.value||"UTC",
         platform:$("#profile-platform")?.value||"",
         driver_type:$("#profile-driver-type")?.value||"",
         links
