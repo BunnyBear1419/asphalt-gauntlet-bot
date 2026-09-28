@@ -20,11 +20,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.12"
+          cache: pip
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -36,3 +37,81 @@ jobs:
         run: python -m compileall -q .
       - name: Test
         run: pytest -q
+
+  deploy:
+    name: deploy
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+      - name: Install deployment checks
+        run: python -m pip install --quiet pymongo
+      - name: Validate secrets
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          test -n "$DISCLOUD_TOKEN"
+          test -n "$DISCORD_BOT_TOKEN"
+          test -n "$MONGO_URI"
+      - name: Validate Discord token
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o discord-preflight.json -w "%{http_code}" -H "Authorization: Bot $DISCORD_BOT_TOKEN" "https://discord.com/api/v10/users/@me" || true)"
+          echo "Discord preflight: $code"
+          test "$code" = "200"
+      - name: Validate production asset
+        run: |
+          set -euo pipefail
+          file ALU_Gauntlet/web/static/assets/home-hero-4k.jpg
+          file ALU_Gauntlet/web/static/assets/home-hero-4k.jpg | grep -qi "JPEG image data"
+      - name: Deploy to Discloud
+        id: deploy
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: asph
+          glob: "**"
+          team: "false"
+      - name: Restart Discloud app
+        id: restart
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            code="$(curl -sS -o discloud-restart.json -w "%{http_code}" -X PUT -H "api-token: $DISCLOUD_TOKEN" -H "Accept: application/json" "https://api.discloud.app/v2/app/asph/restart" || true)"
+            echo "Restart attempt $attempt/3: $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            [ "$attempt" -lt 3 ] && sleep 20
+          done
+          exit 1
+      - name: Smoke test
+        id: smoke
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            code="$(curl -sS -o web-health.json -w "%{http_code}" "https://asph.discloud.app/healthz" || true)"
+            echo "Web health attempt $attempt/12: $code"
+            if [ "$code" = "200" ] && python -c 'import json; print(json.load(open("web-health.json")).get("ok") is True)' | grep -q True; then
+              discord_code="$(curl -sS -o discord-user.json -w "%{http_code}" -H "Authorization: Bot $DISCORD_BOT_TOKEN" "https://discord.com/api/v10/users/@me" || true)"
+              echo "Discord API: $discord_code"
+              if [ "$discord_code" = "200" ]; then exit 0; fi
+            fi
+            [ "$attempt" -lt 12 ] && sleep 10
+          done
+          exit 1
