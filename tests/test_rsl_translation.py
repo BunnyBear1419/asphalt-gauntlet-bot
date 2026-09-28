@@ -75,3 +75,11 @@ def test_rsl_language_preference_falls_back_to_discord_locale():
     assert "saved in RSL_LANGUAGES" in text
     translation = COG.read_text(encoding="utf-8")
     assert "get_user_language(cog.bot, interaction.user.id, interaction.locale)" in translation
+
+
+def test_english_translation_is_local_only_and_unavailable_context_menu_is_localized():
+    text = COG.read_text(encoding="utf-8")
+    assert 'if target == "en":' in text
+    assert 'return text' in text
+    assert "discord_locale_language(interaction.locale)" in text
+    assert 'ui(language, "failed")' in text
