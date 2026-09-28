@@ -108,3 +108,12 @@ def test_post_deploy_smoke_requires_fresh_production_heartbeat():
     assert 'timestamp <= previous' in source
     assert 'age > 120' in source
     assert 'production_heartbeat' in source
+
+
+def test_rollback_recovery_requires_web_health_endpoint():
+    source = _source()
+    assert 'rollback-web-health.json' in source
+    assert 'https://asph.discloud.app/healthz' in source
+    assert 'Rollback web health HTTP status' in source
+    assert 'rollback_web_ok' in source
+    assert '[ "$rollback_web_ok" = "true" ]' in source
