@@ -31,14 +31,17 @@ function mediaHtml(media){
  }).join("")+'</div>';
 }
 function resultDetail(t,media){
- const champion=t.champion_name?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span><strong>'+esc(t.champion_name)+'</strong></section>':'';
+ const champion=t.champion_name?'<section class="tournament-champion"><span>🏆 TOURNAMENT CHAMPION</span>'+(Number(t.team_size||1)===1&&t.champion_id?'<a class="rsl-driver-link" href="/profile?user_id='+encodeURIComponent(t.champion_id)+'"><strong>'+esc(t.champion_name)+'</strong></a>':'<strong>'+esc(t.champion_name)+'</strong>')+'</section>':'';
  const standings=t.standings||[];
- const table=standings.length?'<table class="results-table"><thead><tr><th>PLACE</th><th>DRIVER / CLUB</th><th>W</th><th>L</th><th>PLAYED</th></tr></thead><tbody>'+standings.map(x=>'<tr><td><strong>'+esc(x.placement??"—")+'</strong></td><td>'+esc(x.name)+'</td><td>'+Number(x.wins||0)+'</td><td>'+Number(x.losses||0)+'</td><td>'+Number(x.matches_played||0)+'</td></tr>').join("")+'</tbody></table>':'<div class="tournament-empty">No final standings recorded.</div>';
+ const table=standings.length?'<table class="results-table"><thead><tr><th>PLACE</th><th>DRIVER / CLUB</th><th>W</th><th>L</th><th>PLAYED</th></tr></thead><tbody>'+standings.map(x=>'<tr><td><strong>'+esc(x.placement??"—")+'</strong></td><td>'+((Number(t.team_size||1)===1&&x.entrant_id)?'<a class="rsl-driver-link" href="/profile?user_id='+encodeURIComponent(x.entrant_id)+'">'+esc(x.name)+'</a>':esc(x.name))+'</td><td>'+Number(x.wins||0)+'</td><td>'+Number(x.losses||0)+'</td><td>'+Number(x.matches_played||0)+'</td></tr>').join("")+'</tbody></table>':'<div class="tournament-empty">No final standings recorded.</div>';
  const matches=t.matches||[];
  const history=matches.length?'<div>'+matches.map(m=>{
    const a=m.entrant_names?.[0]||m.player_slots?.[0]||"—", b=m.entrant_names?.[1]||m.player_slots?.[1]||"—";
-   const winner=m.winner_name||m.winner_id||"";
-   return '<div class="completed-match"><small>'+esc(m.id)+'<br>R'+Number(m.round||0)+'</small><span>'+esc(a)+' vs '+esc(b)+'</span><strong>'+esc(winner?'Winner: '+winner:"Verified")+'</strong></div>';
+   const aId=m.player_slots?.[0]||"", bId=m.player_slots?.[1]||"", winner=m.winner_name||m.winner_id||"", winnerId=m.winner_id||"";
+   const aHtml=(Number(t.team_size||1)===1&&aId)?'<a class="rsl-driver-link" href="/profile?user_id='+encodeURIComponent(aId)+'">'+esc(a)+'</a>':esc(a);
+   const bHtml=(Number(t.team_size||1)===1&&bId)?'<a class="rsl-driver-link" href="/profile?user_id='+encodeURIComponent(bId)+'">'+esc(b)+'</a>':esc(b);
+   const wHtml=winner?(Number(t.team_size||1)===1&&winnerId?'<a class="rsl-driver-link" href="/profile?user_id='+encodeURIComponent(winnerId)+'">'+esc(winner)+'</a>':esc(winner)):"Verified";
+   return '<div class="completed-match"><small>'+esc(m.id)+'<br>R'+Number(m.round||0)+'</small><span>'+aHtml+' vs '+bHtml+'</span><strong>Winner: '+wHtml+'</strong></div>';
  }).join("")+'</div>':'<div class="tournament-empty">No completed matches recorded.</div>';
  return '<div class="panel-heading"><div><span class="eyebrow">COMPLETED TOURNAMENT</span><h2>'+esc(t.name)+'</h2></div><span>'+esc(t.format||"")+'</span></div>'+
  '<p>'+esc(t.status==="completed"?"Tournament complete. All published results below are staff-verified.":"")+'</p>'+champion+
