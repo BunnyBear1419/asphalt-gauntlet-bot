@@ -411,7 +411,7 @@ PY
 
       - name: Deploy rollback retry
         id: rollback_retry
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
