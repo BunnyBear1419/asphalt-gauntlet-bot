@@ -337,6 +337,16 @@ jobs:
           ref: ${{ steps.revision.outputs.previous_sha }}
           fetch-depth: 0
 
+      - name: Clean failed-release workspace before rollback upload
+        if: steps.smoke.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          # The smoke test creates downloaded response/artwork files after the
+          # production checkout. Remove every untracked artifact so the rollback
+          # upload contains only the known-good Git revision.
+          git clean -fdx
+          echo "Rollback workspace restored to the exact committed revision."
+
       - name: Deploy rollback to Discloud
         id: rollback_deploy
         if: steps.smoke.outcome == 'failure'
