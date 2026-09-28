@@ -56,6 +56,8 @@ class FakeUser:
     def __init__(self, user_id=12345):
         self.id = user_id
         self.mention = f"<@{user_id}>"
+        self.guild_permissions = SimpleNamespace(administrator=True)
+        self.roles = []
 
 
 class FakeResponse:
@@ -84,6 +86,7 @@ class FakeFollowup:
 class FakeInteraction:
     def __init__(self, guild_id="guild-a", user_id=12345):
         self.guild_id = guild_id
+        self.guild = SimpleNamespace(get_role=lambda role_id: None)
         self.channel_id = 98765
         self.user = FakeUser(user_id)
         self.response = FakeResponse()
