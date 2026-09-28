@@ -199,7 +199,7 @@ class NotificationCog(commands.Cog):
                         user = self.bot.get_user(int(user_id)) or await self.bot.fetch_user(int(user_id))
                         locale = getattr(user, "locale", None)
                         when = "is happening now" if selected_days <= 0 else (f"is coming up in {selected_days:g} day" + ("." if selected_days == 1 else "s."))
-                                                embed = discord.Embed(
+                        embed = discord.Embed(
                             title=await localize_text(self.bot, int(user_id), "🔔 RSL Personal Reminder", locale),
                             description=await localize_text(self.bot, int(user_id), f"**{reminder.get('title', 'Personal Reminder')}** {when}.", locale),
                             color=0x19D3FF,
