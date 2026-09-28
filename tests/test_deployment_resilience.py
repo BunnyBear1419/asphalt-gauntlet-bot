@@ -139,3 +139,12 @@ def test_rollback_recovery_survives_transient_mongo_failures():
     assert 'rollback_heartbeat_ok=false' in source
     assert 'Rollback heartbeat probe failed or is not fresh yet; retrying.' in source
     assert '[ "$rollback_heartbeat_ok" = "true" ]' in source
+
+
+def test_restart_failure_enters_rollback_path():
+    source = _source()
+    assert "id: restart" in source
+    assert "continue-on-error: true" in source
+    assert "if: steps.restart.outcome == 'success'" in source
+    assert "if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'" in source
+    assert "Both rollback uploads failed" in source
