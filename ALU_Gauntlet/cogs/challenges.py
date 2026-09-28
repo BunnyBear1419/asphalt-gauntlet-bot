@@ -1,5 +1,6 @@
 from discord.ext import commands
 from discord import app_commands
+from .translation import localize_text
 from ..core.core import *
 from ..core.match_scoring import apply_rsl_performance_bonus
 from ..core.fairness import fair_match_snapshot
@@ -114,7 +115,7 @@ class ChallengesCog(commands.Cog):
         guild_id, user_id = (str(interaction.guild_id), str(interaction.user.id))
         active = await claim_active_challenge(guild_id, user_id)
         if not active:
-            await interaction.followup.send('❌ You have no active challenge, or it is already being submitted. Open `/dashboard` → **Challenges** → **Find Challenge** first.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ You have no active challenge, or it is already being submitted. Open `/dashboard` → **Challenges** → **Find Challenge** first.', interaction.locale), ephemeral=True)
             return
         laps = [lap1, lap2, lap3, lap4, lap5]
         cars = [car1, car2, car3, car4, car5]
@@ -124,39 +125,39 @@ class ChallengesCog(commands.Cog):
         for i, c in enumerate(cars):
             if c.casefold() not in lookup:
                 await release_active_challenge(active['_id'])
-                await interaction.followup.send(f'❌ Car {i + 1} is not in the approved ALU roster.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Car {i + 1} is not in the approved ALU roster.', interaction.locale), ephemeral=True)
                 return
             canonical.append(lookup[c.casefold()])
         if len({c.casefold() for c in canonical}) != 5:
             await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ All 5 attack cars must be different.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ All 5 attack cars must be different.', interaction.locale), ephemeral=True)
             return
         if any((int(r) <= 0 for r in ranks)):
             await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ All 5 car performance ratings must be greater than 0.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ All 5 car performance ratings must be greater than 0.', interaction.locale), ephemeral=True)
             return
         challenger_times = []
         for i, l in enumerate(laps):
             ms = parse_lap_time(l.strip())
             if ms <= 0:
                 await release_active_challenge(active['_id'])
-                await interaction.followup.send(f'❌ Lap {i + 1} is invalid. Use a positive `MM:SS.MS` time.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Lap {i + 1} is invalid. Use a positive `MM:SS.MS` time.', interaction.locale), ephemeral=True)
                 return
             challenger_times.append({'lap_time_str': l.strip(), 'ms': ms, 'car': canonical[i], 'car_rank': int(ranks[i])})
         proof = proof.strip()
         if not proof.lower().startswith(('http://', 'https://')):
             await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ Proof must be an image URL starting with `http://` or `https://`.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Proof must be an image URL starting with `http://` or `https://`.', interaction.locale), ephemeral=True)
             return
         current_season = await get_current_season_number(guild_id)
         if int(active.get('season_number', 0)) != current_season:
             await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ This challenge belongs to an older season. Open `/dashboard` → **Challenges** → **Find Challenge** to start a new one.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ This challenge belongs to an older season. Open `/dashboard` → **Challenges** → **Find Challenge** to start a new one.', interaction.locale), ephemeral=True)
             return
         defense = active.get('defense_courses', [])
         if len(defense) != 5:
             await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ The saved challenge data is incomplete. Please start a new challenge from `/dashboard` → **Challenges**.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ The saved challenge data is incomplete. Please start a new challenge from `/dashboard` → **Challenges**.', interaction.locale), ephemeral=True)
             return
         match_data = await process_match_result(guild_id, user_id, str(active['opponent_id']), defense, challenger_times, proof, active.get('defender_proof_url'), interaction.channel_id, settlement_id=f"{active['_id']}:match")
         try:
@@ -172,7 +173,7 @@ class ChallengesCog(commands.Cog):
                 await reconcile_processing_challenges(guild_id)
             else:
                 await release_active_challenge(active['_id'])
-            await interaction.followup.send('❌ Could not process this match. If a settlement reservation was created, the bot will reconcile it automatically.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Could not process this match. If a settlement reservation was created, the bot will reconcile it automatically.', interaction.locale), ephemeral=True)
             return
         result = await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id'], 'ticket_burned': True, 'settlement_closed': True}, '$unset': {'processing_at': ''}})
         if getattr(result, 'modified_count', 0) != 1:
@@ -193,16 +194,16 @@ class ChallengesCog(commands.Cog):
         result_emb.add_field(name='RSL Performance Adjustment', value=f"{'+' if margin_bonus >= 0 else ''}{margin_bonus} ELO • race-margin scoring", inline=False)
         if results:
             await results.send(embed=result_emb, view=MatchResultPostView(match_data['_id']))
-        await interaction.followup.send('✅ **Match submitted!** Results and ELO are updated.', ephemeral=True)
+        await interaction.followup.send(await localize_text(bot, interaction.user.id, '✅ **Match submitted!** Results and ELO are updated.', interaction.locale), ephemeral=True)
         dm_delivered = await send_player_dm(guild_id, active['opponent_id'], content=f"🏁 **Gauntlet match complete**\nYour defense vs <@{user_id}> is complete: {match_data['courses_beat']}/5 courses beaten by the challenger.", alert_staff_on_failure=True, failure_context="Match completion notice")
         if not dm_delivered:
-            await interaction.followup.send("⚠️ The match was settled successfully, but the defender could not be notified by DM. Staff have been alerted; the result is still visible in the match-results channel.", ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, "⚠️ The match was settled successfully, but the defender could not be notified by DM. Staff have been alerted; the result is still visible in the match-results channel.", interaction.locale), ephemeral=True)
         await dispatch_audit_log(guild_id, '🏁 Match Result Processed', f"Match between <@{user_id}> and <@{active['opponent_id']}>. Challenger won {match_data['courses_beat']}/5 races.", color=3066993)
         await dispatch_automated_announcement(guild_id, match_data['announce_title'], f"🏎️ <@{user_id}> vs <@{active['opponent_id']}> — {('Challenger won' if match_data['challenger_won'] else 'Defense held')} {match_data['courses_beat']}/5.", color=match_data['display_color'])
 
     async def challenge_cmd_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         if isinstance(error, app_commands.CommandOnCooldown):
-            await interaction.response.send_message(f'⏳ **Slow down!** You can search for a new opponent again in `{error.retry_after:.0f}s`.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, f'⏳ **Slow down!** You can search for a new opponent again in `{error.retry_after:.0f}s`.', interaction.locale), ephemeral=True)
         else:
             logging.exception('/challenge command error', exc_info=error)
 
