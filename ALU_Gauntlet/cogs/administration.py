@@ -250,12 +250,12 @@ class AdministrationCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild_id)
         if not image.content_type or not image.content_type.startswith('image/'):
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ The uploaded file must be an image (PNG, JPG, GIF, etc.).', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ The uploaded file must be an image (PNG, JPG, GIF, etc.).', getattr(interaction, "locale", None)), ephemeral=True)
             return
         cfg = await bot.db.settings.find_one({'_id': guild_id})
         log_chan = bot.get_channel(int(cfg['log_channel_id'])) if cfg and cfg.get('log_channel_id') else None
         if not log_chan:
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ Log channel not configured. Ask staff to complete **Server Setup** from `/staff`.', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Log channel not configured. Ask staff to complete **Server Setup** from `/staff`.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         import io as _io
         img_data = await image.read()
@@ -264,7 +264,7 @@ class AdministrationCog(commands.Cog):
         if sent_msg.attachments:
             cdn_url = sent_msg.attachments[0].url
         else:
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ Failed to re-upload image. Please try again.', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Failed to re-upload image. Please try again.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         image_key = image_type.value
         ASPHALT_MEDIA[image_key] = cdn_url
@@ -285,7 +285,7 @@ class AdministrationCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         result = await bot.db.drivers.update_one({'_id': f'{str(interaction.guild_id)}_{str(racer.id)}'}, {'$set': {'garage_pi': int(new_pi)}})
         if getattr(result, 'modified_count', 0) == 0:
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ Driver profile not found or PI was unchanged.', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Driver profile not found or PI was unchanged.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.followup.send(f"✅ Forced {racer.mention}'s profile rating to `{new_pi:,} PI`.")
         await audit_admin_action(interaction, 'Set PI', f"Changed <@{racer.id}>'s Garage PI to `{new_pi:,}`.")
@@ -333,23 +333,23 @@ class AdministrationCog(commands.Cog):
                 changed.append(f'**Username:** `{username_value}`')
             if avatar is not None:
                 if not avatar.content_type or not avatar.content_type.startswith('image/'):
-                    await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ The uploaded file must be an image.', getattr(interaction, "locale", None)), ephemeral=True)
+                    await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ The uploaded file must be an image.', getattr(interaction, "locale", None)), ephemeral=True)
                     return
                 avatar_bytes = await avatar.read()
                 await bot.user.edit(avatar=avatar_bytes)
                 changed.append('**Avatar:** Updated from the uploaded image.')
             if not changed:
-                await interaction.followup.send_message(await localize_text(bot, interaction.user.id, 'ℹ️ No identity changes were requested.', getattr(interaction, "locale", None)), ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ No identity changes were requested.', getattr(interaction, "locale", None)), ephemeral=True)
                 return
             embed = discord.Embed(title='✅ Bot Identity Updated', description='\n'.join(changed), color=ASPHALT_VICTORY_COLOR)
             embed.set_footer(text=f'Updated by {interaction.user}')
             await interaction.followup.send(embed=embed, ephemeral=True)
             await audit_admin_action(interaction, 'Bot Identity', 'Updated the bot username and/or avatar.')
         except discord.HTTPException as exc:
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Discord rejected the identity update: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Discord rejected the identity update: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
         except Exception as exc:
             logging.exception('Bot identity update failed')
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Identity update failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Identity update failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
 
     @app_commands.command(name='sync', description='[Admin Only] Synchronize slash commands with Discord.')
     @app_commands.describe(full_cleanup='Also clear stale per-server command overrides (slower; only needed occasionally, not on every deploy).')
@@ -374,7 +374,7 @@ class AdministrationCog(commands.Cog):
             await audit_admin_action(interaction, 'Sync', f'Synchronized {len(synced)} global application commands.' + (f' Cleared {cleaned_count} server override(s).' if cleaned_count is not None else ''))
         except Exception as exc:
             logging.exception('Manual /admin sync failed')
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Slash command synchronization failed:\n`{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Slash command synchronization failed:\n`{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
 
 async def setup(bot):
     cog = AdministrationCog(bot)
