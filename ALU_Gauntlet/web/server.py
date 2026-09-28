@@ -2611,6 +2611,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/news-admin", self.news_admin_page)
         self.app.router.add_get("/admin", self.admin_page)
         self.app.router.add_get("/player", self.player_page)
+        self.app.router.add_get("/player/profile", self.player_profile_page)
+        self.app.router.add_get("/player/settings", self.player_settings_page)
         self.app.router.add_get("/profile", self.profile_page)
         self.app.router.add_get("/my-tournaments", self.my_tournaments_page)
         self.app.router.add_get("/gauntlet/registration", self.gauntlet_registration_page)
