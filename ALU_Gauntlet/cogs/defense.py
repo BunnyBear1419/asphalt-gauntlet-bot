@@ -1,6 +1,7 @@
 import hashlib
 from discord.ext import commands
 from discord import app_commands
+from .translation import localize_text
 from ..core.core import *
 
 class DefenseStartView(discord.ui.View):
@@ -14,7 +15,7 @@ class DefenseStartView(discord.ui.View):
     @discord.ui.button(label='📝 Enter Defense Results', style=discord.ButtonStyle.primary)
     async def enter_results(self, interaction: discord.Interaction, button: discord.ui.Button):
         if str(interaction.user.id) != self.user_id:
-            await interaction.response.send_message('❌ This defense setup belongs to another driver.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ This defense setup belongs to another driver.', interaction.locale), ephemeral=True)
             return
         await interaction.response.send_message(
             '🛡️ **Defense results are ready to submit.**\n\n'
@@ -64,13 +65,13 @@ class DefenseView(discord.ui.View):
     @discord.ui.button(label='✅ Approve Defense', style=discord.ButtonStyle.success, custom_id='alu_defense_approve')
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await self._authorized(interaction):
-            await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff/admin access is required to review defenses.', interaction.locale), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         driver_id = f'{self.guild_id}_{self.user_id}'
         profile = await bot.db.drivers.find_one({'_id': driver_id, 'defense_review_pending': True})
         if not profile:
-            await interaction.followup.send('ℹ️ This defense review is already completed or no longer pending.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ This defense review is already completed or no longer pending.', interaction.locale), ephemeral=True)
             for child in self.children: child.disabled = True
             try: await interaction.message.edit(view=self)
             except Exception: pass
@@ -78,23 +79,23 @@ class DefenseView(discord.ui.View):
         payload = profile.get('defense_review_payload') or {}
         submitted_courses = payload.get('courses') or self.courses
         if len(submitted_courses) != 5:
-            await interaction.followup.send('❌ The pending defense payload is invalid and could not be approved.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ The pending defense payload is invalid and could not be approved.', interaction.locale), ephemeral=True)
             return
         locked = {'courses': submitted_courses, 'proof_url': payload.get('proof_url') or self.proof_url, 'car_rank_total': get_car_rank_total(submitted_courses), 'locked_at': time.time(), 'approved_by': str(interaction.user.id), 'submission_id': payload.get('submission_id')}
         update = {'defense_locked': locked, 'pending_tracks': None, 'pending_is_change': False}
         if payload.get('is_change', self.is_change): update['last_defense_change'] = time.time()
         result = await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_pending': True, 'defense_review_payload.submission_id': payload.get('submission_id')}, {'$set': update, '$unset': {'defense_review_pending': '', 'defense_review_payload': ''}})
         if getattr(result, 'modified_count', 0) != 1:
-            await interaction.followup.send('⚠️ The review changed before approval could be recorded. Refresh the review and try again.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '⚠️ The review changed before approval could be recorded. Refresh the review and try again.', interaction.locale), ephemeral=True)
             return
         await self._finish_message(interaction, '✅ Defense Approved', f'Approved by {interaction.user.mention}. The driver now has an active locked 5-course defense.', ASPHALT_VICTORY_COLOR)
         await self._notify_driver('🛡️ **Defense Approved!** Your 5-course defense has been approved by staff and is now active.')
-        await interaction.followup.send('✅ Defense approved and locked.', ephemeral=True)
+        await interaction.followup.send(await localize_text(bot, interaction.user.id, '✅ Defense approved and locked.', interaction.locale), ephemeral=True)
 
     @discord.ui.button(label='❌ Reject Defense', style=discord.ButtonStyle.danger, custom_id='alu_defense_reject')
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not await self._authorized(interaction):
-            await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff/admin access is required to review defenses.', interaction.locale), ephemeral=True)
             return
         await interaction.response.send_modal(DefenseRejectModal(self))
 
@@ -106,23 +107,23 @@ class DefenseRejectModal(discord.ui.Modal, title='Reject Defense Submission'):
     async def on_submit(self, interaction: discord.Interaction):
         view = self.review_view
         if not await view._authorized(interaction):
-            await interaction.response.send_message('❌ Staff/admin access is required to review defenses.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff/admin access is required to review defenses.', interaction.locale), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         driver_id = f'{view.guild_id}_{view.user_id}'
         profile = await bot.db.drivers.find_one({'_id': driver_id, 'defense_review_pending': True})
         if not profile:
-            await interaction.followup.send('ℹ️ This defense review is already completed or no longer pending.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ This defense review is already completed or no longer pending.', interaction.locale), ephemeral=True)
             return
         payload = profile.get('defense_review_payload') or {}
         reason_text = str(self.reason.value or '').strip() or 'Please review your lap times, cars, ratings, and proof screenshots and resubmit.'
         result = await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_pending': True, 'defense_review_payload.submission_id': payload.get('submission_id')}, {'$unset': {'defense_review_pending': '', 'defense_review_payload': '', 'pending_tracks': '', 'pending_is_change': ''}})
         if getattr(result, 'modified_count', 0) != 1:
-            await interaction.followup.send('⚠️ The review changed before rejection could be recorded. Refresh the review and try again.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '⚠️ The review changed before rejection could be recorded. Refresh the review and try again.', interaction.locale), ephemeral=True)
             return
         await view._finish_message(interaction, '❌ Defense Rejected', f'Rejected by {interaction.user.mention}.\n**Reason:** {reason_text}', ASPHALT_ADMIN_COLOR)
         await view._notify_driver(f'❌ **Defense Submission Rejected**\n\n{reason_text}\n\nPlease correct your results and submit your defense again.')
-        await interaction.followup.send('❌ Defense rejected and returned to the driver for correction.', ephemeral=True)
+        await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Defense rejected and returned to the driver for correction.', interaction.locale), ephemeral=True)
 
 class DefenseCog(commands.Cog):
 
@@ -134,13 +135,13 @@ class DefenseCog(commands.Cog):
             await interaction.response.defer(ephemeral=True)
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', interaction.locale), ephemeral=True)
             return
         if has_5_course_defense(profile):
-            await interaction.followup.send('ℹ️ You already have a defense. Use `/dashboard` → **Defense** → **Change Defense** to change it.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ You already have a defense. Use `/dashboard` → **Defense** → **Change Defense** to change it.', interaction.locale), ephemeral=True)
             return
         if profile.get('defense_review_pending'):
-            await interaction.followup.send('⏳ Your defense submission is already pending staff review. Wait for it to be approved or rejected.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '⏳ Your defense submission is already pending staff review. Wait for it to be approved or rejected.', interaction.locale), ephemeral=True)
             return
         pending_tracks = profile.get('pending_tracks')
         if pending_tracks:
@@ -167,11 +168,11 @@ class DefenseCog(commands.Cog):
         guild_id, user_id = (str(interaction.guild_id), str(interaction.user.id))
         profile = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', interaction.locale), ephemeral=True)
             return
         defense = profile.get('defense_locked')
         if not defense or not defense.get('courses'):
-            await interaction.followup.send('ℹ️ Your defense needs to be upgraded to the new 5-course format. Use `/dashboard` → **Defense** → **Set Defense** to generate new courses.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ Your defense needs to be upgraded to the new 5-course format. Use `/dashboard` → **Defense** → **Set Defense** to generate new courses.', interaction.locale), ephemeral=True)
             return
         courses = defense.get('courses', [])
         embeds, files = build_course_embeds(courses, '🛡️ Your Locked Ghost Defense (5 Courses)', 'Your currently approved 5-course defense lineup.', ASPHALT_THEME_COLOR)
@@ -186,13 +187,13 @@ class DefenseCog(commands.Cog):
             await interaction.response.defer(ephemeral=True)
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', interaction.locale), ephemeral=True)
             return
         if not has_5_course_defense(profile):
-            await interaction.followup.send("ℹ️ You don't have a valid 5-course defense yet. Use `/dashboard` → **Defense** → **Set Defense** to set up your first one.", ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, "ℹ️ You don't have a valid 5-course defense yet. Use `/dashboard` → **Defense** → **Set Defense** to set up your first one.", interaction.locale), ephemeral=True)
             return
         if profile.get('defense_review_pending'):
-            await interaction.followup.send('⏳ Your defense change is already pending staff review. Wait for it to be approved or rejected.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '⏳ Your defense change is already pending staff review. Wait for it to be approved or rejected.', interaction.locale), ephemeral=True)
             return
         last_change = profile.get('last_defense_change')
         if last_change:
@@ -201,7 +202,7 @@ class DefenseCog(commands.Cog):
                 remaining = 86400 - elapsed
                 hours = int(remaining // 3600)
                 minutes = int(remaining % 3600 // 60)
-                await interaction.followup.send(f'⏳ **Cooldown Active:** You can change your defense again in `{hours}h {minutes}m`. Defense changes are limited to once per day.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'⏳ **Cooldown Active:** You can change your defense again in `{hours}h {minutes}m`. Defense changes are limited to once per day.', interaction.locale), ephemeral=True)
                 return
         pending_tracks = profile.get('pending_tracks')
         if pending_tracks:
@@ -214,7 +215,7 @@ class DefenseCog(commands.Cog):
         if len(tracks) != 5:
             tracks = profile.get('season_defense_tracks') or [course.get('track') for course in profile.get('defense_locked', {}).get('courses', [])]
         if len(tracks) != 5:
-            await interaction.followup.send('❌ Your season route set is missing. Ask staff to repair your defense profile before changing it.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Your season route set is missing. Ask staff to repair your defense profile before changing it.', interaction.locale), ephemeral=True)
             return
         await bot.db.drivers.update_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'}, {'$set': {'season_defense_tracks': tracks, 'pending_tracks': tracks, 'pending_is_change': True}})
         courses = [{'track': t, 'car': 'TBD', 'lap_time': 'TBD'} for t in tracks]
@@ -232,14 +233,14 @@ class DefenseCog(commands.Cog):
             await interaction.response.defer(ephemeral=True)
         profile = await bot.db.drivers.find_one({'_id': f'{str(interaction.guild_id)}_{str(interaction.user.id)}'})
         if not profile:
-            await interaction.followup.send('❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Open `/dashboard → **My Gauntlet** → **Register**` first.', interaction.locale), ephemeral=True)
             return
         if profile.get('defense_review_pending'):
-            await interaction.followup.send('⏳ Your defense submission is already pending staff review. Wait for it to be approved or rejected.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '⏳ Your defense submission is already pending staff review. Wait for it to be approved or rejected.', interaction.locale), ephemeral=True)
             return
         pending_tracks = profile.get('pending_tracks')
         if not pending_tracks:
-            await interaction.followup.send('❌ No pending courses. Use `/dashboard` → **Defense** to generate courses first.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ No pending courses. Use `/dashboard` → **Defense** to generate courses first.', interaction.locale), ephemeral=True)
             return
         is_change = profile.get('pending_is_change', False)
         lap_times = [lap_time_1, lap_time_2, lap_time_3, lap_time_4, lap_time_5]
@@ -247,20 +248,20 @@ class DefenseCog(commands.Cog):
         car_ranks = [car_rank_1, car_rank_2, car_rank_3, car_rank_4, car_rank_5]
         proof_screenshots = [proof_screenshot_1, proof_screenshot_2, proof_screenshot_3, proof_screenshot_4, proof_screenshot_5]
         if any((int(rank) <= 0 for rank in car_ranks)):
-            await interaction.followup.send('❌ **Invalid Car Performance:** All 5 car performance/rating values must be positive numbers.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ **Invalid Car Performance:** All 5 car performance/rating values must be positive numbers.', interaction.locale), ephemeral=True)
             return
         if len({c.strip().lower() for c in cars}) != len(cars):
-            await interaction.followup.send('❌ **Duplicate Cars:** All 5 cars must be different. Please choose 5 unique cars.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ **Duplicate Cars:** All 5 cars must be different. Please choose 5 unique cars.', interaction.locale), ephemeral=True)
             return
         for i, shot in enumerate(proof_screenshots):
             if not shot.content_type or not shot.content_type.startswith('image/'):
-                await interaction.followup.send(f'❌ **Invalid Proof:** The screenshot for lap {i + 1} must be an image file.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ **Invalid Proof:** The screenshot for lap {i + 1} must be an image file.', interaction.locale), ephemeral=True)
                 return
         courses = []
         for i in range(5):
             ms = parse_lap_time(lap_times[i])
             if ms <= 0:
-                await interaction.followup.send(f'❌ **Invalid Lap Time:** Lap {i + 1} (`{lap_times[i]}`) must be a positive `MM:SS.MS` time with seconds from 00–59.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ **Invalid Lap Time:** Lap {i + 1} (`{lap_times[i]}`) must be a positive `MM:SS.MS` time with seconds from 00–59.', interaction.locale), ephemeral=True)
                 return
             courses.append({'track': pending_tracks[i], 'car': cars[i], 'car_rank': int(car_ranks[i]), 'lap_time': lap_times[i], 'ms': ms, 'proof_url': proof_screenshots[i].url})
         cfg = await bot.db.settings.find_one({'_id': str(interaction.guild_id)})
@@ -275,7 +276,7 @@ class DefenseCog(commands.Cog):
                 {'$set': {'defense_review_pending': True, 'defense_review_payload': payload}}
             )
             if getattr(claim, 'modified_count', 0) != 1:
-                await interaction.followup.send('⏳ Your defense submission is already pending staff review. Wait for a decision before submitting another.', ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, '⏳ Your defense submission is already pending staff review. Wait for a decision before submitting another.', interaction.locale), ephemeral=True)
                 return
             if is_change:
                 header_emb = discord.Embed(title='🛡️ Gauntlet Defense Change Request', description='A driver has requested to change their locked 5-course defense. Their current defense remains active until the new one is approved.', color=3447003)
@@ -303,14 +304,14 @@ class DefenseCog(commands.Cog):
                     await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_payload.submission_id': submission_id}, {'$set': {'defense_review_payload.review_channel_id': int(chan.id), 'defense_review_payload.review_message_id': int(found.id), 'defense_review_payload.delivery_status': 'delivered'}})
                 else:
                     await bot.db.drivers.update_one({'_id': driver_id, 'defense_review_payload.submission_id': submission_id}, {'$unset': {'defense_review_pending': '', 'defense_review_payload': ''}})
-                    await interaction.followup.send('❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', ephemeral=True)
+                    await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Staff review message could not be delivered. Your submission was safely rolled back; please try again.', interaction.locale), ephemeral=True)
                     return
             if is_change:
                 await interaction.followup.send('📥 **Defense Change Staged:** 5-course lineup sent to staff for audit clearance! Your current defense remains active until the new one is approved.')
             else:
                 await interaction.followup.send('📥 **Defense Staged:** 5-course lineup sent to staff for audit clearance!')
         else:
-            await interaction.followup.send('❌ Staff review channel is not configured. Ask an administrator to open `/staff` → **Server Setup → Server Setup**.', ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Staff review channel is not configured. Ask an administrator to open `/staff` → **Server Setup → Server Setup**.', interaction.locale), ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(DefenseCog(bot))
