@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Driver Profile • Racing Syndicate League</title>
+<link rel="stylesheet" href="/static/app.css?v=20260925-site20">
+<style>
+.public-profile-main{width:100%;max-width:none;margin:0;padding:22px clamp(16px,3vw,42px);box-sizing:border-box}
+.public-profile-hero{border:1px solid #174a79;background:linear-gradient(145deg,#071a35,#030914);padding:30px;display:flex;align-items:center;gap:22px;box-shadow:0 0 35px #168cff12}
+.public-profile-avatar{width:112px;height:112px;flex:0 0 112px;border:2px solid #25dfff;border-radius:50%;overflow:hidden;background:var(--rsl-box);display:grid;place-items:center;font-size:48px}.public-profile-avatar img{width:100%;height:100%;object-fit:cover}
+.public-profile-eyebrow{color:#25dfff;font-size:11px;font-weight:900;letter-spacing:.14em}.public-profile-hero h1{margin:6px 0 0;color:#fff;font-size:clamp(30px,5vw,52px);font-style:italic}.public-profile-hero p{margin:8px 0 0;color:#9fb2ca}
+.public-profile-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}.public-profile-button{display:inline-flex;padding:11px 16px;border:1px solid #168cff;background:var(--rsl-box-alt);color:#fff;text-decoration:none;font-weight:800}.public-profile-button.primary{background:#0877e7;border-color:#25dfff}
+.public-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}.public-profile-card{border:1px solid #174a79;background:var(--rsl-box);padding:22px}.public-profile-card h2{margin:0 0 16px;color:#fff}
+.public-profile-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.public-profile-field,.public-profile-stat{border:1px solid #123c63;background:var(--rsl-box-alt);padding:14px}.public-profile-field span,.public-profile-stat span{display:block;color:#7188a7;font-size:9px;letter-spacing:.1em;font-weight:900}.public-profile-field strong{display:block;margin-top:6px;color:#f5f7ff;overflow-wrap:anywhere}
+.public-profile-about{margin-top:12px;border:1px solid #123c63;background:var(--rsl-box-alt);padding:14px;color:#b8c7d9;line-height:1.65;white-space:pre-wrap}
+.public-profile-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.public-profile-stat{text-align:center}.public-profile-stat strong{display:block;margin-top:5px;color:#25dfff;font-size:23px}
+.public-profile-links{display:flex;gap:8px;flex-wrap:wrap}.public-profile-links a{border:1px solid #174a79;background:var(--rsl-box-alt);color:#25dfff;padding:9px 12px;text-decoration:none;font-weight:800}
+.public-profile-status{margin-top:14px;padding:12px;border-left:3px solid #25dfff;background:var(--rsl-box-alt);color:#aebdd2;line-height:1.5}.public-profile-loading{text-align:center;color:#91a5c3;padding:36px}
+@media(max-width:760px){.public-profile-hero{align-items:flex-start;flex-wrap:wrap}.public-profile-actions{margin-left:0;width:100%}.public-profile-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.public-profile-main{padding:12px}.public-profile-avatar{width:82px;height:82px;flex-basis:82px;font-size:36px}.public-profile-hero{padding:20px}.public-profile-fields{grid-template-columns:1fr}.public-profile-stat-grid{grid-template-columns:repeat(2,1fr)}}
+</style></head>
+<body class="alu-dashboard">
+<header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/assets/rsl-shield.png" alt="RSL"></a>
+<nav aria-label="Primary navigation">
+<a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a>
+<a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a>
+<a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span></a>
+<a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a>
+<a href="/help"><img class="nav-icon-img" src="/assets/icons/help.png" alt=""><span>Help</span></a>
+</nav></header>
+<main class="public-profile-main">
+<section class="public-profile-hero">
+<div class="public-profile-avatar" id="avatar">🏎️</div>
+<div><span class="public-profile-eyebrow">RACING SYNDICATE LEAGUE • PUBLIC DRIVER PROFILE</span><h1 id="name">Driver</h1><p id="discord">RSL Driver</p></div>
+<div class="public-profile-actions"><a class="public-profile-button primary" href="/player">Competitive Profile →</a><a class="public-profile-button" href="/gauntlet/leaderboard">View Leaderboard</a></div>
+</section>
+<div id="loading" class="public-profile-card public-profile-loading">Loading driver profile…</div>
+<section id="content" hidden>
+<div class="public-profile-grid">
+<article class="public-profile-card"><h2>Driver Identity</h2><div class="public-profile-fields">
+<div class="public-profile-field"><span>GAME NAME</span><strong id="game-name">—</strong></div>
+<div class="public-profile-field"><span>PLATFORM</span><strong id="platform">—</strong></div>
+<div class="public-profile-field"><span>DRIVER TYPE</span><strong id="driver-type">—</strong></div>
+<div class="public-profile-field"><span>LOCATION</span><strong id="location">—</strong></div>
+</div><div class="public-profile-about" id="about">No public About Me information.</div></article>
+<article class="public-profile-card"><h2>Gauntlet Career</h2><div class="public-profile-stat-grid">
+<div class="public-profile-stat"><span>RANK</span><strong id="rank">—</strong></div>
+<div class="public-profile-stat"><span>ELO</span><strong id="elo">—</strong></div>
+<div class="public-profile-stat"><span>SEASON</span><strong id="season">—</strong></div>
+<div class="public-profile-stat"><span>WINS</span><strong id="wins">—</strong></div>
+<div class="public-profile-stat"><span>PLAYED</span><strong id="played">—</strong></div>
+<div class="public-profile-stat"><span>STREAK</span><strong id="streak">—</strong></div>
+</div><div class="public-profile-status" id="registration">Gauntlet registration: —</div></article>
+<article class="public-profile-card"><h2>XP &amp; Progression</h2><div class="public-profile-stat-grid">
+<div class="public-profile-stat"><span>LEVEL</span><strong id="xp-level">—</strong></div>
+<div class="public-profile-stat"><span>TOTAL XP</span><strong id="xp-total">—</strong></div>
+<div class="public-profile-stat"><span>XP RANK</span><strong id="xp-rank">—</strong></div>
+</div><div class="public-profile-status">XP is progression and recognition; it does not replace Gauntlet or Tournament rankings.</div></article>
+<article class="public-profile-card"><h2>Public Links</h2><div class="public-profile-links" id="links"></div><div class="public-profile-status">Private settings, timezone, tickets, coin balance, and account controls are not shown on public profiles.</div></article>
+</div>
+</section>
+</main><footer>RACING SYNDICATE LEAGUE • Web ↔ MongoDB ↔ Discord</footer>
+<script src="/static/public-profile.js?v=20260928-public-profile1"></script>
+</body></html>
