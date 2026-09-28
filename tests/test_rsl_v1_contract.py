@@ -50,13 +50,13 @@ def test_v1_player_profile_covers_identity_and_competitive_fields():
     page = read(PLAYER)
     script = read(PLAYER_JS)
     for marker in (
-        "Asphalt Account Connection",
-        "Discord Notifications",
-        "Timezone",
+        "Asphalt Connection",
+        "Notification Preferences",
+        "Timezone &amp; Theme",
         "My Career",
         "Club Career",
-        "GAME NAME",
-        "GAME ID",
+        "Game Name",
+        "Game ID",
     ):
         assert marker in page
     for marker in (

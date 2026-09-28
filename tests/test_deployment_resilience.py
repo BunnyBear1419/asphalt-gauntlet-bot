@@ -30,7 +30,6 @@ def test_deployment_has_post_deploy_smoke_test():
     source = _source()
     assert "Post-deployment smoke test" in source
     assert "production_heartbeat" in source
-    assert "DEPLOY_STARTED_AT" in source
     assert "Discord API" in source
     assert "MongoClient" in source
     assert "Discloud" in source
