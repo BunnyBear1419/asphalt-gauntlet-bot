@@ -377,6 +377,17 @@ PY
           git clean -fdx
           echo "Rollback workspace restored to the exact committed revision."
 
+      - name: Capture pre-rollback heartbeat
+        id: rollback_predeploy
+        if: steps.smoke.outcome == 'failure'
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)')
+          echo "heartbeat_at=$heartbeat_at" >> "$GITHUB_OUTPUT"
+          echo "Pre-rollback heartbeat: $heartbeat_at"
+
       - name: Deploy rollback to Discloud
         id: rollback_deploy
         if: steps.smoke.outcome == 'failure'
@@ -433,6 +444,7 @@ PY
           DISCLOUD_APP_ID: asph
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
+          PREVIOUS_ROLLBACK_HEARTBEAT_AT: ${{ steps.rollback_predeploy.outputs.heartbeat_at }}
         run: |
           set -euo pipefail
           for attempt in $(seq 1 6); do
@@ -477,9 +489,13 @@ PY
           client.close()
           if not hb or not hb.get("ready") or not hb.get("db_ok"):
               raise SystemExit(1)
-          if time.time() - float(hb.get("timestamp", 0)) > 1200:
+          timestamp = float(hb.get("timestamp", 0))
+          previous = float(os.environ.get("PREVIOUS_ROLLBACK_HEARTBEAT_AT", "0") or 0)
+          if time.time() - timestamp > 120:
               raise SystemExit(1)
-          print("Rollback heartbeat verification passed.")
+          if previous and timestamp <= previous:
+              raise SystemExit(1)
+          print("Rollback heartbeat verification passed with a fresh post-rollback heartbeat.")
           PY
               then
                 python - <<'PY'
