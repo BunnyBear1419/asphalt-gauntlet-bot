@@ -125,3 +125,9 @@ def test_rollback_recovery_requires_fresh_heartbeat():
     assert "timestamp <= previous" in source
     assert "time.time() - timestamp > 120" in source
     assert "fresh post-rollback heartbeat" in source
+
+def test_smoke_heartbeat_probe_retries_transient_mongo_failures():
+    source = _source()
+    assert ') || HEARTBEAT_OK=false' in source
+    assert 'Production heartbeat gate: $HEARTBEAT_OK' in source
+    assert 'seq 1 12' in source
