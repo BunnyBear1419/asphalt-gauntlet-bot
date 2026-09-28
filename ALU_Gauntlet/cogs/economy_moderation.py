@@ -37,7 +37,7 @@ class EconomyModerationCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if not message.guild or message.author.bot or not message.content.strip() or not getattr(self.bot, "db", None):
+        if not message.guild or message.author.bot or not message.content.strip() or getattr(self.bot, "db", None) is None:
             return
         guild_id, user_id = str(message.guild.id), str(message.author.id)
         driver_id, now, today = f"{guild_id}_{user_id}", time.time(), self._today()
