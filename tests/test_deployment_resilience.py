@@ -149,3 +149,8 @@ def test_restart_failure_enters_rollback_path():
     assert "if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'" in source
     assert "Both rollback uploads failed" in source
     assert "(steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
+
+
+def test_rollback_retry_conditions_preserve_failure_precedence():
+    source = _source()
+    assert "if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
