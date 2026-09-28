@@ -27,3 +27,16 @@ def test_player_directory_routes_to_public_profile():
     app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
     assert 'window.location.href="/profile?user_id="' in app
     assert 'TIMEZONE</small>' not in app
+
+
+def test_public_profile_links_are_reused_across_player_surfaces():
+    leaderboard = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-leaderboard.html").read_text(encoding="utf-8")
+    matches = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournament-matches.js").read_text(encoding="utf-8")
+    clubs = (ROOT / "ALU_Gauntlet" / "web" / "static" / "clubs.js").read_text(encoding="utf-8")
+
+    assert 'p.user_id||p.id' in leaderboard
+    assert '/profile?user_id=' in leaderboard
+    assert '/profile?user_id=' in matches
+    assert 'data-player-profile' in clubs
+    assert 'window.location.href="/profile?user_id="' in clubs
+    assert 'openPlayerProfile(b.dataset.playerProfile)' not in clubs
