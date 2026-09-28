@@ -81,7 +81,7 @@ async function loadRecentMatches(guildId){
   try{
     const d=await api("/api/competition/recent-matches?guild_id="+encodeURIComponent(guildId));
     const rows=d.matches||[];
-    box.innerHTML="<div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>"+(rows.length?rows.map((m,i)=>{const result=String(m.result||"—");const resultClass=result==="WIN"?"match-win":"match-loss";return "<div class='recent-match-row'><span>"+(i+1)+"</span><span><strong>"+esc(m.opponent||"Driver")+"</strong><small>"+Number(m.courses||0)+"/5 courses</small></span><span class='"+resultClass+"'>"+esc(result)+"</span><span>"+(m.date?esc(new Date(Number(m.date)*1000).toLocaleDateString()):"—")+"</span></div>"}).join(""):"<p class='empty-state'>No completed matches yet.</p>");
+    box.innerHTML="<div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div>"+(rows.length?rows.map((m,i)=>{const result=String(m.result||"—");const resultClass=result==="WIN"?"match-win":"match-loss";return "<div class='recent-match-row'><span>"+(i+1)+"</span><span>"+(m.opponent_id?"<a class='rsl-driver-link' href='/profile?user_id="+encodeURIComponent(m.opponent_id)+"'>":"<strong>")+esc(m.opponent||"Driver")+(m.opponent_id?"</a>":"</strong>")+"<small>"+Number(m.courses||0)+"/5 courses</small></span><span class='"+resultClass+"'>"+esc(result)+"</span><span>"+(m.date?esc(new Date(Number(m.date)*1000).toLocaleDateString()):"—")+"</span></div>"}).join(""):"<p class='empty-state'>No completed matches yet.</p>");
   }catch(e){box.innerHTML="<div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class='empty-state'>Match history unavailable.</p>"}
 }
 
