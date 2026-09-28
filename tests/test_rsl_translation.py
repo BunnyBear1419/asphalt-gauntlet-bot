@@ -93,3 +93,11 @@ def test_localized_response_helper_and_ticket_purchase_use_shared_language():
     assert "await translate_text(text, target)" in translation
     assert "from .translation import localize_text" in ticket
     assert "await localize_text(self.bot, interaction.user.id" in ticket
+
+
+def test_gauntlet_response_surfaces_use_shared_localization():
+    root = ROOT / "ALU_Gauntlet" / "cogs"
+    for name in ("defense.py", "challenges.py", "competition.py"):
+        text = (root / name).read_text(encoding="utf-8")
+        assert "from .translation import localize_text" in text
+        assert "await localize_text(bot, interaction.user.id" in text
