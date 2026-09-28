@@ -49,9 +49,9 @@ def test_profile_and_settings_are_one_web_surface():
     server=(WEB/"server.py").read_text(encoding="utf-8")
     assert 'id="profile-settings"' in page
     assert 'id="preferences"' not in page
-    assert 'href="/player#profile-settings"' in server
-    assert 'My Profile &amp; Settings' in server
-    assert 'href="/profile">👤 <span>My Profile</span>' not in server
+    assert 'href="/player/profile"' in server
+    assert 'href="/player/settings"' in server
+    assert 'My Profile &amp; Settings' not in server
     assert 'settings-focus' not in page
 
 
