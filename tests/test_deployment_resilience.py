@@ -240,3 +240,14 @@ def test_all_embedded_deploy_python_blocks_are_valid():
     for index, body in enumerate(blocks, 1):
         script = textwrap.dedent(body).strip("\n")
         compile(script, f"deploy-heredoc-{index}", "exec")
+
+
+def test_failed_discloud_deploy_attempts_enter_recovery_path():
+    source = _source()
+    assert "id: deploy_gate" in source
+    assert "All Discloud deployment attempts failed; entering the recovery path." in source
+    assert "steps.deploy_gate.outcome == 'failure'" in source
+    assert "Clean failed-release workspace before rollback upload" in source
+    assert "Deploy rollback to Discloud" in source
+    assert "Restart Discloud app after rollback upload" in source
+    assert "Verify rollback health" in source
