@@ -54,3 +54,7 @@ Any destructive cleanup should be reviewed before execution.
 - [ ] Tournament media approval is enforced.
 - [ ] Completed tournaments expose champion, standings, match history, and approved media.
 - [ ] CI is green before production deployment.
+
+## Automated validation note
+
+Custom achievement-role names are validated by role ID during seasonal and XP role rotation.
