@@ -214,3 +214,13 @@ def test_predeploy_heartbeat_capture_survives_transient_mongo_failures():
     assert "heartbeat_at=0" in source
     assert "Pre-deployment heartbeat baseline: $heartbeat_at" in source
     assert "PREVIOUS_HEARTBEAT_AT:" in source
+
+
+def test_post_deploy_heartbeat_python_block_is_valid():
+    source = _source()
+    start = source.index('HEARTBEAT_OK=$(MONGO_URI=')
+    block_start = source.index("python - <<'PY'", start) + len("python - <<'PY'")
+    block_end = source.index("\n          PY", block_start)
+    import textwrap
+    script = textwrap.dedent(source[block_start:block_end]).strip("\n")
+    compile(script, "deploy-heartbeat", "exec")
