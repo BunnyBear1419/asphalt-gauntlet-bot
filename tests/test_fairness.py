@@ -1,4 +1,5 @@
-from ALU_Gauntlet.core.fairness import fair_match_snapshot, score_bucket
+from ALU_Gauntlet.core.fairness import fair_match_snapshot, normalize_elo, score_bucket
+from ALU_Gauntlet.web.players import PlayerService
 
 
 def test_score_bucket_is_perspective_aware():
@@ -38,3 +39,25 @@ def test_staff_fairness_review_is_advisory():
     source = Path("ALU_Gauntlet/core/fairness.py").read_text(encoding="utf-8")
     assert "advisory_only" in source
     assert "automatic" not in source.lower() or "automatically accuse" in source.lower()
+
+
+
+def test_elo_normalization_rejects_non_finite_and_bad_values():
+    assert normalize_elo(1200) == 1200
+    assert normalize_elo("1350.9") == 1350
+    assert normalize_elo(None) == 1000
+    assert normalize_elo("NaN") == 1000
+    assert normalize_elo(float("inf")) == 1000
+    assert normalize_elo(float("-inf")) == 1000
+
+
+def test_player_serialization_never_exposes_non_finite_elo():
+    row = PlayerService._safe({"_id": "g_u", "guild_id": "g", "user_id": "u", "elo": float("nan")})
+    assert row["elo"] == 1000
+
+
+def test_fair_match_snapshot_normalizes_invalid_elo():
+    row = fair_match_snapshot({"elo": float("nan")}, {"elo": float("inf")})
+    assert row["challenger_elo"] == 1000
+    assert row["opponent_elo"] == 1000
+    assert row["elo_gap"] == 0
