@@ -4861,46 +4861,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return await self._page_response("player.html", request)
 
     async def profile_page(self, request: web.Request) -> web.StreamResponse:
+        user_id = str(request.query.get("user_id") or "").strip()
+        if user_id:
+            await self.require_user(request)
+            return await self._page_response("public-profile.html", request)
         await self.require_user(request)
         return web.Response(status=302, headers={"Location": "/player/profile"})
-
-        # Render the Discord identity directly into the page as a reliable
-        # first paint. JavaScript still refreshes the same fields from /api/me,
-        # but the profile must not depend on a client-side fetch to show who is
-        # signed in or the community counts.
-        discord_name = html.escape(user.global_name or user.username or "Discord User")
-        discord_username = html.escape(user.username or "Discord account")
-        avatar_url = ""
-        if user.user_id and user.avatar:
-            avatar_url = f"https://cdn.discordapp.com/avatars/{html.escape(str(user.user_id), quote=True)}/{html.escape(str(user.avatar), quote=True)}.png?size=256"
-        elif user.user_id:
-            try:
-                avatar_index = int(user.user_id) % 5
-            except (TypeError, ValueError):
-                avatar_index = 0
-            avatar_url = f"https://cdn.discordapp.com/embed/avatars/{avatar_index}.png?size=256"
-
-        guilds = list(getattr(self.bot, "guilds", []) or [])
-        guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
-        online = 0
-        total = 0
-        if guild is not None:
-            members = list(getattr(guild, "members", []) or [])
-            for member in members:
-                if getattr(member, "bot", False):
-                    continue
-                if str(getattr(member, "status", None)) not in {"offline", "invisible"}:
-                    online += 1
-            total = int(getattr(guild, "member_count", 0) or len(members))
-
-        body = body.replace('<h1 id="profile-name">Driver</h1>', f'<h1 id="profile-name">{discord_name}</h1>', 1)
-        body = body.replace('<p id="profile-discord">Discord account</p>', f'<p id="profile-discord">@{discord_username}</p>', 1)
-        if avatar_url:
-            avatar_img = f'<img src="{avatar_url}" alt="{discord_name} Discord avatar" loading="eager" decoding="async">'
-            body = body.replace('<div class="profile-avatar-large" id="profile-avatar-large" aria-label="Discord avatar">🏎️</div>', f'<div class="profile-avatar-large" id="profile-avatar-large" aria-label="Discord avatar">{avatar_img}</div>', 1)
-        body = body.replace('id="profile-discord-online">—', f'id="profile-discord-online">{online:,}', 1)
-        body = body.replace('id="profile-discord-total">—', f'id="profile-discord-total">{total:,}', 1)
-        return web.Response(text=body, content_type="text/html", charset="utf-8", headers={"Cache-Control": "no-store"})
 
     async def site_search(self, request: web.Request) -> web.Response:
         """Search public site content plus account-visible racing data."""
@@ -6151,21 +6117,54 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"players": players})
 
     async def player_detail(self, request: web.Request) -> web.Response:
-        """Return a guild member's public profile for the player directory."""
+        """Return only safe public-facing fields for a guild driver's profile."""
         _, guild_id, _ = await self.require_guild_member(request)
         user_id = str(request.match_info["user_id"]).strip()
+        if not user_id.isdigit():
+            raise web.HTTPNotFound(text="Driver not found.")
         player = await self.players.get_player(guild_id, user_id)
         if player is None:
-            raise web.HTTPNotFound(text="Player not found.")
+            raise web.HTTPNotFound(text="Driver not found.")
         prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user_id}"}) or {}
         connection = prefs.get("asphalt_connection") or {}
-        player["asphalt_connection"] = {
-            "game_id": connection.get("game_id", ""),
-            "game_name": connection.get("game_name", ""),
-            "status": connection.get("status", "not_linked"),
+        guild = next((g for g in self.bot.guilds if str(g.id) == str(guild_id)), None)
+        member = guild.get_member(int(user_id)) if guild else None
+        if member is None and guild:
+            try: member = await guild.fetch_member(int(user_id))
+            except Exception: member = None
+        discord_name = str(getattr(member, "global_name", None) or getattr(member, "display_name", None) or player.get("username") or player.get("game_id") or "Driver")
+        discord_username = str(getattr(member, "name", None) or player.get("username") or "")
+        avatar_url = str(getattr(getattr(member, "display_avatar", None), "url", "") or "")
+        elo = int(player.get("elo", 1000) or 1000)
+        season = await get_current_season_number(str(guild_id))
+        season_number = int(player.get("season_number", 0) or 0)
+        season_registered = bool(player.get("season_registered")) and season_number == season
+        rank = None
+        if season_registered:
+            higher = await self.bot.db.drivers.count_documents({"guild_id": str(guild_id), "season_registered": True, "season_number": season, "elo": {"$gt": elo}})
+            rank = higher + 1
+        try:
+            from ..core.rsl_xp import get_settings, progress_for_xp, leaderboard as xp_leaderboard
+            xp = int(player.get("rsl_xp", 0) or 0)
+            progress = progress_for_xp(xp, await get_settings(self.bot.db, guild_id))
+            xp_rows = await xp_leaderboard(self.bot.db, guild_id, period="all")
+            xp_rank = next((i + 1 for i,row in enumerate(xp_rows) if str(row.get("user_id")) == user_id), None)
+        except Exception:
+            xp, progress, xp_rank = 0, {"level": 1}, None
+        public_player = {
+            "user_id": user_id, "discord_name": discord_name, "discord_username": discord_username, "avatar_url": avatar_url,
+            "game_name": str(prefs.get("game_name") or connection.get("game_name") or player.get("game_name") or player.get("game_id") or ""),
+            "platform": str(prefs.get("platform") or player.get("platform") or ""),
+            "driver_type": str(prefs.get("driver_type") or player.get("driver_type") or ""),
+            "location": str(prefs.get("location") or player.get("location") or ""),
+            "about": str(prefs.get("about") or player.get("about") or ""),
+            "links": list(prefs.get("links") or player.get("links") or [])[:5],
+            "asphalt_verified": connection.get("status") == "verified", "competition_rank": rank, "elo": elo,
+            "season_number": season_number or season, "season_registered": season_registered,
+            "career_wins": int(player.get("career_wins", 0) or 0), "career_played": int(player.get("career_played", 0) or 0), "streak": int(player.get("streak", 0) or 0),
+            "xp_level": progress.get("level", 1), "xp_total": xp, "xp_rank": xp_rank,
         }
-        player["asphalt_verified"] = connection.get("status") == "verified"
-        return web.json_response({"player": player})
+        return web.json_response({"player": public_player})
 
     async def help_page(self, request: web.Request) -> web.Response:
         """Render the public Help Center page."""
