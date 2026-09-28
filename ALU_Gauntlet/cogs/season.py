@@ -567,7 +567,7 @@ class SeasonCog(commands.Cog):
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
         await interaction.response.send_message(
-            await localize_text(bot, interaction.user.id, '⚠️ **End the current season?** This will archive the standings and prepare the next season. The next season will NOT start automatically; staff must schedule it and use `/staff` → **Season → Start Season**.', view=ConfirmSeasonEndView(interaction.guild_id), interaction.locale),
+            await localize_text(bot, interaction.user.id, '⚠️ **End the current season?** This will archive the standings and prepare the next season. The next season will NOT start automatically; staff must schedule it and use `/staff` → **Season → Start Season**.', interaction.locale),
             ephemeral=True
         )
 
