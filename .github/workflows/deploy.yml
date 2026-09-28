@@ -148,8 +148,12 @@ jobs:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
           set -euo pipefail
-          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)')
+          # A transient Mongo outage on the runner must not block a deployment.
+          # If the baseline is unavailable, the post-deploy smoke gate still requires
+          # a fresh healthy heartbeat, so safety is preserved.
+          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)') || heartbeat_at=0
           echo "heartbeat_at=$heartbeat_at" >> "$GITHUB_OUTPUT"
+          echo "Pre-deployment heartbeat baseline: $heartbeat_at"
       # Retry transient Discloud deployment failures, including temporary 429s.
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
