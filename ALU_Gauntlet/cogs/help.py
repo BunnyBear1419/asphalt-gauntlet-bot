@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
+from .translation import localize_text
 
 # Canonical Help Center categories.
 # Keep these in the Help Cog so the Cogs architecture has an explicit,
@@ -34,18 +35,13 @@ class HelpCog(commands.Cog):
         )
 
         embed = discord.Embed(
-            title='🏁 RACING SYNDICATE LEAGUE — HELP',
-            description=(
-                'Choose a section below.\n\n'
-                '📘 Overview  •  📜 Rules  •  🎮 Player Help  •  🛠️ Staff Help\n\n'
-                '**Quick access:** `/dashboard` for players • `/staff` for staff\n\n'
-                '📤 **Submit Match** is inside `/dashboard` → **Challenges**.'
-            ),
+            title=await localize_text(bot, interaction.user.id, '🏁 RACING SYNDICATE LEAGUE — HELP', getattr(interaction, 'locale', None)),
+            description=await localize_text(bot, interaction.user.id, 'Choose a section below.\\n\\n📘 Overview  •  📜 Rules  •  🎮 Player Help  •  🛠️ Staff Help\\n\\n**Quick access:** `/dashboard` for players • `/staff` for staff\\n\\n📤 **Submit Match** is inside `/dashboard` → **Challenges**.', getattr(interaction, 'locale', None)),
             color=ASPHALT_THEME_COLOR,
         )
         embed.set_thumbnail(url=ASPHALT_MEDIA['thumb_profile'])
         embed.set_image(url=ASPHALT_MEDIA['banner_help'])
-        embed.set_footer(text='Racing Syndicate League • Quick reference')
+        embed.set_footer(text=await localize_text(bot, interaction.user.id, 'Racing Syndicate League • Quick reference', getattr(interaction, 'locale', None)))
 
         # HelpView remains the shared interactive renderer in core.py.
         # It contains Overview/Rules plus the player and staff categories above.
