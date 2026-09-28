@@ -40,3 +40,11 @@ def test_public_profile_links_are_reused_across_player_surfaces():
     assert 'data-player-profile' in clubs
     assert 'window.location.href="/profile?user_id="' in clubs
     assert 'openPlayerProfile(b.dataset.playerProfile)' not in clubs
+
+
+def test_tournament_results_link_individual_drivers():
+    results = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournament-results.html").read_text(encoding="utf-8")
+    assert 'x.entrant_id' in results
+    assert 't.champion_id' in results
+    assert 'm.player_slots?.[0]' in results
+    assert '/profile?user_id=' in results
