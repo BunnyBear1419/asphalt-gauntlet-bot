@@ -131,3 +131,11 @@ def test_smoke_heartbeat_probe_retries_transient_mongo_failures():
     assert ') || HEARTBEAT_OK=false' in source
     assert 'Production heartbeat gate: $HEARTBEAT_OK' in source
     assert 'seq 1 12' in source
+
+
+def test_rollback_recovery_survives_transient_mongo_failures():
+    source = _source()
+    assert 'heartbeat_at=0' in source
+    assert 'rollback_heartbeat_ok=false' in source
+    assert 'Rollback heartbeat probe failed or is not fresh yet; retrying.' in source
+    assert '[ "$rollback_heartbeat_ok" = "true" ]' in source
