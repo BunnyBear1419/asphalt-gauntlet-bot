@@ -156,8 +156,13 @@ class WebControlCenter:
             guilds = list(getattr(self.bot, "guilds", []) or [])
             guild = max(guilds, key=lambda g: int(getattr(g, "member_count", 0) or 0), default=None)
             online, total = self._discord_community_counts(guild) if guild is not None else (0, 0)
-            body = body.replace('id="rsl-discord-online">—', f'id="rsl-discord-online">{online:,}', 1)
-            body = body.replace('id="rsl-discord-total">—', f'id="rsl-discord-total">{total:,}', 1)
+            # Keep first-paint values aligned with the current homepage shell IDs.
+            # The older rsl-* IDs were removed from index.html, which left the
+            # visible Discord counters at "—" until JavaScript successfully ran.
+            for stat_id, value in (("discord-online-members", online), ("discord-server-members", total)):
+                body = body.replace(f'id="{stat_id}">—', f'id="{stat_id}">{value:,}', 1)
+                body = body.replace(f'id="{stat_id}">- -', f'id="{stat_id}">{value:,}', 1)
+                body = body.replace(f'id="{stat_id}">— —', f'id="{stat_id}">{value:,}', 1)
 
         # Google Analytics 4 is consent-gated. Do not load the Analytics tag until
         # the visitor explicitly enables analytics cookies through the RSL banner.
@@ -2280,21 +2285,16 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def _admin_guilds_data(self, user: Any) -> list[dict[str, Any]]:
         rows = []
-        member_guild_ids = {str(x) for x in getattr(user, "guild_ids", [])}
-        for guild in getattr(self.bot, "guilds", []):
-            gid = str(getattr(guild, "id", ""))
-            if gid not in member_guild_ids:
-                continue
-            allowed = user.user_id in self.auth.allowed_staff_ids
-            member = guild.get_member(int(user.user_id))
-            if member and (member.guild_permissions.administrator or member.guild_permissions.manage_guild):
-                allowed = True
-            if not allowed and member:
-                settings = await self.bot.db.settings.find_one({"_id": gid}) or {}
-                role_id = str(settings.get("admin_role_id", "")).strip()
-                allowed = bool(role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])))
+        live_guilds = await self._connected_guilds_for_user(user)
+        for gid, guild in live_guilds.items():
+            allowed = await self._is_live_guild_staff(user, gid, guild)
             if allowed:
-                rows.append({"id":gid,"name":str(getattr(guild,"name",gid)),"member_count":int(getattr(guild,"member_count",0) or 0)})
+                rows.append({
+                    "id": gid,
+                    "name": str(getattr(guild, "name", gid)),
+                    "member_count": int(getattr(guild, "member_count", 0) or len(list(getattr(guild, "members", []) or []))),
+                })
+        rows.sort(key=lambda item: item["name"].casefold())
         return rows
 
     async def admin_page(self, request: web.Request) -> web.StreamResponse:
@@ -4661,27 +4661,50 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPFound("/login")
         return user
 
-    async def require_guild_member(self, request: web.Request) -> tuple[Any, str, Any]:
-        """Resolve the active Discord server safely for web requests.
+    async def _live_member_for_user(self, guild: Any, user_id: str) -> Any | None:
+        """Resolve a user's live membership from the bot-connected Discord guild."""
+        try:
+            member = guild.get_member(int(user_id))
+        except Exception:
+            member = None
+        if member is not None:
+            return member
+        try:
+            return await guild.fetch_member(int(user_id))
+        except Exception:
+            return None
 
-        Explicit guild_id always wins. Otherwise reuse the account's selected
-        guild cookie, then fall back to the first connected guild the user can
-        access. This keeps account pages usable without forcing every client
-        script to manually append guild_id to every API request.
+    async def _connected_guilds_for_user(self, user: Any) -> dict[str, Any]:
+        """Return bot-connected guilds where the signed-in Discord user is actually a member.
+
+        OAuth guild membership is a login-time snapshot and can remain stale for the
+        lifetime of a 30-day web session. Live bot membership is the authoritative source
+        for RSL web access because the bot can only operate in guilds it is connected to.
+        """
+        connected: dict[str, Any] = {}
+        for guild in list(getattr(self.bot, "guilds", []) or []):
+            gid = str(getattr(guild, "id", ""))
+            if not gid:
+                continue
+            if await self._live_member_for_user(guild, str(user.user_id)) is not None:
+                connected[gid] = guild
+        return connected
+
+    async def require_guild_member(self, request: web.Request) -> tuple[Any, str, Any]:
+        """Resolve the active Discord server using live bot membership.
+
+        Explicit guild_id always wins. Otherwise reuse the account's selected guild
+        cookie, then the user's live admin guilds, then the first live membership.
+        This avoids stale OAuth guild snapshots breaking registration and account pages.
         """
         user = await self.require_user(request)
-        memberships = {str(x) for x in getattr(user, "guild_ids", [])}
+        connected = await self._connected_guilds_for_user(user)
         candidates = [
             request.query.get("guild_id", "").strip(),
             request.cookies.get("rsl_guild_id", "").strip(),
             *[str(x) for x in getattr(user, "admin_guild_ids", [])],
-            *memberships,
+            *connected.keys(),
         ]
-        connected = {
-            str(getattr(g, "id", "")): g
-            for g in getattr(self.bot, "guilds", [])
-            if str(getattr(g, "id", "")) in memberships
-        }
         guild_id = next((gid for gid in candidates if gid and gid in connected), None)
         if not guild_id:
             raise web.HTTPBadRequest(text="No connected Discord server is available for this account.")
@@ -5276,9 +5299,13 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def guilds(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        bot_guilds = {str(getattr(g, "id", "")): g for g in getattr(self.bot, "guilds", [])}
-        allowed = set(user.guild_ids) & set(bot_guilds)
-        result = [{"id": gid, "name": str(getattr(bot_guilds[gid], "name", gid)), "admin": gid in user.admin_guild_ids or user.user_id in self.auth.allowed_staff_ids} for gid in sorted(allowed)]
+        live_guilds = await self._connected_guilds_for_user(user)
+        result = [{
+            "id": gid,
+            "name": str(getattr(guild, "name", gid)),
+            "member": True,
+            "admin": gid in user.admin_guild_ids or user.user_id in self.auth.allowed_staff_ids or await self._is_live_guild_staff(user, gid, guild),
+        } for gid, guild in live_guilds.items()]
         result.sort(key=lambda item: item["name"].casefold())
         return web.json_response({"guilds": result})
 
