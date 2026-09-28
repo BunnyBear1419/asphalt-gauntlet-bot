@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   test:
-    if: false
+    if: ${{ false }}
     name: test
     runs-on: ubuntu-24.04
     timeout-minutes: 20
