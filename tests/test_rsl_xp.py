@@ -18,3 +18,10 @@ def test_xp_cog_never_boolean_tests_async_database():
     source = (Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "rsl_xp.py").read_text(encoding="utf-8")
     assert 'getattr(self.bot, "db", None) is None' in source
     assert 'not getattr(self.bot, "db", None)' not in source
+
+def test_message_cogs_never_boolean_test_async_database():
+    from pathlib import Path
+    root = Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs"
+    for name in ("rsl_xp.py", "activity_rewards.py", "economy_moderation.py"):
+        source = (root / name).read_text(encoding="utf-8")
+        assert 'not getattr(self.bot, "db", None)' not in source
