@@ -18,10 +18,11 @@ def test_deploy_workflow_runs_tests_before_deployment():
     assert "python -m compileall -q ." in source
 
 
-def test_discloud_action_is_pinned_to_commit():
+def test_discloud_action_uses_official_v1_reference():
     source = _source()
-    assert "discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54" in source
-    assert "discloud/deploy-action@v1" not in source
+    assert "discloud/deploy-action@v1" in source
+    assert "discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54" not in source
+    assert "Official Discloud v1 action" in source
     assert source.count("app_id: asph") == 5
     assert "secrets.DISCLOUD_APP_ID" not in source
 
