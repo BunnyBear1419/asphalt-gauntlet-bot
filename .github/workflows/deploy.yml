@@ -532,6 +532,45 @@ PY
               fi
 
               if [ "$rollback_heartbeat_ok" = "true" ]; then
+                rollback_web_surface_ok=true
+                for check in \
+                  "https://asph.discloud.app/login" \
+                  "https://asph.discloud.app/" \
+                  "https://asph.discloud.app/static/app.css"; do
+                  case "$check" in
+                    *"/login") output="rollback-web-login.html"; label="Rollback web login" ;;
+                    *"/static/app.css") output="rollback-web-css.css"; label="Rollback web static CSS" ;;
+                    *) output="rollback-web-home.html"; label="Rollback web homepage" ;;
+                  esac
+                  HTTP=$(curl -sS -o "$output" -w "%{http_code}" "$check" || true)
+                  echo "$label HTTP status: $HTTP"
+                  if [ "$HTTP" != "200" ]; then rollback_web_surface_ok=false; fi
+                done
+
+                for asset in rsl-shield.png rsl-top-logo.png rsl-footer-mark.png; do
+                  ASSET_HTTP=$(curl -sS -o "rollback-asset-$asset" -w "%{http_code}" \
+                    "https://asph.discloud.app/assets/$asset" || true)
+                  echo "Rollback PNG artwork $asset HTTP status: $ASSET_HTTP"
+                  if [ "$ASSET_HTTP" != "200" ] || ! file "rollback-asset-$asset" | grep -qi 'PNG image'; then
+                    rollback_web_surface_ok=false
+                  fi
+                done
+
+                STALE_HOME_HTTP=$(curl -sS -o rollback-web-home-stale.html -w "%{http_code}" \
+                  -H "Cookie: alu_web_session=invalid-production-rollback-session" \
+                  "https://asph.discloud.app/" || true)
+                echo "Rollback homepage with stale session HTTP status: $STALE_HOME_HTTP"
+                if [ "$STALE_HOME_HTTP" != "200" ]; then rollback_web_surface_ok=false; fi
+
+                if [ "$rollback_web_surface_ok" = "true" ]; then
+                  echo "Rollback web surface verification passed."
+                else
+                  echo "Rollback web surface verification failed."
+                  rollback_heartbeat_ok=false
+                fi
+              fi
+
+              if [ "$rollback_heartbeat_ok" = "true" ]; then
                 python - <<'PY'
           import json
           from pathlib import Path
