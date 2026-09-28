@@ -143,6 +143,33 @@
  #profile-settings .settings-save-row{align-items:flex-start;flex-direction:column}
  #profile-settings .settings-save-row .qa{width:100%}
 }
+</style><style>
+/* RSL account split: the same polished shell now presents focused Profile and Settings routes. */
+body[data-rsl-player-mode="profile"] #matches,
+body[data-rsl-player-mode="profile"] #defense,
+body[data-rsl-player-mode="profile"] #registration,
+body[data-rsl-player-mode="profile"] #notifications,
+body[data-rsl-player-mode="profile"] #asphalt-connection{display:none!important}
+body[data-rsl-player-mode="profile"] #profile-settings .settings-block#account-preferences{display:none!important}
+body[data-rsl-player-mode="profile"] #profile-settings{margin-top:30px}
+body[data-rsl-player-mode="settings"] .rsl-player-main>.player-overview,
+body[data-rsl-player-mode="settings"] .rsl-player-main>.player-workspace-grid,
+body[data-rsl-player-mode="settings"] #career,
+body[data-rsl-player-mode="settings"] #club,
+body[data-rsl-player-mode="settings"] #help{display:none!important}
+body[data-rsl-player-mode="settings"] #profile-settings .settings-block:first-of-type,
+body[data-rsl-player-mode="settings"] #profile-links-area{display:none!important}
+body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:first-child,
+body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:last-of-type{display:none}
+body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:nth-child(2){display:block}
+body[data-rsl-player-mode="settings"] #profile-settings .settings-savebar b:after{content:"Changes are saved to your RSL account."}
+body[data-rsl-player-mode="settings"] #profile-settings{margin-top:30px}
+body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:nth-child(2){display:none}
+body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:first-child{display:block}
+body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-type{display:block}
+@media(max-width:800px){
+ body[data-rsl-player-mode="settings"] .rsl-player-main{padding-top:20px}
+}
 </style></head>
 <style>
 /* RSL PLAYER — complete page redesign. This intentionally replaces the legacy card dashboard. */
@@ -326,14 +353,14 @@
 
     <section class="player-section profile-settings-redesign" id="profile-settings" aria-labelledby="profile-settings-title">
       <header class="settings-header">
-        <div><span>ACCOUNT</span><h2 id="profile-settings-title">Profile &amp; Settings</h2><p>One place for your public driver identity, website preferences and profile links.</p></div>
+        <div><span>ACCOUNT</span><h2 id="profile-settings-title">My Profile</h2><p id="profile-settings-copy">Your public RSL driver identity, profile details and public links.</p></div>
         <strong id="profile-save-status">SYNCED</strong>
       </header>
       <div class="settings-layout">
         <aside class="settings-menu">
-          <a class="active" href="#profile-settings">Profile <small>Driver identity</small></a>
-          <a href="#account-preferences">Preferences <small>Timezone &amp; theme</small></a>
-          <a href="#profile-links-area">Links <small>Public profile</small></a>
+          <a class="active" href="/player/profile">Profile <small>Driver identity</small></a>
+          <a href="/player/settings">Preferences <small>Timezone &amp; theme</small></a>
+          <a href="/player/profile#profile-links-area">Links <small>Public profile</small></a>
         </aside>
         <div class="settings-body">
           <section class="settings-block">
@@ -360,7 +387,7 @@
             <div id="profile-links" class="profile-links-list"></div>
             <button class="text-action" id="add-profile-link" type="button">＋ Add another link</button>
           </section>
-          <div class="settings-savebar"><div><span>PROFILE STATUS</span><b>Ready to save changes</b></div><button class="qa qa-green" id="save-profile" type="button">Save Profile &amp; Settings →</button></div>
+          <div class="settings-savebar"><div><span id="profile-save-kicker">PROFILE STATUS</span><b id="profile-save-copy">Ready to save changes</b></div><button class="qa qa-green" id="save-profile" type="button">Save Profile →</button></div>
         </div>
       </div>
     </section>
@@ -387,13 +414,31 @@
 <script src="/static/player.js?v=20260928-redesign1"></script>
 <script>
 (function(){
-  function focusProfileSettings(){
-    if(location.hash==="#profile-settings"){
-      requestAnimationFrame(()=>document.getElementById("profile-settings")?.scrollIntoView({behavior:"smooth",block:"start"}));
+  function syncAccountPage(){
+    const mode=document.body.dataset.rslPlayerMode||"";
+    const title=document.getElementById("profile-settings-title");
+    const copy=document.getElementById("profile-settings-copy");
+    const kicker=document.getElementById("profile-save-kicker");
+    const save=document.getElementById("save-profile");
+    const status=document.getElementById("profile-save-status");
+    if(mode==="settings"){
+      if(title)title.textContent="My Settings";
+      if(copy)copy.textContent="Timezone, website theme and notification preferences for your RSL account.";
+      if(kicker)kicker.textContent="SETTINGS STATUS";
+      if(save)save.textContent="Save Settings →";
+      if(status)status.textContent="SYNCED";
+    }else if(mode==="profile"){
+      if(title)title.textContent="My Profile";
+      if(copy)copy.textContent="Your public RSL driver identity, profile details and public links.";
+      if(kicker)kicker.textContent="PROFILE STATUS";
+      if(save)save.textContent="Save Profile →";
+    }
+    if(location.hash==="#profile-settings"||location.hash==="#profile-links-area"){
+      requestAnimationFrame(()=>document.getElementById(location.hash.slice(1))?.scrollIntoView({behavior:"smooth",block:"start"}));
     }
   }
-  window.addEventListener("hashchange",focusProfileSettings);
-  document.addEventListener("DOMContentLoaded",focusProfileSettings);
+  window.addEventListener("hashchange",syncAccountPage);
+  document.addEventListener("DOMContentLoaded",syncAccountPage);
 })();
 </script>
 </body>
