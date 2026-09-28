@@ -404,7 +404,6 @@ class SeasonCog(commands.Cog):
         await self.bot.wait_until_ready()
 
 
-    season_group = app_commands.Group(name="season", description="Manage league seasons.")
 
     @season_group.command(name='auto', description='Control whether a scheduled season end automatically starts the next season.')
     @app_commands.describe(mode='Choose whether scheduled season endings may automatically roll into the next season')
