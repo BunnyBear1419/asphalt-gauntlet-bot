@@ -11,3 +11,10 @@ backups
 .DS_Store
 Thumbs.db
 tests
+
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+.mypy_cache
+.ruff_cache
