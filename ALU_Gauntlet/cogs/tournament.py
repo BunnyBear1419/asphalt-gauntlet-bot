@@ -208,20 +208,23 @@ class MatchResultView(discord.ui.View):
                 if not tournament or not match:
                     await interaction.response.send_message(
                         await localize_text(bot, interaction.user.id, "❌ Match not found.", interaction.locale),
-                        ephemeral=True; return
+ephemeral=True,
                     )
+                    return
                 is_staff = await _is_tournament_staff(interaction)
                 result_mode = str(tournament.get("result_submission_mode") or "player_review").casefold()
                 if result_mode == "admin_only" and not is_staff:
                     await interaction.response.send_message(
                         await localize_text(bot, interaction.user.id, "❌ This tournament is configured for Admin Only result submission.", interaction.locale),
-                        ephemeral=True; return
+ephemeral=True,
                     )
+                    return
                 if not await _is_participant(tournament,match,interaction.user.id) and not is_staff:
                     await interaction.response.send_message(
                         await localize_text(bot, interaction.user.id, "❌ You are not a participant in this match.", interaction.locale),
-                        ephemeral=True; return
+ephemeral=True,
                     )
+                    return
                 await interaction.response.send_modal(TournamentResultModal(self.tournament_id,self.match_id,entrant))
             button.callback=callback
             self.add_item(button)
@@ -435,10 +438,11 @@ async def build_tournament_view(tournament_id,user):
             if not await _is_participant(t,match,interaction.user.id) and not await _is_tournament_staff(interaction):
                 await interaction.response.send_message(
                     await localize_text(bot, interaction.user.id, "❌ You are not a participant in this match.", interaction.locale),
-                    ephemeral=True; return
+ephemeral=True,
                 )
+                return
             await interaction.response.send_message(
-                await localize_text(bot, interaction.user.id, "Choose the winner:",view=MatchResultView(tournament_id,match), interaction.locale),
+                await localize_text(bot, interaction.user.id, "Choose the winner:", interaction.locale),
                 ephemeral=True
             )
         b.callback=cb
@@ -469,8 +473,9 @@ async def build_tournament_view(tournament_id,user):
                 if not await _is_tournament_staff(interaction):
                     await interaction.response.send_message(
                         await localize_text(bot, interaction.user.id, "❌ Tournament staff access required.", interaction.locale),
-                        ephemeral=True; return
+ephemeral=True,
                     )
+                    return
                 ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"approve",interaction.user.id)
                 await interaction.response.send_message(
                     await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ")+msg, interaction.locale),
@@ -483,8 +488,9 @@ async def build_tournament_view(tournament_id,user):
                 if not await _is_tournament_staff(interaction):
                     await interaction.response.send_message(
                         await localize_text(bot, interaction.user.id, "❌ Tournament staff access required.", interaction.locale),
-                        ephemeral=True; return
+ephemeral=True,
                     )
+                    return
                 ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"reject",interaction.user.id)
                 await interaction.response.send_message(
                     await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ")+msg, interaction.locale),

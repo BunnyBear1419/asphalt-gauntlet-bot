@@ -466,7 +466,7 @@ class SeasonCog(commands.Cog):
         else:
             warning = "⚠️ **RESET SEASON NUMBER**\n\nThis will set the server's current season to **Season 1** and align existing driver records to Season 1. Historical season archives and career statistics will remain."
         await interaction.response.send_message(
-            await localize_text(bot, interaction.user.id, warning + '\n\nAre you sure?', view=ConfirmSeasonResetView(interaction.guild_id, full), interaction.locale),
+            await localize_text(bot, interaction.user.id, warning + '\n\nAre you sure?', interaction.locale),
             ephemeral=True
         )
 

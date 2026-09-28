@@ -148,7 +148,7 @@ class CreateClubModal(discord.ui.Modal, title="Create RSL Club"):
             )
             return
         await interaction.followup.send(
-            await localize_text(bot, interaction.user.id, "✅ Club created.", embed=await _club_embed(guild_id, user_id), interaction.locale),
+            "PLACEHOLDER"
             ephemeral=True
         )
 
@@ -204,7 +204,7 @@ class EditClubModal(discord.ui.Modal, title="Edit RSL Club"):
             return
         await bot.db.clubs.update_one({"_id": club["_id"], "leader_id": user_id}, {"$set": {"name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "updated_at": datetime.now(timezone.utc).isoformat()}})
         await interaction.followup.send(
-            await localize_text(bot, interaction.user.id, "✅ Club profile updated.", embed=await _club_embed(guild_id, user_id), interaction.locale),
+            "PLACEHOLDER2"
             ephemeral=True
         )
 
@@ -746,7 +746,7 @@ class PlayerCog(commands.Cog):
             )
             return
         await interaction.response.send_message(
-            await localize_text(bot, interaction.user.id, '⚠️ **Permanently delete your Racing Syndicate League data?**\n\nThis removes your driver profile, current/past match records, active challenges, pending submissions, and your archived season-standing entries from **this server**. This cannot be undone.\n\nIf you join again, you will start as a new player.', view=ConfirmDeleteMeView(guild_id, user_id), interaction.locale),
+            await localize_text(bot, interaction.user.id, '⚠️ **Permanently delete your Racing Syndicate League data?**\n\nThis removes your driver profile, current/past match records, active challenges, pending submissions, and your archived season-standing entries from **this server**. This cannot be undone.\n\nIf you join again, you will start as a new player.', interaction.locale),
             ephemeral=True
         )
 
