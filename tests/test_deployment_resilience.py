@@ -224,3 +224,15 @@ def test_post_deploy_heartbeat_python_block_is_valid():
     import textwrap
     script = textwrap.dedent(source[block_start:block_end]).strip("\n")
     compile(script, "deploy-heartbeat", "exec")
+
+def test_all_embedded_deploy_python_blocks_are_valid():
+    """Catch indentation/syntax regressions in any Python heredoc in deploy.yml."""
+    import re
+    import textwrap
+
+    source = _source()
+    blocks = re.findall(r"python - <<'PY'(?P<body>.*?)^\\s*PY$", source, flags=re.MULTILINE | re.DOTALL)
+    assert blocks, "Expected at least one embedded Python heredoc in deploy.yml"
+    for index, body in enumerate(blocks, 1):
+        script = textwrap.dedent(body).strip("\\n")
+        compile(script, f"deploy-heredoc-{index}", "exec")
