@@ -6,11 +6,24 @@ block a driver. Staff can review the evidence before taking any action.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import math
 from statistics import median
 from typing import Any
 
 
 SCORE_BUCKETS = ("5-0", "4-1", "3-2", "2-3", "1-4", "0-5")
+DEFAULT_ELO = 1000
+
+
+def normalize_elo(value: Any, default: int = DEFAULT_ELO) -> int:
+    """Keep fairness calculations safe when stored ELO is missing/corrupt."""
+    try:
+        number = float(value)
+        if not math.isfinite(number):
+            return default
+        return int(number)
+    except (TypeError, ValueError, OverflowError):
+        return default
 
 
 def score_bucket(courses_beat: int, perspective_won: bool) -> str:
@@ -20,8 +33,8 @@ def score_bucket(courses_beat: int, perspective_won: bool) -> str:
 
 
 def fair_match_snapshot(challenger: dict[str, Any], opponent: dict[str, Any]) -> dict[str, Any]:
-    challenger_elo = int(challenger.get("elo", 1000) or 1000)
-    opponent_elo = int(opponent.get("elo", 1000) or 1000)
+    challenger_elo = normalize_elo(challenger.get("elo", DEFAULT_ELO))
+    opponent_elo = normalize_elo(opponent.get("elo", DEFAULT_ELO))
     challenger_pi = int(challenger.get("garage_pi", 0) or 0)
     opponent_pi = int(opponent.get("garage_pi", 0) or 0)
     try:
@@ -118,7 +131,7 @@ async def build_fairness_review(db, guild_id: str, limit: int = 50) -> dict[str,
     for division, rows in division_values.items():
         medians[division] = {
             "pi": median([int(x.get("garage_pi", 0) or 0) for x in rows]) if rows else 0,
-            "elo": median([int(x.get("elo", 1000) or 1000) for x in rows]) if rows else 1000,
+            "elo": median([normalize_elo(x.get("elo", DEFAULT_ELO)) for x in rows]) if rows else 1000,
         }
 
     reviews = []
@@ -144,7 +157,7 @@ async def build_fairness_review(db, guild_id: str, limit: int = 50) -> dict[str,
         except Exception:
             division = "Unknown"
         med = medians.get(division, {"pi": 0, "elo": 1000})
-        if med["pi"] and int(driver.get("garage_pi", 0) or 0) >= med["pi"] * 1.15 and int(driver.get("elo", 1000) or 1000) <= med["elo"] - 100:
+        if med["pi"] and int(driver.get("garage_pi", 0) or 0) >= med["pi"] * 1.15 and normalize_elo(driver.get("elo", DEFAULT_ELO)) <= med["elo"] - 100:
             flags.append("Garage PI materially above division median while ELO is below median")
         recent_scores = scores[:5]
         if sum(1 for x in recent_scores if x in {"4-1", "5-0"}) >= 3 and len(scores) >= 8:
@@ -160,7 +173,7 @@ async def build_fairness_review(db, guild_id: str, limit: int = 50) -> dict[str,
             reviews.append({
                 "user_id": uid,
                 "name": str(driver.get("game_id") or driver.get("username") or uid),
-                "elo": int(driver.get("elo", 1000) or 1000),
+                "elo": normalize_elo(driver.get("elo", DEFAULT_ELO)),
                 "garage_pi": int(driver.get("garage_pi", 0) or 0),
                 "played": played,
                 "wins": wins,
