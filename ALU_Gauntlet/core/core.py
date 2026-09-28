@@ -15,7 +15,8 @@ from dotenv import load_dotenv
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-from pymongo import AsyncMongoClient, ServerApi
+from pymongo import AsyncMongoClient
+from pymongo.server_api import ServerApi
 from pymongo.errors import DuplicateKeyError
 from PIL import Image
 import io
