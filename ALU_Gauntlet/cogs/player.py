@@ -148,7 +148,8 @@ class CreateClubModal(discord.ui.Modal, title="Create RSL Club"):
             )
             return
         await interaction.followup.send(
-            "PLACEHOLDER"
+            await localize_text(bot, interaction.user.id, "✅ Club created.", interaction.locale),
+            embed=await _club_embed(guild_id, user_id),
             ephemeral=True
         )
 
@@ -204,7 +205,8 @@ class EditClubModal(discord.ui.Modal, title="Edit RSL Club"):
             return
         await bot.db.clubs.update_one({"_id": club["_id"], "leader_id": user_id}, {"$set": {"name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "updated_at": datetime.now(timezone.utc).isoformat()}})
         await interaction.followup.send(
-            "PLACEHOLDER2"
+            await localize_text(bot, interaction.user.id, "✅ Club profile updated.", interaction.locale),
+            embed=await _club_embed(guild_id, user_id),
             ephemeral=True
         )
 
