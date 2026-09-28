@@ -1,7 +1,21 @@
 """Mongo-backed player read service for the web control center."""
 from __future__ import annotations
 from typing import Any
+import math
 import re
+
+DEFAULT_ELO = 1000
+
+
+def normalize_elo(value: Any, default: int = DEFAULT_ELO) -> int:
+    """Return a finite integer ELO; corrupt/missing values fall back safely."""
+    try:
+        number = float(value)
+        if not math.isfinite(number):
+            return default
+        return int(number)
+    except (TypeError, ValueError, OverflowError):
+        return default
 class PlayerService:
     def __init__(self, bot: Any) -> None: self.bot = bot
     async def get_player(self, guild_id: str, user_id: str):
