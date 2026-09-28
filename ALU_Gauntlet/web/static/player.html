@@ -7,33 +7,30 @@
 <link rel="stylesheet" href="/static/app.css?v=20260919-25">
 <style>.nav-icon{display:inline-flex;align-items:center;justify-content:center;width:1.35em;margin-right:6px;font-style:normal;line-height:1}.top-nav-dropdown-trigger .nav-icon{margin-right:5px}.top-nav-dropdown-menu .nav-icon{width:1.2em}</style><style>.competition-snapshot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.competition-snapshot-grid>div{padding:16px;border:1px solid var(--rsl-final-line,#173b64);border-radius:14px;background:var(--rsl-final-panel2,#0d2139)}.competition-snapshot-grid span{display:block;font-size:11px;font-weight:800;color:var(--rsl-final-muted,#91a5c3);letter-spacing:.08em}.competition-snapshot-grid strong{display:block;margin-top:6px;font-size:20px;color:var(--rsl-final-text,#dbe8f8)}@media(max-width:700px){.competition-snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}</style><style>
 .settings-page-hero{display:none}
-.settings-page-hero h1{margin:6px 0 10px;font-size:45px;line-height:1.08;letter-spacing:.02em}
-.settings-page-hero p{margin:0;max-width:900px;font-size:15px;line-height:1.6;color:#9db1ca}
-.settings-eyebrow{display:block;font-size:14px;font-weight:800;letter-spacing:.12em;color:#25dfff}
 .settings-panel-kicker{display:block;margin-bottom:5px;font-size:11px;font-weight:800;letter-spacing:.12em;color:#25dfff}
 .settings-live{font-size:10px;font-weight:800;letter-spacing:.08em;color:#18e19e;border:1px solid #176c58;background:#08291f;border-radius:999px;padding:6px 10px}
-.settings-panel-body{padding:22px}
-.settings-server-card{display:grid;grid-template-columns:44px 1fr minmax(280px,520px);gap:16px;align-items:center;padding:18px;border:1px solid #174a79;border-radius:12px;background:#07172d}
+.settings-server-card{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(260px,420px);gap:16px;align-items:center;padding:18px;border:1px solid #174a79;border-radius:12px;background:#07172d}
 .settings-icon,.settings-option-icon{width:40px;height:40px;display:grid;place-items:center;border:1px solid #24557f;border-radius:10px;background:#0b213b;color:#25dfff;font-size:20px}
 .settings-server-card b,.settings-option-copy b{display:block;color:#eef5ff;font-size:15px}
 .settings-server-card small,.settings-option-copy small{display:block;margin-top:4px;color:#91a5c3;font-size:12px;line-height:1.5}
 .settings-server-card .server-select{margin:0!important;padding:0!important;min-height:0!important}
 .settings-server-card .server-select select{max-width:none!important;margin:0!important}
-.settings-option-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-.settings-option,.settings-save-card{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:center;padding:18px;border:1px solid #174a79;border-radius:12px;background:#07172d}
-.settings-option select{grid-column:1/-1;width:100%;min-height:48px;padding:11px 14px;border:1px solid #28639a;border-radius:10px;background:#061427;color:#eef5ff;font-size:15px;font-weight:700;box-sizing:border-box}
-.settings-option select:focus{outline:2px solid #25dfff;outline-offset:2px}
-.settings-save-card .qa{grid-column:1/-1;margin-top:2px}
-.settings-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 22px;border-top:1px solid #173b64;color:#91a5c3;font-size:12px}
-.settings-footer>div{display:flex;gap:10px}
-.settings-footer .qa{display:inline-flex!important;margin:0!important;text-decoration:none}
-body.settings-focus .hero-banner,body.settings-focus .main-column,body.settings-focus .career-section,body.settings-focus .career-club,body.settings-focus .bottom-banner{display:none!important}
-body.settings-focus .settings-page-hero{display:block!important;margin:0 0 22px;padding:36px 20px 24px}
-body.settings-focus .dashboard-grid{display:block!important}
-body.settings-focus .right-column{display:block!important;width:100%!important}
-body.settings-focus .right-column>*{display:none!important}
-body.settings-focus #preferences{display:block!important;width:100%;margin:0!important;height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;box-sizing:border-box!important}\nbody.settings-focus #preferences .settings-panel-body{width:100%;min-width:0;box-sizing:border-box;overflow:visible}\nbody.settings-focus #preferences .settings-option-grid,body.settings-focus #preferences .settings-server-card,body.settings-focus #preferences .settings-footer{min-width:0;max-width:100%;box-sizing:border-box}\nbody.settings-focus #preferences .settings-option-copy{min-width:0}\nbody.settings-focus #preferences .settings-option-copy small{overflow-wrap:anywhere}\nbody.settings-focus #preferences .settings-server-card .server-select,body.settings-focus #preferences .settings-server-card .server-select select{min-width:0;max-width:100%;box-sizing:border-box}
-body.settings-focus #preferences .panel-heading{min-height:72px!important;padding:14px 22px!important}
+#profile-settings{scroll-margin-top:96px;margin-top:24px!important}
+#profile-settings .settings-server-card{margin:0 0 20px}
+#profile-settings .settings-save-row{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:20px;padding:18px 20px;border:1px solid #173b64;border-radius:12px;background:#0d2139}
+#profile-settings .settings-save-row b{display:block;color:#eef5ff;font-size:15px}
+#profile-settings .settings-save-row small{display:block;margin-top:4px;color:#91a5c3;font-size:12px;line-height:1.5}
+#profile-settings .settings-save-row .qa{margin:0;flex:0 0 auto}
+@media(max-width:800px){
+  .settings-server-card{grid-template-columns:40px 1fr}
+  .settings-server-card .server-select{grid-column:1/-1}
+  #profile-settings .settings-save-row{align-items:flex-start;flex-direction:column}
+  #profile-settings .settings-save-row .qa{width:100%}
+}
+@media(max-width:600px){
+  #profile-settings{margin-top:20px!important}
+  #profile-settings .settings-save-row{padding:15px}
+}
 @media(max-width:800px){.settings-server-card{grid-template-columns:40px 1fr}.settings-server-card .server-select{grid-column:1/-1}.settings-option-grid{grid-template-columns:1fr}.settings-footer{align-items:flex-start;flex-direction:column}.settings-footer>div{width:100%;flex-wrap:wrap}}
 @media(max-width:600px){body.settings-focus .settings-page-hero{padding:28px 14px 18px}.settings-page-hero h1{font-size:34px}.settings-panel-body{padding:14px}.settings-server-card,.settings-option,.settings-save-card{padding:14px}.settings-footer{padding:16px 14px}}
 </style></head>
