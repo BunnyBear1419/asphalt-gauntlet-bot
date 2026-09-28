@@ -77,3 +77,10 @@ def test_deployment_cleans_ci_artifacts_before_upload():
 
 
 # CI trigger: run the full GitHub Actions test suite against current main.
+
+
+def test_rollback_cleans_failed_release_workspace_before_upload():
+    source = _source()
+    assert "Clean failed-release workspace before rollback upload" in source
+    assert "git clean -fdx" in source
+    assert "known-good Git revision" in source
