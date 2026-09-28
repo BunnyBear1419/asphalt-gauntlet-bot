@@ -1,0 +1,19 @@
+name: Actions Dispatch Diagnostic
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    name: diagnostic
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify runner dispatch
+        run: |
+          echo "GitHub Actions successfully created a runner job."
