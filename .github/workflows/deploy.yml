@@ -427,7 +427,9 @@ PY
           exit 1
 
       - name: Restart Discloud app after rollback upload
+        id: rollback_restart
         if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
+        continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCLOUD_APP_ID: asph
@@ -444,7 +446,8 @@ PY
           fi
           echo "Rollback Discloud restart requested successfully."
       - name: Verify rollback health
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
+        id: rollback_verify
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_restart.outcome == 'success'
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCLOUD_APP_ID: asph
@@ -544,8 +547,14 @@ PY
           echo "Rollback health verification failed."
           exit 1
 
+      - name: Fail recovery if rollback restart or verification failed
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && (steps.rollback_restart.outcome == 'failure' || steps.rollback_verify.outcome == 'failure')
+        run: |
+          echo "ERROR: Rollback upload completed, but rollback restart or health verification failed. Production recovery is not confirmed."
+          exit 1
+
       - name: Mark deployment failed after successful recovery
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_restart.outcome == 'success' && steps.rollback_verify.outcome == 'success'
         run: |
           echo "Deployment smoke test failed, but the previous known-good revision was restored and verified successfully."
           echo "Production is healthy on the known-good revision. The workflow will remain successful because recovery completed."
