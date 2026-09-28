@@ -30,6 +30,7 @@ from ..core.rsl_economy_ledger import recent_coin_transactions
 from ..core.gauntlet_progression import FREE_DAILY_TICKETS, MAX_DAILY_TICKETS
 from ..core.rsl_activity import collect_overall_activity_stats
 from ..core.rsl_language import RSL_LANGUAGES, normalize_language
+from ..release import current_release_revision
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -5085,6 +5086,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "db_ok": db_ok,
             "web_files_ok": web_files_ok,
             "web_files": page_files,
+            "release_sha": current_release_revision(),
         })
 
     async def login(self, request: web.Request) -> web.StreamResponse:
