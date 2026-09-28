@@ -43,6 +43,18 @@ def test_player_page_uses_same_dashboard_visual_system():
     assert "/static/player.js" in source
 
 
+
+def test_profile_and_settings_are_one_web_surface():
+    page=(STATIC/"player.html").read_text(encoding="utf-8")
+    server=(WEB/"server.py").read_text(encoding="utf-8")
+    assert 'id="profile-settings"' in page
+    assert 'id="preferences"' not in page
+    assert 'href="/player#profile-settings"' in server
+    assert 'My Profile &amp; Settings' in server
+    assert 'href="/profile">👤 <span>My Profile</span>' not in server
+    assert 'settings-focus' not in page
+
+
 def test_player_search_treats_input_as_literal_text():
     source=(WEB/"players.py").read_text(encoding="utf-8")
     assert "import re" in source
