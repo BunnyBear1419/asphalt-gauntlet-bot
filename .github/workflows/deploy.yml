@@ -373,6 +373,12 @@ jobs:
           glob: '**'
           team: false
 
+      - name: Fail recovery if rollback upload failed
+        if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure' && steps.rollback_retry.outcome == 'failure'
+        run: |
+          echo "ERROR: Both rollback uploads failed. Refusing to restart or mark production recovered."
+          exit 1
+
       - name: Restart Discloud app after rollback upload
         if: steps.smoke.outcome == 'failure'
         env:
