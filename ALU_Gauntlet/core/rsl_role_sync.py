@@ -74,9 +74,19 @@ async def sync_gauntlet_season_roles(
             desired_by_user.setdefault(str(user_id), set()).add(role_name)
 
     for member in guild.members:
-        existing = {role.name for role in member.roles}
-        removals = [managed[name] for name in GAUNTLET_SEASONAL_ROLES if name in managed and name in existing and name not in desired_by_user.get(str(member.id), set())]
-        additions = [managed[name] for name in desired_by_user.get(str(member.id), set()) if name in managed and name not in existing]
+        existing_ids = {role.id for role in member.roles}
+        removals = [
+            managed[name]
+            for name in GAUNTLET_SEASONAL_ROLES
+            if name in managed
+            and managed[name].id in existing_ids
+            and name not in desired_by_user.get(str(member.id), set())
+        ]
+        additions = [
+            managed[name]
+            for name in desired_by_user.get(str(member.id), set())
+            if name in managed and managed[name].id not in existing_ids
+        ]
         if removals:
             try:
                 await member.remove_roles(*removals, reason="RSL season role rotation")
@@ -94,7 +104,12 @@ async def clear_gauntlet_season_roles(guild: discord.Guild, role_names: dict[str
     """Remove managed Gauntlet seasonal roles when a new season opens."""
     managed = await _ensure_roles(guild, GAUNTLET_SEASONAL_ROLES, role_names, role_ids)
     for member in guild.members:
-        removals = [managed[name] for name in GAUNTLET_SEASONAL_ROLES if name in managed and any(r.name == name for r in member.roles)]
+        existing_ids = {role.id for role in member.roles}
+        removals = [
+            managed[name]
+            for name in GAUNTLET_SEASONAL_ROLES
+            if name in managed and managed[name].id in existing_ids
+        ]
         if removals:
             try:
                 await member.remove_roles(*removals, reason="RSL new-season role reset")
@@ -109,8 +124,15 @@ async def sync_xp_rank_role(member: discord.Member, level: int, role_names: dict
         if int(level) >= threshold:
             current = role_name
     managed = await _ensure_roles(member.guild, XP_LEVEL_ROLES.values(), role_names, role_ids)
-    removals = [role for name, role in managed.items() if any(r.name == name for r in member.roles) and name != current]
-    additions = [managed[current]] if current and current in managed and not any(r.name == current for r in member.roles) else []
+    existing_ids = {role.id for role in member.roles}
+    removals = [
+        role
+        for name, role in managed.items()
+        if role.id in existing_ids and name != current
+    ]
+    additions = [
+        managed[current]
+    ] if current and current in managed and managed[current].id not in existing_ids else []
     if removals:
         try:
             await member.remove_roles(*removals, reason="RSL XP rank progression")
