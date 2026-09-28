@@ -1,0 +1,162 @@
+name: Deploy Steps 1-14 Diagnostic
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ false }}
+    name: deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python for deployment checks
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install deployment check dependencies
+        run: python -m pip install --quiet pymongo
+
+      - name: Validate homepage hero JPG
+        run: |
+          set -euo pipefail
+          HERO_JPG="ALU_Gauntlet/web/static/assets/home-hero-4k.jpg"
+          if [ ! -f "$HERO_JPG" ]; then
+            echo "ERROR: $HERO_JPG is missing from the repository."
+            exit 1
+          fi
+          file "$HERO_JPG"
+          if ! file "$HERO_JPG" | grep -qi "JPEG image data"; then
+            echo "ERROR: Homepage hero asset is not a valid JPEG."
+            exit 1
+          fi
+          echo "Homepage hero JPG is valid and will be deployed as committed."
+
+      - name: Determine rollback revision
+        id: revision
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          previous="$EVENT_BEFORE"
+          if [ -z "$previous" ] || [ "$previous" = "0000000000000000000000000000000000000000" ]; then
+            previous="$(git rev-parse HEAD^)"
+          fi
+          git cat-file -e "$previous^{commit}"
+          current="$(git rev-parse HEAD)"
+          if [ "$previous" = "$current" ]; then
+            echo "ERROR: Rollback revision resolves to the release being deployed."
+            exit 1
+          fi
+          git merge-base --is-ancestor "$previous" "$current"
+          echo "Rollback revision is a committed predecessor of the release."
+          echo "previous_sha=$previous" >> "$GITHUB_OUTPUT"
+          echo "Rollback revision: $previous"
+
+      - name: Validate deployment secrets are present
+        env:
+          DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          for name in DISCLOUD_TOKEN DISCORD_BOT_TOKEN MONGO_URI; do
+            if [ -z "${!name}" ]; then
+              echo "ERROR: $name GitHub secret is missing from the deploy job."
+              exit 1
+            fi
+          done
+          echo "Deployment secrets are present. Production Discloud app is fixed to asph. Secret values are never printed."
+
+      - name: Validate Discord bot token before deployment
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          HTTP_CODE=$(curl -sS -o discord-preflight.json -w "%{http_code}" \
+            -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
+            -H "Accept: application/json" \
+            "https://discord.com/api/v10/users/@me" || true)
+          echo "Discord API preflight HTTP status: $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: DISCORD_BOT_TOKEN is present but Discord rejected it. Deployment stopped before touching Discloud."
+            exit 1
+          fi
+          echo "Discord bot token preflight passed."
+
+      - name: Clean CI-generated files before Discloud upload
+        run: |
+          set -euo pipefail
+          # Discloud uploads the production workspace. Remove files created by
+          # CI checks so caches and preflight artifacts never enter production.
+          rm -f discord-preflight.json discloud-status.json web-health.json web-login.html web-home.html web-home-stale.html
+          rm -f hero-home.jpg web-css.css discord-user.json discloud-restart.json
+          find . -type d -name __pycache__ -prune -exec rm -rf {} +
+          rm -rf .pytest_cache
+          echo "CI-generated caches and preflight artifacts removed."
+
+      - name: Capture pre-deployment heartbeat
+        id: predeploy
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: |
+          set -euo pipefail
+          # A transient Mongo outage on the runner must not block a deployment.
+          # If the baseline is unavailable, the post-deploy smoke gate still requires
+          # a fresh healthy heartbeat, so safety is preserved.
+          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)') || heartbeat_at=0
+          echo "heartbeat_at=$heartbeat_at" >> "$GITHUB_OUTPUT"
+          echo "Pre-deployment heartbeat baseline: $heartbeat_at"
+      # Retry transient Discloud deployment failures, including temporary 429s.
+      - name: Deploy to Discloud (attempt 1)
+        id: deploy1
+        continue-on-error: true
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: asph
+          glob: '**'
+          team: false
+
+      - name: Wait before Discloud retry 2
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 45
+
+      - name: Deploy to Discloud (attempt 2)
+        id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        continue-on-error: true
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: asph
+          glob: '**'
+          team: false
+
+      - name: Wait before Discloud retry 3
+        if: steps.deploy2.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to Discloud (attempt 3)
+        id: deploy3
+        if: steps.deploy2.outcome == 'failure'
+        continue-on-error: true
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
+        with:
+          token: ${{ secrets.DISCLOUD_TOKEN }}
+          app_id: asph
+          glob: '**'
+          team: false
