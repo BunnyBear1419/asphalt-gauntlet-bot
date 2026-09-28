@@ -5,6 +5,7 @@ from datetime import datetime
 from pymongo.errors import DuplicateKeyError
 import discord
 from discord.ext import commands, tasks
+from .translation import localize_text
 
 from ..core.core import bot
 
@@ -145,15 +146,16 @@ class NotificationCog(commands.Cog):
                 user = self.bot.get_user(int(user_id)) or await self.bot.fetch_user(int(user_id))
                 when = "is happening now" if lead_days <= 0 else (f"is coming up in {lead_days:g} day" + ("." if lead_days == 1 else "s."))
                 icon = "🏎️" if event["type"] == "gauntlet" else "🏆"
+                locale = getattr(user, "locale", None)
                 embed = discord.Embed(
-                    title=f"{icon} RSL Calendar Reminder",
-                    description=f"**{event['title']}** {when}.",
+                    title=await localize_text(self.bot, int(user_id), f"{icon} RSL Calendar Reminder", locale),
+                    description=await localize_text(self.bot, int(user_id), f"**{event['title']}** {when}.", locale),
                     color=0x19D3FF if event["type"] == "gauntlet" else 0x7C4DFF,
                 )
-                embed.add_field(name="Server", value=str(event.get("guild_name") or "Racing Syndicate League"), inline=True)
-                embed.add_field(name="When", value=f"<t:{int(target)}:F>\n<t:{int(target)}:R>", inline=True)
-                embed.add_field(name="Calendar", value="Open the RSL Calendar to manage this notification.", inline=False)
-                embed.set_footer(text="Manage notification preferences anytime from your RSL profile.")
+                embed.add_field(name=await localize_text(self.bot, int(user_id), "Server", locale), value=str(event.get("guild_name") or "Racing Syndicate League"), inline=True)
+                embed.add_field(name=await localize_text(self.bot, int(user_id), "When", locale), value=f"<t:{int(target)}:F>\n<t:{int(target)}:R>", inline=True)
+                embed.add_field(name=await localize_text(self.bot, int(user_id), "Calendar", locale), value=await localize_text(self.bot, int(user_id), "Open the RSL Calendar to manage this notification.", locale), inline=False)
+                embed.set_footer(text=await localize_text(self.bot, int(user_id), "Manage notification preferences anytime from your RSL profile.", locale))
                 await user.send(embed=embed)
                 await self.bot.db.notification_deliveries.update_one(
                     delivery_filter,
@@ -200,7 +202,7 @@ class NotificationCog(commands.Cog):
                         note = str(reminder.get("note") or "").strip()
                         if note:
                             embed.add_field(name="Note", value=note[:1024], inline=False)
-                        embed.add_field(name="When", value=f"<t:{int(target)}:F>\\n<t:{int(target)}:R>", inline=True)
+                        embed.add_field(name=await localize_text(self.bot, int(user_id), "When", locale), value=f"<t:{int(target)}:F>\\n<t:{int(target)}:R>", inline=True)
                         embed.add_field(name="Timezone", value=str(reminder.get("timezone") or "UTC"), inline=True)
                         embed.set_footer(text="Manage personal reminders from your RSL Calendar.")
                         await user.send(embed=embed)
