@@ -154,3 +154,13 @@ def test_restart_failure_enters_rollback_path():
 def test_rollback_retry_conditions_preserve_failure_precedence():
     source = _source()
     assert "if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
+
+
+def test_recovery_success_requires_rollback_restart_and_verification():
+    source = _source()
+    assert "id: rollback_restart" in source
+    assert "continue-on-error: true" in source
+    assert "id: rollback_verify" in source
+    assert "steps.rollback_restart.outcome == 'success'" in source
+    assert "Fail recovery if rollback restart or verification failed" in source
+    assert "Rollback upload completed, but rollback restart or health verification failed" in source
