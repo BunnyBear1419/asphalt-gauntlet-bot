@@ -16,6 +16,7 @@ from ..core.rsl_language import (
     FLAG_TO_LANGUAGE,
     RSL_LANGUAGES,
     get_user_language,
+    discord_locale_language,
     language_flag,
     language_name,
     normalize_language,
@@ -66,6 +67,8 @@ def ui(code: str, key: str) -> str:
 async def translate_text(text: str, target: str) -> str:
     target = normalize_language(target)
     text = text.strip()
+    if target == "en":
+        return text
     if not text:
         return ""
     if len(text) > MAX_TRANSLATION_CHARS:
@@ -162,7 +165,8 @@ class TranslationDismissView(discord.ui.View):
 async def language_context(interaction: discord.Interaction, message: discord.Message):
     cog = interaction.client.get_cog("TranslationCog")
     if cog is None:
-        await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
+        language = discord_locale_language(interaction.locale)
+        await interaction.response.send_message(ui(language, "failed"), ephemeral=True)
         return
     current = await get_user_language(cog.bot, interaction.user.id, interaction.locale)
     await interaction.response.send_message(
