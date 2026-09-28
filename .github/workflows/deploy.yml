@@ -141,6 +141,8 @@ jobs:
           find . -type d -name __pycache__ -prune -exec rm -rf {} +
           rm -rf .pytest_cache
           echo "CI-generated caches and preflight artifacts removed."
+          printf "%s\n" "$GITHUB_SHA" > .rsl-release-sha
+          echo "Release marker written for $GITHUB_SHA."
 
       - name: Capture pre-deployment heartbeat
         id: predeploy
@@ -395,6 +397,8 @@ jobs:
           # upload contains only the known-good Git revision.
           git clean -fdx
           echo "Rollback workspace restored to the exact committed revision."
+          printf "%s\n" "${{ steps.revision.outputs.previous_sha }}" > .rsl-release-sha
+          echo "Rollback release marker written for ${{ steps.revision.outputs.previous_sha }}."
 
       - name: Capture pre-rollback heartbeat
         id: rollback_predeploy
@@ -478,6 +482,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
           PREVIOUS_ROLLBACK_HEARTBEAT_AT: ${{ steps.rollback_predeploy.outputs.heartbeat_at }}
+          EXPECTED_ROLLBACK_SHA: ${{ steps.revision.outputs.previous_sha }}
         run: |
           set -euo pipefail
           for attempt in $(seq 1 6); do
@@ -500,7 +505,11 @@ jobs:
           data = json.loads(Path("rollback-web-health.json").read_text())
           if not data.get("ok"):
               raise SystemExit(1)
-          print("Rollback web health endpoint passed.")
+          expected = __import__("os").environ["EXPECTED_ROLLBACK_SHA"].strip()
+          actual = str(data.get("release_sha", "")).strip()
+          if actual != expected:
+              raise SystemExit(f"Rollback revision mismatch: expected {expected}, got {actual or 'missing'}")
+          print(f"Rollback web health endpoint passed on release {actual}.")
           PY
               then
                 rollback_web_ok=true
@@ -523,6 +532,10 @@ jobs:
           client.close()
           if not hb or not hb.get("ready") or not hb.get("db_ok"):
               raise SystemExit(1)
+          expected = os.environ["EXPECTED_ROLLBACK_SHA"].strip()
+          actual = str(hb.get("release_sha", "")).strip()
+          if actual != expected:
+              raise SystemExit(f"Rollback heartbeat revision mismatch: expected {expected}, got {actual or 'missing'}")
           timestamp = float(hb.get("timestamp", 0))
           previous = float(os.environ.get("PREVIOUS_ROLLBACK_HEARTBEAT_AT", "0") or 0)
           if time.time() - timestamp > 120:
