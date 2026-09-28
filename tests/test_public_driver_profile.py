@@ -21,3 +21,9 @@ def test_public_driver_profile_contract():
     assert 'Private settings, timezone, tickets, coin balance, and account controls are not shown' in page
     assert '/api/players/' in script
     assert 'xp_total' in script
+
+
+def test_player_directory_routes_to_public_profile():
+    app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
+    assert 'window.location.href="/profile?user_id="' in app
+    assert 'TIMEZONE</small>' not in app
