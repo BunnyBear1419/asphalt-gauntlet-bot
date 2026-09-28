@@ -2897,21 +2897,30 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             if int(active.get("season_number", 0) or 0) != int(current_season):
                 await release_active_challenge(active["_id"])
                 raise web.HTTPConflict(text="This challenge belongs to an older season. Start a new challenge for the current season.")
-            rows=payload.get("courses"); proof=str(payload.get("proof","")).strip()
+            rows=payload.get("courses")
             if not isinstance(rows,list) or len(rows)!=5: raise web.HTTPBadRequest(text="Exactly five course results are required.")
-            if not proof.lower().startswith(("http://","https://")): raise web.HTTPBadRequest(text="Proof must be an image URL.")
-            attack=[]; seen=set()
+            attack=[]; seen=set(); proof_urls=[]
             for n,row in enumerate(rows,1):
                 if not isinstance(row,dict): raise web.HTTPBadRequest(text=f"Course {n} is invalid.")
-                car=str(row.get("car","")).strip(); lap=str(row.get("lap_time","")).strip()
+                car=str(row.get("car","")).strip(); lap=str(row.get("lap_time","")).strip(); proof=str(row.get("proof_url","")).strip()
                 try: rank=int(row.get("car_rank",0))
                 except (TypeError,ValueError): rank=0
                 ms=parse_lap_time(lap)
                 if not car or car.casefold() in seen or rank<=0 or ms<=0: raise web.HTTPBadRequest(text=f"Course {n} has an invalid car, car rating, or lap time.")
-                seen.add(car.casefold()); attack.append({"lap_time_str":lap,"ms":ms,"car":car,"car_rank":rank})
+                if not proof.lower().startswith(("http://","https://")): raise web.HTTPBadRequest(text=f"Course {n} requires an image/video proof URL.")
+                seen.add(car.casefold()); proof_urls.append(proof)
+                attack.append({"lap_time_str":lap,"ms":ms,"car":car,"car_rank":rank,"proof_url":proof})
             defense=active.get("defense_courses") or []
-            result=await process_match_result(str(guild_id),uid,str(active["opponent_id"]),defense,attack,proof,active.get("defender_proof_url"),None,settlement_id=f"{active['_id']}:match")
+            if len(defense)!=5: raise web.HTTPConflict(text="The saved defense does not contain exactly five courses.")
+            result=await process_match_result(str(guild_id),uid,str(active["opponent_id"]),defense,attack,proof_urls[0],active.get("defender_proof_url"),None,settlement_id=f"{active['_id']}:match")
             if not result: raise web.HTTPConflict(text="The match could not be settled.")
+            await self.bot.db.matches.update_one(
+                {"_id":result["_id"],"guild_id":str(guild_id)},
+                {"$set":{
+                    "challenger_proof_urls":proof_urls,
+                    "race_proofs":[{"race":i+1,"url":proof_urls[i],"track":defense[i].get("track")} for i in range(5)],
+                }},
+            )
             try:
                 result["rsl_performance_bonus"] = await apply_rsl_performance_bonus(self.bot.db, result)
             except Exception:
