@@ -195,6 +195,8 @@ jobs:
           exit 1
 
       - name: Restart Discloud app after upload
+        id: restart
+        continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCLOUD_APP_ID: asph
@@ -215,6 +217,7 @@ jobs:
       # while the production monitor using curl remained healthy.
       - name: Post-deployment smoke test
         id: smoke
+        if: steps.restart.outcome == 'success'
         continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
@@ -361,14 +364,14 @@ PY
 
       - name: Roll back to previous known-good revision
         id: rollback
-        if: steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.revision.outputs.previous_sha }}
           fetch-depth: 0
 
       - name: Clean failed-release workspace before rollback upload
-        if: steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         run: |
           set -euo pipefail
           # The smoke test creates downloaded response/artwork files after the
@@ -379,7 +382,7 @@ PY
 
       - name: Capture pre-rollback heartbeat
         id: rollback_predeploy
-        if: steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
@@ -393,7 +396,7 @@ PY
 
       - name: Deploy rollback to Discloud
         id: rollback_deploy
-        if: steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -403,12 +406,12 @@ PY
           team: false
 
       - name: Retry rollback deployment
-        if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
         run: sleep 45
 
       - name: Deploy rollback retry
         id: rollback_retry
-        if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -418,13 +421,13 @@ PY
           team: false
 
       - name: Fail recovery if rollback upload failed
-        if: steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure' && steps.rollback_retry.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure' && steps.rollback_retry.outcome == 'failure'
         run: |
           echo "ERROR: Both rollback uploads failed. Refusing to restart or mark production recovered."
           exit 1
 
       - name: Restart Discloud app after rollback upload
-        if: steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCLOUD_APP_ID: asph
@@ -441,7 +444,7 @@ PY
           fi
           echo "Rollback Discloud restart requested successfully."
       - name: Verify rollback health
-        if: steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCLOUD_APP_ID: asph
@@ -542,7 +545,7 @@ PY
           exit 1
 
       - name: Mark deployment failed after successful recovery
-        if: steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         run: |
           echo "Deployment smoke test failed, but the previous known-good revision was restored and verified successfully."
           echo "Production is healthy on the known-good revision. The workflow will remain successful because recovery completed."
