@@ -83,3 +83,13 @@ def test_english_translation_is_local_only_and_unavailable_context_menu_is_local
     assert 'return text' in text
     assert "discord_locale_language(interaction.locale)" in text
     assert 'ui(language, "failed")' in text
+
+
+def test_localized_response_helper_and_ticket_purchase_use_shared_language():
+    translation = COG.read_text(encoding="utf-8")
+    ticket = (ROOT / "ALU_Gauntlet" / "cogs" / "ticket_economy.py").read_text(encoding="utf-8")
+    assert "async def localize_text" in translation
+    assert "get_user_language(bot, user_id, discord_locale)" in translation
+    assert "await translate_text(text, target)" in translation
+    assert "from .translation import localize_text" in ticket
+    assert "await localize_text(self.bot, interaction.user.id" in ticket
