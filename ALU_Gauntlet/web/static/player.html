@@ -100,6 +100,25 @@
     <p id="registration-status" class="server-sub" role="status"></p>
   </div>
 </article>
+
+<div class="asphalt-identity-summary"><div class="identity-chip"><span>GAME NAME</span><strong id="identity-summary-name">Not linked</strong></div><div class="identity-chip"><span>GAME ID</span><strong id="identity-summary-id">Not linked</strong></div><div class="identity-chip" id="identity-summary-status"><span>STATUS</span><strong id="identity-summary-state">NOT LINKED</strong></div></div><article class="glass-panel activity-card asphalt-link-card" id="asphalt-link"><div class="panel-heading"><h2>🏎️ Asphalt Account Connection</h2><span id="asphalt-link-status" class="online">NOT LINKED</span></div><p class="server-sub">Connect your Asphalt Legends identity to this Discord account. Staff verification is required before the link is marked verified.</p><div class="activity-list"><label><b>Asphalt Game Name</b><input id="asphalt-link-name" type="text" maxlength="100" placeholder="Exact in-game name"></label><label><b>Asphalt Game ID</b><input id="asphalt-link-id" type="text" maxlength="100" placeholder="Exact in-game Player ID"></label></div><button class="qa qa-purple" id="submit-asphalt-link" type="button">Connect Asphalt Account →</button><p id="asphalt-link-message" class="server-sub" role="status"></p></article>
+<article class="glass-panel activity-card notification-settings" id="notifications">
+  <div class="panel-heading"><h2>🔔 &nbsp; Discord Notifications</h2><span id="notification-save-status"></span></div>
+  <p class="server-sub">Choose which Racing Syndicate League calendar events can send you a Discord DM. Category switches cover everything in that category; individual calendar events can also be selected.</p>
+  <div class="notification-toggle-grid">
+    <label class="notification-toggle"><span><b>Tournament Notifications</b><small>DMs for tournament starts, ends and registration deadlines.</small></span><input id="tournament-notifications" type="checkbox"><i></i></label>
+    <label class="notification-toggle"><span><b>Gauntlet Notifications</b><small>DMs for Gauntlet season starts and ends.</small></span><input id="gauntlet-notifications" type="checkbox"><i></i></label>
+  </div>
+  <div class="notification-timing-grid">
+    <label class="notification-timing"><span>Tournament reminder</span><select id="tournament-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input class="notification-custom-days" id="tournament-notification-custom" type="number" min="0" max="365" step="1" value="5" placeholder="Days"></label>
+    <label class="notification-timing"><span>Gauntlet reminder</span><select id="gauntlet-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input class="notification-custom-days" id="gauntlet-notification-custom" type="number" min="0" max="365" step="1" value="5" placeholder="Days"></label>
+  </div>
+  <p class="notification-timing-note">The selected reminder is sent before the event, followed by an event-time DM when a reminder was scheduled in advance.</p>
+  <div class="notification-calendar-link"><span>Want only specific events?</span><a class="qa qa-blue" href="/calendar">📅 Choose from Calendar →</a></div>
+</article>
+
+  </aside>
+</section>
 <article class="glass-panel activity-card" id="profile-settings">
   <div class="panel-heading"><div><span class="settings-panel-kicker">RSL DRIVER ACCOUNT</span><h2>👤 Profile &amp; Settings</h2></div><span id="profile-save-status" class="settings-live">SYNCED</span></div>
   <p class="server-sub">Manage your public driver profile and account preferences together. Changes stay synchronized with your RSL account.</p>
@@ -120,24 +139,6 @@
   </div>
   <div class="settings-save-row"><div><b>Save your RSL profile</b><small>Profile details, timezone, platform, driver type and links are saved together.</small></div><button class="qa qa-green" id="save-profile" type="button">Save Profile &amp; Settings →</button></div>
 </article>
-<div class="asphalt-identity-summary"><div class="identity-chip"><span>GAME NAME</span><strong id="identity-summary-name">Not linked</strong></div><div class="identity-chip"><span>GAME ID</span><strong id="identity-summary-id">Not linked</strong></div><div class="identity-chip" id="identity-summary-status"><span>STATUS</span><strong id="identity-summary-state">NOT LINKED</strong></div></div><article class="glass-panel activity-card asphalt-link-card" id="asphalt-link"><div class="panel-heading"><h2>🏎️ Asphalt Account Connection</h2><span id="asphalt-link-status" class="online">NOT LINKED</span></div><p class="server-sub">Connect your Asphalt Legends identity to this Discord account. Staff verification is required before the link is marked verified.</p><div class="activity-list"><label><b>Asphalt Game Name</b><input id="asphalt-link-name" type="text" maxlength="100" placeholder="Exact in-game name"></label><label><b>Asphalt Game ID</b><input id="asphalt-link-id" type="text" maxlength="100" placeholder="Exact in-game Player ID"></label></div><button class="qa qa-purple" id="submit-asphalt-link" type="button">Connect Asphalt Account →</button><p id="asphalt-link-message" class="server-sub" role="status"></p></article>
-<article class="glass-panel activity-card notification-settings" id="notifications">
-  <div class="panel-heading"><h2>🔔 &nbsp; Discord Notifications</h2><span id="notification-save-status"></span></div>
-  <p class="server-sub">Choose which Racing Syndicate League calendar events can send you a Discord DM. Category switches cover everything in that category; individual calendar events can also be selected.</p>
-  <div class="notification-toggle-grid">
-    <label class="notification-toggle"><span><b>Tournament Notifications</b><small>DMs for tournament starts, ends and registration deadlines.</small></span><input id="tournament-notifications" type="checkbox"><i></i></label>
-    <label class="notification-toggle"><span><b>Gauntlet Notifications</b><small>DMs for Gauntlet season starts and ends.</small></span><input id="gauntlet-notifications" type="checkbox"><i></i></label>
-  </div>
-  <div class="notification-timing-grid">
-    <label class="notification-timing"><span>Tournament reminder</span><select id="tournament-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input class="notification-custom-days" id="tournament-notification-custom" type="number" min="0" max="365" step="1" value="5" placeholder="Days"></label>
-    <label class="notification-timing"><span>Gauntlet reminder</span><select id="gauntlet-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input class="notification-custom-days" id="gauntlet-notification-custom" type="number" min="0" max="365" step="1" value="5" placeholder="Days"></label>
-  </div>
-  <p class="notification-timing-note">The selected reminder is sent before the event, followed by an event-time DM when a reminder was scheduled in advance.</p>
-  <div class="notification-calendar-link"><span>Want only specific events?</span><a class="qa qa-blue" href="/calendar">📅 Choose from Calendar →</a></div>
-</article>
-
-  </aside>
-</section>
 <section class="career-section" id="career">
   <div class="career-header">
     <div><span>PLAYER CAREER</span><h2>My Career</h2><p>Your competitive history across Racing Syndicate League.</p></div>
