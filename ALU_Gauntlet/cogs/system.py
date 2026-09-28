@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
+from .translation import localize_text
 
 COMMAND_ARCHITECTURE_VERSION = 11
 command_architecture_version = COMMAND_ARCHITECTURE_VERSION
@@ -30,17 +31,17 @@ class SystemCog(commands.Cog):
                 await dispatch_audit_log(str(ctx.guild.id), '🛡️ Admin Action — Force Sync', f'**Actor:** {ctx.author.mention} (`{ctx.author.id}`)\n**Channel:** <#{ctx.channel.id}>\nSynchronized {len(synced)} global application commands.' + (f' Cleared {cleaned_count} server override(s).' if cleaned_count is not None else ''), color=ASPHALT_ADMIN_COLOR)
         except Exception as exc:
             logging.exception('Manual !forcesync failed')
-            await ctx.send(f'❌ Force sync failed: `{exc}`')
+            await ctx.send(await localize_text(bot, ctx.author.id, f'❌ Force sync failed: `{exc}`', getattr(ctx.author, "locale", None)))
 
     async def cog_load(self):
         self.force_command.error(self.force_command_error)
 
     async def force_command_error(self, ctx: commands.Context, error: Exception):
         if isinstance(error, commands.MissingPermissions):
-            await ctx.send('❌ Access Denied: Administrator permission is required.')
+            await ctx.send(await localize_text(bot, ctx.author.id, '❌ Access Denied: Administrator permission is required.', getattr(ctx.author, "locale", None)))
         else:
             logging.exception('!forcesync command error', exc_info=error)
-            await ctx.send(f'❌ Force sync command error: `{error}`')
+            await ctx.send(await localize_text(bot, ctx.author.id, f'❌ Force sync command error: `{error}`', getattr(ctx.author, "locale", None)))
 
 async def setup(bot):
     await bot.add_cog(SystemCog(bot))
