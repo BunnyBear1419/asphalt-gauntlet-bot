@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
 
+jobs:
   deploy:
     if: ${{ false }}
     name: deploy
