@@ -158,7 +158,7 @@ jobs:
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
         continue-on-error: true
-        uses: discloud/deploy-action@v1 # Official Discloud v1 action; SHA pin currently fails GitHub workflow dispatch validation.
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: asph
@@ -173,7 +173,7 @@ jobs:
         id: deploy2
         if: steps.deploy1.outcome == 'failure'
         continue-on-error: true
-        uses: discloud/deploy-action@v1 # Official Discloud v1 action; SHA pin currently fails GitHub workflow dispatch validation.
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: asph
@@ -188,7 +188,7 @@ jobs:
         id: deploy3
         if: steps.deploy2.outcome == 'failure'
         continue-on-error: true
-        uses: discloud/deploy-action@v1 # Official Discloud v1 action; SHA pin currently fails GitHub workflow dispatch validation.
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: asph
@@ -412,7 +412,7 @@ PY
         id: rollback_deploy
         if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
         continue-on-error: true
-        uses: discloud/deploy-action@v1 # Official Discloud v1 action; SHA pin currently fails GitHub workflow dispatch validation.
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: asph
@@ -427,7 +427,7 @@ PY
         id: rollback_retry
         if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
         continue-on-error: true
-        uses: discloud/deploy-action@v1 # Official Discloud v1 action; SHA pin currently fails GitHub workflow dispatch validation.
+        uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
           token: ${{ secrets.DISCLOUD_TOKEN }}
           app_id: asph
