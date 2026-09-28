@@ -121,3 +121,12 @@ def test_calendar_notifications_use_shared_localization():
     text = (ROOT / "ALU_Gauntlet" / "cogs" / "notifications.py").read_text(encoding="utf-8")
     assert "from .translation import localize_text" in text
     assert "await localize_text(self.bot, int(user_id)" in text
+
+
+def test_personal_reminder_notifications_use_shared_localization_and_user_locale():
+    text = (ROOT / "ALU_Gauntlet" / "cogs" / "notifications.py").read_text(encoding="utf-8")
+    assert "locale = getattr(user, \"locale\", None)" in text
+    assert 'title=await localize_text(self.bot, int(user_id), "🔔 RSL Personal Reminder", locale)' in text
+    assert 'name=await localize_text(self.bot, int(user_id), "Note", locale)' in text
+    assert 'name=await localize_text(self.bot, int(user_id), "Timezone", locale)' in text
+    assert 'Manage personal reminders from your RSL Calendar.' in text
