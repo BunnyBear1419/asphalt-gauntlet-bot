@@ -1,6 +1,7 @@
 from discord.ext import commands
 from discord import app_commands
 from ..core.core import *
+from .translation import localize_text
 
 class ServerControlDashboardButton(discord.ui.Button):
     def __init__(self):
@@ -30,7 +31,7 @@ class StaffCog(commands.Cog):
     @app_commands.command(name='missingdefense', description='[Staff Only] List current-season drivers without a locked defense.')
     async def missing_defense_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         guild_id = str(interaction.guild_id)
         season = await get_current_season_number(guild_id)
@@ -43,16 +44,16 @@ class StaffCog(commands.Cog):
     @app_commands.describe(limit='Number of recent log entries to show (1-15)')
     async def adminlog_cmd(self, interaction: discord.Interaction, limit: int=10):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         limit = max(1, min(15, limit))
         cfg = await bot.db.settings.find_one({'_id': str(interaction.guild_id)})
         if not cfg or not cfg.get('log_channel_id'):
-            await interaction.response.send_message('ℹ️ Log channel is not configured.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, 'ℹ️ Log channel is not configured.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         ch = bot.get_channel(int(cfg['log_channel_id']))
         if not ch:
-            await interaction.response.send_message('❌ Log channel could not be found.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Log channel could not be found.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         messages = []
         try:
@@ -61,7 +62,7 @@ class StaffCog(commands.Cog):
                     e = m.embeds[0]
                     messages.append(f"• **{e.title or 'Log'}** — {(e.description or '')[:180]}")
         except Exception as exc:
-            await interaction.response.send_message(f'❌ Could not read audit log: `{exc}`', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, f'❌ Could not read audit log: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
             return
         embed = discord.Embed(title='🛡️ RECENT ADMIN LOG', description='\n\n'.join(messages) if messages else 'No recent audit entries found.', color=ASPHALT_ADMIN_COLOR)
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -70,21 +71,21 @@ class StaffCog(commands.Cog):
     @app_commands.command(name='staff', description='[Staff Only] Open the Racing Syndicate League staff control center.')
     async def staff_dashboard_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await send_admin_dashboard(interaction)
 
     @app_commands.command(name='pending', description='[Staff Only] Show all drivers awaiting current-season approval.')
     async def pending_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Access Denied: Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Access Denied: Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild_id)
         season = await get_current_season_number(guild_id)
         rows = await bot.db.pending.find({'guild_id': guild_id, 'season_number': season}).to_list(length=1000)
         if not rows:
-            await interaction.followup.send(f'✅ No pending driver registrations for Season {season}.', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'✅ No pending driver registrations for Season {season}.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         lines = [f"<@{d['user_id']}> — `{d.get('game_id', '?')}` — `{int(d.get('rank', 0)):,} PI` → **{get_division_for_pi(int(d.get('rank', 0)))['name']}**" for d in rows]
         await interaction.followup.send(embed=discord.Embed(title=f'⏳ PENDING DRIVERS — SEASON {season}', description='\n'.join(lines)[:4096], color=ASPHALT_ALERT_COLOR), ephemeral=True)
@@ -94,7 +95,7 @@ class StaffCog(commands.Cog):
     @app_commands.describe(page='Page number')
     async def listplayers_cmd(self, interaction: discord.Interaction, page: int=1):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Access Denied: Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Access Denied: Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         page = max(1, page)
@@ -122,12 +123,12 @@ class StaffCog(commands.Cog):
     @app_commands.command(name='dbcheck', description='[Staff Only] Audits database consistency and recoverable settlement states.')
     async def dbcheck_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Access Denied: Admin authorization required.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Access Denied: Admin authorization required.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild.id) if interaction.guild else None
         if not guild_id:
-            await interaction.followup.send('❌ This command must be used inside a server.', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ This command must be used inside a server.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         issues = []
         checks = []
@@ -315,30 +316,30 @@ class StaffCog(commands.Cog):
             await audit_admin_action(interaction, 'DBCheck', f'Database consistency audit: {len(issues)} issue(s).')
         except Exception as exc:
             logging.exception('Database consistency check failed', exc_info=exc)
-            await interaction.followup.send(f'❌ Database consistency check failed: `{exc}`', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Database consistency check failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
 
     @app_commands.command(name='backup', description='[Staff Only] Create an immediate database backup.')
     async def backup_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         try:
             folder = await create_database_backup(f'manual by {interaction.user.id}')
             if folder:
-                await interaction.followup.send(f'✅ Database backup created.\n`{folder}`', ephemeral=True)
+                await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'✅ Database backup created.\n`{folder}`', getattr(interaction, "locale", None)), ephemeral=True)
                 await audit_admin_action(interaction, 'Database Backup', f'Created backup `{folder}`.')
             else:
-                await interaction.followup.send('ℹ️ MongoDB is not connected; no cloud database backup was created.', ephemeral=True)
+                await interaction.followup.send_message(await localize_text(bot, interaction.user.id, 'ℹ️ MongoDB is not connected; no cloud database backup was created.', getattr(interaction, "locale", None)), ephemeral=True)
         except Exception as exc:
             logging.exception('Manual database backup failed')
-            await interaction.followup.send(f'❌ Backup failed: `{exc}`', ephemeral=True)
+            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Backup failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
             await send_admin_alert(str(interaction.guild_id), 'DATABASE BACKUP FAILED', str(exc))
 
     @app_commands.command(name='diagnostics', description='[Staff Only] Run a read-only health and database diagnostic report.')
     async def diagnostics_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('❌ Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '❌ Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild_id)
@@ -465,7 +466,7 @@ class StaffCog(commands.Cog):
     @app_commands.command(name='launchcheck', description='[Staff Only] Run a read-only Racing Syndicate League production readiness check.')
     async def launchcheck_cmd(self, interaction: discord.Interaction):
         if not await check_admin_privileges(interaction):
-            await interaction.response.send_message('⛔ Staff only.', ephemeral=True)
+            await interaction.response.send_message(await localize_text(bot, interaction.user.id, '⛔ Staff only.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         await send_launch_readiness(interaction)
         await record_system_event(str(interaction.guild_id), 'LAUNCH_CHECK', f'Launch readiness check requested by {interaction.user.id}')
