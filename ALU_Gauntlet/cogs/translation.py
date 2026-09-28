@@ -64,6 +64,16 @@ def ui(code: str, key: str) -> str:
     return UI_TEXT.get(code, UI_TEXT["en"]).get(key, UI_TEXT["en"][key])
 
 
+async def localize_text(bot, user_id, text: str, discord_locale=None) -> str:
+    """Translate an RSL bot response for the requesting user's language."""
+    target = await get_user_language(bot, user_id, discord_locale)
+    try:
+        return await translate_text(text, target)
+    except Exception:
+        log.exception("RSL response localization failed")
+        return text
+
+
 async def translate_text(text: str, target: str) -> str:
     target = normalize_language(target)
     text = text.strip()
@@ -180,7 +190,8 @@ async def language_context(interaction: discord.Interaction, message: discord.Me
 async def translate_context(interaction: discord.Interaction, message: discord.Message):
     cog = interaction.client.get_cog("TranslationCog")
     if cog is None:
-        await interaction.response.send_message("RSL translation is currently unavailable.", ephemeral=True)
+        language = discord_locale_language(interaction.locale)
+        await interaction.response.send_message(ui(language, "failed"), ephemeral=True)
         return
     target = await get_user_language(cog.bot, interaction.user.id, interaction.locale)
     if not message.content.strip():
