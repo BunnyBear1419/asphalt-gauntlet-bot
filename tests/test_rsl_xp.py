@@ -11,3 +11,10 @@ def test_boosters_stack_or_choose_highest():
     assert effective_boost(settings, ["1","2"], "9") == 1.6
     settings["stack_boosters"]=False
     assert effective_boost(settings, ["1","2"], "9") == 1.3
+
+
+def test_xp_cog_never_boolean_tests_async_database():
+    from pathlib import Path
+    source = (Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "rsl_xp.py").read_text(encoding="utf-8")
+    assert 'getattr(self.bot, "db", None) is None' in source
+    assert 'not getattr(self.bot, "db", None)' not in source
