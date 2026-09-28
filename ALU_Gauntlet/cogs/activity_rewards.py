@@ -31,7 +31,7 @@ class ActivityRewardsCog(commands.Cog):
     async def on_message(self, message):
         if not message.guild or message.author.bot or not message.content.strip():
             return
-        if not getattr(self.bot, "db", None):
+        if getattr(self.bot, "db", None) is None:
             return
 
         guild_id = str(message.guild.id)
