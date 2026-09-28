@@ -100,3 +100,11 @@ def test_production_health_checks_web_health_endpoint():
     assert 'https://asph.discloud.app/healthz' in source
     assert 'web-health.json' in source
     assert 'data.get("ok")' in source
+
+def test_post_deploy_smoke_requires_fresh_production_heartbeat():
+    source = _source()
+    assert 'PREVIOUS_HEARTBEAT_AT: ${{ steps.predeploy.outputs.heartbeat_at }}' in source
+    assert 'Production heartbeat gate: $HEARTBEAT_OK' in source
+    assert 'timestamp <= previous' in source
+    assert 'age > 120' in source
+    assert 'production_heartbeat' in source
