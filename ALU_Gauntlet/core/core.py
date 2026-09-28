@@ -39,6 +39,7 @@ from pymongo import AsyncMongoClient
 from pymongo.server_api import ServerApi
 
 from pymongo.errors import CollectionInvalid, DuplicateKeyError
+from ..release import current_release_revision
 
 from PIL import Image
 
@@ -951,6 +952,7 @@ async def production_heartbeat_loop():
         "guild_count": guild_count,
         "uptime_seconds": int(time.time() - bot.started_at),
         "bot_user_id": str(bot.user.id),
+        "release_sha": current_release_revision(),
     }
     if db_ok:
         try:
