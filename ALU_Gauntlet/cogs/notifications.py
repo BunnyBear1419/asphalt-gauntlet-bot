@@ -197,14 +197,15 @@ class NotificationCog(commands.Cog):
                         continue
                     try:
                         user = self.bot.get_user(int(user_id)) or await self.bot.fetch_user(int(user_id))
+                        locale = getattr(user, "locale", None)
                         when = "is happening now" if selected_days <= 0 else (f"is coming up in {selected_days:g} day" + ("." if selected_days == 1 else "s."))
-                        embed = discord.Embed(title="🔔 RSL Personal Reminder", description=f"**{reminder.get('title', 'Personal Reminder')}** {when}.", color=0x19D3FF)
+                        embed = discord.Embed(\n                            title=await localize_text(self.bot, int(user_id), "🔔 RSL Personal Reminder", locale),\n                            description=await localize_text(self.bot, int(user_id), f"**{reminder.get('title', 'Personal Reminder')}** {when}.", locale),\n                            color=0x19D3FF,\n                        )
                         note = str(reminder.get("note") or "").strip()
                         if note:
-                            embed.add_field(name="Note", value=note[:1024], inline=False)
+                            embed.add_field(name=await localize_text(self.bot, int(user_id), "Note", locale), value=note[:1024], inline=False)
                         embed.add_field(name=await localize_text(self.bot, int(user_id), "When", locale), value=f"<t:{int(target)}:F>\\n<t:{int(target)}:R>", inline=True)
-                        embed.add_field(name="Timezone", value=str(reminder.get("timezone") or "UTC"), inline=True)
-                        embed.set_footer(text="Manage personal reminders from your RSL Calendar.")
+                        embed.add_field(name=await localize_text(self.bot, int(user_id), "Timezone", locale), value=str(reminder.get("timezone") or "UTC"), inline=True)
+                        embed.set_footer(text=await localize_text(self.bot, int(user_id), "Manage personal reminders from your RSL Calendar.", locale))
                         await user.send(embed=embed)
                         await self.bot.db.notification_deliveries.update_one(delivery_filter, {"$set": {"sent_at": now, "status": "sent"}})
                     except (discord.Forbidden, discord.HTTPException):
