@@ -255,7 +255,7 @@ def test_failed_discloud_deploy_attempts_enter_recovery_path():
 
 def test_deployment_marks_and_verifies_exact_runtime_revision():
     source = _source()
-    assert 'printf "%s\\n" "$GITHUB_SHA" > .rsl-release-sha' in source
+    assert 'printf "%s\\n" "$GITHUB_SHA" > rsl-release-sha.txt' in source
     assert 'printf "%s\\n" "${{ steps.revision.outputs.previous_sha }}" > .rsl-release-sha' in source
     assert 'EXPECTED_ROLLBACK_SHA: ${{ steps.revision.outputs.previous_sha }}' in source
     assert 'Rollback revision mismatch: expected' in source
