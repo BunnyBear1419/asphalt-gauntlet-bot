@@ -104,10 +104,15 @@ class ChallengesCog(commands.Cog):
         match_embed.set_image(url=ASPHALT_MEDIA['banner_match'])
         await interaction.followup.send(embed=match_embed, view=ChallengeView(options_list, defender_data_map, guild_id, user_id))
 
-    @app_commands.command(name='submitmatch_direct', description='[Advanced] Submit an active challenge with all five results and proof.')
-    @app_commands.describe(lap1='Course 1 lap time', lap2='Course 2 lap time', lap3='Course 3 lap time', lap4='Course 4 lap time', lap5='Course 5 lap time', car1='Course 1 attack car', car2='Course 2 attack car', car3='Course 3 attack car', car4='Course 4 attack car', car5='Course 5 attack car', rank1='Course 1 car performance rating', rank2='Course 2 car performance rating', rank3='Course 3 car performance rating', rank4='Course 4 car performance rating', rank5='Course 5 car performance rating', proof='Discord race-proof image URL')
+    @app_commands.command(name='submitmatch_direct', description='[Advanced] Submit an active challenge with all five results and per-race proof.')
+    @app_commands.describe(
+        lap1='Course 1 lap time', lap2='Course 2 lap time', lap3='Course 3 lap time', lap4='Course 4 lap time', lap5='Course 5 lap time',
+        car1='Course 1 attack car', car2='Course 2 attack car', car3='Course 3 attack car', car4='Course 4 attack car', car5='Course 5 attack car',
+        rank1='Course 1 car performance rating', rank2='Course 2 car performance rating', rank3='Course 3 car performance rating', rank4='Course 4 car performance rating', rank5='Course 5 car performance rating',
+        proof1='Course 1 image/video proof', proof2='Course 2 image/video proof', proof3='Course 3 image/video proof', proof4='Course 4 image/video proof', proof5='Course 5 image/video proof'
+    )
     @app_commands.autocomplete(car1=car_autocomplete, car2=car_autocomplete, car3=car_autocomplete, car4=car_autocomplete, car5=car_autocomplete)
-    async def submitmatch_cmd(self, interaction: discord.Interaction, lap1: str, lap2: str, lap3: str, lap4: str, lap5: str, car1: str, car2: str, car3: str, car4: str, car5: str, rank1: int, rank2: int, rank3: int, rank4: int, rank5: int, proof: str):
+    async def submitmatch_cmd(self, interaction: discord.Interaction, lap1: str, lap2: str, lap3: str, lap4: str, lap5: str, car1: str, car2: str, car3: str, car4: str, car5: str, rank1: int, rank2: int, rank3: int, rank4: int, rank5: int, proof1: discord.Attachment, proof2: discord.Attachment, proof3: discord.Attachment, proof4: discord.Attachment, proof5: discord.Attachment):
         if not await enforce_channel_constraints(interaction, admin_cmd=False):
             return
         if not interaction.response.is_done():
@@ -143,12 +148,18 @@ class ChallengesCog(commands.Cog):
                 await release_active_challenge(active['_id'])
                 await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Lap {i + 1} is invalid. Use a positive `MM:SS.MS` time.', interaction.locale), ephemeral=True)
                 return
-            challenger_times.append({'lap_time_str': l.strip(), 'ms': ms, 'car': canonical[i], 'car_rank': int(ranks[i])})
-        proof = proof.strip()
-        if not proof.lower().startswith(('http://', 'https://')):
-            await release_active_challenge(active['_id'])
-            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Proof must be an image URL starting with `http://` or `https://`.', interaction.locale), ephemeral=True)
-            return
+            challenger_times.append({'lap_time_str': l.strip(), 'ms': ms, 'car': canonical[i], 'car_rank': int(ranks[i]), 'proof_url': proof_urls[i]})
+        proofs = [proof1, proof2, proof3, proof4, proof5]
+        proof_urls = []
+        for i, attachment in enumerate(proofs, 1):
+            content_type = str(getattr(attachment, 'content_type', '') or '').lower()
+            filename = str(getattr(attachment, 'filename', '') or '').lower()
+            is_media = content_type.startswith(('image/', 'video/')) or filename.endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp4', '.mov', '.webm', '.mkv'))
+            if not is_media or not str(getattr(attachment, 'url', '')).startswith(('http://', 'https://')):
+                await release_active_challenge(active['_id'])
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Proof {i} must be an attached image or video file.', interaction.locale), ephemeral=True)
+                return
+            proof_urls.append(str(attachment.url))
         current_season = await get_current_season_number(guild_id)
         if int(active.get('season_number', 0)) != current_season:
             await release_active_challenge(active['_id'])
@@ -159,7 +170,14 @@ class ChallengesCog(commands.Cog):
             await release_active_challenge(active['_id'])
             await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ The saved challenge data is incomplete. Please start a new challenge from `/dashboard` → **Challenges**.', interaction.locale), ephemeral=True)
             return
-        match_data = await process_match_result(guild_id, user_id, str(active['opponent_id']), defense, challenger_times, proof, active.get('defender_proof_url'), interaction.channel_id, settlement_id=f"{active['_id']}:match")
+        match_data = await process_match_result(guild_id, user_id, str(active['opponent_id']), defense, challenger_times, proof_urls[0], active.get('defender_proof_url'), interaction.channel_id, settlement_id=f"{active['_id']}:match")
+        await bot.db.matches.update_one(
+            {'_id': match_data['_id'], 'guild_id': guild_id},
+            {'$set': {
+                'challenger_proof_urls': proof_urls,
+                'race_proofs': [{'race': i + 1, 'url': proof_urls[i], 'track': defense[i].get('track')} for i in range(5)],
+            }},
+        )
         try:
             match_data['rsl_performance_bonus'] = await apply_rsl_performance_bonus(bot.db, match_data)
         except Exception:
@@ -188,7 +206,7 @@ class ChallengesCog(commands.Cog):
         result_emb = discord.Embed(title='🏁 Gauntlet Match Result', description=match_data['outcome_desc'], color=match_data['display_color'])
         result_emb.add_field(name='Challenger', value=f'<@{user_id}>', inline=True)
         result_emb.add_field(name='Defender', value=f"<@{active['opponent_id']}>", inline=True)
-        result_emb.set_image(url=proof)
+        result_emb.set_image(url=proof_urls[0])
         result_emb.set_footer(text=f"Best-of-5: {match_data['courses_beat']}/5 races won")
         margin_bonus = int(match_data.get('rsl_performance_bonus', 0) or 0)
         result_emb.add_field(name='RSL Performance Adjustment', value=f"{'+' if margin_bonus >= 0 else ''}{margin_bonus} ELO • race-margin scoring", inline=False)
