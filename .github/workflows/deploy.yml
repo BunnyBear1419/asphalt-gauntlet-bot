@@ -195,10 +195,12 @@ jobs:
           glob: '**'
           team: "false"
 
-      - name: Fail if all Discloud deploy attempts failed
+      - name: Record Discloud deployment failure state
+        id: deploy_gate
         if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure' && steps.deploy3.outcome == 'failure'
+        continue-on-error: true
         run: |
-          echo "All Discloud deployment attempts failed."
+          echo "All Discloud deployment attempts failed; entering the recovery path."
           exit 1
 
       - name: Restart Discloud app after upload
@@ -378,7 +380,7 @@ jobs:
 
       - name: Roll back to previous known-good revision
         id: rollback
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.revision.outputs.previous_sha }}
@@ -420,7 +422,7 @@ jobs:
           team: "false"
 
       - name: Retry rollback deployment
-        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
         run: sleep 45
 
       - name: Deploy rollback retry
