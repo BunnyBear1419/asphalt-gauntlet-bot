@@ -41,3 +41,28 @@ def test_competitive_profile_labels_are_consistent_across_site():
     assert "OPEN COMPETITIVE PROFILE" in help_page
     assert "Open Competitive Profile" in tournaments_page
     assert "Competitive Profile" in profile_page
+
+
+def test_player_profile_and_settings_are_separate_routes():
+    server=SERVER.read_text(encoding="utf-8")
+    assert 'add_get("/player/profile", self.player_profile_page)' in server
+    assert 'add_get("/player/settings", self.player_settings_page)' in server
+    assert 'Location": "/player/profile"' in server
+    player=PLAYER.read_text(encoding="utf-8")
+    assert 'data-rsl-player-mode="profile"' in server
+    assert 'My Profile' in player
+    assert 'My Settings' in player
+    assert 'href="/player/settings"' in player
+
+
+def test_challenge_submission_requires_five_individual_proofs():
+    challenges=(ROOT/"ALU_Gauntlet"/"cogs"/"challenges.py").read_text(encoding="utf-8")
+    server=SERVER.read_text(encoding="utf-8")
+    matches=(ROOT/"ALU_Gauntlet"/"web"/"static"/"gauntlet-matches.html").read_text(encoding="utf-8")
+    for marker in ("proof1", "proof2", "proof3", "proof4", "proof5", "discord.Attachment", "challenger_proof_urls", "race_proofs"):
+        assert marker in challenges
+    for marker in ("proof_url", "challenger_proof_urls", "race_proofs"):
+        assert marker in server
+        assert marker in matches
+    assert 'JSON.stringify({courses:rows})' in matches
+    assert 'JSON.stringify({courses:rows,proof:' not in matches
