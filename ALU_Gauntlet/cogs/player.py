@@ -7,6 +7,7 @@ from discord import app_commands
 from ..core.core import *
 from ..core.rsl_activity import activity_level
 from .ticket_economy import BuyTicketView
+from .translation import localize_text
 
 
 async def _club_image_data(image_url: str) -> str:
@@ -98,24 +99,39 @@ class CreateClubModal(discord.ui.Modal, title="Create RSL Club"):
         await interaction.response.defer(ephemeral=True)
         guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
         if await bot.db.club_members.find_one({"guild_id": guild_id, "user_id": user_id}):
-            await interaction.followup.send("❌ You are already in a club in this server.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ You are already in a club in this server.", interaction.locale),
+                ephemeral=True
+            )
             return
         name = str(self.name.value).strip()
         if not name:
-            await interaction.followup.send("❌ Club name is required.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ Club name is required.", interaction.locale),
+                ephemeral=True
+            )
             return
         if await bot.db.clubs.find_one({"guild_id": guild_id, "name_ci": name.casefold()}):
-            await interaction.followup.send("❌ That club name is already taken.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ That club name is already taken.", interaction.locale),
+                ephemeral=True
+            )
             return
         discord_link = str(self.discord_link.value or "").strip()
         if discord_link and not discord_link.lower().startswith(("http://", "https://")):
-            await interaction.followup.send("❌ Club Discord link must begin with http:// or https://.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ Club Discord link must begin with http:// or https://.", interaction.locale),
+                ephemeral=True
+            )
             return
         try:
             links = _club_links(self.links.value)
             image = await _club_image_data(self.image_url.value)
         except ValueError as exc:
-            await interaction.followup.send(f"❌ {exc}", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, f"❌ {exc}", interaction.locale),
+                ephemeral=True
+            )
             return
         now = datetime.now(timezone.utc).isoformat()
         doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "leader_id": user_id, "member_count": 1, "created_at": now, "updated_at": now}
@@ -126,9 +142,15 @@ class CreateClubModal(discord.ui.Modal, title="Create RSL Club"):
         except Exception as exc:
             if result is not None:
                 await bot.db.clubs.delete_one({"_id": result.inserted_id})
-            await interaction.followup.send("❌ The club could not be created. No partial club was kept.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ The club could not be created. No partial club was kept.", interaction.locale),
+                ephemeral=True
+            )
             return
-        await interaction.followup.send("✅ Club created.", embed=await _club_embed(guild_id, user_id), ephemeral=True)
+        await interaction.followup.send(
+            await localize_text(bot, interaction.user.id, "✅ Club created.", embed=await _club_embed(guild_id, user_id), interaction.locale),
+            ephemeral=True
+        )
 
 
 class EditClubModal(discord.ui.Modal, title="Edit RSL Club"):
@@ -151,25 +173,40 @@ class EditClubModal(discord.ui.Modal, title="Edit RSL Club"):
         guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
         club = await bot.db.clubs.find_one({"_id": self.club["_id"], "guild_id": guild_id})
         if not club or str(club.get("leader_id")) != user_id:
-            await interaction.followup.send("❌ Only the club leader can edit this club.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ Only the club leader can edit this club.", interaction.locale),
+                ephemeral=True
+            )
             return
         name = str(self.name.value).strip()
         duplicate = await bot.db.clubs.find_one({"_id": {"$ne": club["_id"]}, "guild_id": guild_id, "name_ci": name.casefold()})
         if not name or duplicate:
-            await interaction.followup.send("❌ Club name is empty or already taken.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ Club name is empty or already taken.", interaction.locale),
+                ephemeral=True
+            )
             return
         discord_link = str(self.discord_link.value or "").strip()
         if discord_link and not discord_link.lower().startswith(("http://", "https://")):
-            await interaction.followup.send("❌ Club Discord link must begin with http:// or https://.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, "❌ Club Discord link must begin with http:// or https://.", interaction.locale),
+                ephemeral=True
+            )
             return
         try:
             links = _club_links(self.links.value)
             image = await _club_image_data(self.image_url.value) if str(self.image_url.value or "").strip() else str(club.get("image", ""))
         except ValueError as exc:
-            await interaction.followup.send(f"❌ {exc}", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, f"❌ {exc}", interaction.locale),
+                ephemeral=True
+            )
             return
         await bot.db.clubs.update_one({"_id": club["_id"], "leader_id": user_id}, {"$set": {"name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "updated_at": datetime.now(timezone.utc).isoformat()}})
-        await interaction.followup.send("✅ Club profile updated.", embed=await _club_embed(guild_id, user_id), ephemeral=True)
+        await interaction.followup.send(
+            await localize_text(bot, interaction.user.id, "✅ Club profile updated.", embed=await _club_embed(guild_id, user_id), interaction.locale),
+            ephemeral=True
+        )
 
 
 class ClubMemberSelect(discord.ui.Select):
@@ -198,17 +235,29 @@ class ClubMemberActionView(discord.ui.View):
 
     async def apply(self, interaction, action):
         if str(interaction.user.id) != self.owner_id:
-            await interaction.response.send_message("❌ This control belongs to another player session.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This control belongs to another player session.", interaction.locale),
+                ephemeral=True
+            )
             return
         if not self.target_user_id:
-            await interaction.response.send_message("❌ Select a member first.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Select a member first.", interaction.locale),
+                ephemeral=True
+            )
             return
         if str(self.target_user_id) == str(self.club.get("leader_id")):
-            await interaction.response.send_message("❌ The club leader cannot be changed from this control.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ The club leader cannot be changed from this control.", interaction.locale),
+                ephemeral=True
+            )
             return
         member = await bot.db.club_members.find_one({"club_id": str(self.club["_id"]), "user_id": self.target_user_id})
         if not member:
-            await interaction.response.send_message("❌ Club member not found.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Club member not found.", interaction.locale),
+                ephemeral=True
+            )
             return
         if action == "kick":
             await bot.db.club_members.delete_one({"_id": member["_id"]})
@@ -222,7 +271,10 @@ class ClubMemberActionView(discord.ui.View):
             message = "✅ Member demoted to member."
         else:
             message = "❌ Unsupported member action."
-        await interaction.response.send_message(message, ephemeral=True)
+        await interaction.response.send_message(
+            await localize_text(bot, interaction.user.id, message, interaction.locale),
+            ephemeral=True
+        )
 
 
 class ClubCenterView(discord.ui.View):
@@ -239,7 +291,10 @@ class ClubCenterView(discord.ui.View):
     @discord.ui.button(label="Create Club", style=discord.ButtonStyle.success, emoji="🏁")
     async def create(self, interaction: discord.Interaction, button):
         if str(interaction.user.id) != self.user_id:
-            await interaction.response.send_message("❌ This control belongs to another player session.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This control belongs to another player session.", interaction.locale),
+                ephemeral=True
+            )
             return
         await interaction.response.send_modal(CreateClubModal())
 
@@ -250,10 +305,16 @@ class ClubCenterView(discord.ui.View):
     @discord.ui.button(label="Leave Club", style=discord.ButtonStyle.danger, emoji="🚪")
     async def leave(self, interaction: discord.Interaction, button):
         if not self.current_club:
-            await interaction.response.send_message("❌ You are not in a club.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ You are not in a club.", interaction.locale),
+                ephemeral=True
+            )
             return
         if str(self.current_club.get("leader_id")) == self.user_id:
-            await interaction.response.send_message("❌ Club leaders must transfer leadership before leaving.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Club leaders must transfer leadership before leaving.", interaction.locale),
+                ephemeral=True
+            )
             return
         result = await bot.db.club_members.delete_one({"club_id": str(self.current_club["_id"]), "user_id": self.user_id})
         if result.deleted_count:
@@ -263,19 +324,28 @@ class ClubCenterView(discord.ui.View):
     @discord.ui.button(label="Edit Club", style=discord.ButtonStyle.primary, emoji="✏️")
     async def edit(self, interaction: discord.Interaction, button):
         if not self.current_club or str(self.current_club.get("leader_id")) != self.user_id:
-            await interaction.response.send_message("❌ Only the club leader can edit the club.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Only the club leader can edit the club.", interaction.locale),
+                ephemeral=True
+            )
             return
         await interaction.response.send_modal(EditClubModal(self.current_club))
 
     @discord.ui.button(label="Manage Members", style=discord.ButtonStyle.primary, emoji="👥")
     async def manage(self, interaction: discord.Interaction, button):
         if not self.current_club or str(self.current_club.get("leader_id")) != self.user_id:
-            await interaction.response.send_message("❌ Only the club leader can manage members.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Only the club leader can manage members.", interaction.locale),
+                ephemeral=True
+            )
             return
         members = await bot.db.club_members.find({"club_id": str(self.current_club["_id"])}).sort("joined_at", 1).to_list(length=20)
         members = [m for m in members if str(m.get("user_id")) != self.user_id]
         if not members:
-            await interaction.response.send_message("ℹ️ There are no other club members to manage.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "ℹ️ There are no other club members to manage.", interaction.locale),
+                ephemeral=True
+            )
             return
         view = ClubMemberActionView(self.current_club, self.user_id)
         view.add_item(ClubMemberSelect(members))
@@ -306,14 +376,23 @@ class ClubPickerSelect(discord.ui.Select):
         guild_id, user_id = str(interaction.guild_id), str(interaction.user.id)
         club = await bot.db.clubs.find_one({"_id": ObjectId(club_id), "guild_id": guild_id})
         if not club:
-            await interaction.response.send_message("❌ Club not found.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Club not found.", interaction.locale),
+                ephemeral=True
+            )
             return
         if await bot.db.club_members.find_one({"guild_id": guild_id, "user_id": user_id}):
-            await interaction.response.send_message("❌ You are already in a club in this server.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ You are already in a club in this server.", interaction.locale),
+                ephemeral=True
+            )
             return
         reservation = await bot.db.clubs.update_one({"_id": club["_id"], "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]}, {"$inc": {"member_count": 1}})
         if not reservation.modified_count:
-            await interaction.response.send_message("❌ That club is full.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ That club is full.", interaction.locale),
+                ephemeral=True
+            )
             return
         now = datetime.now(timezone.utc).isoformat()
         try:
@@ -321,9 +400,15 @@ class ClubPickerSelect(discord.ui.Select):
         except Exception as exc:
             await bot.db.clubs.update_one({"_id": club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             if exc.__class__.__name__ == "DuplicateKeyError":
-                await interaction.response.send_message("❌ You are already in a club in this server.", ephemeral=True)
+                await interaction.response.send_message(
+                    await localize_text(bot, interaction.user.id, "❌ You are already in a club in this server.", interaction.locale),
+                    ephemeral=True
+                )
                 return
-            await interaction.response.send_message("❌ The club join failed; no partial membership was kept.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ The club join failed; no partial membership was kept.", interaction.locale),
+                ephemeral=True
+            )
             return
         await send_club_center(interaction, replace=True)
 
@@ -359,7 +444,10 @@ class DiscordNotificationSettingsView(discord.ui.View):
 
     async def _toggle(self, interaction, field: str):
         if str(interaction.user.id) != self.user_id:
-            await interaction.response.send_message("❌ This notification panel belongs to another player.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This notification panel belongs to another player.", interaction.locale),
+                ephemeral=True
+            )
             return
         record = await self._load()
         value = not bool(record.get(field, False))
@@ -372,7 +460,10 @@ class DiscordNotificationSettingsView(discord.ui.View):
 
     async def _set_lead(self, interaction, days: float):
         if str(interaction.user.id) != self.user_id:
-            await interaction.response.send_message("❌ This notification panel belongs to another player.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This notification panel belongs to another player.", interaction.locale),
+                ephemeral=True
+            )
             return
         await bot.db.notification_preferences.update_one(
             {"_id": self.user_id},
@@ -472,22 +563,22 @@ class AbandonGauntletButton(discord.ui.Button):
         })
         if not active:
             await interaction.response.send_message(
-                "ℹ️ You do not have an active Gauntlet match that can be quit.",
+                await localize_text(bot, interaction.user.id, "ℹ️ You do not have an active Gauntlet match that can be quit.", interaction.locale),
                 ephemeral=True,
-            )
+                )
             return
         await interaction.response.defer(ephemeral=True)
         closed = await abandon_active_challenge(guild_id, user_id, "quit")
         if not closed:
             await interaction.followup.send(
-                "⚠️ This match changed state before the quit could be recorded. Refresh your dashboard.",
+                await localize_text(bot, interaction.user.id, "⚠️ This match changed state before the quit could be recorded. Refresh your dashboard.", interaction.locale),
                 ephemeral=True,
-            )
+                )
             return
         await interaction.followup.send(
-            "🛑 **Active Gauntlet match closed.** The match was marked abandoned and its consumed ticket was not restored.",
+            await localize_text(bot, interaction.user.id, "🛑 **Active Gauntlet match closed.** The match was marked abandoned and its consumed ticket was not restored.", interaction.locale),
             ephemeral=True,
-        )
+            )
 
 async def send_dashboard(interaction: discord.Interaction):
     """Send the canonical player dashboard without removing player access for staff."""
@@ -620,16 +711,25 @@ class PlayerCog(commands.Cog):
             division = get_division_for_pi(int(profile.get('garage_pi', 0)))['name']
             defense = profile.get('defense_locked')
             defense_status = '5-course defense locked' if has_5_course_defense(profile) else 'defense still needs to be set'
-            await interaction.followup.send(f"✅ **Season {season_number} Driver:** `{profile.get('elo', 1000)} ELO` / `{profile.get('garage_pi', 0):,} PI` → **{division}**. {defense_status}.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, f"✅ **Season {season_number} Driver:** `{profile.get('elo', 1000)} ELO` / `{profile.get('garage_pi', 0):,} PI` → **{division}**. {defense_status}.", interaction.locale),
+                ephemeral=True
+            )
             return
         pending = await bot.db.pending.find_one({'_id': f'{guild_id}_{user_id}'})
         if pending and int(pending.get('season_number', season_number)) == season_number:
             division = get_division_for_pi(int(pending.get('rank', 0)))['name']
-            await interaction.followup.send(f"⏳ **Season {season_number} Pending Review:** Garage `{int(pending.get('rank', 0)):,} PI` → projected **{division}**. Staff approval is still required.", ephemeral=True)
+            await interaction.followup.send(
+                await localize_text(bot, interaction.user.id, f"⏳ **Season {season_number} Pending Review:** Garage `{int(pending.get('rank', 0)):,} PI` → projected **{division}**. Staff approval is still required.", interaction.locale),
+                ephemeral=True
+            )
             return
         career = profile.get('career_wins', 0) if profile else 0
         played = profile.get('career_played', 0) if profile else 0
-        await interaction.followup.send(f'🔄 **Season {season_number} Re-Registration Required.** Your career record remains safe (`{career}` wins / `{played}` matches). Open `/dashboard` → **My Gauntlet** → **Register** with your current Garage PI to enter this season.', ephemeral=True)
+        await interaction.followup.send(
+            await localize_text(bot, interaction.user.id, f'🔄 **Season {season_number} Re-Registration Required.** Your career record remains safe (`{career}` wins / `{played}` matches). Open `/dashboard` → **My Gauntlet** → **Register** with your current Garage PI to enter this season.', interaction.locale),
+            ephemeral=True
+        )
 
     @app_commands.command(name='delete_me', description='Permanently delete your Racing Syndicate League data from this server.')
     async def delete_me_cmd(self, interaction: discord.Interaction):
@@ -640,9 +740,15 @@ class PlayerCog(commands.Cog):
         profile = await bot.db.drivers.find_one({'_id': f'{guild_id}_{user_id}'})
         pending = await bot.db.pending.find_one({'_id': f'{guild_id}_{user_id}'})
         if not profile and (not pending):
-            await interaction.response.send_message('ℹ️ You do not have an active Racing Syndicate League record in this server.', ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, 'ℹ️ You do not have an active Racing Syndicate League record in this server.', interaction.locale),
+                ephemeral=True
+            )
             return
-        await interaction.response.send_message('⚠️ **Permanently delete your Racing Syndicate League data?**\n\nThis removes your driver profile, current/past match records, active challenges, pending submissions, and your archived season-standing entries from **this server**. This cannot be undone.\n\nIf you join again, you will start as a new player.', view=ConfirmDeleteMeView(guild_id, user_id), ephemeral=True)
+        await interaction.response.send_message(
+            await localize_text(bot, interaction.user.id, '⚠️ **Permanently delete your Racing Syndicate League data?**\n\nThis removes your driver profile, current/past match records, active challenges, pending submissions, and your archived season-standing entries from **this server**. This cannot be undone.\n\nIf you join again, you will start as a new player.', view=ConfirmDeleteMeView(guild_id, user_id), interaction.locale),
+            ephemeral=True
+        )
 
 async def setup(bot):
     await bot.add_cog(PlayerCog(bot))

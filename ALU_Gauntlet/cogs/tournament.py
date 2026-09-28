@@ -111,36 +111,63 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
         from bson import ObjectId
         tournament = await bot.db.tournaments.find_one({"_id": ObjectId(self.tournament_id)}) if ObjectId.is_valid(self.tournament_id) else None
         if not tournament or tournament.get("status") != "live":
-            await interaction.response.send_message("❌ This tournament is not live.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This tournament is not live.", interaction.locale),
+                ephemeral=True
+            )
             return
         bracket = tournament.get("bracket") or {}
         match = next((m for m in _matches(tournament) if str(m.get("id")) == self.match_id), None)
         if not match:
-            await interaction.response.send_message("❌ Match not found.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Match not found.", interaction.locale),
+                ephemeral=True
+            )
             return
         is_staff = await _is_tournament_staff(interaction)
         result_mode = str(tournament.get("result_submission_mode") or "player_review").casefold()
         if result_mode == "admin_only" and not is_staff:
-            await interaction.response.send_message("❌ This tournament is configured for Admin Only result submission.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This tournament is configured for Admin Only result submission.", interaction.locale),
+                ephemeral=True
+            )
             return
         if not await _is_participant(tournament, match, interaction.user.id) and not is_staff:
-            await interaction.response.send_message("❌ Only a participant in this match can submit the result.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Only a participant in this match can submit the result.", interaction.locale),
+                ephemeral=True
+            )
             return
         if self.winner_id not in [str(x) for x in (match.get("player_slots") or []) if x]:
-            await interaction.response.send_message("❌ The selected winner is not an entrant in this match.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ The selected winner is not an entrant in this match.", interaction.locale),
+                ephemeral=True
+            )
             return
         if match.get("result_status") == "pending":
-            await interaction.response.send_message("❌ This match already has a result waiting for staff verification.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This match already has a result waiting for staff verification.", interaction.locale),
+                ephemeral=True
+            )
             return
         if match.get("status") != "ready":
-            await interaction.response.send_message("❌ This match is not ready for a result submission.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This match is not ready for a result submission.", interaction.locale),
+                ephemeral=True
+            )
             return
         if not await _claim_action(self.tournament_id, self.match_id, "submit"):
-            await interaction.response.send_message("❌ Another result submission is already being processed for this match.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Another result submission is already being processed for this match.", interaction.locale),
+                ephemeral=True
+            )
             return
         proof = str(self.proof.value).strip()
         if proof and not proof.lower().startswith(("http://", "https://")):
-            await interaction.response.send_message("❌ Proof must be a valid URL.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Proof must be a valid URL.", interaction.locale),
+                ephemeral=True
+            )
             return
         try:
             match.update({"result_status":"pending","submitted_by":str(interaction.user.id),"submitted_at":discord.utils.utcnow().isoformat(),"winner_id":self.winner_id,"proof_url":proof,"result_notes":str(self.notes.value).strip()})
@@ -149,13 +176,19 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
             await _release_action(self.tournament_id, self.match_id)
         if result_mode == "admin_only":
             ok, message = await verify_match_on_discord(self.tournament_id, self.match_id, "approve", interaction.user.id)
-            await interaction.response.send_message(("✅ " if ok else "❌ ") + message, ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ") + message, interaction.locale),
+                ephemeral=True
+            )
             return
         cfg=await bot.db.settings.find_one({"_id":str(tournament.get("guild_id"))}) or {}
         channel=bot.get_channel(int(cfg["match_results_channel_id"])) if cfg.get("match_results_channel_id") else None
         if channel:
             await channel.send("🏁 **Tournament Result Pending Verification**\n**"+str(tournament.get("name","Tournament"))+"** • "+self.match_id+"\nWinner: <@"+self.winner_id+">\nSubmitted by: <@"+str(interaction.user.id)+">")
-        await interaction.response.send_message("📥 Result submitted. Staff verification is required before the bracket advances.", ephemeral=True)
+        await interaction.response.send_message(
+            await localize_text(bot, interaction.user.id, "📥 Result submitted. Staff verification is required before the bracket advances.", interaction.locale),
+            ephemeral=True
+        )
 
 class MatchResultView(discord.ui.View):
     def __init__(self, tournament_id, match):
@@ -173,13 +206,22 @@ class MatchResultView(discord.ui.View):
                 tournament=await bot.db.tournaments.find_one({"_id":ObjectId(self.tournament_id)}) if ObjectId.is_valid(self.tournament_id) else None
                 match=next((m for m in _matches(tournament or {}) if str(m.get("id"))==self.match_id),None)
                 if not tournament or not match:
-                    await interaction.response.send_message("❌ Match not found.",ephemeral=True); return
+                    await interaction.response.send_message(
+                        await localize_text(bot, interaction.user.id, "❌ Match not found.", interaction.locale),
+                        ephemeral=True; return
+                    )
                 is_staff = await _is_tournament_staff(interaction)
                 result_mode = str(tournament.get("result_submission_mode") or "player_review").casefold()
                 if result_mode == "admin_only" and not is_staff:
-                    await interaction.response.send_message("❌ This tournament is configured for Admin Only result submission.",ephemeral=True); return
+                    await interaction.response.send_message(
+                        await localize_text(bot, interaction.user.id, "❌ This tournament is configured for Admin Only result submission.", interaction.locale),
+                        ephemeral=True; return
+                    )
                 if not await _is_participant(tournament,match,interaction.user.id) and not is_staff:
-                    await interaction.response.send_message("❌ You are not a participant in this match.",ephemeral=True); return
+                    await interaction.response.send_message(
+                        await localize_text(bot, interaction.user.id, "❌ You are not a participant in this match.", interaction.locale),
+                        ephemeral=True; return
+                    )
                 await interaction.response.send_modal(TournamentResultModal(self.tournament_id,self.match_id,entrant))
             button.callback=callback
             self.add_item(button)
@@ -391,8 +433,14 @@ async def build_tournament_view(tournament_id,user):
         b=discord.ui.Button(label=f"{names[0][:30]} vs {names[1][:30]}",style=discord.ButtonStyle.primary)
         async def cb(interaction,match=m):
             if not await _is_participant(t,match,interaction.user.id) and not await _is_tournament_staff(interaction):
-                await interaction.response.send_message("❌ You are not a participant in this match.",ephemeral=True); return
-            await interaction.response.send_message("Choose the winner:",view=MatchResultView(tournament_id,match),ephemeral=True)
+                await interaction.response.send_message(
+                    await localize_text(bot, interaction.user.id, "❌ You are not a participant in this match.", interaction.locale),
+                    ephemeral=True; return
+                )
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "Choose the winner:",view=MatchResultView(tournament_id,match), interaction.locale),
+                ephemeral=True
+            )
         b.callback=cb
         view.add_item(b)
     guild = bot.get_guild(int(t.get("guild_id"))) if str(t.get("guild_id", "")).isdigit() else None
@@ -419,17 +467,29 @@ async def build_tournament_view(tournament_id,user):
             approve=discord.ui.Button(label=f"Approve {m.get('id')}",style=discord.ButtonStyle.success)
             async def approve_cb(interaction,match=m):
                 if not await _is_tournament_staff(interaction):
-                    await interaction.response.send_message("❌ Tournament staff access required.",ephemeral=True); return
+                    await interaction.response.send_message(
+                        await localize_text(bot, interaction.user.id, "❌ Tournament staff access required.", interaction.locale),
+                        ephemeral=True; return
+                    )
                 ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"approve",interaction.user.id)
-                await interaction.response.send_message(("✅ " if ok else "❌ ")+msg,ephemeral=True)
+                await interaction.response.send_message(
+                    await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ")+msg, interaction.locale),
+                    ephemeral=True
+                )
             approve.callback=approve_cb
             view.add_item(approve)
             reject=discord.ui.Button(label=f"Reject {m.get('id')}",style=discord.ButtonStyle.danger)
             async def reject_cb(interaction,match=m):
                 if not await _is_tournament_staff(interaction):
-                    await interaction.response.send_message("❌ Tournament staff access required.",ephemeral=True); return
+                    await interaction.response.send_message(
+                        await localize_text(bot, interaction.user.id, "❌ Tournament staff access required.", interaction.locale),
+                        ephemeral=True; return
+                    )
                 ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"reject",interaction.user.id)
-                await interaction.response.send_message(("✅ " if ok else "❌ ")+msg,ephemeral=True)
+                await interaction.response.send_message(
+                    await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ")+msg, interaction.locale),
+                    ephemeral=True
+                )
             reject.callback=reject_cb
             view.add_item(reject)
     return view
@@ -448,11 +508,17 @@ class TournamentMediaModerationView(discord.ui.View):
 
     async def _moderate(self, interaction, action):
         if not await _is_tournament_staff(interaction):
-            await interaction.response.send_message("❌ Tournament staff access required.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ Tournament staff access required.", interaction.locale),
+                ephemeral=True
+            )
             return
         media = await bot.db.tournament_media.find_one({"_id": self.media_id})
         if not media or media.get("status") != "pending":
-            await interaction.response.send_message("This media submission has already been reviewed or is no longer available.", ephemeral=True)
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "This media submission has already been reviewed or is no longer available.", interaction.locale),
+                ephemeral=True
+            )
             return
         now = discord.utils.utcnow().isoformat()
         await bot.db.tournament_media.update_one(

@@ -101,3 +101,11 @@ def test_gauntlet_response_surfaces_use_shared_localization():
         text = (root / name).read_text(encoding="utf-8")
         assert "from .translation import localize_text" in text
         assert "await localize_text(bot, interaction.user.id" in text
+
+
+def test_player_tournament_and_season_response_surfaces_use_shared_localization():
+    root = ROOT / "ALU_Gauntlet" / "cogs"
+    for name in ("player.py", "tournament.py", "season.py"):
+        text = (root / name).read_text(encoding="utf-8")
+        assert "from .translation import localize_text" in text
+        assert "await localize_text(bot, interaction.user.id" in text
