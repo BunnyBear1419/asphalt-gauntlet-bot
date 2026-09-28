@@ -7,6 +7,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 
 from ..core.core import *
+from ..core.authorization import require_admin
 from .translation import localize_text
 from ..core.gauntlet_progression import season_reward_for_rank
 from ..core.rsl_economy_ledger import apply_coin_transaction
