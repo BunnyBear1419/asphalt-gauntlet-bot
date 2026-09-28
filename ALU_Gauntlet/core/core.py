@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import AsyncMongoClient, ServerApi
 from pymongo.errors import DuplicateKeyError
 from PIL import Image
 import io
@@ -297,7 +297,7 @@ class GauntletBot(commands.Bot):
         mongo_uri = os.getenv("MONGO_URI")
         if mongo_uri:
             try:
-                self.mongo_client = AsyncIOMotorClient(mongo_uri)
+                self.mongo_client = AsyncMongoClient(mongo_uri, server_api=ServerApi("1"))
                 await self.mongo_client.admin.command('ping')
                 self.db = self.mongo_client.get_database("asphalt_gauntlet")
                 logging.info("🟢 Successfully connected to MongoDB Atlas Cloud Cluster.")
