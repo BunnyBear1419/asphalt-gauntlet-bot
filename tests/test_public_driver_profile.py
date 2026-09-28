@@ -48,3 +48,18 @@ def test_tournament_results_link_individual_drivers():
     assert 't.champion_id' in results
     assert 'm.player_slots?.[0]' in results
     assert '/profile?user_id=' in results
+
+
+def test_gauntlet_match_surfaces_use_safe_opponent_ids_for_public_profiles():
+    server = SERVER.read_text(encoding="utf-8")
+    matches = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-matches.html").read_text(encoding="utf-8")
+    app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
+    player = (ROOT / "ALU_Gauntlet" / "web" / "static" / "player.js").read_text(encoding="utf-8")
+    assert '"opponent_id":oppid' in server
+    assert '"opponent_id":opponent' in server
+    assert 'm.opponent_id' in matches
+    assert 'm.opponent_id' in app
+    assert 'm.opponent_id' in player
+    assert '/profile?user_id=' in matches
+    assert '/profile?user_id=' in app
+    assert '/profile?user_id=' in player
