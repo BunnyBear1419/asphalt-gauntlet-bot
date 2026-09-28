@@ -1,6 +1,7 @@
 (() => {
 const $=s=>document.querySelector(s);
 const text=(id,v)=>{const e=$("#"+id);if(e)e.textContent=v==null||v===""?"—":String(v)};
+const formatElo=v=>{const n=Number(v);return Number.isFinite(n)?Math.trunc(n).toLocaleString():"1,000"};
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function api(url){const r=await fetch(url,{credentials:"same-origin"});if(!r.ok)throw new Error(await r.text());return r.json()}
 async function load(){
@@ -54,7 +55,7 @@ async function load(){
   text("location",p.location||prefs.location||"Not set");
   text("timezone",p.timezone||prefs.timezone||"UTC");
   text("about",p.about||prefs.about||"No About Me information added yet.");
-  text("elo",Number(p.elo||0).toLocaleString());
+  text("elo",formatElo(p.elo));
   const xpData=await api("/api/xp/me").catch(()=>({xp:0,level:1,next_xp:0,weekly_xp:0,monthly_xp:0,voice_seconds:0,reactions:0}));
   text("xp-level",xpData.level??1); text("xp-total",Number(xpData.xp||0).toLocaleString());
   text("xp-weekly",Number(xpData.weekly_xp||0).toLocaleString()); text("xp-monthly",Number(xpData.monthly_xp||0).toLocaleString());
