@@ -4,6 +4,7 @@ from __future__ import annotations
 import discord
 
 from ..core.rsl_economy import purchase_daily_ticket
+from .translation import localize_text
 
 
 class BuyTicketView(discord.ui.View):
@@ -17,7 +18,7 @@ class BuyTicketView(discord.ui.View):
     @discord.ui.button(label="Buy Extra Ticket", emoji="🎟️", style=discord.ButtonStyle.primary)
     async def buy_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         if str(interaction.user.id) != self.user_id or str(interaction.guild_id) != self.guild_id:
-            await interaction.response.send_message("❌ This ticket purchase belongs to another driver.", ephemeral=True)
+            await interaction.response.send_message(await localize_text(self.bot, interaction.user.id, "❌ This ticket purchase belongs to another driver.", interaction.locale), ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
@@ -45,4 +46,5 @@ class BuyTicketView(discord.ui.View):
             "insufficient_coins": f"🪙 You do not have enough RSL Coins. Next ticket costs **{result.get('cost', 0):,}**.",
             "purchase_race_or_state_changed": "⚠️ Your ticket balance changed before the purchase completed. Please try again.",
         }
-        await interaction.followup.send(messages.get(result.get("reason"), "⚠️ The ticket purchase could not be completed."), ephemeral=True)
+        message = messages.get(result.get("reason"), "⚠️ The ticket purchase could not be completed.")
+        await interaction.followup.send(await localize_text(self.bot, interaction.user.id, message, interaction.locale), ephemeral=True)
