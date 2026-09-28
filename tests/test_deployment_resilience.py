@@ -231,8 +231,12 @@ def test_all_embedded_deploy_python_blocks_are_valid():
     import textwrap
 
     source = _source()
-    blocks = re.findall(r"python - <<'PY'(?P<body>.*?)^\\s*PY$", source, flags=re.MULTILINE | re.DOTALL)
+    blocks = re.findall(
+        r"^[ \t]*python - <<'PY'\s*\n(?P<body>.*?)^[ \t]*PY[ \t]*$",
+        source,
+        flags=re.MULTILINE | re.DOTALL,
+    )
     assert blocks, "Expected at least one embedded Python heredoc in deploy.yml"
     for index, body in enumerate(blocks, 1):
-        script = textwrap.dedent(body).strip("\\n")
+        script = textwrap.dedent(body).strip("\n")
         compile(script, f"deploy-heredoc-{index}", "exec")
