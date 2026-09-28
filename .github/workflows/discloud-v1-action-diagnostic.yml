@@ -1,0 +1,20 @@
+name: Discloud V1 Action Diagnostic
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: discloud/deploy-action@v1
+        with:
+          token: placeholder
+          app_id: asph
