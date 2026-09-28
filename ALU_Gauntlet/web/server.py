@@ -392,8 +392,7 @@ class WebControlCenter:
       <strong id="rsl-profile-menu-name">Profile</strong>
       <small id="rsl-profile-menu-sub">Discord account</small>
     </div>
-    <a href="/player#preferences">⚙️ <span>My Settings</span></a>
-    <a href="/profile">👤 <span>My Profile</span></a>
+    <a href="/player#profile-settings">👤 <span>My Profile &amp; Settings</span></a>
     <a href="/club">🏎️ <span>My Club</span></a>
     <a href="/gauntlet/career">🏁 <span>My Gauntlet</span></a>
     <a href="/my-tournaments">🏆 <span>My Tournaments</span></a>
@@ -4820,9 +4819,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return await self._page_response("player.html", request)
 
     async def profile_page(self, request: web.Request) -> web.StreamResponse:
-        user = await self.require_user(request)
-        response = await self._page_response("profile.html", request)
-        body = response.text
+        await self.require_user(request)
+        # Profile editing and account preferences are now consolidated into the
+        # single Profile & Settings section on the Player control center.
+        return web.Response(status=302, headers={"Location": "/player#profile-settings"})
 
         # Render the Discord identity directly into the page as a reliable
         # first paint. JavaScript still refreshes the same fields from /api/me,
