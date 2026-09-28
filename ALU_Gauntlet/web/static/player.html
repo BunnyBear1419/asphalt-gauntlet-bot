@@ -6,33 +6,158 @@
 <title>Competitive Profile • Racing Syndicate League</title>
 <link rel="stylesheet" href="/static/app.css?v=20260919-25">
 <style>.nav-icon{display:inline-flex;align-items:center;justify-content:center;width:1.35em;margin-right:6px;font-style:normal;line-height:1}.top-nav-dropdown-trigger .nav-icon{margin-right:5px}.top-nav-dropdown-menu .nav-icon{width:1.2em}</style><style>.competition-snapshot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.competition-snapshot-grid>div{padding:16px;border:1px solid var(--rsl-final-line,#173b64);border-radius:14px;background:var(--rsl-final-panel2,#0d2139)}.competition-snapshot-grid span{display:block;font-size:11px;font-weight:800;color:var(--rsl-final-muted,#91a5c3);letter-spacing:.08em}.competition-snapshot-grid strong{display:block;margin-top:6px;font-size:20px;color:var(--rsl-final-text,#dbe8f8)}@media(max-width:700px){.competition-snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}</style><style>
-.settings-page-hero{display:none}
-.settings-panel-kicker{display:block;margin-bottom:5px;font-size:11px;font-weight:800;letter-spacing:.12em;color:#25dfff}
-.settings-live{font-size:10px;font-weight:800;letter-spacing:.08em;color:#18e19e;border:1px solid #176c58;background:#08291f;border-radius:999px;padding:6px 10px}
-.settings-server-card{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(260px,420px);gap:16px;align-items:center;padding:18px;border:1px solid #174a79;border-radius:12px;background:#07172d}
-.settings-icon,.settings-option-icon{width:40px;height:40px;display:grid;place-items:center;border:1px solid #24557f;border-radius:10px;background:#0b213b;color:#25dfff;font-size:20px}
-.settings-server-card b,.settings-option-copy b{display:block;color:#eef5ff;font-size:15px}
-.settings-server-card small,.settings-option-copy small{display:block;margin-top:4px;color:#91a5c3;font-size:12px;line-height:1.5}
-.settings-server-card .server-select{margin:0!important;padding:0!important;min-height:0!important}
-.settings-server-card .server-select select{max-width:none!important;margin:0!important}
-#profile-settings{scroll-margin-top:96px;margin-top:24px!important}
-#profile-settings .settings-server-card{margin:0 0 20px}
-#profile-settings .settings-save-row{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:20px;padding:18px 20px;border:1px solid #173b64;border-radius:12px;background:#0d2139}
-#profile-settings .settings-save-row b{display:block;color:#eef5ff;font-size:15px}
-#profile-settings .settings-save-row small{display:block;margin-top:4px;color:#91a5c3;font-size:12px;line-height:1.5}
+/* Profile & Settings — intentionally follows the Admin Tools visual system */
+#profile-settings{
+  scroll-margin-top:96px;
+  margin-top:28px!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+#profile-settings .panel-heading{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  padding:22px 0 18px;
+  margin:0 0 20px;
+  border-bottom:1px solid #174a79;
+}
+#profile-settings .settings-panel-kicker{
+  display:block;
+  margin:0 0 5px;
+  font-size:10px;
+  letter-spacing:.2em;
+  color:#25dfff;
+  font-weight:800;
+}
+#profile-settings .panel-heading h2{
+  margin:0;
+  font-size:30px;
+  line-height:1.05;
+}
+#profile-settings .settings-live{
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.08em;
+  color:#18e19e;
+  border:1px solid #176c58;
+  background:#08291f;
+  border-radius:6px;
+  padding:9px 12px;
+}
+#profile-settings>.server-sub{
+  margin:-8px 0 18px;
+  color:#91a5c3;
+  font-size:11px;
+}
+#profile-settings .settings-admin-card{
+  border:1px solid #174a79;
+  background:linear-gradient(145deg,var(--rsl-box),#030c1b);
+  padding:20px;
+  margin-bottom:18px;
+  box-shadow:0 10px 26px #0005;
+}
+#profile-settings .settings-admin-card h3{
+  margin:0 0 5px;
+  font-size:19px;
+}
+#profile-settings .settings-admin-card>p{
+  margin:0 0 18px;
+  color:#91a5c3;
+  font-size:11px;
+}
+#profile-settings .settings-server-card{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) minmax(260px,420px);
+  gap:16px;
+  align-items:center;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+}
+#profile-settings .settings-icon,
+#profile-settings .settings-option-icon{
+  width:40px;height:40px;display:grid;place-items:center;
+  border:1px solid #24557f;border-radius:7px;background:#0b213b;color:#25dfff;font-size:20px;
+}
+#profile-settings .settings-server-card b,
+#profile-settings .settings-option-copy b{display:block;color:#eef5ff;font-size:14px}
+#profile-settings .settings-server-card small,
+#profile-settings .settings-option-copy small{display:block;margin-top:4px;color:#8198b5;font-size:10px;line-height:1.45}
+#profile-settings .server-select{margin:0!important;padding:0!important;min-height:0!important}
+#profile-settings .server-select select{max-width:none!important;margin:0!important}
+#profile-settings .profile-editor-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:13px;
+}
+#profile-settings .profile-editor-grid>label,
+#profile-settings .profile-links-editor{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+#profile-settings .profile-editor-grid label>b,
+#profile-settings .profile-links-editor>b{
+  font-size:10px;
+  color:#8fa6c4;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#profile-settings .profile-editor-grid input,
+#profile-settings .profile-editor-grid select,
+#profile-settings .profile-editor-grid textarea{
+  width:100%;
+  border:1px solid #174a79;
+  background:#020b1b;
+  color:#eef5ff;
+  border-radius:6px;
+  padding:10px 11px;
+  outline:none;
+}
+#profile-settings .profile-editor-grid input:focus,
+#profile-settings .profile-editor-grid select:focus,
+#profile-settings .profile-editor-grid textarea:focus{
+  border-color:#25dfff;
+  box-shadow:0 0 0 2px #25dfff12;
+}
+#profile-settings .profile-wide{grid-column:1/-1}
+#profile-settings .profile-about-field small,
+#profile-settings .profile-setting-hint{
+  color:#7188a7;
+  font-size:10px;
+}
+#profile-settings .profile-links-editor{grid-column:1/-1}
+#profile-settings .settings-save-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  margin-top:17px;
+  padding:0;
+  border:0;
+  background:transparent;
+}
+#profile-settings .settings-save-row b{display:block;color:#eef5ff;font-size:13px}
+#profile-settings .settings-save-row small{display:block;margin-top:4px;color:#8198b5;font-size:10px;line-height:1.45}
 #profile-settings .settings-save-row .qa{margin:0;flex:0 0 auto}
 @media(max-width:800px){
-  .settings-server-card{grid-template-columns:40px 1fr}
-  .settings-server-card .server-select{grid-column:1/-1}
+  #profile-settings .settings-server-card{grid-template-columns:40px 1fr}
+  #profile-settings .settings-server-card .server-select{grid-column:1/-1}
+  #profile-settings .profile-editor-grid{grid-template-columns:1fr}
+  #profile-settings .profile-wide{grid-column:auto}
   #profile-settings .settings-save-row{align-items:flex-start;flex-direction:column}
   #profile-settings .settings-save-row .qa{width:100%}
 }
 @media(max-width:600px){
   #profile-settings{margin-top:20px!important}
-  #profile-settings .settings-save-row{padding:15px}
+  #profile-settings .panel-heading{align-items:flex-start;flex-direction:column}
+  #profile-settings .settings-admin-card{padding:15px}
 }
-@media(max-width:800px){.settings-server-card{grid-template-columns:40px 1fr}.settings-server-card .server-select{grid-column:1/-1}.settings-option-grid{grid-template-columns:1fr}.settings-footer{align-items:flex-start;flex-direction:column}.settings-footer>div{width:100%;flex-wrap:wrap}}
-@media(max-width:600px){.settings-page-hero h1{font-size:34px}.settings-panel-body{padding:14px}.settings-server-card{padding:14px}.settings-save-row{padding:15px}}
 </style></head>
 <body class="alu-dashboard">
 <header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/assets/rsl-shield.png" alt="RSL"></a><nav aria-label="Primary navigation"><a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.png" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.png" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><span class="nav-icon-glyph" aria-hidden="true">⚔</span><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>References</span></a></div></details><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.png" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><span class="nav-icon-glyph" aria-hidden="true">📊</span><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Club Tournaments</span></a></div></details><a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a><a href="/help"><img class="nav-icon-img" src="/assets/icons/help.png" alt=""><span>Help</span></a><a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><span>Companion</span></a></nav></header>
@@ -119,26 +244,59 @@
 
   </aside>
 </section>
-<article class="glass-panel activity-card" id="profile-settings">
-  <div class="panel-heading"><div><span class="settings-panel-kicker">RSL DRIVER ACCOUNT</span><h2>👤 Profile &amp; Settings</h2></div><span id="profile-save-status" class="settings-live">SYNCED</span></div>
-  <p class="server-sub">Manage your public driver profile and account preferences together. Changes stay synchronized with your RSL account.</p>
-  <div class="settings-server-card unified-profile-server"><div class="settings-icon">◎</div><div><b>Discord Server</b><small>Select the RSL server where these profile and preference settings apply.</small></div><div class="server-select"><select id="guild" aria-label="Server selection"></select><span>⌄</span></div></div>
-  <div class="profile-editor-grid">
-    <label><b>Discord Name</b><input id="profile-discord-name" type="text" readonly></label>
-    <label><b>Game Name</b><input id="profile-game-name" type="text" maxlength="100" placeholder="Your in-game name"></label>
-    <label><b>Game ID</b><input id="profile-game-id" type="text" readonly></label>
-    <label><b>Location</b><input id="profile-location" type="text" maxlength="100" placeholder="Optional"></label>
-    <label><b>Platform</b><select id="profile-platform"><option value="">Choose platform…</option><option>Android</option><option>Nintendo</option><option>macOS</option><option>Steam</option><option>Epic Games</option><option>Windows</option><option>Apple iOS</option><option>Xbox</option><option>Playstation</option></select></label>
-    <label><b>Driver Type</b><select id="profile-driver-type"><option value="">Choose driver type…</option><option>Manual Driver</option><option>Touch Driver</option></select></label>
-    <label class="profile-wide profile-about-field"><b>About Me</b><textarea id="profile-about" maxlength="500" rows="4" placeholder="Tell other drivers a little about you…"></textarea><small><span id="profile-about-count">0</span>/500 characters</small></label>
-    <label><b>Timezone</b><select id="profile-timezone"></select></label>
-    <label><b>Website Theme</b><select id="profile-theme" aria-label="Website theme">
-<option value="dark">🌙 Midnight</option><option value="light">☀️ Light</option><option value="ocean">🌊 Ocean</option><option value="purple">🟣 Neon Purple</option><option value="crimson">🔴 Crimson</option><option value="emerald">🟢 Emerald</option><option value="sunset">🟠 Sunset</option><option value="graphite">⚙️ Graphite</option>
-</select><small class="profile-setting-hint">Choose your RSL color theme. Your choice follows your account across devices.</small></label>
-    <div class="profile-wide profile-links-editor"><b>Links</b><div id="profile-links"></div><button class="qa qa-blue" id="add-profile-link" type="button">＋ Add Link</button></div>
+<section id="profile-settings" aria-labelledby="profile-settings-title">
+  <div class="panel-heading">
+    <div>
+      <span class="settings-panel-kicker">WEB ACCOUNT SETTINGS</span>
+      <h2 id="profile-settings-title">Profile &amp; Settings</h2>
+    </div>
+    <span id="profile-save-status" class="settings-live">SYNCED</span>
   </div>
-  <div class="settings-save-row"><div><b>Save your RSL profile</b><small>Profile details, timezone, platform, driver type and links are saved together.</small></div><button class="qa qa-green" id="save-profile" type="button">Save Profile &amp; Settings →</button></div>
-</article>
+  <p class="server-sub">Manage your public driver profile and account preferences from one place. Changes stay synchronized with your RSL account.</p>
+
+  <div class="settings-admin-card">
+    <h3>Discord Server</h3>
+    <p>Select the RSL server where these profile and preference settings apply.</p>
+    <div class="settings-server-card">
+      <div class="settings-icon">◎</div>
+      <div><b>Server Profile</b><small>Your profile settings are scoped to the selected Discord server.</small></div>
+      <div class="server-select"><select id="guild" aria-label="Server selection"></select><span>⌄</span></div>
+    </div>
+  </div>
+
+  <div class="settings-admin-card">
+    <h3>Driver Profile</h3>
+    <p>These details are shown through your RSL driver profile and competitive identity.</p>
+    <div class="profile-editor-grid">
+      <label><b>Discord Name</b><input id="profile-discord-name" type="text" readonly></label>
+      <label><b>Game Name</b><input id="profile-game-name" type="text" maxlength="100" placeholder="Your in-game name"></label>
+      <label><b>Game ID</b><input id="profile-game-id" type="text" readonly></label>
+      <label><b>Location</b><input id="profile-location" type="text" maxlength="100" placeholder="Optional"></label>
+      <label><b>Platform</b><select id="profile-platform"><option value="">Choose platform…</option><option>Android</option><option>Nintendo</option><option>macOS</option><option>Steam</option><option>Epic Games</option><option>Windows</option><option>Apple iOS</option><option>Xbox</option><option>Playstation</option></select></label>
+      <label><b>Driver Type</b><select id="profile-driver-type"><option value="">Choose driver type…</option><option>Manual Driver</option><option>Touch Driver</option></select></label>
+      <label class="profile-wide profile-about-field"><b>About Me</b><textarea id="profile-about" maxlength="500" rows="4" placeholder="Tell other drivers a little about you…"></textarea><small><span id="profile-about-count">0</span>/500 characters</small></label>
+    </div>
+  </div>
+
+  <div class="settings-admin-card">
+    <h3>Account Preferences</h3>
+    <p>Control the server context, timezone, website theme, and profile links connected to your account.</p>
+    <div class="profile-editor-grid">
+      <label><b>Timezone</b><select id="profile-timezone"></select></label>
+      <label><b>Website Theme</b><select id="profile-theme" aria-label="Website theme">
+        <option value="dark">🌙 Midnight</option><option value="light">☀️ Light</option><option value="ocean">🌊 Ocean</option><option value="purple">🟣 Neon Purple</option><option value="crimson">🔴 Crimson</option><option value="emerald">🟢 Emerald</option><option value="sunset">🟠 Sunset</option><option value="graphite">⚙️ Graphite</option>
+      </select><small class="profile-setting-hint">Choose your RSL color theme. Your choice follows your account across devices.</small></label>
+      <div class="profile-wide profile-links-editor"><b>Links</b><div id="profile-links"></div><button class="qa qa-blue" id="add-profile-link" type="button">＋ Add Link</button></div>
+    </div>
+  </div>
+
+  <div class="settings-admin-card">
+    <div class="settings-save-row">
+      <div><b>Save your RSL profile</b><small>Profile details, timezone, platform, driver type and links are saved together.</small></div>
+      <button class="qa qa-green" id="save-profile" type="button">Save Profile &amp; Settings →</button>
+    </div>
+  </div>
+</section>
 <section class="career-section" id="career">
   <div class="career-header">
     <div><span>PLAYER CAREER</span><h2>My Career</h2><p>Your competitive history across Racing Syndicate League.</p></div>
