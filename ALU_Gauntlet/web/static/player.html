@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Competitive Profile • Racing Syndicate League</title>
+<title>Driver Control Center • Racing Syndicate League</title>
 <link rel="stylesheet" href="/static/app.css?v=20260919-25">
 <style>.nav-icon{display:inline-flex;align-items:center;justify-content:center;width:1.35em;margin-right:6px;font-style:normal;line-height:1}.top-nav-dropdown-trigger .nav-icon{margin-right:5px}.top-nav-dropdown-menu .nav-icon{width:1.2em}</style><style>.competition-snapshot-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.competition-snapshot-grid>div{padding:16px;border:1px solid var(--rsl-final-line,#173b64);border-radius:14px;background:var(--rsl-final-panel2,#0d2139)}.competition-snapshot-grid span{display:block;font-size:11px;font-weight:800;color:var(--rsl-final-muted,#91a5c3);letter-spacing:.08em}.competition-snapshot-grid strong{display:block;margin-top:6px;font-size:20px;color:var(--rsl-final-text,#dbe8f8)}@media(max-width:700px){.competition-snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}</style><style>
 #settings-page-hero{
@@ -144,176 +144,257 @@
  #profile-settings .settings-save-row .qa{width:100%}
 }
 </style></head>
-<body class="alu-dashboard">
-<header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/assets/rsl-shield.png" alt="RSL"></a><nav aria-label="Primary navigation"><a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.png" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.png" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><span class="nav-icon-glyph" aria-hidden="true">⚔</span><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>References</span></a></div></details><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.png" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><span class="nav-icon-glyph" aria-hidden="true">📊</span><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Club Tournaments</span></a></div></details><a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a><a href="/help"><img class="nav-icon-img" src="/assets/icons/help.png" alt=""><span>Help</span></a><a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><span>Companion</span></a></nav></header>
-<div class="app-frame"><div class="workspace">
-<main>
-<section class="hero-banner"><img class="art-img hero-art" src="/assets/hero.jpg" alt="Racing Syndicate League racing scene" loading="eager" decoding="async"><div class="hero-road"></div></section><section class="settings-page-hero" id="settings-page-hero"><span class="settings-eyebrow">ACCOUNT SETTINGS</span><h1>Driver Preferences</h1><p>Manage the RSL settings that control your driver experience, server profile, and synchronized timezone.</p></section>
-<section class="dashboard-grid">
-  <div class="main-column">
-    <div class="intro-row">
-      <article class="welcome-panel"><div class="player-avatar">🏎️</div><div class="welcome-copy"><h1>Welcome back, <span id="welcome-name">Driver</span>!</h1><div class="welcome-title">♛ &nbsp;DRIVER CONTROL CENTER</div><p>Your competitive profile, Gauntlet activity, tournaments, and preferences live here.</p></div><div class="welcome-car"></div></article>
-      <article class="season-panel"><div class="season-badge">S<span id="season-number">—</span></div><div><span>SEASON <b id="season-number-text">—</b></span><strong id="season-status">● Live ●</strong><small>Current Gauntlet season</small><a href="/#seasons">View Season →</a></div></article>
-    </div>
-    <section id="gauntlet" class="feature-row">
-      <a class="feature feature-magenta" href="#defense"><div class="feature-picture fp-one"><img class="art-img" src="/assets/gauntlet.jpg" alt="" loading="lazy" decoding="async"></div><div class="feature-body"><i>🛡</i><h2>Defense Center</h2><p>Set or change your 5-course defense<br>Enter results &nbsp;•&nbsp; Staff review</p><b>→</b></div></a>
-      <a class="feature feature-blue" href="#competition"><div class="feature-picture fp-two"><img class="art-img" src="/assets/competition.jpg" alt="" loading="lazy" decoding="async"></div><div class="feature-body"><i>🏁</i><h2>Competitive Snapshot</h2><p>Rank &nbsp;•&nbsp; ELO &nbsp;•&nbsp; Record<br>Season progress &amp; recent matches</p><b>→</b></div></a>
-      <a class="feature feature-gold" href="/#leaderboard"><div class="feature-picture fp-three"><img class="art-img" src="/assets/competition.jpg" alt="" loading="lazy" decoding="async"></div><div class="feature-body"><i>🏎️</i><h2>Competition</h2><p>Standings &nbsp;•&nbsp; Leaderboard<br>Rules &nbsp;•&nbsp; Rewards</p><b>→</b></div></a>
-      <a class="feature feature-green" href="#profile-settings"><div class="feature-picture fp-four"><img class="art-img" src="/assets/profile-settings.jpg" alt="" loading="lazy" decoding="async"></div><div class="feature-body"><i>👤</i><h2>Profile &amp; Settings</h2><p>Profile &nbsp;•&nbsp; Preferences<br>Keep your RSL account synced</p><b>→</b></div></a>
+<style>
+/* RSL PLAYER — complete page redesign. This intentionally replaces the legacy card dashboard. */
+.rsl-player-redesign{background:#020711;color:#eaf3ff}
+.rsl-player-shell{width:100%;background:radial-gradient(circle at 78% 0%,#102c50 0,#050d19 36%,#020711 76%);min-height:100vh}
+.rsl-player-main{max-width:1480px;margin:0 auto;padding:34px 34px 80px}
+.rsl-player-redesign .player-commandbar{display:flex;align-items:flex-end;justify-content:space-between;gap:30px;padding:8px 0 26px;border-bottom:1px solid #1b456d}
+.player-command-title>span,.section-kicker,.section-header>div>span,.settings-header>div>span,.settings-block>header>span,.rail-kicker,.registration-top-five>span{font-size:10px;letter-spacing:.2em;color:#25dfff;font-weight:900}
+.player-command-title h1{margin:6px 0 8px;font-size:42px;letter-spacing:-.03em}
+.player-command-title p{margin:0;color:#8fa5c2;font-size:13px;max-width:720px}
+.player-command-actions{display:flex;gap:8px;flex-wrap:wrap}
+.player-command-actions a{padding:10px 14px;border:1px solid #1d557f;color:#dcecff;text-decoration:none;font-size:10px;font-weight:900;letter-spacing:.1em;background:#061526}
+.player-command-actions a:hover{border-color:#25dfff;color:#fff}
+.player-identity-strip{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:24px 0;border-bottom:1px solid #153b5e}
+.player-identity{display:flex;align-items:center;gap:16px}
+.player-avatar{width:58px;height:58px;border:1px solid #21618e;background:#071a2d;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.player-avatar img{width:100%;height:100%;object-fit:cover}.player-avatar span{font-size:25px}
+.player-label{font-size:9px;letter-spacing:.16em;color:#7189a7;font-weight:800}.player-identity h2{margin:4px 0 4px;font-size:24px}.player-identity p{margin:0;color:#8198b5;font-size:11px}.identity-separator{margin:0 6px;color:#39536d}
+.server-control{min-width:240px}.server-control label{display:block;margin-bottom:6px;font-size:9px;letter-spacing:.14em;color:#7189a7;font-weight:900}.server-control select{width:100%;background:#061323;color:#eaf3ff;border:1px solid #1d4e75;padding:11px 12px;border-radius:0}
+.player-section-nav{display:flex;gap:0;overflow:auto;border-bottom:1px solid #153b5e;margin-bottom:28px}
+.player-section-nav a{white-space:nowrap;padding:15px 18px;color:#829ab6;text-decoration:none;font-size:11px;font-weight:800;border-bottom:2px solid transparent}
+.player-section-nav a:hover{color:#fff;border-bottom-color:#25dfff}
+.player-overview{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(460px,.8fr);gap:28px;padding:28px 0;border-bottom:1px solid #153b5e}
+.overview-primary{padding-right:30px;border-right:1px solid #153b5e}.season-line{display:flex;gap:18px;align-items:center;margin-top:10px}.season-line>strong{font-size:52px;color:#25dfff;line-height:1}.season-line h2{margin:0 0 5px;font-size:25px}.season-line p{margin:0;color:#8ba1bd;font-size:11px}.overview-links{display:flex;gap:22px;margin-top:25px;flex-wrap:wrap}.overview-links a{color:#9fdfff;text-decoration:none;font-size:11px;font-weight:800}.overview-links a:hover{color:#fff}
+.stat-ribbon{display:grid;grid-template-columns:repeat(2,1fr);align-content:center}.stat-ribbon div{padding:13px 18px;border-bottom:1px solid #153b5e}.stat-ribbon div:nth-child(odd){border-right:1px solid #153b5e}.stat-ribbon span,.metric-table span,.identity-grid span,.rail-stats span,.career-stats span{display:block;color:#6f87a4;font-size:9px;letter-spacing:.13em;font-weight:900}.stat-ribbon strong{display:block;margin-top:5px;font-size:20px;color:#edf5ff}
+.player-workspace-grid{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:34px;padding-top:28px}.workspace-primary{min-width:0}.workspace-rail{border-left:1px solid #153b5e;padding-left:24px}
+.player-section{padding:0 0 34px;margin:0 0 34px;border-bottom:1px solid #153b5e;scroll-margin-top:90px}.section-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:20px}.section-header h2{margin:5px 0 0;font-size:25px}.section-header a{color:#9fdfff;text-decoration:none;font-size:10px;font-weight:900}.section-header>a:hover{color:#fff}.section-header>strong{font-size:9px;color:#18e19e;letter-spacing:.1em}.section-description{margin:0 0 20px;color:#8198b5;font-size:11px;line-height:1.6}
+.metric-table{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid #153b5e}.metric-table div{padding:17px 15px;border-right:1px solid #153b5e;border-bottom:1px solid #153b5e}.metric-table div:nth-child(3n){border-right:0}.metric-table strong{display:block;margin-top:7px;font-size:17px}
+.match-table>div:first-child{display:grid;grid-template-columns:50px 1fr 110px 110px;padding:10px 12px;border-top:1px solid #153b5e;border-bottom:1px solid #153b5e;color:#6f87a4;font-size:9px;letter-spacing:.1em;font-weight:900}.match-table .recent-match-row{display:grid;grid-template-columns:50px 1fr 110px 110px;align-items:center;padding:14px 12px;border-bottom:1px solid #102d48;color:#b9c9dc;font-size:11px}.recent-match-row small{display:block;color:#667f9c;margin-top:3px}.match-win{color:#18e19e;font-weight:900}.match-loss{color:#ff7183;font-weight:900}
+.defense-list{border-top:1px solid #153b5e}.defense-course{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:center;padding:13px 0;border-bottom:1px solid #102d48}.defense-course i{width:28px;height:28px;border:1px solid #255a7f;display:flex;align-items:center;justify-content:center;color:#25dfff;font-style:normal;font-size:10px}.defense-course p{margin:0}.defense-course b{display:block;font-size:12px}.defense-course small{display:block;color:#7189a7;margin-top:3px;font-size:10px}
+.action-row{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}.qa{border-radius:0!important;text-decoration:none!important}.status-line{color:#25dfff;font-size:10px;margin:10px 0 0}.inline-form{margin-top:25px;padding-top:22px;border-top:1px solid #153b5e}.inline-form header span{font-size:9px;letter-spacing:.15em;color:#25dfff;font-weight:900}.inline-form h3{margin:5px 0;font-size:17px}.inline-form p{color:#8198b5;font-size:10px}.defense-result-row{border:0;border-top:1px solid #153b5e;padding:18px 0}.defense-result-row legend{color:#dce9f7;font-size:11px;font-weight:900}.defense-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:12px}.defense-result-grid label{font-size:9px;color:#7890ad;font-weight:800}.defense-result-grid input{display:block;width:100%;margin-top:6px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.form-grid label,.notification-timing{display:block;color:#7e95b1;font-size:9px;font-weight:900;letter-spacing:.08em}.form-grid input,.form-grid select,.form-grid textarea,.notification-timing select,.notification-timing input{display:block;width:100%;margin-top:7px;background:transparent;border:0;border-bottom:1px solid #285579;border-radius:0;color:#edf5ff;padding:10px 2px;font-size:13px;outline:none}.form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus,.notification-timing select:focus,.notification-timing input:focus{border-bottom-color:#25dfff;box-shadow:0 1px #25dfff}.form-grid label.full{grid-column:1/-1}.registration-top-five{margin:25px 0;padding:18px 0;border-top:1px solid #153b5e;border-bottom:1px solid #153b5e}.registration-top-five p{margin:8px 0 15px;color:#7189a7;font-size:10px}.rating-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.registration-top-five input{width:100%;background:#061323;border:1px solid #1c496f;color:#fff;padding:10px}.registration-top-five>strong{display:block;margin-top:12px;color:#25dfff;font-size:11px}
+.identity-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid #153b5e;margin-bottom:22px}.identity-grid div{padding:15px;border-bottom:1px solid #153b5e;border-right:1px solid #153b5e}.identity-grid div:last-child{border-right:0}.identity-grid strong{display:block;margin-top:6px;font-size:12px}.identity-chip{color:#18e19e;font-size:9px;letter-spacing:.1em}
+.rail-section{padding:0 0 24px;margin-bottom:24px;border-bottom:1px solid #153b5e}.rail-section h2{margin:5px 0;font-size:22px}.rail-section p{margin:0;color:#7089a5;font-size:10px}.rail-section>a{display:block;padding:11px 0;color:#9eb5ce;text-decoration:none;border-bottom:1px solid #102d48;font-size:10px;font-weight:800}.rail-section>a:hover{color:#25dfff}.rail-stats{display:grid;grid-template-columns:1fr 1fr;margin-top:18px}.rail-stats div{padding:12px 0;border-bottom:1px solid #102d48}.rail-stats strong{display:block;margin-top:5px;font-size:16px}.rail-state{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #102d48}.rail-state span{color:#6f87a4;font-size:9px;font-weight:900}.rail-state strong{font-size:10px}
+.notification-section{margin-top:4px}.notification-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;border-top:1px solid #153b5e}.toggle-row{display:flex;gap:12px;align-items:center;padding:17px 0;border-bottom:1px solid #102d48;color:#dce9f7}.toggle-row input{accent-color:#25dfff}.toggle-row b{display:block;font-size:11px}.toggle-row small{display:block;margin-top:4px;color:#7189a7;font-size:9px}.notification-timing{padding:17px 0;border-bottom:1px solid #102d48}
+.profile-settings-redesign{padding-top:5px}.settings-header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;padding-bottom:22px;border-bottom:1px solid #1b456d}.settings-header h2{margin:5px 0;font-size:31px}.settings-header p{margin:0;color:#8198b5;font-size:11px}.settings-header>strong{color:#18e19e;font-size:9px;letter-spacing:.12em}.settings-layout{display:grid;grid-template-columns:190px minmax(0,1fr);min-height:560px}.settings-menu{border-right:1px solid #153b5e;padding:22px 0}.settings-menu a{display:block;padding:13px 16px;color:#8198b5;text-decoration:none;border-left:2px solid transparent;font-size:11px;font-weight:900}.settings-menu a small{display:block;margin-top:4px;color:#5e7692;font-size:9px;font-weight:500}.settings-menu a:hover,.settings-menu a.active{color:#fff;border-left-color:#25dfff;background:#061728}.settings-body{padding-left:30px}.settings-block{padding:28px 0 30px;border-bottom:1px solid #153b5e;scroll-margin-top:90px}.settings-block>header{margin-bottom:20px}.settings-block>header h3{margin:5px 0 4px;font-size:20px}.settings-block>header p{margin:0;color:#7189a7;font-size:10px}.profile-links-list{display:grid;gap:9px}.profile-link-row{display:grid;grid-template-columns:1fr auto;gap:8px}.profile-link-row input{width:100%;background:transparent;border:0;border-bottom:1px solid #285579;color:#edf5ff;padding:10px 2px;outline:none}.profile-link-remove{border:0;background:transparent;color:#ff7183;font-size:9px;font-weight:900;cursor:pointer}.text-action{border:0;background:transparent;color:#25dfff;padding:14px 0 0;cursor:pointer;font-size:10px;font-weight:900}.settings-savebar{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px 0}.settings-savebar span{display:block;color:#7189a7;font-size:9px;letter-spacing:.14em;font-weight:900}.settings-savebar b{display:block;margin-top:5px;font-size:12px}
+.career-stats{display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid #153b5e;border-bottom:1px solid #153b5e}.career-stats div{padding:16px 12px;border-right:1px solid #153b5e}.career-stats div:last-child{border-right:0}.career-stats strong{display:block;margin-top:6px;font-size:17px}.career-columns{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:22px}.career-line{position:relative;padding:20px 0;border-top:1px solid #153b5e;min-height:100px}.career-line>div>span{font-size:9px;letter-spacing:.15em;color:#25dfff;font-weight:900}.career-line h3{margin:5px 0}.career-line p{margin:0;color:#7189a7;font-size:10px}.career-line>strong{position:absolute;right:0;top:20px;color:#18e19e;font-size:9px}.career-line>b{position:absolute;right:0;bottom:20px;font-size:22px}.career-tournament-list{margin-top:15px}.career-tournament{display:grid;grid-template-columns:1fr auto;gap:12px;padding:11px 0;border-bottom:1px solid #102d48;text-decoration:none;color:#dce9f7}.career-tournament small{display:block;color:#7189a7;margin-top:3px}.club-redesign{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:25px 0}.club-redesign h2{margin:5px 0}.club-redesign p{margin:0;color:#7189a7;font-size:10px}.club-redesign>div>span{font-size:9px;letter-spacing:.15em;color:#25dfff;font-weight:900}.player-footer-banner{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px 0;border-top:1px solid #1b456d}.player-footer-banner span{display:block;color:#7189a7;font-size:9px;letter-spacing:.15em}.player-footer-banner strong{display:block;margin-top:5px;font-size:15px}.player-footer-banner a{color:#9fdfff;text-decoration:none;font-size:10px;font-weight:900}
+@media(max-width:1050px){.player-overview{grid-template-columns:1fr}.overview-primary{padding-right:0;border-right:0;border-bottom:1px solid #153b5e;padding-bottom:22px}.player-workspace-grid{grid-template-columns:1fr}.workspace-rail{border-left:0;border-top:1px solid #153b5e;padding:25px 0 0;display:grid;grid-template-columns:repeat(3,1fr);gap:25px}.rail-section{margin:0}.career-stats{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:760px){.rsl-player-main{padding:24px 16px 60px}.player-commandbar,.player-identity-strip,.club-redesign,.player-footer-banner{align-items:flex-start;flex-direction:column}.player-command-title h1{font-size:32px}.player-command-actions{width:100%}.player-command-actions a{flex:1;text-align:center}.server-control{width:100%;min-width:0}.player-section-nav a{padding:13px 12px}.stat-ribbon{grid-template-columns:repeat(3,1fr)}.stat-ribbon div:nth-child(odd){border-right:0}.stat-ribbon div{border-right:1px solid #153b5e}.stat-ribbon div:nth-child(3n){border-right:0}.metric-table{grid-template-columns:repeat(2,1fr)}.metric-table div:nth-child(3n){border-right:1px solid #153b5e}.metric-table div:nth-child(2n){border-right:0}.form-grid,.notification-grid,.career-columns{grid-template-columns:1fr}.rating-grid{grid-template-columns:repeat(2,1fr)}.defense-result-grid{grid-template-columns:repeat(2,1fr)}.settings-layout{grid-template-columns:1fr}.settings-menu{border-right:0;border-bottom:1px solid #153b5e;display:flex;overflow:auto;padding:8px 0}.settings-menu a{min-width:145px;border-left:0;border-bottom:2px solid transparent}.settings-menu a:hover,.settings-menu a.active{border-left:0;border-bottom-color:#25dfff}.settings-body{padding-left:0}.career-stats{grid-template-columns:repeat(2,1fr)}.workspace-rail{grid-template-columns:1fr}.player-footer-banner a{display:block}}
+@media(max-width:480px){.player-command-title h1{font-size:28px}.stat-ribbon{grid-template-columns:repeat(2,1fr)}.season-line>strong{font-size:42px}.section-header{align-items:flex-start;flex-direction:column}.settings-header{align-items:flex-start;flex-direction:column}.settings-savebar{align-items:flex-start;flex-direction:column}.settings-savebar .qa{width:100%}.defense-result-grid{grid-template-columns:1fr}.player-avatar{width:50px;height:50px}}
+</style><body class="alu-dashboard rsl-player-redesign">
+<header class="top-nav">
+  <a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/assets/rsl-shield.png" alt="RSL"></a>
+  <nav aria-label="Primary navigation">
+    <a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a>
+    <details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.png" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu">
+      <a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.png" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><span class="nav-icon-glyph">⚔</span><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>References</span></a>
+    </div></details>
+    <details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu">
+      <a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.png" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><span class="nav-icon-glyph">📊</span><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Club Tournaments</span></a>
+    </div></details>
+    <a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a>
+    <a href="/help"><img class="nav-icon-img" src="/assets/icons/help.png" alt=""><span>Help</span></a>
+    <a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><span>Companion</span></a>
+  </nav>
+</header>
+
+<div class="rsl-player-shell">
+  <main class="rsl-player-main">
+    <section class="player-commandbar">
+      <div class="player-command-title">
+        <span>RACING SYNDICATE LEAGUE</span>
+        <h1>Driver Control Center</h1>
+        <p>Your profile, competitive record, Gauntlet status and account controls — organized in one place.</p>
+      </div>
+      <div class="player-command-actions">
+        <a href="/gauntlet/matches">MATCH CENTER</a>
+        <a href="/gauntlet/leaderboard">LEADERBOARD</a>
+      </div>
     </section>
-    <section class="lower-grid" id="competition">
-      <article class="glass-panel competition-card competition-snapshot-card"><div class="panel-heading"><h2>Competitive Snapshot</h2><a href="/gauntlet/leaderboard">View Leaderboard →</a></div><div class="competition-snapshot-grid"><div><span>RANK</span><strong id="profile-rank">—</strong></div><div><span>ELO</span><strong id="snapshot-elo">—</strong></div><div><span>RECORD</span><strong id="snapshot-record">—</strong></div><div><span>STREAK</span><strong id="snapshot-streak">—</strong></div><div><span>DEFENSE</span><strong id="snapshot-defense">—</strong></div><div><span>SEASON</span><strong id="snapshot-season">—</strong></div></div><p id="profile" class="server-sub">Loading competitive profile…</p><a class="wide-action" href="/gauntlet/matches">Open Match Center →</a></article>
-      <article class="glass-panel matches-card" id="matches"><div class="panel-heading"><h2>Recent Matches</h2><a href="#matches">View All →</a></div><div class="match-table"><div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class="empty-state">Recent match history will appear here when match records are available.</p></div></article>
-      <article class="glass-panel profile-performance"><div class="panel-heading"><h2>Performance Overview</h2><a href="/gauntlet/leaderboard">Competition →</a></div><div class="profile-performance-grid"><div><span>WIN RATE</span><strong id="win-rate">—</strong></div><div><span>RANK</span><strong id="performance-rank">—</strong></div><div><span>DEFENSE</span><strong id="performance-defense-state">—</strong></div><div><span>SEASON</span><strong id="performance-season-state">—</strong></div></div></article><article class="glass-panel leaderboard-card"><div class="panel-heading"><h2>Driver Profile <small>LIVE</small></h2></div><div class="leaderboard-list"><div class="leader-row"><span class="leader-rank">E</span><div class="driver-mini"><span class="driver-dot">🏎</span><span>ELO</span></div><strong class="leader-elo" id="elo">—</strong></div><div class="leader-row"><span class="leader-rank">R</span><div class="driver-mini"><span class="driver-dot">🏁</span><span>Rank</span></div><strong class="leader-elo" id="profile-rank-secondary">—</strong></div><div class="leader-row"><span class="leader-rank">S</span><div class="driver-mini"><span class="driver-dot">♛</span><span>Season</span></div><strong class="leader-elo" id="season">—</strong></div><div class="leader-row"><span class="leader-rank">D</span><div class="driver-mini"><span class="driver-dot">⚔️</span><span>Defense</span></div><strong class="leader-elo" id="defense">—</strong></div></div></article>
+
+    <section class="player-identity-strip">
+      <div class="player-identity">
+        <div class="player-avatar"><span>🏎️</span></div>
+        <div>
+          <span class="player-label">SIGNED-IN DRIVER</span>
+          <h2 id="welcome-name">Driver</h2>
+          <p><span id="profile-asphalt-status">• Asphalt not linked</span> <span class="identity-separator">/</span> <span id="season-status">● Not Registered ●</span></p>
+        </div>
+      </div>
+      <div class="server-control">
+        <label for="guild">RSL SERVER</label>
+        <select id="guild" aria-label="Server selection"></select>
+      </div>
     </section>
-  </div>
-  <aside class="right-column">
-    <article class="glass-panel profile-card"><div class="panel-heading"><h2>Your Profile</h2></div><div class="profile-head"><div class="profile-avatar">🏎️</div><div><strong id="profile-name">Driver</strong><small>▣ Discord &nbsp; <b class="online">● Online</b> <span id="profile-asphalt-status">• Asphalt not linked</span></small></div></div><div class="profile-stats"><div><span>ELO</span><strong id="right-elo">—</strong></div><div><span>RANK</span><strong id="right-rank">—</strong></div></div><div class="record-stats"><span>🏎️ <b id="wins">—</b> Wins</span><span>✕ <b id="losses">—</b> Losses</span><span>🔥 <b id="streak">—</b> Streak</span></div></article>
-    <article class="glass-panel quick-actions"><div class="panel-heading"><h2>Quick Actions</h2></div><a class="qa qa-purple" href="#matches">⚑ &nbsp; Match Center</a><a class="qa qa-blue" href="#gauntlet">♟ &nbsp; Find Opponent</a><a class="qa qa-green" href="#profile-settings">👤 &nbsp; Profile &amp; Settings</a><a class="qa qa-gold" href="/#leaderboard">🏅 &nbsp; View Leaderboard</a></article>
-    <article class="glass-panel activity-card" id="defense">
-  <div class="panel-heading"><h2>🛡️ Defense Center</h2><span id="defense-status" class="online">READY</span></div>
-  <p class="server-sub">Manage your five-course defense without separate defense commands. Your current defense stays active while a change is under review.</p>
-  <div id="defense-courses" class="activity-list"><p class="empty-state">Loading defense status…</p></div>
-  <div class="defense-actions">
-    <button class="qa qa-purple" id="defense-set" type="button">Generate Defense →</button>
-    <button class="qa qa-gold" id="defense-change" type="button">Change Defense →</button>
-  </div>
-  <p id="defense-status-message" class="server-sub" role="status"></p>
-  <form id="defense-submit-form" class="defense-submit" hidden>
-    <div class="panel-heading"><h3>📝 Enter Defense Results</h3></div>
-    <p class="server-sub">Enter the five lap times, cars, performance ratings, and proof image URLs for the generated courses. Your current defense stays active while staff review the submission.</p>
-    <div id="defense-result-fields"></div>
-    <button class="qa qa-purple" id="defense-submit" type="submit">Submit Defense for Staff Review →</button>
-    <p id="defense-submit-status" class="server-sub" role="status"></p>
-  </form>
-</article>
-<article class="glass-panel activity-card" id="registration">
-  <div class="panel-heading"><h2>🏁 Season Registration</h2></div>
-  <p class="server-sub">Register or re-register for the current Gauntlet season. Staff review the same submission used by Discord.</p>
-  <div class="activity-list">
-    <label><b>Asphalt Legends Player ID</b><input id="registration-game-id" type="text" maxlength="100" placeholder="Exact in-game Player ID"></label>
-    <div class="registration-top-five">
-      <b>Top 5 Cars — Performance Ratings</b>
-      <p class="server-sub">Enter the performance rating for your five highest-ranked cars. RSL calculates your Garage PI automatically from these five values.</p>
-      <div class="registration-rank-grid">
-        <label>Car 1<input id="registration-rank-1" type="number" min="1" step="1" required placeholder="Rating"></label>
-        <label>Car 2<input id="registration-rank-2" type="number" min="1" step="1" required placeholder="Rating"></label>
-        <label>Car 3<input id="registration-rank-3" type="number" min="1" step="1" required placeholder="Rating"></label>
-        <label>Car 4<input id="registration-rank-4" type="number" min="1" step="1" required placeholder="Rating"></label>
-        <label>Car 5<input id="registration-rank-5" type="number" min="1" step="1" required placeholder="Rating"></label>
+
+    <nav class="player-section-nav" aria-label="Driver dashboard sections">
+      <a href="#overview">Overview</a><a href="#gauntlet">Gauntlet</a><a href="#defense">Defense</a><a href="#registration">Registration</a><a href="#profile-settings">Profile &amp; Settings</a><a href="#career">Career</a>
+    </nav>
+
+    <section class="player-overview" id="overview">
+      <div class="overview-primary">
+        <div class="section-kicker">CURRENT SEASON</div>
+        <div class="season-line"><strong>S<span id="season-number">—</span></strong><div><h2>Competitive Overview</h2><p id="profile">Loading competitive profile…</p></div></div>
+        <div class="overview-links"><a href="/gauntlet/registration">Season Registration →</a><a href="/gauntlet/matches">Challenges &amp; Matches →</a><a href="/gauntlet/leaderboard">View Leaderboard →</a></div>
       </div>
-      <p id="registration-pi-summary" class="server-sub">Calculated Garage PI: —</p>
-    </div>
-    <label><b>Controls</b><select id="registration-control"><option value="">Select controls…</option><option value="touchdrive">TouchDrive</option><option value="manual">Manual</option></select></label>
-    <label><b>Proof image URL</b><input id="registration-proof" type="url" maxlength="2048" placeholder="Direct image URL to your Garage PI screenshot"></label>
-    <button class="qa qa-purple" id="register" type="button">Submit Registration →</button>
-    <p id="registration-status" class="server-sub" role="status"></p>
-  </div>
-</article>
-
-<div class="asphalt-identity-summary"><div class="identity-chip"><span>GAME NAME</span><strong id="identity-summary-name">Not linked</strong></div><div class="identity-chip"><span>GAME ID</span><strong id="identity-summary-id">Not linked</strong></div><div class="identity-chip" id="identity-summary-status"><span>STATUS</span><strong id="identity-summary-state">NOT LINKED</strong></div></div><article class="glass-panel activity-card asphalt-link-card" id="asphalt-link"><div class="panel-heading"><h2>🏎️ Asphalt Account Connection</h2><span id="asphalt-link-status" class="online">NOT LINKED</span></div><p class="server-sub">Connect your Asphalt Legends identity to this Discord account. Staff verification is required before the link is marked verified.</p><div class="activity-list"><label><b>Asphalt Game Name</b><input id="asphalt-link-name" type="text" maxlength="100" placeholder="Exact in-game name"></label><label><b>Asphalt Game ID</b><input id="asphalt-link-id" type="text" maxlength="100" placeholder="Exact in-game Player ID"></label></div><button class="qa qa-purple" id="submit-asphalt-link" type="button">Connect Asphalt Account →</button><p id="asphalt-link-message" class="server-sub" role="status"></p></article>
-<article class="glass-panel activity-card notification-settings" id="notifications">
-  <div class="panel-heading"><h2>🔔 &nbsp; Discord Notifications</h2><span id="notification-save-status"></span></div>
-  <p class="server-sub">Choose which Racing Syndicate League calendar events can send you a Discord DM. Category switches cover everything in that category; individual calendar events can also be selected.</p>
-  <div class="notification-toggle-grid">
-    <label class="notification-toggle"><span><b>Tournament Notifications</b><small>DMs for tournament starts, ends and registration deadlines.</small></span><input id="tournament-notifications" type="checkbox"><i></i></label>
-    <label class="notification-toggle"><span><b>Gauntlet Notifications</b><small>DMs for Gauntlet season starts and ends.</small></span><input id="gauntlet-notifications" type="checkbox"><i></i></label>
-  </div>
-  <div class="notification-timing-grid">
-    <label class="notification-timing"><span>Tournament reminder</span><select id="tournament-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input class="notification-custom-days" id="tournament-notification-custom" type="number" min="0" max="365" step="1" value="5" placeholder="Days"></label>
-    <label class="notification-timing"><span>Gauntlet reminder</span><select id="gauntlet-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input class="notification-custom-days" id="gauntlet-notification-custom" type="number" min="0" max="365" step="1" value="5" placeholder="Days"></label>
-  </div>
-  <p class="notification-timing-note">The selected reminder is sent before the event, followed by an event-time DM when a reminder was scheduled in advance.</p>
-  <div class="notification-calendar-link"><span>Want only specific events?</span><a class="qa qa-blue" href="/calendar">📅 Choose from Calendar →</a></div>
-</article>
-
-  </aside>
-</section>
-<section id="profile-settings" aria-labelledby="profile-settings-title">
-  <div class="settings-workspace-head">
-    <div>
-      <span class="settings-panel-kicker">WEB ACCOUNT SETTINGS</span>
-      <h2 id="profile-settings-title">Profile &amp; Settings</h2>
-      <p>Manage your RSL identity, preferences, and account connections.</p>
-    </div>
-    <span id="profile-save-status" class="settings-live">SYNCED</span>
-  </div>
-  <div class="settings-workspace">
-    <aside class="settings-rail" aria-label="Profile settings sections">
-      <div class="settings-rail-title">ACCOUNT</div>
-      <a class="settings-rail-item active" href="#profile-settings"><span>◉</span><div><b>Profile</b><small>Driver identity</small></div></a>
-      <a class="settings-rail-item" href="#account-preferences"><span>⚙</span><div><b>Preferences</b><small>Theme &amp; timezone</small></div></a>
-      <a class="settings-rail-item" href="#profile-links-area"><span>↗</span><div><b>Links</b><small>Public profile links</small></div></a>
-      <div class="settings-rail-server">
-        <span class="settings-rail-title">SERVER</span>
-        <div class="settings-server-mini"><span>◎</span><div><b>RSL Server</b><small>Profile scope</small></div></div>
-        <div class="server-select"><select id="guild" aria-label="Server selection"></select><span>⌄</span></div>
+      <div class="stat-ribbon">
+        <div><span>ELO</span><strong id="elo">—</strong></div><div><span>RANK</span><strong id="profile-rank">—</strong></div><div><span>RECORD</span><strong id="snapshot-record">—</strong></div><div><span>WIN RATE</span><strong id="win-rate">—</strong></div><div><span>STREAK</span><strong id="streak">—</strong></div><div><span>DEFENSE</span><strong id="snapshot-defense">—</strong></div>
       </div>
-    </aside>
+    </section>
 
-    <div class="settings-content">
-      <section class="settings-content-section">
-        <div class="settings-section-heading"><div><span>DRIVER IDENTITY</span><h3>Profile</h3></div><small>Your public RSL driver information</small></div>
-        <div class="profile-editor-grid">
-          <label><b>Discord Name</b><input id="profile-discord-name" type="text" readonly></label>
-          <label><b>Game Name</b><input id="profile-game-name" type="text" maxlength="100" placeholder="Your in-game name"></label>
-          <label><b>Game ID</b><input id="profile-game-id" type="text" readonly></label>
-          <label><b>Location</b><input id="profile-location" type="text" maxlength="100" placeholder="Optional"></label>
-          <label><b>Platform</b><select id="profile-platform"><option value="">Choose platform…</option><option>Android</option><option>Nintendo</option><option>macOS</option><option>Steam</option><option>Epic Games</option><option>Windows</option><option>Apple iOS</option><option>Xbox</option><option>Playstation</option></select></label>
-          <label><b>Driver Type</b><select id="profile-driver-type"><option value="">Choose driver type…</option><option>Manual Driver</option><option>Touch Driver</option></select></label>
-          <label class="profile-wide profile-about-field"><b>About Me</b><textarea id="profile-about" maxlength="500" rows="4" placeholder="Tell other drivers a little about you…"></textarea><small><span id="profile-about-count">0</span>/500 characters</small></label>
+    <section class="player-workspace-grid" id="gauntlet">
+      <div class="workspace-primary">
+        <section class="player-section" id="competition">
+          <header class="section-header"><div><span>COMPETITION</span><h2>Competitive Snapshot</h2></div><a href="/gauntlet/leaderboard">Leaderboard →</a></header>
+          <div class="metric-table">
+            <div><span>Season</span><strong id="snapshot-season">—</strong></div><div><span>Rank</span><strong id="profile-rank-secondary">—</strong></div><div><span>ELO</span><strong id="snapshot-elo">—</strong></div><div><span>Record</span><strong id="snapshot-record-secondary">—</strong></div><div><span>Defense</span><strong id="performance-defense-state">—</strong></div><div><span>Status</span><strong id="performance-season-state">—</strong></div>
+          </div>
+        </section>
+
+        <section class="player-section" id="matches">
+          <header class="section-header"><div><span>MATCH HISTORY</span><h2>Recent Matches</h2></div><a href="/gauntlet/matches">Open Match Center →</a></header>
+          <div class="match-table"><div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class="empty-state">Loading match history…</p></div>
+        </section>
+
+        <section class="player-section" id="defense">
+          <header class="section-header"><div><span>GAUNTLET DEFENSE</span><h2>Defense Center</h2></div><strong id="defense-status">READY</strong></header>
+          <p class="section-description">Manage your five-course defense. Your active defense remains protected while changes are submitted for review.</p>
+          <div id="defense-courses" class="defense-list"><p class="empty-state">Loading defense status…</p></div>
+          <div class="action-row"><button class="qa qa-purple" id="defense-set" type="button">Generate Defense →</button><button class="qa qa-gold" id="defense-change" type="button">Change Defense →</button></div>
+          <p id="defense-status-message" class="status-line" role="status"></p>
+          <form id="defense-submit-form" class="inline-form" hidden><header><span>DEFENSE RESULTS</span><h3>Submit five-course results</h3></header><p>Enter the requested lap time, car, performance rating and proof image for each course.</p><div id="defense-result-fields"></div><button class="qa qa-purple" id="defense-submit" type="submit">Submit for Staff Review →</button><p id="defense-submit-status" class="status-line"></p></form>
+        </section>
+
+        <section class="player-section" id="registration">
+          <header class="section-header"><div><span>GAUNTLET ENTRY</span><h2>Season Registration</h2></div><strong id="registration-status">READY</strong></header>
+          <p class="section-description">Register or re-register for the current season. Staff review the same submission used through Discord.</p>
+          <div class="form-grid">
+            <label><span>Asphalt Legends Player ID</span><input id="registration-game-id" type="text" maxlength="100" placeholder="Exact in-game Player ID"></label>
+          </div>
+          <div class="registration-top-five"><span>TOP 5 CAR PERFORMANCE RATINGS</span><p>Enter the performance rating for your five highest-ranked cars. RSL calculates your Garage PI from these five values.</p><div class="rating-grid">
+            <input id="registration-rank-1" type="number" min="1" placeholder="Car 1"><input id="registration-rank-2" type="number" min="1" placeholder="Car 2"><input id="registration-rank-3" type="number" min="1" placeholder="Car 3"><input id="registration-rank-4" type="number" min="1" placeholder="Car 4"><input id="registration-rank-5" type="number" min="1" placeholder="Car 5">
+          </div><strong id="registration-pi-summary">Calculated Garage PI: —</strong></div>
+          <div class="form-grid">
+            <label><span>Controls</span><select id="registration-control"><option value="">Choose control type…</option><option>Manual</option><option>Touch</option></select></label>
+            <label><span>Proof URL</span><input id="registration-proof" type="url" placeholder="Screenshot or proof image URL"></label>
+          </div>
+          <div class="action-row"><button class="qa qa-green" id="register" type="button">Submit Registration →</button></div>
+        </section>
+
+        <section class="player-section" id="asphalt-connection">
+          <header class="section-header"><div><span>GAME IDENTITY</span><h2>Asphalt Connection</h2></div><strong id="identity-summary-status" class="identity-chip">NOT LINKED</strong></header>
+          <div class="identity-grid">
+            <div><span>CONNECTED NAME</span><strong id="identity-summary-name">Not linked</strong></div><div><span>CONNECTED PLAYER ID</span><strong id="identity-summary-id">Not linked</strong></div><div><span>ACCOUNT STATE</span><strong id="identity-summary-state">NOT LINKED</strong></div>
+          </div>
+          <div class="form-grid">
+            <label><span>Asphalt Game Name</span><input id="asphalt-link-name" type="text" maxlength="100" placeholder="Exact in-game name"></label>
+            <label><span>Asphalt Game ID</span><input id="asphalt-link-id" type="text" maxlength="100" placeholder="Exact in-game Player ID"></label>
+          </div>
+          <div class="action-row"><button class="qa qa-blue" id="submit-asphalt-link" type="button">Submit for Verification →</button></div>
+          <p id="asphalt-link-message" class="status-line"></p>
+        </section>
+      </div>
+
+      <aside class="workspace-rail">
+        <section class="rail-section">
+          <span class="rail-kicker">DRIVER</span><h2 id="profile-name">Driver</h2><p>Discord account</p>
+          <div class="rail-stats"><div><span>WINS</span><strong id="wins">—</strong></div><div><span>LOSSES</span><strong id="losses">—</strong></div><div><span>STREAK</span><strong id="right-rank">—</strong></div><div><span>ELO</span><strong id="right-elo">—</strong></div></div>
+        </section>
+        <section class="rail-section">
+          <span class="rail-kicker">QUICK NAVIGATION</span>
+          <a href="#defense">🛡 Defense Center</a><a href="#registration">🏁 Season Registration</a><a href="#asphalt-connection">🔗 Asphalt Connection</a><a href="#profile-settings">⚙ Profile &amp; Settings</a><a href="#career">♛ My Career</a>
+        </section>
+        <section class="rail-section">
+          <span class="rail-kicker">ACCOUNT STATE</span>
+          <div class="rail-state"><span>SEASON</span><strong id="season">—</strong></div><div class="rail-state"><span>DEFENSE</span><strong id="defense-state">—</strong></div>
+        </section>
+      </aside>
+    </section>
+
+    <section class="player-section notification-section" id="notifications">
+      <header class="section-header"><div><span>REMINDERS</span><h2>Notification Preferences</h2></div><span id="notification-save-status" class="status-line"></span></header>
+      <div class="notification-grid">
+        <label class="toggle-row"><input id="tournament-notifications" type="checkbox"><span><b>Tournament notifications</b><small>Receive tournament reminder DMs.</small></span></label>
+        <label class="notification-timing"><span>Tournament reminder</span><select id="tournament-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input id="tournament-notification-custom" type="number" min="0" max="365" value="5"></label>
+        <label class="toggle-row"><input id="gauntlet-notifications" type="checkbox"><span><b>Gauntlet notifications</b><small>Receive Gauntlet reminder DMs.</small></span></label>
+        <label class="notification-timing"><span>Gauntlet reminder</span><select id="gauntlet-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input id="gauntlet-notification-custom" type="number" min="0" max="365" value="5"></label>
+      </div>
+      <p class="section-description">Reminder timing is saved automatically. The Calendar can still be used for event-specific reminders.</p>
+    </section>
+
+    <section class="player-section profile-settings-redesign" id="profile-settings" aria-labelledby="profile-settings-title">
+      <header class="settings-header">
+        <div><span>ACCOUNT</span><h2 id="profile-settings-title">Profile &amp; Settings</h2><p>One place for your public driver identity, website preferences and profile links.</p></div>
+        <strong id="profile-save-status">SYNCED</strong>
+      </header>
+      <div class="settings-layout">
+        <aside class="settings-menu">
+          <a class="active" href="#profile-settings">Profile <small>Driver identity</small></a>
+          <a href="#account-preferences">Preferences <small>Timezone &amp; theme</small></a>
+          <a href="#profile-links-area">Links <small>Public profile</small></a>
+        </aside>
+        <div class="settings-body">
+          <section class="settings-block">
+            <header><span>DRIVER IDENTITY</span><h3>Public Profile</h3><p>Your Discord identity is read-only. Edit the information other RSL drivers see.</p></header>
+            <div class="form-grid">
+              <label><span>Discord Name</span><input id="profile-discord-name" type="text" readonly></label>
+              <label><span>Game Name</span><input id="profile-game-name" type="text" maxlength="100" placeholder="Your in-game name"></label>
+              <label><span>Game ID</span><input id="profile-game-id" type="text" readonly></label>
+              <label><span>Location</span><input id="profile-location" type="text" maxlength="100" placeholder="Optional"></label>
+              <label><span>Platform</span><select id="profile-platform"><option value="">Choose platform…</option><option>Android</option><option>Nintendo</option><option>macOS</option><option>Steam</option><option>Epic Games</option><option>Windows</option><option>Apple iOS</option><option>Xbox</option><option>Playstation</option></select></label>
+              <label><span>Driver Type</span><select id="profile-driver-type"><option value="">Choose driver type…</option><option>Manual Driver</option><option>Touch Driver</option></select></label>
+              <label class="full"><span>About Me</span><textarea id="profile-about" maxlength="500" rows="5" placeholder="Tell other drivers a little about you…"></textarea><small><span id="profile-about-count">0</span>/500 characters</small></label>
+            </div>
+          </section>
+          <section class="settings-block" id="account-preferences">
+            <header><span>ACCOUNT PREFERENCES</span><h3>Timezone &amp; Theme</h3><p>These settings follow your RSL account.</p></header>
+            <div class="form-grid">
+              <label><span>Timezone</span><select id="profile-timezone"></select></label>
+              <label><span>Website Theme</span><select id="profile-theme"><option value="dark">🌙 Midnight</option><option value="light">☀️ Light</option><option value="ocean">🌊 Ocean</option><option value="purple">🟣 Neon Purple</option><option value="crimson">🔴 Crimson</option><option value="emerald">🟢 Emerald</option><option value="sunset">🟠 Sunset</option><option value="graphite">⚙️ Graphite</option></select></label>
+            </div>
+          </section>
+          <section class="settings-block" id="profile-links-area">
+            <header><span>PUBLIC PROFILE</span><h3>Profile Links</h3><p>Add up to five public links for other drivers to find you.</p></header>
+            <div id="profile-links" class="profile-links-list"></div>
+            <button class="text-action" id="add-profile-link" type="button">＋ Add another link</button>
+          </section>
+          <div class="settings-savebar"><div><span>PROFILE STATUS</span><b>Ready to save changes</b></div><button class="qa qa-green" id="save-profile" type="button">Save Profile &amp; Settings →</button></div>
         </div>
-      </section>
-
-      <section class="settings-content-section" id="account-preferences">
-        <div class="settings-section-heading"><div><span>ACCOUNT</span><h3>Preferences</h3></div><small>Personalize how RSL works for you</small></div>
-        <div class="profile-editor-grid">
-          <label><b>Timezone</b><select id="profile-timezone"></select></label>
-          <label><b>Website Theme</b><select id="profile-theme" aria-label="Website theme">
-            <option value="dark">🌙 Midnight</option><option value="light">☀️ Light</option><option value="ocean">🌊 Ocean</option><option value="purple">🟣 Neon Purple</option><option value="crimson">🔴 Crimson</option><option value="emerald">🟢 Emerald</option><option value="sunset">🟠 Sunset</option><option value="graphite">⚙️ Graphite</option>
-          </select><small class="profile-setting-hint">Your theme follows your account across devices.</small></label>
-        </div>
-      </section>
-
-      <section class="settings-content-section" id="profile-links-area">
-        <div class="settings-section-heading"><div><span>PUBLIC PROFILE</span><h3>Links</h3></div><small>Optional links shown with your driver profile</small></div>
-        <div class="profile-links-editor"><div id="profile-links"></div><button class="qa qa-blue" id="add-profile-link" type="button">＋ Add Link</button></div>
-      </section>
-
-      <div class="settings-save-row">
-        <div><span>READY TO SAVE?</span><b>Update your RSL profile</b><small>Profile, timezone, platform, driver type and links are saved together.</small></div>
-        <button class="qa qa-green" id="save-profile" type="button">Save Profile &amp; Settings →</button>
       </div>
-    </div>
-  </div>
-</section>
-<section class="career-section" id="career">
-  <div class="career-header">
-    <div><span>PLAYER CAREER</span><h2>My Career</h2><p>Your competitive history across Racing Syndicate League.</p></div>
-    <div class="career-season-badge"><small>SEASON</small><strong id="career-season">—</strong></div>
-  </div>
-  <div class="career-stat-grid">
-    <div><span>RANK</span><strong id="career-rank">—</strong></div>
-    <div><span>ELO</span><strong id="career-elo">—</strong></div>
-    <div><span>RECORD</span><strong id="career-record">—</strong></div>
-    <div><span>WIN RATE</span><strong id="career-winrate">—</strong></div>
-    <div><span>STREAK</span><strong id="career-streak">—</strong></div><div><span>CHAMPIONSHIPS</span><strong id="career-championships">—</strong></div>
-  </div>
-  <div class="career-columns">
-    <article class="career-card">
-      <div class="career-card-head"><div><span>GAUNTLET</span><h3>Current Season</h3></div><b id="career-gauntlet-status">—</b></div>
-      <div class="career-gauntlet"><div class="career-rank-ring"><strong id="career-gauntlet-rank">—</strong><small>RANK</small></div><div><strong id="career-gauntlet-title">Gauntlet Season</strong><p id="career-gauntlet-copy">Loading competitive status…</p></div></div>
-    </article>
-    <article class="career-card">
-      <div class="career-card-head"><div><span>TOURNAMENTS</span><h3>Competition History</h3></div><b id="career-tournament-count">0</b></div>
-      <div id="career-tournaments" class="career-tournament-list"><p class="empty-state">Loading tournament history…</p></div>
-    </article>
-  </div>
-</section>
-<section class="career-club" id="club">
-  <div><span>CLUB</span><h2>Club Career</h2><p>Your club affiliation and tournament participation will appear here.</p><a class="qa qa-blue" href="/clubs">Open Club Center →</a></div>
-</section>
-<section class="bottom-banner" id="help"><div class="bottom-logo">RACING <b>SYNDICATE</b> <strong>LEAGUE</strong></div><div><b>RACE. COMPETE. UNITE.</b><span>Keep your driver ready for the next Gauntlet match.</span></div><a href="/#gauntlet">RETURN TO GAUNTLET →</a></section>
-</main></div></div><script src="/static/player.js?v=20260926-tournament-history1"></script>
-<script>(function(){function focusProfileSettings(){if(window.location.hash==="#profile-settings"){requestAnimationFrame(()=>document.getElementById("profile-settings")?.scrollIntoView({behavior:"smooth",block:"start"}));}}window.addEventListener("hashchange",focusProfileSettings);document.addEventListener("DOMContentLoaded",focusProfileSettings);})();</script></body>
+    </section>
+
+    <section class="player-section career-redesign" id="career">
+      <header class="section-header"><div><span>PLAYER CAREER</span><h2>My Career</h2></div><a href="/gauntlet/leaderboard">Competition →</a></header>
+      <p class="section-description">Your competitive history across Racing Syndicate League.</p>
+      <div class="career-stats"><div><span>SEASON</span><strong id="career-season">—</strong></div><div><span>RANK</span><strong id="career-rank">—</strong></div><div><span>ELO</span><strong id="career-elo">—</strong></div><div><span>RECORD</span><strong id="career-record">—</strong></div><div><span>WIN RATE</span><strong id="career-winrate">—</strong></div><div><span>STREAK</span><strong id="career-streak">—</strong></div><div><span>CHAMPIONSHIPS</span><strong id="career-championships">—</strong></div></div>
+      <div class="career-columns">
+        <div class="career-line"><div><span>GAUNTLET</span><h3 id="career-gauntlet-title">Gauntlet Season</h3><p id="career-gauntlet-copy">Loading competitive status…</p></div><strong id="career-gauntlet-status">—</strong><b id="career-gauntlet-rank">—</b></div>
+        <div class="career-line"><div><span>TOURNAMENTS</span><h3>Competition History</h3></div><strong id="career-tournament-count">0</strong><div id="career-tournaments" class="career-tournament-list"><p class="empty-state">Loading tournament history…</p></div></div>
+      </div>
+    </section>
+
+    <section class="player-section club-redesign" id="club">
+      <div><span>CLUB</span><h2>Club Career</h2><p>Your club affiliation and tournament participation will appear here.</p></div><a class="qa qa-blue" href="/clubs">Open Club Center →</a>
+    </section>
+
+    <section class="player-footer-banner" id="help"><div><span>RACING SYNDICATE LEAGUE™</span><strong>Race. Compete. Unite.</strong></div><a href="/calendar">Open Calendar →</a><a href="/help">Help Center →</a></section>
+  </main>
+</div>
+
+<select id="timezone" hidden aria-hidden="true"><option value="UTC">UTC</option></select>
+<script src="/static/player.js?v=20260928-redesign1"></script>
+<script>
+(function(){
+  function focusProfileSettings(){
+    if(location.hash==="#profile-settings"){
+      requestAnimationFrame(()=>document.getElementById("profile-settings")?.scrollIntoView({behavior:"smooth",block:"start"}));
+    }
+  }
+  window.addEventListener("hashchange",focusProfileSettings);
+  document.addEventListener("DOMContentLoaded",focusProfileSettings);
+})();
+</script>
+</body>
 </html>
