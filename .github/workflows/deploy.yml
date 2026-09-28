@@ -406,7 +406,7 @@ PY
           team: false
 
       - name: Retry rollback deployment
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
         run: sleep 45
 
       - name: Deploy rollback retry
@@ -421,7 +421,7 @@ PY
           team: false
 
       - name: Fail recovery if rollback upload failed
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' && steps.rollback_deploy.outcome == 'failure' && steps.rollback_retry.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure' && steps.rollback_retry.outcome == 'failure'
         run: |
           echo "ERROR: Both rollback uploads failed. Refusing to restart or mark production recovered."
           exit 1
