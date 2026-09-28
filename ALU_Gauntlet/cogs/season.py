@@ -568,6 +568,7 @@ class SeasonCog(commands.Cog):
             return
         await interaction.response.send_message(
             await localize_text(bot, interaction.user.id, '⚠️ **End the current season?** This will archive the standings and prepare the next season. The next season will NOT start automatically; staff must schedule it and use `/staff` → **Season → Start Season**.', interaction.locale),
+            view=ConfirmSeasonEndView(interaction.guild_id),
             ephemeral=True
         )
 
