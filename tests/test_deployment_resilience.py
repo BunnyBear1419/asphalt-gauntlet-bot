@@ -196,3 +196,14 @@ def test_discloud_ignore_excludes_ci_and_test_artifacts():
     ignore = (ROOT / ".discloudignore").read_text(encoding="utf-8")
     for entry in [".git", ".github", "tests", "__pycache__", ".pytest_cache", "*.pyc", "*.pyo", ".coverage"]:
         assert entry in ignore
+
+
+def test_rollback_recovery_verifies_web_surface():
+    source = _source()
+    assert "Rollback web surface verification passed." in source
+    assert "rollback-web-login.html" in source
+    assert "rollback-web-css.css" in source
+    assert "rollback-web-home.html" in source
+    assert "Rollback PNG artwork" in source
+    assert "rollback-web-home-stale.html" in source
+    assert "invalid-production-rollback-session" in source
