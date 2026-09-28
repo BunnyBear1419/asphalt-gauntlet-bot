@@ -1,0 +1,46 @@
+name: Deploy Test-Job Diagnostic
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize production deployments so Discloud never receives overlapping deploy requests.
+# Production deployment health is verified by the smoke-test and rollback gates below.
+concurrency:
+  group: discloud-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pip-audit
+          pip check
+          pip-audit -r requirements.txt
+
+      - name: Compile
+        run: python -m compileall -q .
+
+      - name: Test
+        run: pytest -q
+
