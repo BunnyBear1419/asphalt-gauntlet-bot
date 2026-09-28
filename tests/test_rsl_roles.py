@@ -125,3 +125,6 @@ def test_discord_role_sync_is_wired_to_season_lifecycle():
     assert "sync_gauntlet_season_roles(" in season
     assert "clear_gauntlet_season_roles(" in season
     assert "activity_level(" in season
+    assert "existing_ids = {role.id for role in member.roles}" in sync
+    assert "managed[name].id in existing_ids" in sync
+    assert "managed[current].id not in existing_ids" in sync
