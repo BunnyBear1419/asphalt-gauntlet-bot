@@ -284,7 +284,7 @@ if age > 120 or (previous and timestamp <= previous):
 
 print("true")
 PY
-            )
+            ) || HEARTBEAT_OK=false
             echo "Production heartbeat gate: $HEARTBEAT_OK"
             if [ "$HEARTBEAT_OK" != "true" ]; then
               echo "Production heartbeat is missing, unhealthy, stale, or has not advanced past the pre-deploy heartbeat."
