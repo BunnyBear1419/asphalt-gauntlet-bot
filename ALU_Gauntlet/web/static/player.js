@@ -1,4 +1,5 @@
 const $=s=>document.querySelector(s);
+const formatElo=v=>{const n=Number(v);return Number.isFinite(n)?Math.trunc(n).toLocaleString():"1,000"};
 async function api(u,o={}){const r=await fetch(u,{credentials:"same-origin",...o});if(!r.ok)throw new Error(await r.text());return r.json()}
 function setText(id,value){const el=document.getElementById(id);if(el)el.textContent=value}
 async function load(){
@@ -14,13 +15,13 @@ async function profile(){
   const id=encodeURIComponent(sel.value);
   try{
     const d=await api("/api/player/me?guild_id="+id),p=d.player||{},prefs=d.preferences||{};
-    const elo=p.elo??"—";
+    const elo=Number.isFinite(Number(p.elo))?Math.trunc(Number(p.elo)):1000;
         const season=p.season_number??"Not registered";
     const defense=p.defense_locked?"LOCKED":"OPEN";
     const wins=p.career_wins??0;
     const losses=Math.max(0,(p.career_played??0)-wins);
     const streak=p.streak??0;
-    setText("elo",elo); setText("right-elo",Number(elo||0).toLocaleString()); setText("snapshot-elo",Number(elo||0).toLocaleString());
+    setText("elo",elo); setText("right-elo",formatElo(elo)); setText("snapshot-elo",Number(elo||0).toLocaleString());
     setText("season",season); setText("season-number",p.season_number??"—"); setText("season-number-text",p.season_number??"—");
     setText("defense",defense); setText("wins",wins); setText("losses",losses); setText("streak",streak);
     const played=Number(p.career_played||0); const winRate=played?Math.round((Number(wins)||0)/played*100):0; setText("win-rate",winRate+"%");
@@ -278,7 +279,7 @@ const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.add
      setText("menu-user-name",d.player?.username||"Driver");
      setText("career-season",c.season??"—");
      setText("career-rank",c.rank?"#"+c.rank:"—");
-     setText("career-elo",Number(c.elo||0).toLocaleString());
+     setText("career-elo",formatElo(c.elo));
      setText("career-record",(c.wins??0)+"-"+(c.losses??0));
      const wr=Number(c.played||0)?Math.round(Number(c.wins||0)/Number(c.played||0)*100):0;
      setText("career-winrate",wr+"%"); setText("career-streak",c.streak??0); setText("career-championships",d.stats?.championships??0);
