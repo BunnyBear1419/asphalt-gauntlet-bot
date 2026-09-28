@@ -61,8 +61,9 @@ def test_challenge_submission_requires_five_individual_proofs():
     matches=(ROOT/"ALU_Gauntlet"/"web"/"static"/"gauntlet-matches.html").read_text(encoding="utf-8")
     for marker in ("proof1", "proof2", "proof3", "proof4", "proof5", "discord.Attachment", "challenger_proof_urls", "race_proofs"):
         assert marker in challenges
-    for marker in ("proof_url", "challenger_proof_urls", "race_proofs"):
-        assert marker in server
-        assert marker in matches
+    assert "proof_url" in server
+    assert "proof_url" in matches
+    assert "challenger_proof_urls" in server
+    assert "race_proofs" in server
     assert 'JSON.stringify({courses:rows})' in matches
     assert 'JSON.stringify({courses:rows,proof:' not in matches
