@@ -36,7 +36,7 @@ def test_web_ui_is_simplified_control_center():
 
 def test_player_page_uses_same_dashboard_visual_system():
     source=(STATIC/"player.html").read_text(encoding="utf-8")
-    for marker in ("class=\"alu-dashboard\"","class=\"top-nav\"","class=\"hero-banner\"","class=\"dashboard-grid\"","id=\"matches\"","id=\"preferences\""):
+    for marker in ("class=\"alu-dashboard\"","class=\"top-nav\"","class=\"hero-banner\"","class=\"dashboard-grid\"","id=\"matches\"","id=\"profile-settings\""):
         assert marker in source
     assert 'class="sidebar"' not in source
     assert "/static/app.css" in source
