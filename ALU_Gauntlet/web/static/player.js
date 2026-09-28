@@ -250,12 +250,35 @@ const addLink=$("#add-profile-link"); if(addLink)addLink.addEventListener("click
 const saveProfile=$("#save-profile");
 if(saveProfile)saveProfile.addEventListener("click",async()=>{
  const guildId=$("#guild")?.value,status=$("#profile-save-status"); if(!guildId)return;
- const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,5);
+ const mode=document.body?.dataset?.rslPlayerMode||"profile";
  if(status)status.textContent="Saving…"; saveProfile.disabled=true;
  try{
-  const d=await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:$("#profile-game-name")?.value||"",about:$("#profile-about")?.value||"",location:$("#profile-location")?.value||"",timezone:$("#profile-timezone")?.value||"UTC",platform:$("#profile-platform")?.value||"",driver_type:$("#profile-driver-type")?.value||"",links})});
-  if(status)status.textContent=d.message||"Saved ✓"; await profile();
- }catch(e){if(status)status.textContent=e.message||"Profile save failed."}finally{saveProfile.disabled=false;setTimeout(()=>{if(status)status.textContent=""},1800)}
+  if(mode==="settings"){
+    await api("/api/player/preferences?guild_id="+encodeURIComponent(guildId),{
+      method:"PUT",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({timezone:$("#profile-timezone")?.value||"UTC"})
+    });
+    if(window.RSLTheme && $("#profile-theme")?.value) await window.RSLTheme.save($("#profile-theme").value);
+    if(status)status.textContent="Settings saved ✓";
+  }else{
+    const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,5);
+    const d=await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{
+      method:"PUT",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        game_name:$("#profile-game-name")?.value||"",
+        about:$("#profile-about")?.value||"",
+        location:$("#profile-location")?.value||"",
+        timezone:$("#profile-timezone")?.value||"UTC",
+        platform:$("#profile-platform")?.value||"",
+        driver_type:$("#profile-driver-type")?.value||"",
+        links
+      })
+    });
+    if(status)status.textContent=d.message||"Saved ✓";
+  }
+  await profile();
+ }catch(e){if(status)status.textContent=e.message||"Save failed."}
+ finally{saveProfile.disabled=false;setTimeout(()=>{if(status)status.textContent=""},1800)}
 });
 
 const asphaltButton=$("#submit-asphalt-link");if(asphaltButton)asphaltButton.addEventListener("click",async()=>{const status=$("#asphalt-link-message"),guildId=$("#guild")?.value;if(!guildId)return;const gameName=$("#asphalt-link-name")?.value.trim()||"",gameId=$("#asphalt-link-id")?.value.trim()||"";if(!gameName||!gameId){if(status)status.textContent="Enter both your Asphalt Game Name and Game ID.";return;}asphaltButton.disabled=true;if(status)status.textContent="Submitting for staff verification…";try{const d=await api("/api/player/asphalt?guild_id="+encodeURIComponent(guildId),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({game_name:gameName,game_id:gameId})});if(status)status.textContent=d.message||"Submitted.";await profile();}catch(e){if(status)status.textContent=e.message||"Unable to connect Asphalt account."}finally{asphaltButton.disabled=false;}});
