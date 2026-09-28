@@ -4742,17 +4742,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         user = await self.require_user(request)
         explicit = request.query.get("guild_id", "").strip()
         if not explicit:
-            memberships = {str(x) for x in getattr(user, "guild_ids", [])}
+            connected = await self._connected_guilds_for_user(user)
             preferred = [
                 request.cookies.get("rsl_guild_id", "").strip(),
                 *[str(x) for x in getattr(user, "admin_guild_ids", [])],
-                *memberships,
+                *connected.keys(),
             ]
-            connected = {
-                str(getattr(g, "id", "")): g
-                for g in getattr(self.bot, "guilds", [])
-                if str(getattr(g, "id", "")) in memberships
-            }
             for guild_id in preferred:
                 guild = connected.get(guild_id)
                 if guild is not None and await self._is_live_guild_staff(user, guild_id, guild):
