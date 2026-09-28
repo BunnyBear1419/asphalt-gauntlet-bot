@@ -417,7 +417,7 @@ class SeasonCog(commands.Cog):
         status = 'ENABLED' if enabled else 'DISABLED'
         detail = 'When a scheduled season end is reached, the bot will close the current season and immediately start the next season.' if enabled else 'When a scheduled season end is reached, the bot will close the current season, but the next season will wait for staff to schedule and explicitly start it.'
         await interaction.followup.send(
-            await localize_text(bot, interaction.user.id, f'⚙️ **Automatic Season Rollover: {status}**\n\n{detail}\n\n📅 `/staff` → **Season → Season Schedule** automatically starts and ends seasons at the selected times. `/staff` → **Season → Start Season** may start a season early, but its scheduled end still applies. `/staff` → **Season → End Season** always prevents an immediate automatic rollover to the next season.', interaction.locale),
+            await localize_text(bot, interaction.user.id, f'⚙️ **Automatic Season Rollover: {status}**\n\n{detail}\n\n📅 `/staff` → **Season → Season Schedule** automatically starts and ends seasons at the selected times. `/staff` → **Season → Start Season** may start a season early, but its scheduled end still applies. `/staff` → **Season → End Season** always prevents an immediate automatic rollover to the next season.', getattr(interaction, 'locale', None)),
             ephemeral=True
         )
         await audit_admin_action(interaction, 'Season Automation', f'Automatic scheduled rollover set to `{enabled}`. Scheduled starts remain manual.')
@@ -451,7 +451,7 @@ class SeasonCog(commands.Cog):
             await audit_admin_action(interaction, 'Season Schedule', f'Changed season closing time to `{end_date}`.')
         except ValueError:
             await interaction.followup.send(
-                await localize_text(bot, interaction.user.id, '❌ **Timestamp Read Error:** Please verify exact syntax pattern structural formats: `YYYY-MM-DD HH:MM`', interaction.locale),
+                await localize_text(bot, interaction.user.id, '❌ **Timestamp Read Error:** Please verify exact syntax pattern structural formats: `YYYY-MM-DD HH:MM`', getattr(interaction, 'locale', None)),
                 ephemeral=True
             )
 
@@ -466,7 +466,7 @@ class SeasonCog(commands.Cog):
         else:
             warning = "⚠️ **RESET SEASON NUMBER**\n\nThis will set the server's current season to **Season 1** and align existing driver records to Season 1. Historical season archives and career statistics will remain."
         await interaction.response.send_message(
-            await localize_text(bot, interaction.user.id, warning + '\n\nAre you sure?', interaction.locale),
+            await localize_text(bot, interaction.user.id, warning + '\n\nAre you sure?', getattr(interaction, 'locale', None)),
             ephemeral=True
         )
 
@@ -480,13 +480,13 @@ class SeasonCog(commands.Cog):
         state = await bot.db.season_state.find_one({'_id': f'guild_{gid}'})
         if not state:
             await interaction.followup.send(
-                await localize_text(bot, interaction.user.id, '❌ No season state exists. Open `/staff` → **Season** → **Season Schedule** first.', interaction.locale),
+                await localize_text(bot, interaction.user.id, '❌ No season state exists. Open `/staff` → **Season** → **Season Schedule** first.', getattr(interaction, 'locale', None)),
                 ephemeral=True
             )
             return
         if bool(state.get('season_active', True)) and (not bool(state.get('awaiting_staff_start', False))):
             await interaction.followup.send(
-                await localize_text(bot, interaction.user.id, f"ℹ️ Season {int(state.get('season_number', 1))} is already active.", interaction.locale),
+                await localize_text(bot, interaction.user.id, f"ℹ️ Season {int(state.get('season_number', 1))} is already active.", getattr(interaction, 'locale', None)),
                 ephemeral=True
             )
             return
@@ -494,7 +494,7 @@ class SeasonCog(commands.Cog):
         end_at = float(state.get('ends_at', 0) or 0)
         if not start_at or not end_at or end_at <= start_at:
             await interaction.followup.send(
-                await localize_text(bot, interaction.user.id, '❌ Set a valid start and end schedule from `/staff` → **Season** → **Season Schedule** before explicitly starting this season.', interaction.locale),
+                await localize_text(bot, interaction.user.id, '❌ Set a valid start and end schedule from `/staff` → **Season** → **Season Schedule** before explicitly starting this season.', getattr(interaction, 'locale', None)),
                 ephemeral=True
             )
             return
@@ -515,14 +515,14 @@ class SeasonCog(commands.Cog):
         )
         if not transition.modified_count:
             await interaction.followup.send(
-                await localize_text(bot, interaction.user.id, 'ℹ️ This season was already started by another staff action.', interaction.locale),
+                await localize_text(bot, interaction.user.id, 'ℹ️ This season was already started by another staff action.', getattr(interaction, 'locale', None)),
                 ephemeral=True
             )
             return
         season_number = int(state.get('season_number', 1))
         await announce_season_start(gid, season_number, reason='early')
         await interaction.followup.send(
-            await localize_text(bot, interaction.user.id, f'✅ **Season {season_number} started early.** The "scheduled end time remains unchanged", so the season will still automatically end at the scheduled end time.', interaction.locale),
+            await localize_text(bot, interaction.user.id, f'✅ **Season {season_number} started early.** The "scheduled end time remains unchanged", so the season will still automatically end at the scheduled end time.', getattr(interaction, 'locale', None)),
             ephemeral=True
         )
         await audit_admin_action(interaction, 'Season Start', f'Explicitly started Season {season_number}.')
@@ -538,7 +538,7 @@ class SeasonCog(commands.Cog):
         state = await bot.db.season_state.find_one({'_id': f'guild_{gid}'})
         if not state:
             await interaction.followup.send(
-                await localize_text(bot, interaction.user.id, 'ℹ️ No season state exists yet. Use `/staff` → **Season** to initialize the season.', interaction.locale),
+                await localize_text(bot, interaction.user.id, 'ℹ️ No season state exists yet. Use `/staff` → **Season** to initialize the season.', getattr(interaction, 'locale', None)),
                 ephemeral=True
             )
             return
@@ -557,7 +557,7 @@ class SeasonCog(commands.Cog):
         status = 'ACTIVE' if active else 'WAITING FOR STAFF START' if awaiting else 'DORMANT'
         detail = f"**Season:** {season}\n**Status:** {status}\n**Scheduled start:** {fmt(start_at)}\n**Scheduled end:** {fmt(end_at)}\n**Automatic scheduled rollover:** {('ON' if auto else 'OFF')}\n\n`/staff` → **Season → Season Schedule** automatically starts and ends the season at the selected times. `/staff` → **Season → Start Season** can open it early and does not change the scheduled end. Automatic rollover only affects a scheduled end; manual `/staff` → **Season → End Season** always leaves the next season waiting for a new schedule."
         await interaction.followup.send(
-            await localize_text(bot, interaction.user.id, detail, interaction.locale),
+            await localize_text(bot, interaction.user.id, detail, getattr(interaction, 'locale', None)),
             ephemeral=True
         )
 
@@ -567,7 +567,7 @@ class SeasonCog(commands.Cog):
         if not await enforce_channel_constraints(interaction, admin_cmd=True):
             return
         await interaction.response.send_message(
-            await localize_text(bot, interaction.user.id, '⚠️ **End the current season?** This will archive the standings and prepare the next season. The next season will NOT start automatically; staff must schedule it and use `/staff` → **Season → Start Season**.', interaction.locale),
+            await localize_text(bot, interaction.user.id, '⚠️ **End the current season?** This will archive the standings and prepare the next season. The next season will NOT start automatically; staff must schedule it and use `/staff` → **Season → Start Season**.', getattr(interaction, 'locale', None)),
             view=ConfirmSeasonEndView(interaction.guild_id),
             ephemeral=True
         )
@@ -582,7 +582,7 @@ class SeasonCog(commands.Cog):
             archive = await bot.db.season_history.find_one({'_id': f'{guild_id}_{int(season)}'})
             if not archive:
                 await interaction.response.send_message(
-                    await localize_text(bot, interaction.user.id, f'❌ No archived Season {int(season)} was found.', interaction.locale),
+                    await localize_text(bot, interaction.user.id, f'❌ No archived Season {int(season)} was found.', getattr(interaction, 'locale', None)),
                     ephemeral=True
                 )
                 return
@@ -600,7 +600,7 @@ class SeasonCog(commands.Cog):
         archives = await bot.db.season_history.find({'guild_id': guild_id}).sort('season_number', -1).limit(15).to_list(length=15)
         if not archives:
             await interaction.response.send_message(
-                await localize_text(bot, interaction.user.id, 'ℹ️ No completed season archives yet.', interaction.locale),
+                await localize_text(bot, interaction.user.id, 'ℹ️ No completed season archives yet.', getattr(interaction, 'locale', None)),
                 ephemeral=True
             )
             return
