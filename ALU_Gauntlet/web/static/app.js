@@ -97,25 +97,7 @@ function syncPrimaryNav(){
 document.addEventListener("DOMContentLoaded",syncPrimaryNav);
 window.addEventListener("hashchange",syncPrimaryNav);
 
-async function openPlayerProfile(userId){
- try{
-  const d=await api("/api/players/"+encodeURIComponent(userId)),p=d.player||{},conn=p.asphalt_connection||{},links=Array.isArray(p.links)?p.links.slice(0,5):[];
-  document.querySelector("#public-player-profile")?.remove();
-  const o=document.createElement("div");o.id="public-player-profile";o.className="public-profile-overlay";
-  const wins=Number(p.career_wins||0),played=Number(p.career_played||0),losses=Math.max(0,played-wins);
-  o.innerHTML="<div class='public-profile-backdrop'></div><article class='public-profile glass-panel' role='dialog' aria-modal='true' aria-labelledby='public-player-title'><button class='public-profile-close qa qa-blue' type='button' aria-label='Close profile'>✕</button>"+
-  "<div class='public-profile-hero unified-profile-hero'><div class='public-profile-avatar'>🏎️</div><div><span class='eyebrow'>DRIVER PROFILE</span><h2 id='public-player-title'>"+esc(p.discord_name||p.username||"Driver")+"</h2><p>"+esc(p.game_name||conn.game_name||"Asphalt driver")+"</p><div class='public-profile-tags'>"+(p.asphalt_verified?"<span class='profile-tag verified'>🟢 VERIFIED ASPHALT</span>":"")+"<span class='profile-tag'>"+esc(p.platform||"Platform not set")+"</span><span class='profile-tag'>"+esc(p.driver_type||"Driver type not set")+"</span></div></div></div>"+
-  "<div class='unified-profile-stats'><div><small>ELO</small><strong>"+(p.elo??1000)+"</strong></div><div><small>PI</small><strong>"+Number(p.garage_pi||0).toLocaleString()+"</strong></div><div><small>RECORD</small><strong>"+wins+"-"+losses+"</strong></div><div><small>SEASON</small><strong>"+esc(p.season_number??"—")+"</strong></div></div>"+
-  "<div class='unified-profile-content'><div class='unified-profile-main'>"+
-  "<section class='unified-profile-section'><span class='eyebrow'>ASPHALT IDENTITY</span><div class='unified-profile-info-grid'><div><small>GAME NAME</small><strong>"+esc(p.game_name||conn.game_name||"Not set")+"</strong></div><div><small>GAME ID</small><strong>"+esc(p.game_id||conn.game_id||"Not set")+"</strong></div><div><small>LOCATION</small><strong>"+esc(p.location||"Not set")+"</strong></div><div><small>PLATFORM</small><strong>"+esc(p.platform||"Not set")+"</strong></div><div><small>DRIVER TYPE</small><strong>"+esc(p.driver_type||"Not set")+"</strong></div><div><small>TIMEZONE</small><strong>"+esc(p.timezone_label||p.timezone||"UTC")+"</strong></div></div></section>"+
-  "<section class='unified-profile-section'><span class='eyebrow'>ABOUT ME</span><p>"+esc(p.about||"No bio added yet.")+"</p></section>"+
-  (links.length?"<section class='unified-profile-section'><span class='eyebrow'>LINKS</span><div class='unified-profile-links'>"+links.map((x,i)=>"<a href='"+esc(x)+"' target='_blank' rel='noopener noreferrer'><span>LINK "+(i+1)+"</span><b>"+esc(x.replace(/^https?:\/\//,"").replace(/\/$/,""))+"</b>↗</a>").join("")+"</div></section>":"")+
-  "</div><aside class='unified-profile-side'><span class='eyebrow'>COMPETITION</span><div class='profile-side-card'><small>DEFENSE</small><strong>"+(p.defense_locked?"LOCKED":"OPEN")+"</strong></div><div class='profile-side-card'><small>STREAK</small><strong>"+(p.streak??0)+"</strong></div><div class='profile-side-card'><small>CAREER WINS</small><strong>"+wins+"</strong></div></aside></div></article>";
-  document.body.appendChild(o);
-  const close=()=>o.remove();
-  o.querySelector(".public-profile-close").addEventListener("click",close);
-  o.querySelector(".public-profile-backdrop").addEventListener("click",close);
-  const handler=e=>{if(e.key==="Escape"){close();document.removeEventListener("keydown",handler)}};document.addEventListener("keydown",handler);
- }catch(e){toast(e.message,true)}
+function openPlayerProfile(userId){
+ if(userId) window.location.href="/profile?user_id="+encodeURIComponent(userId);
 }
 document.addEventListener("DOMContentLoaded",()=>{const rows=$("#rows");if(!rows)return;rows.addEventListener("click",e=>{const r=e.target.closest(".player-directory-row");if(r)openPlayerProfile(r.dataset.playerId)});rows.addEventListener("keydown",e=>{const r=e.target.closest(".player-directory-row");if(r&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openPlayerProfile(r.dataset.playerId)}})});
