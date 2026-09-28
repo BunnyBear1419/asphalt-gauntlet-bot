@@ -90,7 +90,7 @@ class RSLXPCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if not message.guild or message.author.bot or not message.content.strip() or not getattr(self.bot, "db", None):
+        if not message.guild or message.author.bot or not message.content.strip() or getattr(self.bot, "db", None) is None:
             return
         settings = await self._settings(message.guild.id)
         if not settings.get("message_enabled", True):
@@ -122,7 +122,7 @@ class RSLXPCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):
-        if user.bot or not reaction.message.guild or not getattr(self.bot, "db", None):
+        if user.bot or not reaction.message.guild or getattr(self.bot, "db", None) is None:
             return
         settings = await self._settings(reaction.message.guild.id)
         if not settings.get("reaction_enabled", True):
@@ -158,7 +158,7 @@ class RSLXPCog(commands.Cog):
 
     @tasks.loop(minutes=3)
     async def voice_tick(self):
-        if not getattr(self.bot, "db", None):
+        if getattr(self.bot, "db", None) is None:
             return
         for guild in self.bot.guilds:
             settings = await self._settings(guild.id)
