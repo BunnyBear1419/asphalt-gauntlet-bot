@@ -171,3 +171,13 @@ def test_deployment_start_time_is_not_dead_state():
     assert "Record deployment start time" not in source
     assert "DEPLOY_STARTED_AT" not in source
     assert "steps.deployment.outputs.started_at" not in source
+
+
+def test_restart_paths_retry_transient_discloud_failures():
+    source = _source()
+    assert "Discloud restart attempt $attempt/3 HTTP status" in source
+    assert "Restart request did not succeed; retrying in 20 seconds." in source
+    assert "Discloud restart failed after 3 attempts." in source
+    assert "Rollback Discloud restart attempt $attempt/3 HTTP status" in source
+    assert "Rollback restart request did not succeed; retrying in 20 seconds." in source
+    assert "Rollback Discloud restart failed after 3 attempts." in source
