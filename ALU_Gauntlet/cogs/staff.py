@@ -85,7 +85,7 @@ class StaffCog(commands.Cog):
         season = await get_current_season_number(guild_id)
         rows = await bot.db.pending.find({'guild_id': guild_id, 'season_number': season}).to_list(length=1000)
         if not rows:
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'✅ No pending driver registrations for Season {season}.', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f'✅ No pending driver registrations for Season {season}.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         lines = [f"<@{d['user_id']}> — `{d.get('game_id', '?')}` — `{int(d.get('rank', 0)):,} PI` → **{get_division_for_pi(int(d.get('rank', 0)))['name']}**" for d in rows]
         await interaction.followup.send(embed=discord.Embed(title=f'⏳ PENDING DRIVERS — SEASON {season}', description='\n'.join(lines)[:4096], color=ASPHALT_ALERT_COLOR), ephemeral=True)
@@ -128,7 +128,7 @@ class StaffCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         guild_id = str(interaction.guild.id) if interaction.guild else None
         if not guild_id:
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, '❌ This command must be used inside a server.', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ This command must be used inside a server.', getattr(interaction, "locale", None)), ephemeral=True)
             return
         issues = []
         checks = []
@@ -316,7 +316,7 @@ class StaffCog(commands.Cog):
             await audit_admin_action(interaction, 'DBCheck', f'Database consistency audit: {len(issues)} issue(s).')
         except Exception as exc:
             logging.exception('Database consistency check failed', exc_info=exc)
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Database consistency check failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Database consistency check failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
 
     @app_commands.command(name='backup', description='[Staff Only] Create an immediate database backup.')
     async def backup_cmd(self, interaction: discord.Interaction):
@@ -327,13 +327,13 @@ class StaffCog(commands.Cog):
         try:
             folder = await create_database_backup(f'manual by {interaction.user.id}')
             if folder:
-                await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'✅ Database backup created.\n`{folder}`', getattr(interaction, "locale", None)), ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'✅ Database backup created.\n`{folder}`', getattr(interaction, "locale", None)), ephemeral=True)
                 await audit_admin_action(interaction, 'Database Backup', f'Created backup `{folder}`.')
             else:
-                await interaction.followup.send_message(await localize_text(bot, interaction.user.id, 'ℹ️ MongoDB is not connected; no cloud database backup was created.', getattr(interaction, "locale", None)), ephemeral=True)
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ MongoDB is not connected; no cloud database backup was created.', getattr(interaction, "locale", None)), ephemeral=True)
         except Exception as exc:
             logging.exception('Manual database backup failed')
-            await interaction.followup.send_message(await localize_text(bot, interaction.user.id, f'❌ Backup failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
+            await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Backup failed: `{exc}`', getattr(interaction, "locale", None)), ephemeral=True)
             await send_admin_alert(str(interaction.guild_id), 'DATABASE BACKUP FAILED', str(exc))
 
     @app_commands.command(name='diagnostics', description='[Staff Only] Run a read-only health and database diagnostic report.')
