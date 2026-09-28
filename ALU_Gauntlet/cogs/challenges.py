@@ -141,14 +141,6 @@ class ChallengesCog(commands.Cog):
             await release_active_challenge(active['_id'])
             await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ All 5 car performance ratings must be greater than 0.', interaction.locale), ephemeral=True)
             return
-        challenger_times = []
-        for i, l in enumerate(laps):
-            ms = parse_lap_time(l.strip())
-            if ms <= 0:
-                await release_active_challenge(active['_id'])
-                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Lap {i + 1} is invalid. Use a positive `MM:SS.MS` time.', interaction.locale), ephemeral=True)
-                return
-            challenger_times.append({'lap_time_str': l.strip(), 'ms': ms, 'car': canonical[i], 'car_rank': int(ranks[i]), 'proof_url': proof_urls[i]})
         proofs = [proof1, proof2, proof3, proof4, proof5]
         proof_urls = []
         for i, attachment in enumerate(proofs, 1):
@@ -160,6 +152,14 @@ class ChallengesCog(commands.Cog):
                 await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Proof {i} must be an attached image or video file.', interaction.locale), ephemeral=True)
                 return
             proof_urls.append(str(attachment.url))
+        challenger_times = []
+        for i, l in enumerate(laps):
+            ms = parse_lap_time(l.strip())
+            if ms <= 0:
+                await release_active_challenge(active['_id'])
+                await interaction.followup.send(await localize_text(bot, interaction.user.id, f'❌ Lap {i + 1} is invalid. Use a positive `MM:SS.MS` time.', interaction.locale), ephemeral=True)
+                return
+            challenger_times.append({'lap_time_str': l.strip(), 'ms': ms, 'car': canonical[i], 'car_rank': int(ranks[i]), 'proof_url': proof_urls[i]})
         current_season = await get_current_season_number(guild_id)
         if int(active.get('season_number', 0)) != current_season:
             await release_active_challenge(active['_id'])
@@ -171,17 +171,6 @@ class ChallengesCog(commands.Cog):
             await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ The saved challenge data is incomplete. Please start a new challenge from `/dashboard` → **Challenges**.', interaction.locale), ephemeral=True)
             return
         match_data = await process_match_result(guild_id, user_id, str(active['opponent_id']), defense, challenger_times, proof_urls[0], active.get('defender_proof_url'), interaction.channel_id, settlement_id=f"{active['_id']}:match")
-        await bot.db.matches.update_one(
-            {'_id': match_data['_id'], 'guild_id': guild_id},
-            {'$set': {
-                'challenger_proof_urls': proof_urls,
-                'race_proofs': [{'race': i + 1, 'url': proof_urls[i], 'track': defense[i].get('track')} for i in range(5)],
-            }},
-        )
-        try:
-            match_data['rsl_performance_bonus'] = await apply_rsl_performance_bonus(bot.db, match_data)
-        except Exception:
-            logging.exception('Failed to apply RSL performance margin bonus for match %s', match_data.get('_id'))
         if not match_data:
             # Do not blindly release an uncertain settlement. A completed/pending
             # reservation is reconciled by the scheduler; only release when no match
@@ -193,6 +182,17 @@ class ChallengesCog(commands.Cog):
                 await release_active_challenge(active['_id'])
             await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Could not process this match. If a settlement reservation was created, the bot will reconcile it automatically.', interaction.locale), ephemeral=True)
             return
+        await bot.db.matches.update_one(
+            {'_id': match_data['_id'], 'guild_id': guild_id},
+            {'$set': {
+                'challenger_proof_urls': proof_urls,
+                'race_proofs': [{'race': i + 1, 'url': proof_urls[i], 'track': defense[i].get('track')} for i in range(5)],
+            }},
+        )
+        try:
+            match_data['rsl_performance_bonus'] = await apply_rsl_performance_bonus(bot.db, match_data)
+        except Exception:
+            logging.exception('Failed to apply RSL performance margin bonus for match %s', match_data.get('_id'))
         result = await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id'], 'ticket_burned': True, 'settlement_closed': True}, '$unset': {'processing_at': ''}})
         if getattr(result, 'modified_count', 0) != 1:
             logging.warning('Match %s settled but challenge %s could not be finalized immediately; scheduler will reconcile it.', match_data['_id'], active['_id'])
