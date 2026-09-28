@@ -90,6 +90,13 @@ jobs:
             previous="$(git rev-parse HEAD^)"
           fi
           git cat-file -e "$previous^{commit}"
+          current="$(git rev-parse HEAD)"
+          if [ "$previous" = "$current" ]; then
+            echo "ERROR: Rollback revision resolves to the release being deployed."
+            exit 1
+          fi
+          git merge-base --is-ancestor "$previous" "$current"
+          echo "Rollback revision is a committed predecessor of the release."
           echo "previous_sha=$previous" >> "$GITHUB_OUTPUT"
           echo "Rollback revision: $previous"
 
