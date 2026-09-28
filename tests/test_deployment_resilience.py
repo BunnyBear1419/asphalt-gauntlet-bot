@@ -207,3 +207,11 @@ def test_rollback_recovery_verifies_web_surface():
     assert "Rollback PNG artwork" in source
     assert "rollback-web-home-stale.html" in source
     assert "invalid-production-rollback-session" in source
+
+
+def test_predeploy_heartbeat_capture_survives_transient_mongo_failures():
+    source = _source()
+    assert "A transient Mongo outage on the runner must not block a deployment." in source
+    assert "heartbeat_at=0" in source
+    assert "Pre-deployment heartbeat baseline: $heartbeat_at" in source
+    assert "PREVIOUS_HEARTBEAT_AT:" in source
