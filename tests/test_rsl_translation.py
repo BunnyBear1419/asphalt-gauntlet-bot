@@ -65,3 +65,13 @@ def test_flag_reaction_listener_stays_on_translation_cog():
     assert class_start < listener < class_end
     assert context_menu < class_start
     assert text.count("async def on_raw_reaction_add") == 1
+
+
+def test_rsl_language_preference_falls_back_to_discord_locale():
+    text = LANG.read_text(encoding="utf-8")
+    assert "DISCORD_LOCALE_TO_RSL" in text
+    assert "def discord_locale_language" in text
+    assert "discord_locale: Any = None" in text
+    assert "saved in RSL_LANGUAGES" in text
+    translation = COG.read_text(encoding="utf-8")
+    assert "get_user_language(cog.bot, interaction.user.id, interaction.locale)" in translation
