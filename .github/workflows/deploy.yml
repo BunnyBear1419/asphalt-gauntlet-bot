@@ -93,10 +93,6 @@ jobs:
           echo "previous_sha=$previous" >> "$GITHUB_OUTPUT"
           echo "Rollback revision: $previous"
 
-      - name: Record deployment start time
-        id: deployment
-        run: echo "started_at=$(date +%s)" >> "$GITHUB_OUTPUT"
-
       - name: Validate deployment secrets are present
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
@@ -224,7 +220,6 @@ jobs:
           DISCLOUD_APP_ID: asph
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
-          DEPLOY_STARTED_AT: ${{ steps.deployment.outputs.started_at }}
           PREVIOUS_HEARTBEAT_AT: ${{ steps.predeploy.outputs.heartbeat_at }}
         run: |
           set -euo pipefail
