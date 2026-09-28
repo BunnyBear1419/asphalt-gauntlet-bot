@@ -181,3 +181,12 @@ def test_restart_paths_retry_transient_discloud_failures():
     assert "Rollback Discloud restart attempt $attempt/3 HTTP status" in source
     assert "Rollback restart request did not succeed; retrying in 20 seconds." in source
     assert "Rollback Discloud restart failed after 3 attempts." in source
+
+
+def test_rollback_revision_must_be_a_distinct_committed_predecessor():
+    source = _source()
+    assert 'current="$(git rev-parse HEAD)"' in source
+    assert 'if [ "$previous" = "$current" ]' in source
+    assert 'Rollback revision resolves to the release being deployed.' in source
+    assert 'git merge-base --is-ancestor "$previous" "$current"' in source
+    assert "Rollback revision is a committed predecessor of the release." in source
