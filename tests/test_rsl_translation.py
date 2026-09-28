@@ -44,7 +44,7 @@ def test_discord_translation_provider_is_configurable_and_ui_dismiss_labels_are_
     assert "DismissButton(ui(current, \"dismiss\"))" in text
     assert "self.Dismiss(label)" in text
     assert '"owner":' in text
-    assert 'ui(target, "owner")' in text
+    assert 'ui(parent.language, "owner")' in text
 
 
 def test_context_menus_are_module_level_and_registered_during_setup():
