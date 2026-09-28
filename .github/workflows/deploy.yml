@@ -443,7 +443,26 @@ PY
               "https://api.discloud.app/v2/app/${DISCLOUD_APP_ID}/status" || true)
             echo "Rollback Discloud HTTP status: $discloud_http"
 
-            if [ "$discloud_http" = "200" ] && \
+            rollback_web_http=$(curl -sS -o rollback-web-health.json -w "%{http_code}" \
+              "https://asph.discloud.app/healthz" || true)
+            echo "Rollback web health HTTP status: $rollback_web_http"
+
+            rollback_web_ok=false
+            if [ "$rollback_web_http" = "200" ]; then
+              if python - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("rollback-web-health.json").read_text())
+          if not data.get("ok"):
+              raise SystemExit(1)
+          print("Rollback web health endpoint passed.")
+          PY
+              then
+                rollback_web_ok=true
+              fi
+            fi
+
+            if [ "$discloud_http" = "200" ] && [ "$rollback_web_ok" = "true" ] && \
                curl -sS -f -o discord-rollback.json \
                  -H "Authorization: Bot $DISCORD_BOT_TOKEN" \
                  -H "Accept: application/json" \
