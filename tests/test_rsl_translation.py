@@ -130,3 +130,15 @@ def test_personal_reminder_notifications_use_shared_localization_and_user_locale
     assert 'name=await localize_text(self.bot, int(user_id), "Note", locale)' in text
     assert 'name=await localize_text(self.bot, int(user_id), "Timezone", locale)' in text
     assert 'Manage personal reminders from your RSL Calendar.' in text
+
+def test_admin_staff_system_response_surfaces_use_shared_localization():
+    root = ROOT / "ALU_Gauntlet" / "cogs"
+    for name in ("administration.py", "staff.py", "system.py"):
+        text = (root / name).read_text(encoding="utf-8")
+        assert "from .translation import localize_text" in text
+    admin = (root / "administration.py").read_text(encoding="utf-8")
+    staff = (root / "staff.py").read_text(encoding="utf-8")
+    system = (root / "system.py").read_text(encoding="utf-8")
+    assert "await localize_text(bot, interaction.user.id" in admin
+    assert "await localize_text(bot, interaction.user.id" in staff
+    assert "await localize_text(bot, ctx.author.id" in system
