@@ -2733,6 +2733,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_put("/api/notifications/event", self.update_notification_event)
         self.app.router.add_put("/api/notifications/timing", self.update_notification_timing)
         self.app.router.add_put("/api/notifications/digest", self.update_notification_digest)
+        self.app.router.add_put("/api/notifications/digest", self.update_notification_digest)
         self.app.router.add_get("/api/status", self.status)
         self.app.router.add_get("/api/news", self.news)
         self.app.router.add_post("/api/news", self.create_news)
@@ -3616,6 +3617,25 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             hour = int(payload.get("hour", 9))
         except (TypeError, ValueError):
             raise web.HTTPBadRequest(text="Digest hour must be an integer.")
+        if not 0 <= hour <= 23:
+            raise web.HTTPBadRequest(text="Digest hour must be between 0 and 23.")
+        await self.bot.db.notification_preferences.update_one(
+            {"_id": str(user.user_id)},
+            {"$set": {"digest_frequency": frequency, "digest_hour": hour, "updated_at": time.time()}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "frequency": frequency, "hour": hour})
+
+    async def update_notification_digest(self, request: web.Request) -> web.Response:
+        user = await self.require_user(request)
+        payload = await request.json()
+        frequency = str(payload.get("frequency", "off")).strip().lower()
+        if frequency not in {"off", "daily", "weekly"}:
+            raise web.HTTPBadRequest(text="Digest frequency must be off, daily, or weekly.")
+        try:
+            hour = int(payload.get("hour", 9))
+        except (TypeError, ValueError) as exc:
+            raise web.HTTPBadRequest(text="Digest hour must be an integer.") from exc
         if not 0 <= hour <= 23:
             raise web.HTTPBadRequest(text="Digest hour must be between 0 and 23.")
         await self.bot.db.notification_preferences.update_one(
