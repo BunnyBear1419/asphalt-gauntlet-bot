@@ -195,7 +195,7 @@ jobs:
           required = {
               "drivers", "pending", "matches", "active_challenges", "season_state",
               "season_history", "settings", "reference_pending", "lap_times",
-              "lap_time_history", "map_records", "map_references", "system_events",
+              "lap_time_history", "map_records", "map_references", "system_events", "disputes",
           }
           missing = sorted(required - set(collections))
           if missing:
