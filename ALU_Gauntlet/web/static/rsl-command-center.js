@@ -33,6 +33,17 @@ async function init(){
  if(me.staff){const d=await api("/api/admin/diagnostics?guild_id="+gid).catch(()=>null);if(d?.checks)health.push(...d.checks.slice(0,4).map(x=>[x.name,x.ok?"PASS":"FAIL",x.ok?"rsl-center-ok":"rsl-center-bad"]));}
  $("#cc-health").innerHTML=health.map(x=>row(x[0],x[1],x[2])).join("");
  const season=await api("/api/season?guild_id="+gid).catch(()=>null), s=season?.season||{};
+ const countdown=$("#cc-countdown");
+ const target=Number(s.season_active?s.ends_at:s.starts_at||0)*1000;
+ const renderCountdown=()=>{
+   if(!countdown)return;
+   if(!target){countdown.textContent="No scheduled season transition";return;}
+   const diff=target-Date.now();
+   if(diff<=0){countdown.textContent=s.season_active?"Season ending now":"Season starting now";return;}
+   const days=Math.floor(diff/86400000), hours=Math.floor(diff%86400000/3600000), mins=Math.floor(diff%3600000/60000);
+   countdown.textContent=(s.season_active?"Ends in ":"Starts in ")+days+"d "+hours+"h "+mins+"m";
+ };
+ renderCountdown(); window.setInterval(renderCountdown,60000);
  $("#cc-season").innerHTML=[["Season",s.season_number??own.season_number??"—"],["Status",s.status||s.phase||"Active"],["Start",s.start_time?new Date(s.start_time).toLocaleDateString():"—"],["End",s.end_time?new Date(s.end_time).toLocaleDateString():"—"]].map(x=>row(x[0],x[1])).join("");
 }
 init().catch(e=>{document.querySelectorAll(".rsl-center-list").forEach(x=>x.innerHTML=row("Command Center",e.message,"rsl-center-bad"))})})();
