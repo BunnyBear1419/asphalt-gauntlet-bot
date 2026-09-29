@@ -172,7 +172,29 @@ body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-
 .digest-preferences{display:grid;grid-template-columns:minmax(0,1fr) 190px 190px;gap:16px;margin-top:18px;padding:16px;border:1px solid #174a79;background:#04101f}
 .digest-copy h3{margin:4px 0 5px;font-size:16px}.digest-copy p{margin:0;color:#8198b5;font-size:10px;line-height:1.5}.digest-preferences .notification-timing{margin:0}
 @media(max-width:800px){.digest-preferences{grid-template-columns:1fr}}
-</style></head>
+<style>
+/* Compact first-time driver onboarding: one dismissible surface, no new page. */
+.driver-onboarding{margin:18px 0 0;border:1px solid #174a79;background:linear-gradient(145deg,#061525,#030c18)}
+.driver-onboarding[hidden]{display:none}
+.driver-onboarding summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px 17px}
+.driver-onboarding summary::-webkit-details-marker{display:none}
+.driver-onboarding .onboarding-title{display:flex;align-items:center;gap:11px}
+.driver-onboarding .onboarding-icon{font-size:20px}
+.driver-onboarding summary strong{display:block;font-size:13px;color:#eef5ff}
+.driver-onboarding summary small{display:block;margin-top:3px;color:#8198b5;font-size:10px}
+.driver-onboarding .onboarding-chevron{color:#25dfff;font-size:16px}
+.driver-onboarding[open] .onboarding-chevron{transform:rotate(180deg)}
+.driver-onboarding-body{border-top:1px solid #153b5e;padding:17px}
+.onboarding-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.onboarding-step{padding:14px;border:1px solid #153b5e;background:#04101d}
+.onboarding-step b{display:block;color:#25dfff;font-size:10px;letter-spacing:.12em}
+.onboarding-step strong{display:block;margin:6px 0 4px;font-size:13px}
+.onboarding-step p{margin:0;color:#8198b5;font-size:10px;line-height:1.5}
+.onboarding-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.onboarding-actions a,.onboarding-dismiss{border:1px solid #1d557f;background:#061526;color:#dcecff;text-decoration:none;padding:9px 12px;font-size:10px;font-weight:800;cursor:pointer}
+.onboarding-actions a:hover,.onboarding-dismiss:hover{border-color:#25dfff;color:#fff}
+@media(max-width:800px){.onboarding-steps{grid-template-columns:1fr}.driver-onboarding summary{align-items:flex-start}.driver-onboarding-body{padding:14px}}
+</style></style></head>
 <style>
 /* RSL PLAYER — complete page redesign. This intentionally replaces the legacy card dashboard. */
 .rsl-player-redesign{background:#020711;color:#eaf3ff}
@@ -260,6 +282,25 @@ body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-
     <nav class="player-section-nav" aria-label="Driver dashboard sections">
       <a href="#overview">Overview</a><a href="#gauntlet">Gauntlet</a><a href="#defense">Defense</a><a href="#registration">Registration</a><a href="#profile-settings">Profile &amp; Settings</a><a href="#career">Career</a>
     </nav>
+
+    <details class="driver-onboarding" id="driver-onboarding">
+      <summary>
+        <span class="onboarding-title"><span class="onboarding-icon" aria-hidden="true">🏁</span><span><strong>New to RSL? Start Here</strong><small>Everything you need to know before your first Gauntlet match.</small></span></span>
+        <span class="onboarding-chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div class="driver-onboarding-body">
+        <div class="onboarding-steps">
+          <article class="onboarding-step"><b>01 · REGISTER</b><strong>Join the season</strong><p>Complete your driver registration and submit the required information for staff review.</p></article>
+          <article class="onboarding-step"><b>02 · COMPETE</b><strong>Race &amp; defend</strong><p>Gauntlet challenges use five races. Race fairly, submit accurate results, and keep your five-course defense current.</p></article>
+          <article class="onboarding-step"><b>03 · PROGRESS</b><strong>Build your season</strong><p>Race wins contribute to progression. Earn XP, RSL Coins and season recognition while tournaments and clubs add more competition.</p></article>
+        </div>
+        <div class="onboarding-actions">
+          <a href="/rules">Read RSL Rules →</a>
+          <a href="/gauntlet/registration">Register for Gauntlet →</a>
+          <button type="button" class="onboarding-dismiss" id="dismiss-driver-onboarding">Hide Start Here</button>
+        </div>
+      </div>
+    </details>
 
     <section class="player-overview" id="overview">
       <div class="overview-primary">
