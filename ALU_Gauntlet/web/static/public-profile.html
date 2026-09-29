@@ -18,6 +18,8 @@
 .public-profile-wide{grid-column:1/-1}.public-profile-history{display:grid;gap:8px}.public-profile-history-row{display:grid;grid-template-columns:1.6fr .8fr .7fr .7fr;gap:10px;border:1px solid #123c63;background:var(--rsl-box-alt);padding:12px;color:#b8c7d9}.public-profile-history-row strong{color:#fff}.public-profile-history-row a{color:#25dfff}.public-profile-status{margin-top:14px;padding:12px;border-left:3px solid #25dfff;background:var(--rsl-box-alt);color:#aebdd2;line-height:1.5}.public-profile-loading{text-align:center;color:#91a5c3;padding:36px}
 @media(max-width:760px){.public-profile-hero{align-items:flex-start;flex-wrap:wrap}.public-profile-actions{margin-left:0;width:100%}.public-profile-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.public-profile-main{padding:12px}.public-profile-avatar{width:82px;height:82px;flex-basis:82px;font-size:36px}.public-profile-hero{padding:20px}.public-profile-fields{grid-template-columns:1fr}.public-profile-stat-grid{grid-template-columns:repeat(2,1fr)}}
+
+.public-profile-history-row{min-height:44px;align-items:center}.public-profile-history-row small{color:#7188a7}.public-profile-history-row a{min-height:36px;display:inline-flex;align-items:center}.public-profile-main a:focus-visible,.public-profile-main button:focus-visible{outline:3px solid #ffd22d;outline-offset:2px}@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style></head>
 <body class="alu-dashboard">
 <header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/assets/rsl-shield.png" alt="RSL"></a>
@@ -57,6 +59,7 @@
 </div><div class="public-profile-status" id="gauntlet-score-buckets">Match score distribution: —</div></article>
 <article class="public-profile-card public-profile-wide"><h2>Season History</h2><div id="season-history" class="public-profile-history"><p class="public-profile-loading">Loading season history…</p></div></article>
 <article class="public-profile-card public-profile-wide"><h2>RSL Records</h2><div id="rsl-records" class="public-profile-history"><p class="public-profile-loading">Loading records…</p></div></article>
+<article class="public-profile-card public-profile-wide"><h2>Player Activity Timeline</h2><div id="activity-timeline" class="public-profile-history"><p class="public-profile-loading">Loading recent activity…</p></div></article>
 <article class="public-profile-card public-profile-wide"><h2>Gauntlet Match History</h2><div id="recent-gauntlet" class="public-profile-history"><p class="public-profile-loading">Loading match history…</p></div></article>
 <article class="public-profile-card public-profile-wide"><h2>Tournament Record</h2><div id="tournament-history" class="public-profile-history"><p class="public-profile-loading">Loading tournament record…</p></div></article>
 <article class="public-profile-card"><h2>XP &amp; Progression</h2><div class="public-profile-stat-grid">
