@@ -13,7 +13,7 @@ EXTENSIONS = [
     "ALU_Gauntlet.cogs.administration", "ALU_Gauntlet.cogs.help", "ALU_Gauntlet.cogs.system",
     "ALU_Gauntlet.cogs.operations", "ALU_Gauntlet.cogs.dashboard_setup_bridge",
     "ALU_Gauntlet.cogs.tournament", "ALU_Gauntlet.cogs.notifications", "ALU_Gauntlet.cogs.activity_rewards", "ALU_Gauntlet.cogs.rsl_xp", "ALU_Gauntlet.cogs.economy_moderation", "ALU_Gauntlet.cogs.asphalt_account",
-    "ALU_Gauntlet.cogs.translation",
+    "ALU_Gauntlet.cogs.translation", "ALU_Gauntlet.cogs.match_assistant",
 ]
 
 
