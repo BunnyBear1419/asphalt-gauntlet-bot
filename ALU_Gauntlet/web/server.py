@@ -3475,6 +3475,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "event_lead_days": {str(k): float(v) for k, v in (record.get("event_lead_days") or {}).items()},
             "subscribed_event_ids": [str(x) for x in (record.get("subscribed_event_ids") or [])],
             "muted_event_ids": [str(x) for x in (record.get("muted_event_ids") or [])],
+            "digest_frequency": str(record.get("digest_frequency", "off") or "off"),
+            "digest_hour": int(record.get("digest_hour", 9) or 9),
         })
 
     async def _reminder_payload(self, user, payload, existing=None):
