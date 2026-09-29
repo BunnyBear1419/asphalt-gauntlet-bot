@@ -23,15 +23,23 @@ a{color:#72d8ff}.empty{opacity:.65}
 (()=>{const $=s=>document.querySelector(s),esc=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const row=(a,b)=>'<div class="record"><span>'+esc(a)+'</span><span class="value">'+esc(b)+'</span></div>';
 async function api(u){const r=await fetch(u);if(!r.ok)throw Error("Request failed");return r.json()}
-(async()=>{const g=await api("/api/guilds");const guild=(g.guilds||[])[0];if(!guild)throw Error("RSL server unavailable");const gid=encodeURIComponent(guild.id);
-const b=await api("/api/leaderboard?guild_id="+gid+"&limit=100"),p=b.players||[];
-const by=(field,fn=(x)=>Number(x?.[field]||0))=>[...p].sort((a,b)=>fn(b)-fn(a))[0];
-$("#records").innerHTML=[
-["Highest current ELO",by("elo")?.elo??"—"],["Most current wins",by("career_wins")?.career_wins??"—"],["Longest current streak",by("streak")?.streak??"—"],["Most race wins",by("race_wins")?.race_wins??"—"]
-].map(x=>row(x[0],Number(x[1]||0).toLocaleString())).join("");
-const champions=p.filter(x=>x.season_rank===1||x.current_season_rank===1||x.division_winner).slice(0,12);
-$("#champions").innerHTML=champions.length?champions.map(x=>row(x.rsl_display_name||x.name||"RSL Driver","Rank #1")).join(""):'<p class="empty">Current champion records will appear here as seasons are completed.</p>';
-const s=await api("/api/season?guild_id="+gid).catch(()=>null),season=s?.season||{};
-$("#seasons").innerHTML=[["Current season",season.season_number??"—"],["Status",season.status||season.phase||"Active"],["Start",season.start_time?new Date(season.start_time).toLocaleDateString():"—"],["End",season.end_time?new Date(season.end_time).toLocaleDateString():"—"]].map(x=>row(x[0],x[1])).join("");
-})().catch(e=>{$("#records").innerHTML='<p class="empty">'+esc(e.message)+'</p>'})})()
+(async()=>{
+  const d=await api("/api/rsl/records"),r=d.records||{};
+  const fmt=x=>Number(x?.value||0).toLocaleString();
+  $("#records").innerHTML=[
+    ["Highest current ELO",r.highest_current_elo],
+    ["Most current wins",r.most_current_wins],
+    ["Longest current streak",r.longest_current_streak],
+    ["Most season race wins",r.most_season_race_wins]
+  ].map(x=>row(x[0],x[1]?x[1].name+" • "+fmt(x[1]):"—")).join("");
+  const champs=d.division_champions||[];
+  const overall=d.overall_champion;
+  $("#champions").innerHTML=(overall? [row("Overall Season Leader",overall.name+" • ELO "+Number(overall.elo||0).toLocaleString())].join(""):"")+
+    (champs.length?champs.map(x=>row("Division "+x.division,x.name+" • ELO "+Number(x.elo||0).toLocaleString())).join(""):'<p class="empty">No current division leaders yet.</p>');
+  $("#seasons").innerHTML=[
+    ["Current season",d.current_season||"—"],
+    ["Registered drivers",Number(d.driver_count||0).toLocaleString()],
+    ["Divisions tracked","6"]
+  ].map(x=>row(x[0],x[1])).join("");
+})().catch(e=>{$("#records").innerHTML='<p class="empty">'+esc(e.message)+'</p>';$("#champions").innerHTML='<p class="empty">Records unavailable.</p>';$("#seasons").innerHTML='<p class="empty">Season data unavailable.</p>'})})()
 </script></body></html>
