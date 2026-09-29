@@ -47,6 +47,7 @@ async function profile(){
       box.appendChild(img);
     });
     setText("season-status",p.season_number?"● Active ●":"● Not Registered ●");
+    await loadRslProgression(sel.value);
     const tz=$("#timezone");
     if(tz && prefs.timezone)tz.value=prefs.timezone;
     const ptz=$("#profile-timezone");
@@ -79,6 +80,41 @@ async function profile(){
     const profile=$("#profile"); if(profile)profile.textContent=e.message;
   }
 }
+async function loadRslProgression(guildId){
+  if(!guildId)return;
+  const setEconomy=(id,value)=>setText(id,value);
+  try{
+    const [me,xp,history]=await Promise.all([
+      api("/api/player/me?guild_id="+encodeURIComponent(guildId)),
+      api("/api/xp/me?guild_id="+encodeURIComponent(guildId)),
+      api("/api/player/economy/history?guild_id="+encodeURIComponent(guildId))
+    ]);
+    const p=me.player||{}, tickets=me.tickets||{};
+    const xpTotal=Number(xp.xp||0);
+    const level=Number(xp.level??xp.current_level??1);
+    const xpRank=xp.rank?("#"+xp.rank):"—";
+    setEconomy("xp-level",level);
+    setEconomy("xp-total",xpTotal.toLocaleString());
+    setEconomy("xp-rank",xpRank);
+    setEconomy("rsl-coins",Number(p.rsl_coins||0).toLocaleString());
+    setEconomy("gauntlet-tickets",Number(tickets.tickets_remaining||0));
+    setEconomy("gauntlet-next-ticket-cost",tickets.next_purchase_cost?Number(tickets.next_purchase_cost).toLocaleString()+" Coins":"—");
+    const historyBox=$("#rsl-economy-history");
+    if(historyBox){
+      const rows=history.transactions||[];
+      historyBox.innerHTML="<div><span>Date</span><span>Type</span><span>Amount</span><span>Balance</span></div>"+(rows.length?rows.slice(0,10).map(x=>{
+        const amount=Number(x.amount||0);
+        const amountText=(amount>0?"+":"")+amount.toLocaleString();
+        const stamp=Number(x.created_at||x.timestamp||0);
+        return "<div class='recent-match-row'><span>"+(stamp?esc(new Date(stamp*1000).toLocaleDateString()):"—")+"</span><span>"+esc(x.transaction_type||x.type||"RSL")+"</span><span>"+esc(amountText)+"</span><span>"+Number(x.balance_after||0).toLocaleString()+"</span></div>";
+      }).join(""):"<p class='empty-state'>No coin transactions yet.</p>");
+    }
+    setText("economy-status","SYNCED");
+  }catch(e){
+    setText("economy-status","UNAVAILABLE");
+    const box=$("#rsl-economy-history"); if(box)box.innerHTML="<div><span>Date</span><span>Type</span><span>Amount</span><span>Balance</span></div><p class='empty-state'>Progression data unavailable.</p>";
+  }
+}
 async function loadRecentMatches(guildId){
   const box=$("#matches .match-table"); if(!box||!guildId)return;
   try{
@@ -89,6 +125,20 @@ async function loadRecentMatches(guildId){
 }
 
 const guild=$("#guild"); if(guild)guild.addEventListener("change",profile);
+const buyTicket=$("#gauntlet-buy-ticket");
+if(buyTicket)buyTicket.addEventListener("click",async()=>{
+  const guildId=$("#guild")?.value; if(!guildId)return;
+  const msg=$("#gauntlet-ticket-message");
+  buyTicket.disabled=true; if(msg)msg.textContent="Purchasing ticket…";
+  try{
+    const d=await api("/api/player/tickets/purchase?guild_id="+encodeURIComponent(guildId),{method:"POST"});
+    if(msg)msg.textContent="Purchased for "+Number(d.cost||0).toLocaleString()+" RSL Coins.";
+    await loadRslProgression(guildId);
+  }catch(e){
+    if(msg)msg.textContent=e.message||"Ticket purchase failed.";
+  }finally{buyTicket.disabled=false;}
+});
+
 if(guild)guild.addEventListener("change",()=>loadRecentMatches(guild.value));
 const save=$("#save");
 if(save)save.addEventListener("click",async()=>{
