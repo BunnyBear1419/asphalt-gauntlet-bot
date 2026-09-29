@@ -408,7 +408,7 @@ async function saveRslDigest(){
   const frequency=$("#rsl-digest-frequency"), hour=$("#rsl-digest-hour"), status=$("#digest-save-status");
   if(!frequency||!hour)return;
   try{
-    await api("/api/notifications/digest",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({frequency:frequency.value,hour:Number(hour.value)})});
+    await api("/api/notifications/digest",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({frequency:frequency.value,hour:Number(hour.value),guild_id:$("#guild")?.value||""})});
     if(status)status.textContent="Digest preference saved ✓";
     setTimeout(()=>{if(status)status.textContent=""},1800);
   }catch(e){if(status)status.textContent=e.message||"Unable to save digest preference."}
