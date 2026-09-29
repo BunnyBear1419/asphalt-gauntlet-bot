@@ -12,7 +12,7 @@ async function load(){
   const edit=$("#edit-profile"); if(edit&&me&&String(me.id)===String(p.user_id)) edit.hidden=false;\n  set("name",p.discord_name||p.username||p.game_name||"Driver");
   set("discord",p.discord_username?"@"+p.discord_username:"RSL Driver");
   const avatar=$("#avatar");
-  if(avatar&&p.avatar_url){const img=document.createElement("img");img.src=p.avatar_url;img.alt=(p.discord_name||"Driver")+" Discord avatar";img.onerror=()=>{img.remove()};avatar.textContent="";avatar.append(img)}
+  if(avatar&&p.avatar_url){const img=document.createElement("img");img.src=p.avatar_url;img.alt=(p.discord_name||"Driver")+" RSL avatar";img.onerror=()=>{img.remove()};avatar.textContent="";avatar.append(img)}
   set("game-name",p.game_name||"Not set");
   set("platform",p.platform||"Not set");
   set("driver-type",p.driver_type||"Not set");
