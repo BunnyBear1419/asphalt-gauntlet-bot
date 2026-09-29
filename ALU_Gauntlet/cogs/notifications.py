@@ -1,7 +1,8 @@
 """Discord DM notifications for scheduled RSL calendar events."""
 
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pymongo.errors import DuplicateKeyError
 import discord
 from discord.ext import commands, tasks
@@ -219,12 +220,78 @@ class NotificationCog(commands.Cog):
             except Exception:
                 continue
 
+    async def _notify_digest(self, now):
+        """Deliver one opt-in daily/weekly RSL briefing per user."""
+        utc_now = datetime.fromtimestamp(now, tz=timezone.utc)
+        preferences = await self.bot.db.notification_preferences.find(
+            {"digest_frequency": {"$in": ["daily", "weekly"]}}
+        ).to_list(length=None)
+        for record in preferences:
+            user_id = str(record.get("_id", ""))
+            if not user_id.isdigit():
+                continue
+            frequency = str(record.get("digest_frequency", "off"))
+            guild_id = str(record.get("guild_id", "") or "")
+            prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user_id}"}) if guild_id else None
+            tz_name = str((prefs or {}).get("timezone", "UTC"))
+            try:
+                local_now = utc_now.astimezone(ZoneInfo(tz_name))
+            except Exception:
+                local_now = utc_now
+            hour = max(0, min(23, int(record.get("digest_hour", 9) or 9)))
+            if local_now.hour != hour or local_now.minute != 0:
+                continue
+            if frequency == "weekly" and local_now.weekday() != 0:
+                continue
+            period = local_now.strftime("%Y-%m-%d") if frequency == "daily" else local_now.strftime("%G-W%V")
+            delivery_filter = {"event_id": f"rsl-digest-{frequency}-{period}", "user_id": user_id, "lead_days": 0.0}
+            try:
+                claimed = await self.bot.db.notification_deliveries.update_one(
+                    delivery_filter,
+                    {"$setOnInsert": {"created_at": now, "status": "sending"}},
+                    upsert=True,
+                )
+            except DuplicateKeyError:
+                continue
+            if not claimed.upserted_id:
+                continue
+            try:
+                user = self.bot.get_user(int(user_id)) or await self.bot.fetch_user(int(user_id))
+                upcoming = []
+                for event in sorted(await self._calendar_events(), key=lambda x: float(x.get("timestamp", 0) or 0)):
+                    target = float(event.get("timestamp", 0) or 0)
+                    if target > now and target <= now + 7 * 86400:
+                        upcoming.append(f"• **{event.get('title', 'RSL Event')}** — <t:{int(target)}:R>")
+                active = []
+                async for challenge in self.bot.db.active_challenges.find(
+                    {"$or": [{"challenger_id": user_id}, {"defender_id": user_id}], "status": {"$in": ["active", "processing"]}}
+                ).limit(5):
+                    active.append(f"• Active {str(challenge.get('status', 'match')).title()} Match")
+                driver = None
+                if guild_id:
+                    driver = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user_id}"}) or {}
+                xp = int(driver.get("rsl_xp", driver.get("activity_xp", 0)) or 0)
+                coins = int(driver.get("rsl_coins", 0) or 0)
+                tickets = int(driver.get("gauntlet_tickets", 0) or 0)
+                embed = discord.Embed(title="🏁 RSL Activity Digest", description=f"Your {frequency} RSL briefing.", color=0x19D3FF)
+                embed.add_field(name="Upcoming", value="\n".join(upcoming[:5]) if upcoming else "No upcoming RSL events in the next 7 days.", inline=False)
+                embed.add_field(name="Active Competition", value="\n".join(active) if active else "No active Gauntlet match.", inline=False)
+                embed.add_field(name="Progression", value=f"XP: **{xp:,}**\nRSL Coins: **{coins:,}**\nTickets: **{tickets}**", inline=True)
+                embed.set_footer(text="Manage digest frequency in RSL My Settings or Discord Notifications.")
+                await user.send(embed=embed)
+                await self.bot.db.notification_deliveries.update_one(delivery_filter, {"$set": {"sent_at": now, "status": "sent"}})
+            except (discord.Forbidden, discord.HTTPException):
+                await self.bot.db.notification_deliveries.delete_one(delivery_filter)
+            except Exception:
+                await self.bot.db.notification_deliveries.delete_one(delivery_filter)
+
     @tasks.loop(seconds=60)
     async def notification_loop(self):
         now = time.time()
         try:
             events = await self._calendar_events()
             await self._notify_custom_reminders(now)
+            await self._notify_digest(now)
             for event in events:
                 for record in await self.bot.db.notification_preferences.find({}).to_list(length=None):
                     if not self._wants(record, event):
