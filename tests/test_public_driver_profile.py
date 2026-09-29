@@ -56,7 +56,7 @@ def test_gauntlet_match_surfaces_use_safe_opponent_ids_for_public_profiles():
     app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
     player = (ROOT / "ALU_Gauntlet" / "web" / "static" / "player.js").read_text(encoding="utf-8")
     assert '"opponent_id":oppid' in server
-    assert '"opponent_id":opponent' in server
+    assert '"opponent_id":other' in server
     assert 'm.opponent_id' in matches
     assert 'm.opponent_id' in app
     assert 'm.opponent_id' in player
