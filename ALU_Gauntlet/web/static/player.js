@@ -444,3 +444,18 @@ $("#tournament-notification-days")?.addEventListener("change",e=>{updateCustomVi
 $("#gauntlet-notification-custom")?.addEventListener("change",()=>saveNotificationTiming("gauntlet",getNotificationDays("gauntlet")));
 $("#tournament-notification-custom")?.addEventListener("change",()=>saveNotificationTiming("tournament",getNotificationDays("tournament")));
 document.addEventListener("DOMContentLoaded",()=>{updateCustomVisibility("gauntlet");updateCustomVisibility("tournament");});
+
+// First-time driver onboarding stays on the existing Driver Control Center.
+// It is intentionally local-only so dismissing it never changes league data.
+(function initDriverOnboarding(){
+  const panel=document.getElementById("driver-onboarding");
+  const dismiss=document.getElementById("dismiss-driver-onboarding");
+  if(!panel||!dismiss)return;
+  try{
+    if(localStorage.getItem("rsl.driverOnboarding.dismissed")==="1") panel.hidden=true;
+  }catch(e){}
+  dismiss.addEventListener("click",()=>{
+    panel.hidden=true;
+    try{localStorage.setItem("rsl.driverOnboarding.dismissed","1")}catch(e){}
+  });
+})();
