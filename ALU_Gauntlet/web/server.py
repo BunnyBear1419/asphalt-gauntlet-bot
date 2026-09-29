@@ -31,7 +31,7 @@ from ..core.gauntlet_progression import FREE_DAILY_TICKETS, MAX_DAILY_TICKETS
 from ..core.rsl_activity import collect_overall_activity_stats
 from ..core.rsl_language import RSL_LANGUAGES, normalize_language
 from ..release import current_release_revision
-from ..core.production_controls import is_maintenance_enabled, is_mutating_competition_path, maintenance_message, set_maintenance_mode, create_dispute, resolve_dispute
+from ..core.production_controls import is_maintenance_enabled, is_mutating_competition_path, maintenance_message, set_maintenance_mode
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -2646,10 +2646,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         await self.require_user(request)
         return await self._page_response("rsl-command-center.html", request)
 
-    async def production_controls_page(self, request: web.Request) -> web.StreamResponse:
-        await self.require_admin(request)
-        return await self._page_response("production-controls.html", request)
-
     async def admin_maintenance(self, request: web.Request) -> web.StreamResponse:
         user, guild_id, _guild = await self.require_admin(request)
         settings = await self.bot.db.settings.find_one({"_id": str(guild_id)}) or {}
@@ -2665,54 +2661,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         mode = await set_maintenance_mode(self.bot.db, guild_id, enabled, message, user.user_id)
         return web.json_response({"ok": True, "guild_id": str(guild_id), "maintenance": mode})
 
-    async def create_dispute_request(self, request: web.Request) -> web.StreamResponse:
-        user, guild_id, _guild = await self.require_guild_member(request)
-        try:
-            payload = await request.json()
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid JSON payload.")
-        category = str(payload.get("category") or "general").strip()[:40]
-        subject = str(payload.get("subject") or "RSL Review Request").strip()[:160]
-        description = str(payload.get("description") or "").strip()
-        if len(description) < 10:
-            raise web.HTTPBadRequest(text="Please provide at least 10 characters describing the issue.")
-        target_type = str(payload.get("target_type") or "").strip()[:40] or None
-        target_id = str(payload.get("target_id") or "").strip()[:120] or None
-        document = await create_dispute(
-            self.bot.db, guild_id, user.user_id,
-            category=category, subject=subject, description=description,
-            target_type=target_type, target_id=target_id,
-        )
-        return web.json_response({"ok": True, "dispute": document}, status=201)
-
-    async def list_disputes(self, request: web.Request) -> web.StreamResponse:
-        user, guild_id, guild = await self.require_guild_member(request)
-        staff = await self._is_live_guild_staff(user, guild_id, guild)
-        query = {"guild_id": str(guild_id)}
-        if not staff:
-            query["user_id"] = str(user.user_id)
-        rows = await self.bot.db.disputes.find(query).sort("created_at", -1).limit(100).to_list(length=100)
-        return web.json_response({"ok": True, "is_staff": staff, "disputes": rows})
-
-    async def resolve_dispute_request(self, request: web.Request) -> web.StreamResponse:
-        user, guild_id, _guild = await self.require_admin(request)
-        dispute_id = str(request.match_info.get("dispute_id") or "").strip()
-        try:
-            payload = await request.json()
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid JSON payload.")
-        status = str(payload.get("status") or "").strip().lower()
-        resolution = str(payload.get("resolution") or "").strip()
-        if not resolution:
-            raise web.HTTPBadRequest(text="A resolution note is required.")
-        document = await resolve_dispute(
-            self.bot.db, guild_id, dispute_id, user.user_id,
-            status=status, resolution=resolution,
-        )
-        if document is None:
-            raise web.HTTPNotFound(text="Dispute not found or already closed.")
-        return web.json_response({"ok": True, "dispute": document})
-
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/robots.txt", self.robots_txt)
@@ -2725,7 +2673,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/news-admin", self.news_admin_page)
         self.app.router.add_get("/admin", self.admin_page)
         self.app.router.add_get("/rsl-center", self.rsl_command_center_page)
-        self.app.router.add_get("/production-controls", self.production_controls_page)
         self.app.router.add_get("/player", self.player_page)
         self.app.router.add_get("/player/profile", self.player_profile_page)
         self.app.router.add_get("/player/settings", self.player_settings_page)
@@ -2771,9 +2718,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/admin/backup", self.admin_backup)
         self.app.router.add_get("/api/admin/maintenance", self.admin_maintenance)
         self.app.router.add_put("/api/admin/maintenance", self.admin_maintenance)
-        self.app.router.add_get("/api/disputes", self.list_disputes)
-        self.app.router.add_post("/api/disputes", self.create_dispute_request)
-        self.app.router.add_put("/api/disputes/{dispute_id}", self.resolve_dispute_request)
         self.app.router.add_get("/api/search", self.site_search)
         self.app.router.add_get("/api/discord-stats", self.discord_stats)
         self.app.router.add_get("/api/language", self.get_language)
