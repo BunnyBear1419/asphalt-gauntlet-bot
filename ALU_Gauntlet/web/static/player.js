@@ -31,16 +31,17 @@ async function profile(){
     // Use Discord's display name and avatar rather than the Asphalt/game identity.
     const discordMe=await api("/api/me");
     const discordName=discordMe.global_name||discordMe.username||"Driver";
-    setText("profile-name",discordName); setText("user-name",discordName); setText("welcome-name",discordName);
+    const rslName=prefs.rsl_display_name||discordName;
+    setText("profile-name",rslName); setText("user-name",rslName); setText("welcome-name",rslName);
     setText("profile-discord-name",discordName);
-    const discordAvatar=discordMe.id && discordMe.avatar
+    const discordAvatar=prefs.rsl_avatar_url || (discordMe.id && discordMe.avatar)
       ? `https://cdn.discordapp.com/avatars/${encodeURIComponent(discordMe.id)}/${encodeURIComponent(discordMe.avatar)}.png?size=128`
       : (discordMe.id ? `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(discordMe.id)%7n)}.png` : "");
     document.querySelectorAll(".profile-avatar, .player-avatar").forEach(box=>{
       if(!discordAvatar) return;
       box.textContent="";
       const img=document.createElement("img");
-      img.src=discordAvatar; img.alt=discordName+" Discord avatar";
+      img.src=discordAvatar; img.alt=rslName+" RSL avatar";
       box.appendChild(img);
     });
     setText("season-status",p.season_number?"● Active ●":"● Not Registered ●");
