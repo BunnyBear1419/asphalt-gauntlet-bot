@@ -32,9 +32,9 @@ While enabled:
 
 Maintenance mode changes are written to \`system_events\`.
 
-### Dispute / Review
+### Discord Support & Disputes
 
-Players can create a structured review request against a match, tournament, player, or general RSL issue.
+All support and competition disputes are handled through the official Discord ticket channel. The website does not maintain a second dispute queue; players should open an RSL ticket and include the relevant match/tournament/player identifier and evidence when applicable.
 
 Each request contains:
 - category
