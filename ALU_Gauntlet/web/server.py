@@ -22,7 +22,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
-from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application, get_current_season_number
+from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application, get_current_season_number, get_division_for_pi
 from ..core.match_scoring import apply_rsl_performance_bonus
 from ..core.fairness import fair_match_snapshot, build_fairness_review
 from ..core.rsl_economy import purchase_daily_ticket, next_ticket_purchase
@@ -2728,6 +2728,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/competition/recent-matches", self.competition_recent_matches)
         self.app.router.add_get("/api/player/career", self.player_career)
         self.app.router.add_get("/api/players/{user_id}", self.player_detail)
+        self.app.router.add_get("/api/players/{user_id}/career", self.public_driver_career)
         # Serve every checked-in dashboard image through one predictable route.
         # The previous allow-list only covered the newer SVGs, so older JPG/WEBP
         # artwork could exist in the repository but still return a 404 in production.
@@ -6118,6 +6119,102 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             }
             player["asphalt_verified"] = connection.get("status") == "verified"
         return web.json_response({"players": players})
+
+    async def public_driver_career(self, request: web.Request) -> web.Response:
+        """Return safe public career records for the unified Driver Profile."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        uid = str(request.match_info["user_id"]).strip()
+        if not uid.isdigit():
+            raise web.HTTPNotFound(text="Driver not found.")
+        driver = await self.players.get_player(guild_id, uid)
+        if driver is None:
+            raise web.HTTPNotFound(text="Driver not found.")
+        season = await get_current_season_number(str(guild_id))
+        elo = int(driver.get("elo", 1000) or 1000)
+        higher = await self.bot.db.drivers.count_documents({"guild_id": str(guild_id), "season_registered": True, "season_number": season, "elo": {"$gt": elo}})
+        matches = await self.bot.db.matches.find({
+            "guild_id": str(guild_id), "reverted": {"$ne": True},
+            "$or": [{"challenger_id": uid}, {"opponent_id": uid}],
+        }).sort("timestamp", -1).to_list(length=1000)
+        wins = sum(1 for m in matches if str(m.get("w_id")) == uid)
+        losses = sum(1 for m in matches if str(m.get("l_id")) == uid)
+        race_wins = sum(max(0, min(5, int(m.get("courses_beat", 0) or 0))) if str(m.get("w_id")) == uid else max(0, 5 - min(5, int(m.get("courses_beat", 0) or 0))) for m in matches if str(m.get("w_id")) == uid or str(m.get("l_id")) == uid)
+        race_losses = max(0, (wins + losses) * 5 - race_wins)
+        dominance = driver.get("rsl_dominance") or {}
+        buckets = dominance.get("score_buckets") or {}
+        try:
+            division = get_division_for_pi(int(driver.get("garage_pi", 0) or 0)).get("name", "Unranked")
+        except Exception:
+            division = "Unranked"
+        lap_rows = await self.bot.db.lap_times.find({"guild_id": str(guild_id), "user_id": uid}).sort("best_ms", 1).to_list(length=100)
+        track_records = 0
+        lap_stats = []
+        for row in lap_rows[:10]:
+            track = str(row.get("track", "Unknown"))
+            best_ms = int(row.get("best_ms", 0) or 0)
+            record_id = re.sub(r"[^a-z0-9]+", "_", track.lower()).strip("_")
+            global_rec = await self.bot.db.map_records.find_one({"_id": record_id})
+            is_record = bool(global_rec and str(global_rec.get("user_id")) == uid and int(global_rec.get("best_ms", 10**18)) == best_ms)
+            if is_record: track_records += 1
+            lap_stats.append({"track": track, "best_lap_time": row.get("best_lap_time") or row.get("time") or "—", "track_record": is_record})
+        tournaments = []
+        async for reg in self.bot.db.tournament_registrations.find({"guild_id": str(guild_id), "user_id": uid}).sort("registered_at", -1):
+            tid = str(reg.get("tournament_id", ""))
+            try:
+                from bson import ObjectId
+                tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tid)})
+            except Exception:
+                tournament = None
+            if not tournament: continue
+            bracket = tournament.get("bracket") or {}
+            groups = bracket.get("rounds") or bracket.get("winners") or []
+            tw = tl = tp = 0
+            for group in groups:
+                for match in group.get("matches", []):
+                    slots = [str(x) for x in (match.get("player_slots") or []) if x]
+                    if uid not in slots or str(match.get("status", "")) != "completed": continue
+                    winner = str(match.get("winner_id", ""))
+                    if not winner: continue
+                    tp += 1
+                    if winner == uid: tw += 1
+                    else: tl += 1
+            status = str(tournament.get("status", "unknown"))
+            tournaments.append({
+                "id": tid, "name": str(tournament.get("name", "Tournament")),
+                "format": str(tournament.get("format", "tournament")).replace("_", " ").title(),
+                "status": status.replace("_", " ").title(), "played": tp, "wins": tw, "losses": tl,
+                "record": f"{tw}-{tl}", "start_time": str(tournament.get("start_time", "")),
+            })
+        season_registered = bool(driver.get("season_registered")) and int(driver.get("season_number", 0) or 0) == season
+        return web.json_response({
+            "gauntlet": {
+                "season": season, "division": division, "registered": season_registered,
+                "rank": higher + 1 if season_registered else None, "elo": elo,
+                "wins": wins, "losses": losses, "played": wins + losses,
+                "win_rate": round((wins / (wins + losses) * 100), 1) if wins + losses else 0.0,
+                "streak": int(driver.get("streak", 0) or 0),
+                "race_wins": race_wins, "race_losses": race_losses,
+                "score_buckets": {k: int(buckets.get(k, 0) or 0) for k in ("5-0","4-1","3-2","2-3","1-4","0-5")},
+                "season_points": int(driver.get("season_points", 0) or 0),
+                "season_matches": int(driver.get("season_matches", 0) or 0),
+                "season_races_won": int(driver.get("season_races_won", 0) or 0),
+                "track_records": track_records,
+                "recent_matches": [{
+                    "opponent_id": str(m.get("opponent_id") if str(m.get("challenger_id")) == uid else m.get("challenger_id")),
+                    "result": "WIN" if str(m.get("w_id")) == uid else "LOSS",
+                    "score": f"{int(m.get('courses_beat', 0) or 0)}/5",
+                    "timestamp": m.get("timestamp") or 0,
+                } for m in matches[:10]],
+            },
+            "laps": lap_stats,
+            "tournaments": tournaments[:50],
+            "tournament_summary": {
+                "events": len(tournaments),
+                "played": sum(int(t["played"]) for t in tournaments),
+                "wins": sum(int(t["wins"]) for t in tournaments),
+                "losses": sum(int(t["losses"]) for t in tournaments),
+            },
+        })
 
     async def player_detail(self, request: web.Request) -> web.Response:
         """Return only safe public-facing fields for a guild driver's profile."""
