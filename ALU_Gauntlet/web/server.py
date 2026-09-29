@@ -4853,8 +4853,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return await self._page_response("player.html", request)
 
     async def player_profile_page(self, request: web.Request) -> web.StreamResponse:
-        await self.require_user(request)
-        return await self._page_response("player.html", request)
+        user = await self.require_user(request)
+        return web.Response(status=302, headers={"Location": f"/profile?user_id={user.user_id}"})
 
     async def player_settings_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_user(request)
@@ -5314,7 +5314,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({
             "player": player,
             "user": {"id": user.user_id, "username": user.username, "global_name": user.global_name},
-            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "platform", "driver_type", "links", "asphalt_connection")},
+            "preferences": {key: preferences.get(key) for key in ("timezone", "web_notifications", "dm_notifications", "game_name", "about", "location", "platform", "driver_type", "links", "rsl_display_name", "rsl_avatar_url", "asphalt_connection")},
             "tickets": ticket_state,
         })
 
@@ -5570,6 +5570,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         game_name = str(payload.get("game_name", "")).strip()[:100]
+        rsl_display_name = str(payload.get("rsl_display_name", "")).strip()[:32]
+        rsl_avatar_url = str(payload.get("rsl_avatar_url", "")).strip()[:500]
+        if rsl_avatar_url and not rsl_avatar_url.lower().startswith(("http://", "https://")):
+            raise web.HTTPBadRequest(text="RSL avatar must be an http:// or https:// image URL.")
         about = str(payload.get("about", "")).strip()[:500]
         location = str(payload.get("location", "")).strip()[:100]
         platform = str(payload.get("platform", "")).strip()[:40]
@@ -5599,7 +5603,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         preference_id = f"{guild_id}_{user.user_id}"
         await self.bot.db.web_preferences.update_one(
             {"_id": preference_id},
-            {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "platform": platform, "driver_type": driver_type, "timezone": timezone, "links": clean_links}},
+            {"$set": {"guild_id": guild_id, "user_id": user.user_id, "game_name": game_name, "about": about, "location": location, "platform": platform, "driver_type": driver_type, "timezone": timezone, "links": clean_links, "rsl_display_name": rsl_display_name, "rsl_avatar_url": rsl_avatar_url}},
             upsert=True,
         )
         await self.bot.db.drivers.update_one(
@@ -6133,8 +6137,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             try: member = await guild.fetch_member(int(user_id))
             except Exception: member = None
         discord_name = str(getattr(member, "global_name", None) or getattr(member, "display_name", None) or player.get("username") or player.get("game_id") or "Driver")
+        profile_name = str(prefs.get("rsl_display_name") or discord_name)
         discord_username = str(getattr(member, "name", None) or player.get("username") or "")
-        avatar_url = str(getattr(getattr(member, "display_avatar", None), "url", "") or "")
+        avatar_url = str(prefs.get("rsl_avatar_url") or getattr(getattr(member, "display_avatar", None), "url", "") or "")
         elo = int(player.get("elo", 1000) or 1000)
         season = await get_current_season_number(str(guild_id))
         season_number = int(player.get("season_number", 0) or 0)
@@ -6152,7 +6157,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         except Exception:
             xp, progress, xp_rank = 0, {"level": 1}, None
         public_player = {
-            "user_id": user_id, "discord_name": discord_name, "discord_username": discord_username, "avatar_url": avatar_url,
+            "user_id": user_id, "discord_name": profile_name, "discord_username": discord_username, "avatar_url": avatar_url, "discord_original_name": discord_name,
             "game_name": str(prefs.get("game_name") or connection.get("game_name") or player.get("game_name") or player.get("game_id") or ""),
             "platform": str(prefs.get("platform") or player.get("platform") or ""),
             "driver_type": str(prefs.get("driver_type") or player.get("driver_type") or ""),
