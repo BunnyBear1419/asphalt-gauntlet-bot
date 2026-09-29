@@ -2565,14 +2565,64 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             checks[-1]["detail"]=str(exc)[:200]
         settings = await self.bot.db.settings.find_one({"_id":guild_id}) or {}
         checks.append({"name":"Branding configuration","ok":bool(self._merge_branding(settings.get("web_branding"))["identity"]["name"])})
+
+        # Reuse the canonical operational collections/indexes for a lightweight
+        # integrity check. This is advisory and never mutates competition state.
+        required = ("drivers","matches","active_challenges","pending","system_events","season_state")
+        existing = set(await self.bot.db.list_collection_names())
+        missing = [name for name in required if name not in existing]
+        checks.append({
+            "name":"Core collections",
+            "ok":not missing,
+            "detail":("Missing: " + ", ".join(missing)) if missing else f"{len(required)} verified",
+        })
+        if not missing:
+            try:
+                event_indexes = set((await self.bot.db.system_events.index_information()).keys())
+                checks.append({
+                    "name":"Audit event index",
+                    "ok":"guild_id_1_timestamp_-1" in event_indexes,
+                    "detail":"guild/time index verified" if "guild_id_1_timestamp_-1" in event_indexes else "guild/time index missing",
+                })
+            except Exception as exc:
+                checks.append({"name":"Audit event index","ok":False,"detail":str(exc)[:180]})
+
+            try:
+                season = await self.bot.db.season_state.find_one({"_id":f"guild_{guild_id}"}) or {}
+                if season:
+                    starts = float(season.get("starts_at",0) or 0)
+                    ends = float(season.get("ends_at",0) or 0)
+                    valid_window = not starts or not ends or ends > starts
+                    checks.append({"name":"Season state","ok":valid_window,"detail":"season window valid" if valid_window else "season end precedes start"})
+                else:
+                    checks.append({"name":"Season state","ok":True,"detail":"no season scheduled"})
+            except Exception as exc:
+                checks.append({"name":"Season state","ok":False,"detail":str(exc)[:180]})
+
+            try:
+                stale = await self.bot.db.active_challenges.count_documents({
+                    "guild_id":guild_id,
+                    "status":"processing",
+                    "processing_at":{"$lt":time.time()-900},
+                })
+                checks.append({"name":"Settlement reservations","ok":stale == 0,"detail":"no stale reservations" if stale == 0 else f"{stale} stale reservation(s) require review"})
+            except Exception as exc:
+                checks.append({"name":"Settlement reservations","ok":False,"detail":str(exc)[:180]})
+
         return web.json_response({"ok":all(x["ok"] for x in checks),"checks":checks,"guild":{"id":guild_id,"name":guild.name,"members":getattr(guild,"member_count",0)}})
 
     async def admin_audit(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
         rows=[]
-        cursor=self.bot.db.system_events.find({"guild_id":guild_id}).sort("_id",-1).limit(50)
+        cursor=self.bot.db.system_events.find({"guild_id":guild_id}).sort("timestamp",-1).limit(50)
         async for row in cursor:
-            rows.append({"id":str(row.get("_id","")),"source":str(row.get("source","")),"user_id":str(row.get("user_id","")),"action":str(row.get("action",""))})
+            rows.append({
+                "id":str(row.get("_id","")),
+                "source":str(row.get("source") or "system"),
+                "user_id":str(row.get("user_id") or row.get("actor_id") or ""),
+                "action":str(row.get("action") or row.get("event_type") or "System event"),
+                "timestamp":float(row.get("timestamp",0) or 0),
+            })
         return web.json_response({"events":rows})
 
     async def admin_fairness(self, request: web.Request) -> web.Response:
@@ -2604,7 +2654,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def robots_txt(self, request: web.Request) -> web.Response:
         """Return crawler instructions for the public Racing Syndicate League site."""
-        body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /news-admin\nDisallow: /setup\nDisallow: /player\nDisallow: /players\nDisallow: /api/\nDisallow: /assets/tenant/\nSitemap: https://asph.discloud.app/sitemap.xml\n"
+        body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /news-admin\nDisallow: /player\nDisallow: /players\nDisallow: /api/\nDisallow: /assets/tenant/\nSitemap: https://asph.discloud.app/sitemap.xml\n"
         return web.Response(text=body, content_type="text/plain")
 
     async def sitemap_xml(self, request: web.Request) -> web.Response:
