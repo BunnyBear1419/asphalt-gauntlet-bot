@@ -46,6 +46,7 @@ def test_all_cogs_exist():
         "ticket_economy.py",
         "rsl_xp.py",
         "translation.py",
+        "match_assistant.py",
     }
     actual = {p.name for p in (PACKAGE / "cogs").glob("*.py") if p.name != "__init__.py"}
     assert actual == expected
