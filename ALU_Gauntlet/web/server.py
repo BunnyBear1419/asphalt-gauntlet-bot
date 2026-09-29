@@ -6127,8 +6127,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if not uid.isdigit():
             raise web.HTTPNotFound(text="Driver not found.")
         driver = await self.players.get_player(guild_id, uid)
+        # A Discord member can have a public RSL profile before they have a Gauntlet driver record.
+        # Keep the profile usable and show their Discord identity instead of returning "Driver not found".
         if driver is None:
-            raise web.HTTPNotFound(text="Driver not found.")
+            driver = {}
         season = await get_current_season_number(str(guild_id))
         elo = int(driver.get("elo", 1000) or 1000)
         higher = await self.bot.db.drivers.count_documents({"guild_id": str(guild_id), "season_registered": True, "season_number": season, "elo": {"$gt": elo}})
@@ -6223,8 +6225,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if not user_id.isdigit():
             raise web.HTTPNotFound(text="Driver not found.")
         player = await self.players.get_player(guild_id, user_id)
-        if player is None:
-            raise web.HTTPNotFound(text="Driver not found.")
         prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user_id}"}) or {}
         connection = prefs.get("asphalt_connection") or {}
         guild = next((g for g in self.bot.guilds if str(g.id) == str(guild_id)), None)
@@ -6232,6 +6232,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if member is None and guild:
             try: member = await guild.fetch_member(int(user_id))
             except Exception: member = None
+        if player is None and member is None:
+            raise web.HTTPNotFound(text="Driver not found.")
+        player = player or {}
         discord_name = str(getattr(member, "global_name", None) or getattr(member, "display_name", None) or player.get("username") or player.get("game_id") or "Driver")
         profile_name = str(prefs.get("rsl_display_name") or discord_name)
         discord_username = str(getattr(member, "name", None) or player.get("username") or "")
@@ -6253,7 +6256,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         except Exception:
             xp, progress, xp_rank = 0, {"level": 1}, None
         public_player = {
-            "user_id": user_id, "discord_name": profile_name, "discord_username": discord_username, "avatar_url": avatar_url, "discord_original_name": discord_name,
+            "user_id": user_id, "discord_name": profile_name, "discord_username": discord_username, "avatar_url": avatar_url, "discord_original_name": discord_name, "discord_avatar_url": str(getattr(getattr(member, "display_avatar", None), "url", "") or ""),
             "game_name": str(prefs.get("game_name") or connection.get("game_name") or player.get("game_name") or player.get("game_id") or ""),
             "platform": str(prefs.get("platform") or player.get("platform") or ""),
             "driver_type": str(prefs.get("driver_type") or player.get("driver_type") or ""),
