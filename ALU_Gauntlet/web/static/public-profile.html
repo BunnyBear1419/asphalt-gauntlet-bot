@@ -15,7 +15,7 @@
 .public-profile-about{margin-top:12px;border:1px solid #123c63;background:var(--rsl-box-alt);padding:14px;color:#b8c7d9;line-height:1.65;white-space:pre-wrap}
 .public-profile-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.public-profile-stat{text-align:center}.public-profile-stat strong{display:block;margin-top:5px;color:#25dfff;font-size:23px}
 .public-profile-links{display:flex;gap:8px;flex-wrap:wrap}.public-profile-links a{border:1px solid #174a79;background:var(--rsl-box-alt);color:#25dfff;padding:9px 12px;text-decoration:none;font-weight:800}
-.public-profile-status{margin-top:14px;padding:12px;border-left:3px solid #25dfff;background:var(--rsl-box-alt);color:#aebdd2;line-height:1.5}.public-profile-loading{text-align:center;color:#91a5c3;padding:36px}
+.public-profile-wide{grid-column:1/-1}.public-profile-history{display:grid;gap:8px}.public-profile-history-row{display:grid;grid-template-columns:1.6fr .8fr .7fr .7fr;gap:10px;border:1px solid #123c63;background:var(--rsl-box-alt);padding:12px;color:#b8c7d9}.public-profile-history-row strong{color:#fff}.public-profile-history-row a{color:#25dfff}.public-profile-status{margin-top:14px;padding:12px;border-left:3px solid #25dfff;background:var(--rsl-box-alt);color:#aebdd2;line-height:1.5}.public-profile-loading{text-align:center;color:#91a5c3;padding:36px}
 @media(max-width:760px){.public-profile-hero{align-items:flex-start;flex-wrap:wrap}.public-profile-actions{margin-left:0;width:100%}.public-profile-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.public-profile-main{padding:12px}.public-profile-avatar{width:82px;height:82px;flex-basis:82px;font-size:36px}.public-profile-hero{padding:20px}.public-profile-fields{grid-template-columns:1fr}.public-profile-stat-grid{grid-template-columns:repeat(2,1fr)}}
 </style></head>
@@ -32,7 +32,7 @@
 <section class="public-profile-hero">
 <div class="public-profile-avatar" id="avatar">🏎️</div>
 <div><span class="public-profile-eyebrow">RACING SYNDICATE LEAGUE • PUBLIC DRIVER PROFILE</span><h1 id="name">Driver</h1><p id="discord">RSL Driver</p></div>
-<div class="public-profile-actions"><a id="edit-profile" class="public-profile-button primary" href="/player/settings" hidden>✎ Edit My Settings</a><a class="public-profile-button" href="/player">Competitive Profile →</a><a class="public-profile-button" href="/gauntlet/leaderboard">View Leaderboard</a></div>
+<div class="public-profile-actions"><a id="edit-profile" class="public-profile-button primary" href="/player/settings" hidden>✎ Edit My Settings</a><a class="public-profile-button" href="/gauntlet/leaderboard">Gauntlet Leaderboard →</a><a class="public-profile-button" href="/gauntlet/leaderboard">View Leaderboard</a></div>
 </section>
 <div id="loading" class="public-profile-card public-profile-loading">Loading driver profile…</div>
 <section id="content" hidden>
@@ -51,6 +51,12 @@
 <div class="public-profile-stat"><span>PLAYED</span><strong id="played">—</strong></div>
 <div class="public-profile-stat"><span>STREAK</span><strong id="streak">—</strong></div>
 </div><div class="public-profile-status" id="registration">Gauntlet registration: —</div></article>
+<article class="public-profile-card public-profile-wide"><h2>Career Statistics</h2><div class="public-profile-stat-grid public-profile-stat-grid-wide">
+<div class="public-profile-stat"><span>GAUNTLET WIN RATE</span><strong id="gauntlet-win-rate">—</strong></div><div class="public-profile-stat"><span>RACE RECORD</span><strong id="race-record">—</strong></div><div class="public-profile-stat"><span>SEASON POINTS</span><strong id="season-points">—</strong></div><div class="public-profile-stat"><span>TRACK RECORDS</span><strong id="track-records">—</strong></div>
+<div class="public-profile-stat"><span>TOURNAMENTS</span><strong id="tournament-events">—</strong></div><div class="public-profile-stat"><span>TOURNAMENT RECORD</span><strong id="tournament-record">—</strong></div>
+</div><div class="public-profile-status" id="gauntlet-score-buckets">Match score distribution: —</div></article>
+<article class="public-profile-card public-profile-wide"><h2>Gauntlet Match History</h2><div id="recent-gauntlet" class="public-profile-history"><p class="public-profile-loading">Loading match history…</p></div></article>
+<article class="public-profile-card public-profile-wide"><h2>Tournament Record</h2><div id="tournament-history" class="public-profile-history"><p class="public-profile-loading">Loading tournament record…</p></div></article>
 <article class="public-profile-card"><h2>XP &amp; Progression</h2><div class="public-profile-stat-grid">
 <div class="public-profile-stat"><span>LEVEL</span><strong id="xp-level">—</strong></div>
 <div class="public-profile-stat"><span>TOTAL XP</span><strong id="xp-total">—</strong></div>
