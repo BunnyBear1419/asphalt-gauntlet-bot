@@ -270,6 +270,21 @@
     </div>
     <div class="admin-actions"><button class="admin-btn primary" id="recovery-revert">Safely Revert Match</button><span class="admin-status" id="recovery-status"></span></div>
   </div>
+  <div class="admin-card"><h2>Competition Safe Mode</h2><p>Pause player competition mutations while keeping profiles, history, diagnostics and staff administration available.</p>
+    <div class="admin-actions"><button class="admin-btn" id="safe-mode-toggle">Loading safe mode…</button><span class="admin-status" id="safe-mode-status"></span></div>
+  </div>
+  <div class="admin-card"><h2>Integrity &amp; Recovery Center</h2><p>Run the shared integrity checker and review actionable evidence queues without creating a second diagnostics system.</p>
+    <div class="admin-actions"><button class="admin-btn primary" id="run-integrity">Run Integrity Check</button><button class="admin-btn" id="load-evidence">Review Evidence Queue</button><span class="admin-status" id="integrity-status"></span></div>
+    <div id="integrity-results" class="admin-log" style="margin-top:12px"></div>
+  </div>
+  <div class="admin-card"><h2>Season Finalization</h2><p>Preview the current season before finalization. Finalization is transaction-guarded and refuses concurrent processing.</p>
+    <div class="admin-actions"><button class="admin-btn" id="season-preview">Preview Current Season</button><button class="admin-btn primary" id="season-finalize">Finalize Season</button><label style="display:flex;align-items:center;gap:7px;color:#aebdd2;font-size:11px"><input id="season-start-next" type="checkbox"> Start next season automatically</label><span class="admin-status" id="season-finalize-status"></span></div>
+    <div id="season-preview-results" class="admin-status"></div>
+  </div>
+  <div class="admin-card"><h2>Release History</h2><p>Deployment and rollback events are shown here alongside the runtime release revision. Normal community announcements remain in News &amp; Announcements.</p>
+    <div class="admin-actions"><button class="admin-btn" id="load-releases">Refresh Release History</button><span class="admin-status" id="release-status"></span></div>
+    <div id="release-history" class="admin-log" style="margin-top:12px"></div>
+  </div>
   <div class="admin-card"><h2>Audit Log</h2><p>Search the existing guild audit trail by action, event type, source, or staff member.</p><div class="admin-grid two"><div class="admin-field"><label for="audit-search">Search</label><input id="audit-search" placeholder="Search audit events…"></div><div class="admin-field"><label for="audit-source">Source</label><select id="audit-source"><option value="">All sources</option></select></div></div><div class="admin-log" id="audit-log"><div class="admin-log-row">Loading audit events…</div></div></div>
   <div class="admin-card"><h2>Maintenance &amp; Tests</h2><div class="admin-tools-grid">
     <a class="admin-tool" href="/rsl-healthz" target="_blank"><strong>Health Check</strong><span>Open the live production health endpoint.</span></a>
@@ -542,6 +557,40 @@ $("recovery-revert").onclick=async()=>{
     setStatus("recovery-status","Match "+d.match_id+" reverted successfully.");
   }catch(e){setStatus("recovery-status",e.message,false)}
 };
+async function loadOpsStatus(){
+ try{
+  const d=await api("/api/admin/operations"+q()+"&action=status");
+  const enabled=Boolean(d.maintenance?.enabled);
+  const btn=$("safe-mode-toggle"); if(btn){btn.textContent=enabled?"Disable Competition Safe Mode":"Enable Competition Safe Mode";btn.classList.toggle("primary",!enabled);}
+  setStatus("safe-mode-status",enabled?(d.maintenance.message||"Competition mutations are paused."):"Competition mutations are live.");
+ }catch(e){setStatus("safe-mode-status",e.message,false)}
+}
+$("safe-mode-toggle")?.addEventListener("click",async()=>{
+ try{
+  const current=await api("/api/admin/operations"+q()+"&action=status");
+  const enabled=!Boolean(current.maintenance?.enabled);
+  await api("/api/admin/maintenance"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled,message:enabled?"Competition safe mode enabled by staff.":""})});
+  await loadOpsStatus();
+ }catch(e){setStatus("safe-mode-status",e.message,false)}
+});
+$("run-integrity")?.addEventListener("click",async()=>{
+ try{setStatus("integrity-status","Running integrity checks…");const d=await api("/api/admin/diagnostics"+q());$("integrity-results").innerHTML=d.checks.map(x=>'<div class="admin-check"><span>'+escapeHtml(x.name)+'</span><b class="'+(x.ok?"ok":"bad")+'">'+(x.ok?"PASS":"FAIL")+(x.detail?" — "+escapeHtml(x.detail):"")+"</b></div>").join("");setStatus("integrity-status",d.ok?"Integrity check passed.":"Integrity check found items requiring review.",d.ok)}catch(e){setStatus("integrity-status",e.message,false)}
+});
+$("load-evidence")?.addEventListener("click",async()=>{
+ try{const d=await api("/api/admin/operations"+q()+"&action=evidence");$("integrity-results").innerHTML='<div class="admin-log-row"><strong>'+d.counts.total+' pending evidence/review item(s)</strong><br><small>Defense: '+d.counts.gauntlet_defense+' • References: '+d.counts.gauntlet_reference+' • Tournament media: '+d.counts.tournament_media+'</small></div>'+(d.queue||[]).map(x=>'<div class="admin-log-row"><strong>'+escapeHtml(x.type)+'</strong> • '+escapeHtml(x.user_id||"unknown")+'<br><small>'+escapeHtml(x.id||"")+(x.evidence?' • '+escapeHtml(x.evidence):"")+'</small></div>').join("");setStatus("integrity-status","Evidence queue loaded.")}catch(e){setStatus("integrity-status",e.message,false)}
+});
+$("season-preview")?.addEventListener("click",async()=>{
+ try{const d=await api("/api/admin/operations"+q()+"&action=season_preview",{method:"GET"});$("season-preview-results").textContent="Season "+d.season+" • "+d.registered_drivers+" registered drivers • "+d.completed_matches_available+" completed matches available • "+(d.active?"ACTIVE":"INACTIVE");setStatus("season-finalize-status","Preview ready.")}catch(e){setStatus("season-finalize-status",e.message,false)}
+});
+$("season-finalize")?.addEventListener("click",async()=>{
+ if(!confirm("Finalize the current RSL season now? This archives standings and issues season rewards. Continue only after reviewing the preview."))return;
+ try{setStatus("season-finalize-status","Finalizing season…");const d=await api("/api/admin/operations"+q(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"season_finalize",start_next_season:Boolean($("season-start-next")?.checked)})});setStatus("season-finalize-status","Season "+d.result.season+" finalized successfully.");await loadOpsStatus()}catch(e){setStatus("season-finalize-status",e.message,false)}
+});
+$("load-releases")?.addEventListener("click",async()=>{
+ try{const d=await api("/api/admin/operations"+q()+"&action=releases");$("release-history").innerHTML='<div class="admin-log-row"><strong>Current runtime revision:</strong> '+escapeHtml(d.current_revision||"unknown")+'</div>'+(d.events||[]).map(x=>'<div class="admin-log-row"><strong>'+escapeHtml(x.event)+'</strong><br><small>'+escapeHtml(x.actor_id||"system")+(x.timestamp?' • '+new Date(Number(x.timestamp)*1000).toLocaleString():"")+'</small></div>').join("")||'<div class="admin-log-row">No deployment/release events recorded for this server yet.</div>';setStatus("release-status","Release history refreshed.")}catch(e){setStatus("release-status",e.message,false)}
+});
+loadOpsStatus();
+loadReleases=()=>{};
 $("run-diagnostics").onclick=async()=>{try{const d=await api("/api/admin/diagnostics"+q());$("diagnostic-results").innerHTML=d.checks.map(x=>'<div class="admin-check"><span>'+escapeHtml(x.name)+'</span><b class="'+(x.ok?"ok":"bad")+'">'+(x.ok?"PASS":"FAIL")+(x.detail?" — "+escapeHtml(x.detail):"")+"</b></div>").join("")}catch(e){$("diagnostic-results").textContent=e.message}};
 $("force-sync").onclick=async()=>{try{const d=await api("/api/admin/sync"+q(),{method:"POST"});setStatus("diagnostic-results","Discord command sync complete: "+d.synced+" commands.")}catch(e){setStatus("diagnostic-results",e.message,false)}};
 let auditEvents=[];function renderAudit(){const qv=String($("audit-search")?.value||"").trim().toLowerCase(),sv=String($("audit-source")?.value||"");const rows=auditEvents.filter(x=>(!sv||String(x.source)===sv)&&(!qv||[x.action,x.source,x.user_id].join(" ").toLowerCase().includes(qv)));$("audit-log").innerHTML=rows.length?rows.map(x=>'<div class="admin-log-row"><strong>'+escapeHtml(x.action)+'</strong><br><small>'+escapeHtml(x.source||"system")+' • '+escapeHtml(x.user_id||"system")+(x.timestamp?" • "+new Date(x.timestamp*1000).toLocaleString():"")+"</small></div>').join(""):'<div class="admin-log-row">No matching audit events.</div>'}async function loadAudit(){try{const d=await api("/api/admin/audit"+q());auditEvents=d.events||[];const sources=[...new Set(auditEvents.map(x=>String(x.source||"system")))];$("audit-source").innerHTML='<option value="">All sources</option>'+sources.map(x=>'<option value="'+escapeHtml(x)+'">'+escapeHtml(x)+'</option>').join("");renderAudit()}catch(e){$("audit-log").innerHTML='<div class="admin-log-row">'+escapeHtml(e.message)+'</div>'}}
