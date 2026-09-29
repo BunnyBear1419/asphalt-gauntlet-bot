@@ -3618,9 +3618,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPBadRequest(text="Digest hour must be an integer.")
         if not 0 <= hour <= 23:
             raise web.HTTPBadRequest(text="Digest hour must be between 0 and 23.")
+        guild_id = str(payload.get("guild_id", "")).strip()
+        if guild_id and guild_id not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPForbidden(text="You are not a member of that RSL server.")
         await self.bot.db.notification_preferences.update_one(
             {"_id": str(user.user_id)},
-            {"$set": {"digest_frequency": frequency, "digest_hour": hour, "updated_at": time.time()}},
+            {"$set": {"digest_frequency": frequency, "digest_hour": hour, "guild_id": guild_id, "updated_at": time.time()}},
             upsert=True,
         )
         return web.json_response({"ok": True, "frequency": frequency, "hour": hour})
