@@ -20,4 +20,4 @@ def test_web_ticket_purchase_api_and_profile_contracts():
     assert 'id="gauntlet-tickets"' in player
     assert 'id="gauntlet-next-ticket-cost"' in player
     assert '/api/player/tickets/purchase?guild_id=' in script
-    assert 'Unused tickets do not carry over' in player
+    assert 'unused tickets do not carry over' in player
