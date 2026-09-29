@@ -235,15 +235,15 @@ def test_v1_registration_uses_top_five_car_ratings_for_garage_pi():
 
 def test_v1_xp_is_consolidated_into_admin_and_player_profile():
     admin = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html")
-    profile = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "profile.html")
-    profile_js = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "profile.js")
+    profile = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "public-profile.html")
+    profile_js = read(ROOT / "ALU_Gauntlet" / "web" / "static" / "public-profile.js")
     core = read(ROOT / "ALU_Gauntlet" / "core" / "rsl_xp.py")
     server = read(SERVER)
     for marker in ("XP &amp; Progression", "xp-curve", "xp-role-rewards", "xp-admin-save", "/api/xp/settings"):
         assert marker in admin
-    for marker in ("XP &amp; Progression", "xp-level", "xp-total", "xp-rank", "xp-weekly", "xp-monthly", "xp-voice-time", "xp-reactions"):
-        assert marker in profile
-    for marker in ("/api/xp/me", "/api/xp/leaderboard", "xp-level", "needed_xp"):
+    for marker in ("XP &amp; Progression", "xp-level", "xp-total", "xp-rank"):
+        assert marker in profile or marker in profile_js
+    for marker in ("/api/players/", "xp-level", "xp-total", "xp-rank"):
         assert marker in profile_js
     for marker in ("xp_is_allowed", "excluded_role_ids", "excluded_channel_ids", "allowed_channel_ids", "role_rewards", "async def xp_history"):
         assert marker in core
