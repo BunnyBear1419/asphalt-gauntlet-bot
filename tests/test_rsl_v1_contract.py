@@ -336,3 +336,23 @@ def test_v1_tournament_start_and_media_review_are_atomic():
     assert 'self._release_tournament_action(str(oid), "START")' in source
     assert '"status": "pending"' in source[source.index("async def tournament_media_action"):source.index("async def serve_tournament_media")]
     assert "This media submission was already reviewed." in source
+
+
+
+def test_v1_database_indexes_are_guild_scoped_and_idempotency_safe():
+    source = read(MAIN)
+    required = (
+        '[("guild_id", 1), ("user_id", 1), ("activity_type", 1), ("event_id", 1)]',
+        '[("guild_id", 1), ("user_id", 1), ("source", 1), ("event_id", 1)]',
+        '[("guild_id", 1), ("user_id", 1)]',
+        '[("guild_id", 1), ("name_ci", 1)]',
+        '[("tournament_id", 1), ("match_id", 1)]',
+        '[("tournament_id", 1), ("user_id", 1)]',
+        '[("tournament_id", 1), ("club_id", 1)]',
+        '[("event_id", 1), ("user_id", 1), ("lead_days", 1)]',
+        'unique=True',
+        'partialFilterExpression={"status": {"$in": ["pending", "accepted", "checked_in"]}}',
+    )
+    missing = [marker for marker in required if marker not in source]
+    assert not missing, missing
+    assert 'transaction_id = f"{guild_id}:{user_id}:{reference_id}"' in read(ROOT / "ALU_Gauntlet" / "core" / "rsl_economy_ledger.py")
