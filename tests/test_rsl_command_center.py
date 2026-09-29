@@ -9,7 +9,7 @@ def test_rsl_command_center_exists_and_is_wired():
     player = (ROOT / "ALU_Gauntlet" / "cogs" / "player.py").read_text(encoding="utf-8")
     assert 'self.app.router.add_get("/rsl-center", self.rsl_command_center_page)' in server
     assert 'async def rsl_command_center_page' in server
-    for marker in ("Notifications & Next Actions", "Achievements & Milestones", "Career Activity", "RSL Records", "System Health", "Season"):
+    for marker in ("Notifications & Next Actions", "Achievements & Milestones", "Career &amp; Match History", "RSL Records", "System Health", "Season", "Getting Started", "Quick Access", "RSL COINS", "TICKETS"):
         assert marker in page
     for marker in ("/api/leaderboard?", "/api/players/", "/api/status", "/api/season?", "/api/admin/diagnostics"):
         assert marker in script
