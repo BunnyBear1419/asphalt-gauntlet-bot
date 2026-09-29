@@ -79,9 +79,10 @@ class WebControlCenter:
         self.port = port
         self.auth = DiscordOAuth(bot)
         self.players = PlayerService(bot)
-        self.app = web.Application(middlewares=[self._error_middleware, self._maintenance_middleware], client_max_size=15 * 1024 * 1024)
+        self.app = web.Application(middlewares=[self._error_middleware, self._security_middleware, self._maintenance_middleware], client_max_size=15 * 1024 * 1024)
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
+        self._auth_rate: dict[str, list[float]] = {}
         self._configure_routes()
 
     @web.middleware
@@ -108,6 +109,46 @@ class WebControlCenter:
                 status=503,
                 content_type="text/plain",
             )
+
+    def _request_origin_allowed(self, request: web.Request) -> bool:
+        """Require a same-origin browser signal for cookie-authenticated mutations."""
+        origin = str(request.headers.get("Origin") or "").strip().rstrip("/")
+        referer = str(request.headers.get("Referer") or "").strip()
+        candidate = origin
+        if not candidate and referer:
+            parts = referer.split("/", 3)
+            candidate = parts[0] + "//" + parts[2] if len(parts) >= 3 and "://" in referer else ""
+        if not candidate:
+            return False
+        candidate = candidate.rstrip("/")
+        expected = {str(self.auth.public_url).rstrip("/"), f"{request.scheme}://{request.host}".rstrip("/")}
+        return candidate in expected
+
+    def _rate_limit_auth_request(self, request: web.Request, limit: int, window: int) -> bool:
+        """Small process-local abuse guard for OAuth entry/callback endpoints."""
+        now = time.time()
+        forwarded = str(request.headers.get("X-Forwarded-For") or "").split(",", 1)[0].strip()
+        key = forwarded or request.remote or "unknown"
+        bucket = [ts for ts in self._auth_rate.get(key, []) if ts > now - window]
+        if len(bucket) >= limit:
+            self._auth_rate[key] = bucket
+            return False
+        bucket.append(now)
+        self._auth_rate[key] = bucket
+        if len(self._auth_rate) > 2048:
+            self._auth_rate = {k: v for k, v in self._auth_rate.items() if v and v[-1] > now - window}
+        return True
+
+    @web.middleware
+    async def _security_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
+        if request.path in {"/login", "/auth/callback"}:
+            limit, window = ((30, 60) if request.path == "/login" else (20, 300))
+            if not self._rate_limit_auth_request(request, limit, window):
+                raise web.HTTPTooManyRequests(text="Too many sign-in attempts. Please wait and try again.")
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            if request.cookies.get(SESSION_COOKIE) and not self._request_origin_allowed(request):
+                raise web.HTTPForbidden(text="Cross-site mutation blocked.")
+        return await handler(request)
 
     @web.middleware
     async def _maintenance_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
