@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RSL Command Center • Racing Syndicate League</title>
+<meta name="description" content="Racing Syndicate League command center for career activity, achievements, records, notifications, and system health.">
+<style>
+.rsl-center{max-width:1280px;margin:0 auto;padding:28px 20px 70px}
+.rsl-center-hero{padding:28px;border:1px solid var(--rsl-audit-line,#174a79);border-radius:18px;background:linear-gradient(145deg,var(--rsl-audit-panel,#061226),var(--rsl-audit-panel2,#020817));margin-bottom:18px}
+.rsl-center-hero h1{margin:0 0 8px}.rsl-center-hero p{margin:0;color:var(--rsl-audit-muted,#91a5c3)}
+.rsl-center-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.rsl-center-card{grid-column:span 6;border:1px solid var(--rsl-audit-line,#174a79);border-radius:16px;padding:18px;background:linear-gradient(145deg,var(--rsl-audit-panel,#061226),var(--rsl-audit-panel2,#020817));color:var(--rsl-audit-text,#f5f7ff)}
+.rsl-center-card.wide{grid-column:span 12}.rsl-center-card.third{grid-column:span 4}
+.rsl-center-card h2{margin:0 0 14px;font-size:17px}.rsl-center-list{display:grid;gap:9px}
+.rsl-center-row{display:flex;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--rsl-audit-line,#174a79);border-radius:10px;background:rgba(0,0,0,.12)}
+.rsl-center-row small{color:var(--rsl-audit-muted,#91a5c3)}.rsl-center-ok{color:#67e8a5}.rsl-center-warn{color:#ffd166}.rsl-center-bad{color:#ff7b8a}
+.rsl-center-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.rsl-center-stat{padding:13px;border:1px solid var(--rsl-audit-line,#174a79);border-radius:10px}.rsl-center-stat small{display:block;color:var(--rsl-audit-muted,#91a5c3);font-size:11px}.rsl-center-stat strong{display:block;font-size:22px;margin-top:4px}
+.rsl-center-achievements{display:flex;flex-wrap:wrap;gap:9px}.rsl-badge{padding:9px 11px;border:1px solid var(--rsl-audit-line,#174a79);border-radius:999px;background:rgba(37,223,255,.06)}
+.rsl-center-footer{text-align:center;color:var(--rsl-audit-muted,#91a5c3);margin-top:22px;font-size:12px}
+@media(max-width:850px){.rsl-center-card,.rsl-center-card.third{grid-column:span 12}.rsl-center-stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<main class="rsl-center">
+<section class="rsl-center-hero"><div class="home-eyebrow">RSL COMMAND CENTER</div><h1>Race. Compete. Unite.</h1><p>One place for your activity, achievements, records, notifications, and league status.</p></section>
+<section class="rsl-center-grid">
+<article class="rsl-center-card wide"><h2>Driver Snapshot</h2><div class="rsl-center-stats">
+<div class="rsl-center-stat"><small>ELO</small><strong id="cc-elo">—</strong></div>
+<div class="rsl-center-stat"><small>SEASON RANK</small><strong id="cc-rank">—</strong></div>
+<div class="rsl-center-stat"><small>WIN RATE</small><strong id="cc-winrate">—</strong></div>
+<div class="rsl-center-stat"><small>XP LEVEL</small><strong id="cc-level">—</strong></div>
+</div></article>
+<article class="rsl-center-card"><h2>🔔 Notifications & Next Actions</h2><div id="cc-notifications" class="rsl-center-list"><div class="rsl-center-row"><span>Loading…</span></div></div></article>
+<article class="rsl-center-card"><h2>🏆 Achievements & Milestones</h2><div id="cc-achievements" class="rsl-center-achievements"><span class="rsl-badge">Loading…</span></div></article>
+<article class="rsl-center-card wide"><h2>📈 Career Activity</h2><div id="cc-activity" class="rsl-center-list"><div class="rsl-center-row"><span>Loading recent activity…</span></div></div></article>
+<article class="rsl-center-card third"><h2>📊 RSL Records</h2><div id="cc-records" class="rsl-center-list"><div class="rsl-center-row"><span>Loading…</span></div></div></article>
+<article class="rsl-center-card third"><h2>🛡️ System Health</h2><div id="cc-health" class="rsl-center-list"><div class="rsl-center-row"><span>Checking…</span></div></div></article>
+<article class="rsl-center-card third"><h2>📅 Season</h2><div id="cc-season" class="rsl-center-list"><div class="rsl-center-row"><span>Loading…</span></div></div></article>
+</section>
+<div class="rsl-center-footer">Racing Syndicate League • shared website + Discord competition center</div>
+</main>
+<script src="/static/rsl-command-center.js?v=20260929-center1"></script>
+</body></html>
