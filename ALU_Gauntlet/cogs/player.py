@@ -469,7 +469,7 @@ class DiscordNotificationSettingsView(discord.ui.View):
             return
         await bot.db.notification_preferences.update_one(
             {"_id": self.user_id},
-            {"$set": {"digest_frequency": frequency, "digest_hour": 9, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            {"$set": {"digest_frequency": frequency, "digest_hour": 9, "guild_id": str(interaction.guild_id or ""), "updated_at": datetime.now(timezone.utc).isoformat()}},
             upsert=True,
         )
         await interaction.response.edit_message(embed=await build_notification_settings_embed(self.user_id), view=self)
