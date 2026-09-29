@@ -29,3 +29,12 @@ def test_support_remains_discord_ticket_based():
     assert "/api/disputes" not in server
     assert "https://discord.gg/q46RQxu2fm" in help_page
     assert "Support Tickets" in center
+
+def test_first_time_driver_experience_is_merged_into_player_center():
+    player = read("ALU_Gauntlet/web/static/player.html")
+    player_js = read("ALU_Gauntlet/web/static/player.js")
+    assert 'id="driver-onboarding"' in player
+    assert "Register for Gauntlet" in player
+    assert "Read RSL Rules" in player
+    assert 'rsl.driverOnboarding.dismissed' in player_js
+    assert 'id="dismiss-driver-onboarding"' in player_js
