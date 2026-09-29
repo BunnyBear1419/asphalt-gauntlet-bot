@@ -7,6 +7,7 @@ records operational events and provides durable operational audit events.
 from __future__ import annotations
 
 import time
+import uuid
 from typing import Any
 
 MAINTENANCE_KEY = "maintenance_mode"
