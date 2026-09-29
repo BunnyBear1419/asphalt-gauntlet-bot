@@ -63,3 +63,20 @@ def test_gauntlet_match_surfaces_use_safe_opponent_ids_for_public_profiles():
     assert '/profile?user_id=' in matches
     assert '/profile?user_id=' in app
     assert '/profile?user_id=' in player
+
+
+def test_public_profile_uses_discord_identity_when_driver_record_is_missing():
+    server = SERVER.read_text(encoding="utf-8")
+    page = PAGE.read_text(encoding="utf-8")
+    script = SCRIPT.read_text(encoding="utf-8")
+
+    assert 'if driver is None:' in server
+    assert 'driver = {}' in server
+    assert 'if player is None and member is None:' in server
+    assert 'player = player or {}' in server
+    assert '"discord_avatar_url"' in server
+    assert 'Driver not found.' in server
+    assert 'RSL</div>' in page
+    assert '🏎️' not in page
+    assert 'const avatarUrl=p.avatar_url||p.discord_avatar_url;' in script
+    assert 'Discord member' in script
