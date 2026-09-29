@@ -6146,7 +6146,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             members = []
             for row in ranked:
                 try:
-                    from ..core.divisions import get_division_for_pi
                     division = get_division_for_pi(num(row, "garage_pi"))
                     division_name = str(division.get("name", ""))
                 except Exception:
