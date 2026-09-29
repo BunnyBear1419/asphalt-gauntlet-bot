@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="index,follow">
+<title>RSL Records & Hall of Fame</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#0b0f14;color:#f4f7fb}.wrap{max-width:1100px;margin:auto;padding:40px 20px}
+h1{margin-bottom:6px}.sub{opacity:.72;margin-bottom:28px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{border:1px solid #26313d;border-radius:16px;padding:20px;background:#111821}.card h2{margin-top:0}.record{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #202a34}.record:last-child{border:0}.value{font-weight:700}
+a{color:#72d8ff}.empty{opacity:.65}
+</style></head>
+<body><main class="wrap">
+<h1>🏆 RSL Records & Hall of Fame</h1>
+<p class="sub">Permanent Racing Syndicate League records, season history and championship history.</p>
+<div class="grid">
+<section class="card"><h2>RSL Records</h2><div id="records"><p class="empty">Loading records…</p></div></section>
+<section class="card"><h2>Current Champions</h2><div id="champions"><p class="empty">Loading current standings…</p></div></section>
+<section class="card"><h2>Season History</h2><div id="seasons"><p class="empty">Loading season archives…</p></div></section>
+<section class="card"><h2>Explore</h2><p><a href="/gauntlet/leaderboard">Gauntlet Leaderboard →</a></p><p><a href="/calendar">RSL Calendar →</a></p><p><a href="https://discord.gg/q46RQxu2fm">Open RSL Support Tickets →</a></p></section>
+</div></main>
+<script>
+(()=>{const $=s=>document.querySelector(s),esc=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const row=(a,b)=>'<div class="record"><span>'+esc(a)+'</span><span class="value">'+esc(b)+'</span></div>';
+async function api(u){const r=await fetch(u);if(!r.ok)throw Error("Request failed");return r.json()}
+(async()=>{const g=await api("/api/guilds");const guild=(g.guilds||[])[0];if(!guild)throw Error("RSL server unavailable");const gid=encodeURIComponent(guild.id);
+const b=await api("/api/leaderboard?guild_id="+gid+"&limit=100"),p=b.players||[];
+const by=(field,fn=(x)=>Number(x?.[field]||0))=>[...p].sort((a,b)=>fn(b)-fn(a))[0];
+$("#records").innerHTML=[
+["Highest current ELO",by("elo")?.elo??"—"],["Most current wins",by("career_wins")?.career_wins??"—"],["Longest current streak",by("streak")?.streak??"—"],["Most race wins",by("race_wins")?.race_wins??"—"]
+].map(x=>row(x[0],Number(x[1]||0).toLocaleString())).join("");
+const champions=p.filter(x=>x.season_rank===1||x.current_season_rank===1||x.division_winner).slice(0,12);
+$("#champions").innerHTML=champions.length?champions.map(x=>row(x.rsl_display_name||x.name||"RSL Driver","Rank #1")).join(""):'<p class="empty">Current champion records will appear here as seasons are completed.</p>';
+const s=await api("/api/season?guild_id="+gid).catch(()=>null),season=s?.season||{};
+$("#seasons").innerHTML=[["Current season",season.season_number??"—"],["Status",season.status||season.phase||"Active"],["Start",season.start_time?new Date(season.start_time).toLocaleDateString():"—"],["End",season.end_time?new Date(season.end_time).toLocaleDateString():"—"]].map(x=>row(x[0],x[1])).join("");
+})().catch(e=>{$("#records").innerHTML='<p class="empty">'+esc(e.message)+'</p>'})})()
+</script></body></html>

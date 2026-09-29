@@ -2734,7 +2734,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/gauntlet/registration", self.gauntlet_registration_page)
         self.app.router.add_get("/gauntlet/defense", self.gauntlet_defense_page)
         self.app.router.add_get("/gauntlet/matches", self.gauntlet_matches_page)
-        self.app.router.add_get("/gauntlet/leaderboard", self.gauntlet_leaderboard_page)
+        self.app.router.add_get("/gauntlet/leaderboard", self.gauntlet_leaderboard_page)\n        add_get("/rsl-records", self.rsl_records_page)
         self.app.router.add_get("/gauntlet/references", self.gauntlet_references_page)
         self.app.router.add_get("/gauntlet/references/", self.gauntlet_references_page)
         self.app.router.add_get("/gauntlet/career", self.gauntlet_career_page)
@@ -6424,4 +6424,4 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def legal_page(self, request: web.Request) -> web.Response:
         """Render the public Legal Center page."""
-        return await self._page_response("legal.html", request)
+        return await self._page_response("legal.html", request)\n    async def rsl_records_page(self, request):\n        return web.FileResponse(self.web_root / "static" / "rsl-records.html")\n
