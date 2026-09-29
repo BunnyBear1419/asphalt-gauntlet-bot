@@ -48,7 +48,7 @@ def test_player_profile_and_settings_are_separate_routes():
     server=SERVER.read_text(encoding="utf-8")
     assert 'add_get("/player/profile", self.player_profile_page)' in server
     assert 'add_get("/player/settings", self.player_settings_page)' in server
-    assert 'Location": "/player/profile"' in server
+    assert 'headers={"Location": f"/profile?user_id={user.user_id}"}' in server
     player=PLAYER.read_text(encoding="utf-8")
     assert 'data-rsl-player-mode="{mode}"' in server
     assert 'My Profile' in player
@@ -77,7 +77,7 @@ def test_my_profile_is_public_view_and_my_settings_owns_profile_editing():
     public_js=(STATIC/"public-profile.js").read_text(encoding="utf-8")
     assert 'return web.Response(status=302, headers={"Location": f"/profile?user_id={user.user_id}"})' in server
     assert 'rsl_display_name' in server and 'rsl_avatar_url' in server
-    assert 'rsl_display_name' in player and 'rsl_avatar_url' in player
+    assert 'profile-rsl-display-name' in player and 'profile-rsl-avatar-url' in player
     assert 'href="/profile"' in player
     assert 'href="/player/settings"' in player
     assert 'Edit My Settings' in public
