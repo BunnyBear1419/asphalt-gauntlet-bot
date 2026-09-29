@@ -582,6 +582,10 @@ class AbandonGauntletButton(discord.ui.Button):
             ephemeral=True,
             )
 
+class RSLCommandCenterButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="RSL Command Center", style=discord.ButtonStyle.link, emoji="📊", url="https://asph.discloud.app/rsl-center")
+
 async def send_dashboard(interaction: discord.Interaction):
     """Send the canonical player dashboard without removing player access for staff."""
     guild_id = str(interaction.guild_id)
@@ -589,6 +593,7 @@ async def send_dashboard(interaction: discord.Interaction):
     view = DashboardView(guild_id, user_id, False)
     view.add_item(ClubCenterButton())
     view.add_item(DiscordNotificationSettingsButton())
+    view.add_item(RSLCommandCenterButton())
     view.add_item(TicketEconomyButton())
     view.add_item(AbandonGauntletButton())
     embed = discord.Embed(
