@@ -168,6 +168,10 @@ body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-
 @media(max-width:800px){
  body[data-rsl-player-mode="settings"] .rsl-player-main{padding-top:20px}
 }
+</style><style>
+.digest-preferences{display:grid;grid-template-columns:minmax(0,1fr) 190px 190px;gap:16px;margin-top:18px;padding:16px;border:1px solid #174a79;background:#04101f}
+.digest-copy h3{margin:4px 0 5px;font-size:16px}.digest-copy p{margin:0;color:#8198b5;font-size:10px;line-height:1.5}.digest-preferences .notification-timing{margin:0}
+@media(max-width:800px){.digest-preferences{grid-template-columns:1fr}}
 </style></head>
 <style>
 /* RSL PLAYER — complete page redesign. This intentionally replaces the legacy card dashboard. */
@@ -361,6 +365,12 @@ body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-
         <label class="toggle-row"><input id="gauntlet-notifications" type="checkbox"><span><b>Gauntlet notifications</b><small>Receive Gauntlet reminder DMs.</small></span></label>
         <label class="notification-timing"><span>Gauntlet reminder</span><select id="gauntlet-notification-days"><option value="0">At event time</option><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="7">1 week before</option><option value="14">2 weeks before</option><option value="30">30 days before</option><option value="custom">Custom…</option></select><input id="gauntlet-notification-custom" type="number" min="0" max="365" value="5"></label>
       </div>
+      <div class="digest-preferences">
+        <div class="digest-copy"><span class="rail-kicker">OPTIONAL DIGEST</span><h3>RSL Daily / Weekly Digest</h3><p>Get one bundled Discord DM with upcoming RSL events, active competition, recent results and progression. It is opt-in and separate from event reminders.</p></div>
+        <label class="notification-timing"><span>Digest frequency</span><select id="rsl-digest-frequency"><option value="off">Off</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></label>
+        <label class="notification-timing"><span>Delivery hour</span><select id="rsl-digest-hour"><option value="0">00:00 local time</option><option value="6">06:00 local time</option><option value="8">08:00 local time</option><option value="9">09:00 local time</option><option value="10">10:00 local time</option><option value="12">12:00 local time</option><option value="18">18:00 local time</option><option value="20">20:00 local time</option></select></label>
+      </div>
+      <p id="digest-save-status" class="status-line" role="status"></p>
       <p class="section-description">Reminder timing is saved automatically. The Calendar can still be used for event-specific reminders.</p>
     </section>
 
