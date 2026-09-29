@@ -44,6 +44,6 @@ async function init(){
    countdown.textContent=(s.season_active?"Ends in ":"Starts in ")+days+"d "+hours+"h "+mins+"m";
  };
  renderCountdown(); window.setInterval(renderCountdown,60000);
- $("#cc-season").innerHTML=[["Season",s.season_number??own.season_number??"—"],["Status",s.status||s.phase||"Active"],["Start",s.start_time?new Date(s.start_time).toLocaleDateString():"—"],["End",s.end_time?new Date(s.end_time).toLocaleDateString():"—"]].map(x=>row(x[0],x[1])).join("");
+ $("#cc-season").innerHTML=[["Season",s.season_number??own.season_number??"—"],["Status",s.status||s.phase||"Active"],["Start",s.starts_at?new Date(Number(s.starts_at)*1000).toLocaleDateString():"—"],["End",s.ends_at?new Date(Number(s.ends_at)*1000).toLocaleDateString():"—"]].map(x=>row(x[0],x[1])).join("");
 }
 init().catch(e=>{document.querySelectorAll(".rsl-center-list").forEach(x=>x.innerHTML=row("Command Center",e.message,"rsl-center-bad"))})})();
