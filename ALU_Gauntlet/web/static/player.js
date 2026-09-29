@@ -385,6 +385,9 @@ async function loadNotificationPreferences(){
     if(gauntletDays){const v=Number(d.gauntlet_lead_days ?? 1);gauntletDays.value=[0,1,2,3,7,14,30].includes(v)?String(v):"custom";const x=$("#gauntlet-notification-custom");if(x)x.value=String(v);}
     if(tournamentDays){const v=Number(d.tournament_lead_days ?? 1);tournamentDays.value=[0,1,2,3,7,14,30].includes(v)?String(v):"custom";const x=$("#tournament-notification-custom");if(x)x.value=String(v);}
   }catch(e){if(status)status.textContent="Notification settings unavailable."}
+  const frequency=$("#rsl-digest-frequency"), hour=$("#rsl-digest-hour");
+  if(frequency)frequency.value=d.digest_frequency||"off";
+  if(hour)hour.value=String(Number(d.digest_hour??9));
 }
 async function saveNotificationCategory(category, enabled){
   const status=$("#notification-save-status");
@@ -400,6 +403,17 @@ async function saveNotificationCategory(category, enabled){
 $("#gauntlet-notifications")?.addEventListener("change",e=>saveNotificationCategory("gauntlet",e.target.checked));
 $("#tournament-notifications")?.addEventListener("change",e=>saveNotificationCategory("tournament",e.target.checked));
 document.addEventListener("DOMContentLoaded",loadNotificationPreferences);
+async function saveRslDigest(){
+  const frequency=$("#rsl-digest-frequency"), hour=$("#rsl-digest-hour"), status=$("#digest-save-status");
+  if(!frequency||!hour)return;
+  try{
+    await api("/api/notifications/digest",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({frequency:frequency.value,hour:Number(hour.value)})});
+    if(status)status.textContent="Digest preference saved ✓";
+    setTimeout(()=>{if(status)status.textContent=""},1800);
+  }catch(e){if(status)status.textContent=e.message||"Unable to save digest preference."}
+}
+$("#rsl-digest-frequency")?.addEventListener("change",saveRslDigest);
+$("#rsl-digest-hour")?.addEventListener("change",saveRslDigest);
 
 async function saveNotificationTiming(scope, leadDays){
   const status=$("#notification-save-status");
