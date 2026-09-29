@@ -52,7 +52,7 @@ Completed tournaments appear in **Results & Rankings** with:
 - published tournament media
 - links back to the tournament and bracket
 
-The player competitive profile also links completed tournament history back to the results archive.
+The unified player profile also links completed tournament history back to the results archive.
 
 ## Operational checklist
 
