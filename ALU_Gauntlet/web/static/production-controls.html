@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Production Controls • Racing Syndicate League</title>
+<link rel="stylesheet" href="/static/app.css?v=20260925-site20">
+<style>
+.pc{max-width:1280px;margin:0 auto;padding:28px 20px 70px}.pc-head{padding:24px;border:1px solid #174a79;border-radius:18px;background:linear-gradient(145deg,#061226,#020817);margin-bottom:18px}.pc-head h1{margin:0 0 7px}.pc-head p{margin:0;color:#91a5c3}.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.pc-card{border:1px solid #174a79;border-radius:14px;padding:20px;background:#061226}.pc-card h2{margin:0 0 6px}.pc-card p,.pc-muted{color:#91a5c3;font-size:12px}.pc-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}.pc-btn{border:1px solid #25dfff;background:#071a31;color:#fff;border-radius:7px;padding:10px 14px;font-weight:800;cursor:pointer}.pc-btn.primary{background:linear-gradient(90deg,#1878ff,#25dfff)}.pc-btn.danger{border-color:#ff6577}.pc-field{display:flex;flex-direction:column;gap:6px;margin-top:12px}.pc-field label{font-size:10px;color:#8fa6c4;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.pc-field input,.pc-field textarea,.pc-field select{width:100%;box-sizing:border-box;border:1px solid #174a79;background:#020b1b;color:#eef5ff;border-radius:7px;padding:10px}.pc-field textarea{min-height:100px;resize:vertical}.pc-status{margin-top:10px;font-size:12px;color:#91a5c3}.pc-status.ok{color:#16dca0}.pc-status.bad{color:#ff8d9a}.pc-dispute{border-top:1px solid #123452;padding:14px 0}.pc-dispute:first-child{border-top:0}.pc-pill{display:inline-block;border:1px solid #174a79;border-radius:999px;padding:4px 8px;font-size:10px}.pc-desc{white-space:pre-wrap;color:#c5d3e7;font-size:12px;margin:8px 0}.pc-actions{display:flex;gap:7px;flex-wrap:wrap}.pc-wide{grid-column:1/-1}@media(max-width:850px){.pc-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="RSL home"><img src="/assets/rsl-shield.png" alt="RSL"></a><nav aria-label="Primary navigation"><a href="/admin"><span>Admin</span></a><a href="/rsl-center"><span>Command Center</span></a><a href="/"><span>Home</span></a></nav></header>
+<main class="pc">
+<section class="pc-head"><span class="home-eyebrow">PRODUCTION CONTROLS</span><h1>RSL Safety &amp; Review Center</h1><p>Pause competitive mutations safely, inspect open player review requests, and keep operational changes auditable.</p></section>
+<div class="pc-grid">
+<section class="pc-card">
+<h2>🔧 Maintenance Mode</h2>
+<p>Competitive actions pause while profiles, history, settings, notifications, and staff tools remain available. Staff bypass the pause.</p>
+<div class="pc-field"><label>Maintenance message</label><textarea id="maintenance-message" maxlength="500">RSL competitive actions are temporarily paused for maintenance. Profiles, history, and account settings remain available.</textarea></div>
+<div class="pc-row"><button class="pc-btn primary" id="maintenance-on">Enable Maintenance</button><button class="pc-btn danger" id="maintenance-off">Disable Maintenance</button></div>
+<div class="pc-status" id="maintenance-status">Loading…</div>
+</section>
+<section class="pc-card">
+<h2>🛡️ Release Safety</h2>
+<p>Use this page before database maintenance, migrations, or emergency recovery. Maintenance mode does not replace backups or the normal CI/deployment gate.</p>
+<div class="pc-row"><a class="pc-btn" href="/api/admin/backup" target="_blank" rel="noopener">Configuration Backup</a><a class="pc-btn" href="/api/admin/diagnostics" target="_blank" rel="noopener">Live Diagnostics</a></div>
+<div class="pc-status">Weekly MongoDB restore verification and manual recovery drills remain part of the production workflow.</div>
+</section>
+<section class="pc-card pc-wide">
+<h2>⚖️ Dispute / Review Queue</h2>
+<p>Players can submit a structured review request. Staff can resolve, reject, or escalate it without silently changing competition history.</p>
+<div id="disputes"><div class="pc-muted">Loading review requests…</div></div>
+</section>
+<section class="pc-card pc-wide">
+<h2>📝 Submit a Review Request</h2>
+<div class="pc-grid">
+<div class="pc-field"><label>Category</label><select id="d-category"><option value="match">Match</option><option value="tournament">Tournament</option><option value="player">Player</option><option value="economy">Economy</option><option value="technical">Technical</option><option value="general">General</option></select></div>
+<div class="pc-field"><label>Target ID (optional)</label><input id="d-target" placeholder="Match, tournament, player, or other ID"></div>
+<div class="pc-field pc-wide"><label>Subject</label><input id="d-subject" maxlength="160" placeholder="What needs review?"></div>
+<div class="pc-field pc-wide"><label>Description</label><textarea id="d-description" maxlength="4000" placeholder="Explain what happened and include relevant evidence or identifiers."></textarea></div>
+</div>
+<div class="pc-row"><button class="pc-btn primary" id="submit-dispute">Submit Review Request</button></div>
+<div class="pc-status" id="dispute-status"></div>
+</section>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origin",...opts});let d={};try{d=await r.json()}catch{}if(!r.ok)throw Error(d.error||d.message||("HTTP "+r.status));return d}
+async function loadMaintenance(){const d=await api("/api/admin/maintenance");const m=d.maintenance||{};$("maintenance-message").value=m.message||$("maintenance-message").value;$("maintenance-status").textContent=m.enabled?"🟠 Maintenance mode is ENABLED":"🟢 Maintenance mode is disabled";$("maintenance-status").className="pc-status "+(m.enabled?"bad":"ok")}
+async function setMaintenance(enabled){const d=await api("/api/admin/maintenance",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled,message:$("maintenance-message").value})});$("maintenance-status").textContent=d.maintenance.enabled?"🟠 Maintenance mode is ENABLED":"🟢 Maintenance mode is disabled";$("maintenance-status").className="pc-status "+(d.maintenance.enabled?"bad":"ok")}
+function renderDisputes(d){const rows=d.disputes||[];$("disputes").innerHTML=rows.length?rows.map(x=>"<article class='pc-dispute'><div><span class='pc-pill'>"+esc(x.status)+"</span> <span class='pc-pill'>"+esc(x.category)+"</span> <b>"+esc(x.subject)+"</b></div><div class='pc-muted'>"+esc(x.target_type||"general")+(x.target_id?" • "+esc(x.target_id):"")+" • submitted by "+esc(x.user_id)+"</div><div class='pc-desc'>"+esc(x.description)+"</div>"+(d.is_staff&&["open","escalated"].includes(x.status)?"<div class='pc-actions'><button class='pc-btn' onclick='resolveDispute(\""+esc(x._id)+"\",\"resolved\")'>Resolve</button><button class='pc-btn danger' onclick='resolveDispute(\""+esc(x._id)+"\",\"rejected\")'>Reject</button><button class='pc-btn' onclick='resolveDispute(\""+esc(x._id)+"\",\"escalated\")'>Escalate</button></div>":"")+"</article>").join(""):"<div class='pc-muted'>No review requests yet.</div>"}
+async function loadDisputes(){const d=await api("/api/disputes");renderDisputes(d)}
+async function resolveDispute(id,status){const resolution=prompt("Resolution note:");if(!resolution)return;try{await api("/api/disputes/"+encodeURIComponent(id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status,resolution})});await loadDisputes()}catch(e){alert(e.message)}}
+$("maintenance-on").onclick=()=>setMaintenance(true).catch(e=>$("maintenance-status").textContent=e.message);
+$("maintenance-off").onclick=()=>setMaintenance(false).catch(e=>$("maintenance-status").textContent=e.message);
+$("submit-dispute").onclick=async()=>{const status=$("dispute-status");status.textContent="Submitting…";try{await api("/api/disputes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({category:$("d-category").value,subject:$("d-subject").value,description:$("d-description").value,target_type:$("d-category").value,target_id:$("d-target").value})});status.textContent="Review request submitted.";status.className="pc-status ok";$("d-subject").value="";$("d-description").value="";$("d-target").value="";await loadDisputes()}catch(e){status.textContent=e.message;status.className="pc-status bad"}};
+Promise.all([loadMaintenance(),loadDisputes()]).catch(e=>{if($("maintenance-status"))$("maintenance-status").textContent=e.message});
+</script>
+</body></html>
