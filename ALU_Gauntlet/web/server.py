@@ -6194,6 +6194,28 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "record": f"{tw}-{tl}", "start_time": str(tournament.get("start_time", "")),
             })
         season_registered = bool(driver.get("season_registered")) and int(driver.get("season_number", 0) or 0) == season
+        season_archives = []
+        async for archive in self.bot.db.season_history.find({"guild_id": str(guild_id)}).sort("season_number", -1).limit(12):
+            rows = archive.get("standings") or []
+            mine = next((r for r in rows if str(r.get("user_id")) == uid), None)
+            if mine is None:
+                continue
+            season_archives.append({
+                "season_number": int(archive.get("season_number", 0) or 0),
+                "rank": int(mine.get("rank", 0) or 0) or None,
+                "points": int(mine.get("gauntlet_points", mine.get("season_points", 0)) or 0),
+                "wins": int(mine.get("wins", 0) or 0),
+                "losses": int(mine.get("losses", 0) or 0),
+                "played": int(mine.get("played", 0) or 0),
+                "races_won": int(mine.get("races_won", mine.get("season_races_won", 0)) or 0),
+            })
+        record_rows = await self.bot.db.drivers.find({"guild_id": str(guild_id)}).to_list(length=5000)
+        records = {
+            "highest_elo": max((int(r.get("elo", 1000) or 1000) for r in record_rows), default=1000),
+            "most_career_wins": max((int(r.get("career_wins", 0) or 0) for r in record_rows), default=0),
+            "longest_current_streak": max((int(r.get("streak", 0) or 0) for r in record_rows), default=0),
+            "most_season_points": max((int(r.get("season_points", 0) or 0) for r in record_rows), default=0),
+        }
         return web.json_response({
             "gauntlet": {
                 "season": season, "division": division, "registered": season_registered,
@@ -6222,6 +6244,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "wins": sum(int(t["wins"]) for t in tournaments),
                 "losses": sum(int(t["losses"]) for t in tournaments),
             },
+            "season_history": season_archives,
+            "rsl_records": records,
         })
 
     async def player_detail(self, request: web.Request) -> web.Response:
