@@ -310,7 +310,7 @@ def test_v1_web_security_middleware_covers_csrf_and_oauth_abuse():
         "Cross-site mutation blocked.",
         "Too many sign-in attempts.",
         'request.path in {"/login", "/auth/callback"}',
-        'request.method in {"POST", "PUT", "PATCH", "DELETE"}',
+        'request.path == "/logout" or request.method in {"POST", "PUT", "PATCH", "DELETE"}',
         "SESSION_COOKIE",
     ):
         assert marker in source
