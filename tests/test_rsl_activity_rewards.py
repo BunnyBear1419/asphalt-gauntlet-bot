@@ -41,11 +41,11 @@ def test_activity_cog_uses_shared_rsl_ledger_and_xp_fields():
 def test_profiles_surface_rsl_coins_and_activity_level():
     from pathlib import Path
     profile_html = Path("ALU_Gauntlet/web/static/profile.html").read_text(encoding="utf-8")
-    profile_js = Path("ALU_Gauntlet/web/static/profile.js").read_text(encoding="utf-8")
+    profile_js = Path("ALU_Gauntlet/web/static/player.js").read_text(encoding="utf-8")
     discord_profile = Path("ALU_Gauntlet/cogs/player.py").read_text(encoding="utf-8")
     assert 'id="rsl-coins"' in profile_html
     assert 'id="activity-level"' in profile_html
-    assert 'p.rsl_coins' in profile_js
-    assert 'p.activity_xp' in profile_js
+    assert 'rsl-coins' in Path("ALU_Gauntlet/web/static/player.html").read_text(encoding="utf-8")
+    assert 'xp-level' in profile_js and 'xp-total' in profile_js
     assert "RSL Economy & Activity" in discord_profile
     assert "activity_level(activity_xp)" in discord_profile
