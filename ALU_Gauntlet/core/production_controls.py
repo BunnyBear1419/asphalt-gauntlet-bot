@@ -2,12 +2,11 @@
 
 This module keeps operational controls small, deterministic, and Mongo-backed.
 It intentionally does not decide competition outcomes; it only pauses mutations,
-records operational events, and provides a structured staff review queue.
+records operational events and provides durable operational audit events.
 """
 from __future__ import annotations
 
 import time
-import uuid
 from typing import Any
 
 MAINTENANCE_KEY = "maintenance_mode"
@@ -84,71 +83,3 @@ async def record_system_event(
         "details": details or {},
     })
     return event_id
-
-async def create_dispute(
-    db: Any,
-    guild_id: str,
-    user_id: str,
-    *,
-    category: str,
-    subject: str,
-    description: str,
-    target_type: str | None = None,
-    target_id: str | None = None,
-) -> dict[str, Any]:
-    now = time.time()
-    dispute_id = uuid.uuid4().hex
-    document = {
-        "_id": dispute_id,
-        "guild_id": str(guild_id),
-        "user_id": str(user_id),
-        "category": str(category or "general")[:40],
-        "subject": str(subject or "RSL Review Request").strip()[:160],
-        "description": str(description or "").strip()[:4000],
-        "target_type": str(target_type or "").strip()[:40] or None,
-        "target_id": str(target_id or "").strip()[:120] or None,
-        "status": "open",
-        "created_at": now,
-        "updated_at": now,
-        "resolution": None,
-        "resolved_by": None,
-        "resolved_at": None,
-    }
-    await db.disputes.insert_one(document)
-    await record_system_event(
-        db, guild_id, user_id, "DISPUTE_CREATED",
-        target_type="dispute", target_id=dispute_id,
-        details={"category": document["category"], "target_type": document["target_type"], "target_id": document["target_id"]},
-    )
-    return document
-
-async def resolve_dispute(
-    db: Any,
-    guild_id: str,
-    dispute_id: str,
-    staff_id: str,
-    *,
-    status: str,
-    resolution: str,
-) -> dict[str, Any] | None:
-    if status not in {"resolved", "rejected", "escalated"}:
-        raise ValueError("Invalid dispute status.")
-    now = time.time()
-    result = await db.disputes.update_one(
-        {"_id": str(dispute_id), "guild_id": str(guild_id), "status": {"$in": ["open", "escalated"]}},
-        {"$set": {
-            "status": status,
-            "resolution": str(resolution or "").strip()[:4000],
-            "resolved_by": str(staff_id),
-            "resolved_at": now,
-            "updated_at": now,
-        }},
-    )
-    document = await db.disputes.find_one({"_id": str(dispute_id), "guild_id": str(guild_id)})
-    if result.modified_count and document:
-        await record_system_event(
-            db, guild_id, staff_id, "DISPUTE_RESOLVED",
-            target_type="dispute", target_id=str(dispute_id),
-            details={"status": status},
-        )
-    return document
