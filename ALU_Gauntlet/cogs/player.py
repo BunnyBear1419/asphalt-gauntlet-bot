@@ -460,6 +460,32 @@ class DiscordNotificationSettingsView(discord.ui.View):
         )
         await interaction.response.edit_message(embed=await build_notification_settings_embed(self.user_id), view=self)
 
+    async def _set_digest(self, interaction, frequency: str):
+        if str(interaction.user.id) != self.user_id:
+            await interaction.response.send_message(
+                await localize_text(bot, interaction.user.id, "❌ This notification panel belongs to another player.", interaction.locale),
+                ephemeral=True
+            )
+            return
+        await bot.db.notification_preferences.update_one(
+            {"_id": self.user_id},
+            {"$set": {"digest_frequency": frequency, "digest_hour": 9, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+        )
+        await interaction.response.edit_message(embed=await build_notification_settings_embed(self.user_id), view=self)
+
+    @discord.ui.button(label="Digest: Daily", style=discord.ButtonStyle.secondary, row=2)
+    async def digest_daily(self, interaction, button):
+        await self._set_digest(interaction, "daily")
+
+    @discord.ui.button(label="Digest: Weekly", style=discord.ButtonStyle.secondary, row=2)
+    async def digest_weekly(self, interaction, button):
+        await self._set_digest(interaction, "weekly")
+
+    @discord.ui.button(label="Digest: Off", style=discord.ButtonStyle.secondary, row=2)
+    async def digest_off(self, interaction, button):
+        await self._set_digest(interaction, "off")
+
     async def _set_lead(self, interaction, days: float):
         if str(interaction.user.id) != self.user_id:
             await interaction.response.send_message(
@@ -505,9 +531,9 @@ async def build_notification_settings_embed(user_id: str):
         lead_text = "1 day before"
     return discord.Embed(
         title="🔔 RSL CALENDAR NOTIFICATIONS",
-        description="Manage the same Discord DM notification preferences used by the RSL website Calendar.",
+        description="Manage the same Discord DM notification preferences used by the RSL website Calendar. Optional daily/weekly digests bundle your RSL activity into one DM.",
         color=ASPHALT_THEME_COLOR,
-    ).add_field(name="Gauntlet Reminders", value=f"**{g}**", inline=True).add_field(name="Tournament Reminders", value=f"**{t}**", inline=True).add_field(name="Reminder Lead Time", value=f"**{lead_text}**", inline=True).set_footer(text="Personal calendar reminders remain available on the RSL website Calendar.")
+    ).add_field(name="Gauntlet Reminders", value=f"**{g}**", inline=True).add_field(name="Tournament Reminders", value=f"**{t}**", inline=True).add_field(name="Reminder Lead Time", value=f"**{lead_text}**", inline=True).add_field(name="Activity Digest", value=f"**{str(record.get('digest_frequency', 'off')).title()}**", inline=True).set_footer(text="Personal calendar reminders remain available on the RSL website Calendar.")
 
 class DiscordNotificationSettingsButton(discord.ui.Button):
     def __init__(self):
