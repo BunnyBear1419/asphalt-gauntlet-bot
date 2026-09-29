@@ -4597,3 +4597,8 @@ footer.rsl-footer-mark > span{
 .players-page .player-directory-card{min-width:0}
 @media(max-width:1120px){.players-page .player-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.players-page .toolbar{grid-template-columns:1fr;margin:0 12px 12px}.players-page .player-directory-grid{grid-template-columns:1fr;padding-left:12px;padding-right:12px}}
+
+/* RSL shared accessibility/mobile polish */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid #ffd22d;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
+@media(max-width:700px){button,.qa,.admin-btn,.top-nav nav a,.top-nav-dropdown-trigger{min-height:42px}.admin-field input,.admin-field select,.admin-field textarea{font-size:16px}.admin-log{max-height:420px}}
