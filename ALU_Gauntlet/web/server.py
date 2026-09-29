@@ -6203,11 +6203,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             season_archives.append({
                 "season_number": int(archive.get("season_number", 0) or 0),
                 "rank": int(mine.get("rank", 0) or 0) or None,
-                "points": int(mine.get("gauntlet_points", mine.get("season_points", 0)) or 0),
-                "wins": int(mine.get("wins", 0) or 0),
-                "losses": int(mine.get("losses", 0) or 0),
-                "played": int(mine.get("played", 0) or 0),
-                "races_won": int(mine.get("races_won", mine.get("season_races_won", 0)) or 0),
+                "points": int(mine.get("season_points", mine.get("gauntlet_points", 0)) or 0),
+                "wins": int(mine.get("season_wins", mine.get("wins", 0)) or 0),
+                "losses": int(mine.get("season_losses", mine.get("losses", 0)) or 0),
+                "played": int(mine.get("season_played", mine.get("played", 0)) or 0),
+                "races_won": int(mine.get("season_races_won", mine.get("races_won", 0)) or 0),
             })
         record_rows = await self.bot.db.drivers.find({"guild_id": str(guild_id)}).to_list(length=5000)
         records = {
