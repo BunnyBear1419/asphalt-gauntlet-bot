@@ -27,16 +27,18 @@ async function profile(){
     const played=Number(p.career_played||0); const winRate=played?Math.round((Number(wins)||0)/played*100):0; setText("win-rate",winRate+"%");
     try{const snapshot=await api("/api/competition/snapshot?guild_id="+id); const rank=snapshot.rank?("#"+snapshot.rank):"—"; const record=(snapshot.career_wins??0)+"-"+(snapshot.career_losses??0); setText("profile-rank",rank); setText("profile-rank-secondary",rank); setText("right-rank",rank); setText("performance-rank",rank); setText("snapshot-record",record); setText("snapshot-streak",snapshot.streak??0); setText("snapshot-defense",snapshot.defense_locked?"LOCKED":"OPEN"); setText("snapshot-season",snapshot.registered?("S"+snapshot.season_number):"NOT REGISTERED"); setText("profile-defense-state",snapshot.defense_locked?"LOCKED":"OPEN"); setText("profile-season-state",snapshot.registered?("S"+snapshot.season_number):"NOT REGISTERED"); setText("performance-defense-state",snapshot.defense_locked?"LOCKED":"OPEN"); setText("performance-season-state",snapshot.registered?("S"+snapshot.season_number):"NOT REGISTERED");}catch(e){setText("profile-rank","—");setText("profile-rank-secondary","—");setText("right-rank","—");setText("performance-rank","—")}
     setText("profile-defense-state",defense); setText("profile-season-state",season);
-    // The website profile identity is always the signed-in Discord account.
-    // Use Discord's display name and avatar rather than the Asphalt/game identity.
+    // RSL identity is independent of the Discord account. Use the saved RSL
+    // display name/avatar when present, with Discord identity as the fallback.
     const discordMe=await api("/api/me");
     const discordName=discordMe.global_name||discordMe.username||"Driver";
     const rslName=prefs.rsl_display_name||discordName;
     setText("profile-name",rslName); setText("user-name",rslName); setText("welcome-name",rslName);
     setText("profile-discord-name",discordName);
-    const discordAvatar=prefs.rsl_avatar_url || (discordMe.id && discordMe.avatar)
-      ? `https://cdn.discordapp.com/avatars/${encodeURIComponent(discordMe.id)}/${encodeURIComponent(discordMe.avatar)}.png?size=128`
-      : (discordMe.id ? `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(discordMe.id)%7n)}.png` : "");
+    const discordAvatar=prefs.rsl_avatar_url || (
+      discordMe.id && discordMe.avatar
+        ? `https://cdn.discordapp.com/avatars/${encodeURIComponent(discordMe.id)}/${encodeURIComponent(discordMe.avatar)}.png?size=128`
+        : (discordMe.id ? `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(discordMe.id)%7n)}.png` : "")
+    );
     document.querySelectorAll(".profile-avatar, .player-avatar").forEach(box=>{
       if(!discordAvatar) return;
       box.textContent="";
