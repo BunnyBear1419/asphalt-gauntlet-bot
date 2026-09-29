@@ -74,7 +74,7 @@ async function profile(){
     const connectButton=$("#submit-asphalt-link");if(connectButton)connectButton.disabled=connection.status==="verified";
     const profile=$("#profile");
     if(profile){
-      profile.textContent=p.game_id?p.game_id+" • "+wins+"-"+losses+" career record • "+(p.career_played||0)+" matches":"No registered competitive profile yet.";
+      profile.textContent=p.game_id?p.game_id+" • "+wins+"-"+losses+" career record • "+(p.career_played||0)+" matches":"No registered player profile yet.";
     }
   }catch(e){
     const profile=$("#profile"); if(profile)profile.textContent=e.message;
