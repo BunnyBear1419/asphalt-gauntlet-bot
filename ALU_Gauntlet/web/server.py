@@ -4892,7 +4892,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if not media: raise web.HTTPNotFound(text="Media submission not found.")
         if media.get("status") != "pending": raise web.HTTPConflict(text="This media submission has already been reviewed.")
         now = datetime.now(timezone.utc).isoformat()
-        await self.bot.db.tournament_media.update_one({"_id": media_id}, {"$set": {"status": "approved" if action == "approve" else "rejected", "approved_by": str(user.user_id) if action == "approve" else None, "approved_at": now if action == "approve" else None, "reviewed_by": str(user.user_id), "reviewed_at": now}})
+        result = await self.bot.db.tournament_media.update_one({"_id": media_id, "guild_id": guild_id, "status": "pending"}, {"$set": {"status": "approved" if action == "approve" else "rejected", "approved_by": str(user.user_id) if action == "approve" else None, "approved_at": now if action == "approve" else None, "reviewed_by": str(user.user_id), "reviewed_at": now}})
+        if not result.modified_count:
+            raise web.HTTPConflict(text="This media submission was already reviewed.")
         return web.json_response({"ok": True, "message": "Media approved and published." if action == "approve" else "Media rejected."})
 
     async def serve_tournament_media(self, request: web.Request) -> web.Response:
@@ -5027,14 +5029,19 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                                             break
                         elif match.get("status") == "bye" and not slots_now:
                             match["status"] = "waiting"
-        started_at = datetime.now(timezone.utc).isoformat()
-        transition = await self.bot.db.tournaments.update_one(
+        if not await self._claim_tournament_action(str(oid), "START", "start"):
+            raise web.HTTPConflict(text="Another tournament start operation is already being processed.")
+        try:
+            started_at = datetime.now(timezone.utc).isoformat()
+            transition = await self.bot.db.tournaments.update_one(
             {"_id": oid, "status": {"$in": ["registration_open", "open"]}},
             {"$set": {"status": "live", "started_at": started_at, "bracket": bracket, "started_by": str(user.user_id), "updated_at": started_at}},
         )
-        if not transition.modified_count:
-            raise web.HTTPConflict(text="Tournament start was already completed by another staff action.")
-        return web.json_response({"ok": True, "message": "Tournament started.", "bracket": bracket})
+            if not transition.modified_count:
+                raise web.HTTPConflict(text="Tournament start was already completed by another staff action.")
+            return web.json_response({"ok": True, "message": "Tournament started.", "bracket": bracket})
+        finally:
+            await self._release_tournament_action(str(oid), "START")
 
     async def asset_icon(self, request):
         filename = request.match_info["filename"]
