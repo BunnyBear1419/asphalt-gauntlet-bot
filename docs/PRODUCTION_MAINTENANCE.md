@@ -12,7 +12,7 @@ Personal browser/live testing remains a final acceptance activity; it is not a s
 - Keep MongoDB Atlas access restricted and use a dedicated database user.
 - Treat `system_events` as durable audit history.
 - Use Maintenance Mode for planned competitive changes instead of taking the entire website offline.
-- Use the Dispute / Review workflow for corrections that require staff judgment; do not silently overwrite history.
+- Route corrections, disputes, and support through the official Discord ticket workflow; do not silently overwrite competition history.
 - Use automated backup verification or the manual restore drill before destructive database work.
 
 ## Safe cleanup policy
