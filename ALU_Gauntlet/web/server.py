@@ -4851,9 +4851,24 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if not data: raise web.HTTPBadRequest(text="The selected file is empty.")
         if len(data) > max_size: raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=len(data))
         filename = Path(file_field.filename or ("tournament-media." + ("mp4" if media_type == "video" else "png"))).name[:160]
+        # Browser MIME types are advisory. Require a matching file signature.
+        signatures = {
+            "image/jpeg": data[:3] == bytes.fromhex("ffd8ff"),
+            "image/png": data[:8] == bytes.fromhex("89504e470d0a1a0a"),
+            "image/webp": len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP",
+            "image/gif": data[:6] in {b"GIF87a", b"GIF89a"},
+            "video/webm": data[:4] == bytes.fromhex("1a45dfa3"),
+            "video/mp4": len(data) >= 12 and data[4:8] == b"ftyp",
+            "video/quicktime": len(data) >= 12 and data[4:8] == b"ftyp",
+        }
+        if not signatures.get(content_type, False):
+            raise web.HTTPBadRequest(text="The uploaded file does not match its declared media type.")
         if media_type == "image":
             try:
-                with Image.open(BytesIO(data)) as image: image.verify()
+                with Image.open(BytesIO(data)) as image:
+                    image.verify()
+                    if image.width > 8192 or image.height > 8192:
+                        raise ValueError("image dimensions are too large")
             except Exception as exc: raise web.HTTPBadRequest(text="The selected image could not be validated.") from exc
         media_id = hashlib.sha256(f"{tournament_id}:{user.user_id}:{time.time()}".encode() + data).hexdigest()[:32]
         status = "approved" if staff else "pending"; now = datetime.now(timezone.utc).isoformat()
