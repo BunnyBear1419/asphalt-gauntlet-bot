@@ -5149,10 +5149,17 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
 
     async def require_staff(self, request: web.Request) -> Any:
+        """Require live staff access on at least one connected Discord guild.
+
+        The persisted OAuth session's `staff` flag is only a convenience snapshot;
+        authorization must be re-checked against current Discord membership/permissions.
+        """
         user = await self.require_user(request)
-        if not user.staff:
-            raise web.HTTPForbidden(text="Staff access is required.")
-        return user
+        connected = await self._connected_guilds_for_user(user)
+        for guild_id, guild in connected.items():
+            if await self._is_live_guild_staff(user, guild_id, guild):
+                return user
+        raise web.HTTPForbidden(text="Staff access is required.")
 
     async def index(self, request: web.Request) -> web.StreamResponse:
         # The homepage is public. Discord authentication is only required when
