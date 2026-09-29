@@ -119,10 +119,20 @@ class WebControlCenter:
             if user is None:
                 return await handler(request)
             guild_id = request.query.get("guild_id", "").strip() or request.cookies.get("rsl_guild_id", "").strip()
-            if not guild_id:
-                return await handler(request)
             guild = self.bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
+
+            # Match the normal guild-resolution rules when a mutation does not
+            # carry an explicit guild_id. This prevents maintenance mode from
+            # being bypassed simply because a client omitted the query/cookie.
             if guild is None:
+                connected = await self._connected_guilds_for_user(user)
+                candidates = [
+                    *[str(x) for x in getattr(user, "admin_guild_ids", [])],
+                    *connected.keys(),
+                ]
+                guild_id = next((gid for gid in candidates if gid in connected), "")
+                guild = connected.get(guild_id) if guild_id else None
+            if not guild_id or guild is None:
                 return await handler(request)
             if await self._is_live_guild_staff(user, guild_id, guild):
                 return await handler(request)
