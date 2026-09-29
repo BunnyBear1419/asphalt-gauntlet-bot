@@ -24,7 +24,7 @@ async function init(){
  $("#cc-achievements").innerHTML=badges.length?badges.join(""):'<span class="rsl-badge">Your first achievement is waiting.</span>';
  const recent=c.recent_matches||[];
  $("#cc-activity").innerHTML=recent.length?recent.map(m=>row((m.result||"MATCH")+" • "+(m.score||"—"),m.timestamp?new Date(Number(m.timestamp)*1000).toLocaleString():"Recent")).join(""):row("League activity","No completed Gauntlet activity yet");
- const sorted=[...players].sort((a,b)=>Number(b.elo||0)-Number(a.elo||0)], byWins=[...players].sort((a,b)=>Number(b.career_wins||0)-Number(a.career_wins||0)], byStreak=[...players].sort((a,b)=>Number(b.streak||0)-Number(a.streak||0)];
+ const sorted=[...players].sort((a,b)=>Number(b.elo||0)-Number(a.elo||0)), byWins=[...players].sort((a,b)=>Number(b.career_wins||0)-Number(a.career_wins||0)), byStreak=[...players].sort((a,b)=>Number(b.streak||0)-Number(a.streak||0));
  $("#cc-records").innerHTML=[["Highest current ELO",sorted[0]?.elo??"—"],["Most current wins",byWins[0]?.career_wins??"—"],["Longest current streak",byStreak[0]?.streak??"—"]].map(x=>row(x[0],Number(x[1]||0).toLocaleString())).join("");
  const status=await api("/api/status").catch(()=>({bot:{online:false}})); const health=[["Website","ONLINE","rsl-center-ok"],["Discord Bot",status.bot?.online?"ONLINE":"CHECK","status.bot?.online?"rsl-center-ok":"rsl-center-warn"]];
  if(me.staff){const d=await api("/api/admin/diagnostics?guild_id="+gid).catch(()=>null);if(d?.checks)health.push(...d.checks.slice(0,4).map(x=>[x.name,x.ok?"PASS":"FAIL",x.ok?"rsl-center-ok":"rsl-center-bad"]));}
