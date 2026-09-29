@@ -95,8 +95,8 @@ def test_rollback_cleans_failed_release_workspace_before_upload():
 
 def test_production_health_checks_web_health_endpoint():
     source = (ROOT / ".github" / "workflows" / "production-health.yml").read_text(encoding="utf-8")
-    assert "Check production web health endpoint" in source
-    assert 'https://asph.discloud.app/healthz' in source
+    assert "Check production web RSL health endpoint" in source
+    assert 'https://asph.discloud.app/rsl-healthz' in source
     assert 'web-health.json' in source
     assert 'data.get("ok")' in source
 
@@ -112,7 +112,7 @@ def test_post_deploy_smoke_requires_fresh_production_heartbeat():
 def test_rollback_recovery_requires_web_health_endpoint():
     source = _source()
     assert 'rollback-web-health.json' in source
-    assert 'https://asph.discloud.app/healthz' in source
+    assert 'https://asph.discloud.app/rsl-healthz' in source
     assert 'Rollback web health HTTP status' in source
     assert 'rollback_web_ok' in source
     assert '[ "$rollback_web_ok" = "true" ]' in source
