@@ -32,15 +32,15 @@ def test_legacy_setup_command_is_not_defined_in_administration_cog():
     assert "@app_commands.command(name=\"setup\"" not in source
 
 
-def test_web_setup_route_remains_private_and_is_not_the_discord_command():
+def test_web_setup_route_is_removed_and_admin_settings_is_canonical():
     server = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
-    assert 'add_get("/setup", self.setup_page)' in server
-    assert "async def setup_page" in server
+    assert 'add_get("/setup", self.setup_page)' not in server
+    assert "async def setup_page" not in server
     assert "await self.require_admin(request)" in server
 
 
-def test_admin_server_setup_button_opens_dedicated_setup_page():
+def test_admin_server_setup_button_opens_canonical_admin_settings():
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
-    assert 'id="setup-link" href="/setup"' in admin
-    assert 'data-route="/setup"' in admin
+    assert 'id="setup-link" href="/admin#section-settings"' in admin
+    assert 'data-route="/admin#section-settings"' in admin
     assert "window.location.assign(this.dataset.route)" in admin
