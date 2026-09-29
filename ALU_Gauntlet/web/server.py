@@ -2578,6 +2578,43 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         })
         if not missing:
             try:
+                driver_issues = 0
+                async for driver in self.bot.db.drivers.find({"guild_id": guild_id}, {"career_wins": 1, "career_played": 1}):
+                    wins = int(driver.get("career_wins", 0) or 0)
+                    played = int(driver.get("career_played", 0) or 0)
+                    if wins < 0 or played < 0 or wins > played:
+                        driver_issues += 1
+                checks.append({"name":"Driver record invariants","ok":driver_issues == 0,"detail":"all driver counters valid" if driver_issues == 0 else f"{driver_issues} invalid driver record(s)"})
+            except Exception as exc:
+                checks.append({"name":"Driver record invariants","ok":False,"detail":str(exc)[:180]})
+
+            try:
+                match_issues = 0
+                async for match in self.bot.db.matches.find({"guild_id": guild_id, "reverted": {"$ne": True}}, {"settlement_status": 1, "w_id": 1, "l_id": 1, "courses_beat": 1}):
+                    if str(match.get("settlement_status") or "") == "completed":
+                        winner = str(match.get("w_id") or "")
+                        loser = str(match.get("l_id") or "")
+                        if not winner or not loser or winner == loser:
+                            match_issues += 1
+                    try:
+                        courses = int(match.get("courses_beat", 0) or 0)
+                        if courses < 0 or courses > 5:
+                            match_issues += 1
+                    except (TypeError, ValueError):
+                        match_issues += 1
+                checks.append({"name":"Match settlement invariants","ok":match_issues == 0,"detail":"match records valid" if match_issues == 0 else f"{match_issues} invalid match record(s)"})
+            except Exception as exc:
+                checks.append({"name":"Match settlement invariants","ok":False,"detail":str(exc)[:180]})
+
+            try:
+                defense_pending = await self.bot.db.drivers.count_documents({"guild_id": guild_id, "defense_review_pending": True, "defense_review_payload": {"$exists": False}})
+                reference_pending = await self.bot.db.reference_pending.count_documents({"guild_id": guild_id, "status": "pending"})
+                media_pending = await self.bot.db.tournament_media.count_documents({"guild_id": guild_id, "status": "pending"})
+                checks.append({"name":"Evidence/review queues","ok":defense_pending == 0,"detail":f"{reference_pending} reference + {media_pending} tournament media item(s) pending; {defense_pending} defense flag(s) missing payload"})
+            except Exception as exc:
+                checks.append({"name":"Evidence/review queues","ok":False,"detail":str(exc)[:180]})
+
+            try:
                 event_indexes = set((await self.bot.db.system_events.index_information()).keys())
                 checks.append({
                     "name":"Audit event index",
@@ -2610,6 +2647,142 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 checks.append({"name":"Settlement reservations","ok":False,"detail":str(exc)[:180]})
 
         return web.json_response({"ok":all(x["ok"] for x in checks),"checks":checks,"guild":{"id":guild_id,"name":guild.name,"members":getattr(guild,"member_count",0)}})
+
+    async def admin_operations(self, request: web.Request) -> web.Response:
+        """Unified staff operations surface for safe mode, integrity, season finalization and release history."""
+        user, guild_id, _guild = await self.require_admin(request)
+        action = str(request.query.get("action") or "").strip().lower()
+        if request.method == "GET" and action == "status":
+            settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            mode = settings.get("maintenance_mode") or {}
+            state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+            return web.json_response({
+                "maintenance": mode,
+                "season": {
+                    "number": int(state.get("season_number", 1) or 1),
+                    "active": bool(state.get("season_active")),
+                    "starts_at": float(state.get("starts_at", 0) or 0),
+                    "ends_at": float(state.get("ends_at", 0) or 0),
+                },
+                "release_sha": current_release_revision(),
+            })
+        if request.method == "GET" and action == "evidence":
+            queues = []
+            drivers = await self.bot.db.drivers.find({"guild_id": guild_id, "defense_review_pending": True}).to_list(length=50)
+            for d in drivers:
+                payload = d.get("defense_review_payload") or {}
+                queues.append({
+                    "type": "gauntlet_defense",
+                    "id": str(payload.get("submission_id") or d.get("_id") or ""),
+                    "user_id": str(d.get("user_id") or ""),
+                    "submitted_at": payload.get("submitted_at") or d.get("updated_at"),
+                    "evidence": payload.get("video_url") or payload.get("proof_url") or payload.get("video_reference") or "",
+                    "status": "pending",
+                })
+            async for row in self.bot.db.reference_pending.find({"guild_id": guild_id, "status": "pending"}).sort("created_at", -1).limit(50):
+                queues.append({
+                    "type": "gauntlet_reference", "id": str(row.get("_id") or ""),
+                    "user_id": str(row.get("user_id") or ""), "submitted_at": row.get("created_at"),
+                    "evidence": str(row.get("video_reference") or row.get("proof_url") or ""), "status": "pending",
+                })
+            async for row in self.bot.db.tournament_media.find({"guild_id": guild_id, "status": "pending"}).sort("created_at", -1).limit(50):
+                queues.append({
+                    "type": "tournament_media", "id": str(row.get("_id") or ""),
+                    "user_id": str(row.get("uploaded_by") or row.get("submitted_by") or row.get("user_id") or ""),
+                    "submitted_at": row.get("created_at"),
+                    "evidence": str(row.get("url") or row.get("media_url") or ""), "status": "pending",
+                })
+            return web.json_response({"queue": queues, "counts": {
+                "total": len(queues),
+                "gauntlet_defense": sum(1 for x in queues if x["type"] == "gauntlet_defense"),
+                "gauntlet_reference": sum(1 for x in queues if x["type"] == "gauntlet_reference"),
+                "tournament_media": sum(1 for x in queues if x["type"] == "tournament_media"),
+            }})
+        if request.method == "GET" and action == "releases":
+            events = []
+            cursor = self.bot.db.system_events.find({"guild_id": guild_id}).sort("timestamp", -1).limit(200)
+            async for row in cursor:
+                label = str(row.get("event_type") or row.get("action") or "")
+                if any(term in label.casefold() for term in ("release", "deploy", "rollback", "revision")):
+                    events.append({
+                        "timestamp": float(row.get("timestamp", 0) or 0),
+                        "event": label,
+                        "actor_id": str(row.get("actor_id") or row.get("user_id") or ""),
+                        "target_id": str(row.get("target_id") or ""),
+                    })
+            return web.json_response({"current_revision": current_release_revision(), "events": events[:50]})
+        if request.method == "POST":
+            try:
+                payload = await request.json()
+            except Exception as exc:
+                raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
+            action = str(payload.get("action") or "").strip().lower()
+            if action == "season_preview":
+                state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+                season_number = int(state.get("season_number", 1) or 1)
+                drivers = await self.bot.db.drivers.count_documents({"guild_id": guild_id, "season_registered": True, "season_number": season_number})
+                completed = await self.bot.db.matches.count_documents({"guild_id": guild_id, "settlement_status": "completed", "reverted": {"$ne": True}})
+                return web.json_response({
+                    "season": season_number, "registered_drivers": drivers, "completed_matches_available": completed,
+                    "active": bool(state.get("season_active")), "ends_at": float(state.get("ends_at", 0) or 0),
+                })
+            if action == "season_finalize":
+                from ..cogs.season import trigger_global_season_end
+                state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
+                season_number = int(state.get("season_number", 1) or 1)
+                claim = await self.bot.db.season_state.update_one(
+                    {"_id": f"guild_{guild_id}", "season_number": season_number, "admin_finalize_lock_at": {"$exists": False}},
+                    {"$set": {"admin_finalize_lock_at": time.time(), "admin_finalize_actor": str(user.user_id)}},
+                )
+                if claim.modified_count != 1:
+                    raise web.HTTPConflict(text="Season finalization is already being processed.")
+                try:
+                    result = await trigger_global_season_end(
+                        guild_id=guild_id, forced_interaction=None,
+                        start_next_season=bool(payload.get("start_next_season", False)),
+                    )
+                except Exception:
+                    await self.bot.db.season_state.update_one(
+                        {"_id": f"guild_{guild_id}", "season_number": season_number},
+                        {"$unset": {"admin_finalize_lock_at": "", "admin_finalize_actor": ""}},
+                    )
+                    raise
+                await self._audit(guild_id, str(user.user_id), f"Season {season_number} finalized from web administration")
+                return web.json_response({"ok": True, "result": result})
+        raise web.HTTPBadRequest(text="Unsupported administration operation.")
+
+    async def admin_activity_timeline(self, request: web.Request) -> web.Response:
+        """Return a safe public activity timeline for one driver."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        uid = str(request.match_info["user_id"]).strip()
+        if not uid.isdigit():
+            raise web.HTTPNotFound(text="Driver not found.")
+        events = []
+        matches = await self.bot.db.matches.find({
+            "guild_id": guild_id, "reverted": {"$ne": True},
+            "$or": [{"challenger_id": uid}, {"opponent_id": uid}],
+        }).sort("timestamp", -1).limit(20).to_list(length=20)
+        for m in matches:
+            won = str(m.get("w_id") or "") == uid
+            lost = str(m.get("l_id") or "") == uid
+            if not won and not lost:
+                continue
+            events.append({
+                "kind": "gauntlet_match", "title": "Gauntlet Win" if won else "Gauntlet Loss",
+                "detail": f"{int(m.get('courses_beat', 0) or 0)}-course result",
+                "timestamp": m.get("timestamp", 0), "match_id": str(m.get("_id") or ""),
+            })
+        async for archive in self.bot.db.season_history.find({"guild_id": guild_id}).sort("closed_at", -1).limit(20):
+            mine = next((x for x in (archive.get("standings") or []) if str(x.get("user_id")) == uid), None)
+            if mine:
+                events.append({
+                    "kind": "season",
+                    "title": f"Season {int(archive.get('season_number', 0) or 0)} completed",
+                    "detail": f"Rank #{int(mine.get('rank', 0) or 0) or '—'} • {int(mine.get('season_points', 0) or 0)} points",
+                    "timestamp": archive.get("closed_at", 0),
+                })
+        events.sort(key=lambda x: float(x.get("timestamp", 0) or 0), reverse=True)
+        return web.json_response({"events": events[:30]})
 
     async def admin_audit(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
@@ -2761,6 +2934,9 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/assets/tenant/{guild_id}/{asset_id}", self.serve_brand_asset)
         self.app.router.add_get("/assets/tournament-media/{media_id}", self.serve_tournament_media)
         self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
+        self.app.router.add_get("/api/admin/operations", self.admin_operations)
+        self.app.router.add_post("/api/admin/operations", self.admin_operations)
+        self.app.router.add_get("/api/players/{user_id}/activity", self.admin_activity_timeline)
         self.app.router.add_get("/api/admin/audit", self.admin_audit)
         self.app.router.add_get("/api/admin/fairness", self.admin_fairness)
         self.app.router.add_post("/api/admin/sync", self.admin_sync)
