@@ -67,3 +67,24 @@ def test_challenge_submission_requires_five_individual_proofs():
     assert "race_proofs" in server
     assert 'JSON.stringify({courses:rows})' in matches
     assert 'JSON.stringify({courses:rows,proof:' not in matches
+
+
+def test_my_profile_is_public_view_and_my_settings_owns_profile_editing():
+    server=SERVER.read_text(encoding="utf-8")
+    player=PLAYER.read_text(encoding="utf-8")
+    public=(STATIC/"public-profile.html").read_text(encoding="utf-8")
+    public_js=(STATIC/"public-profile.js").read_text(encoding="utf-8")
+    assert 'return web.Response(status=302, headers={"Location": f"/profile?user_id={user.user_id}"})' in server
+    assert 'rsl_display_name' in server and 'rsl_avatar_url' in server
+    assert 'rsl_display_name' in player and 'rsl_avatar_url' in player
+    assert 'href="/profile"' in player
+    assert 'href="/player/settings"' in player
+    assert 'Edit My Settings' in public
+    assert 'p.user_id' in public_js
+
+
+def test_rsl_identity_does_not_modify_discord_identity():
+    server=SERVER.read_text(encoding="utf-8")
+    assert 'rsl_display_name' in server
+    assert 'rsl_avatar_url' in server
+    assert 'member.edit' not in server[server.index('async def player_profile'):server.index('async def player_asphalt')]
