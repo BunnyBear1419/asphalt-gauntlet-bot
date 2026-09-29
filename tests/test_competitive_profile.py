@@ -98,3 +98,16 @@ def test_rsl_avatar_and_public_profile_scripts_are_validated():
     assert 'img.src=discordAvatar' in player_js
     assert '\\n' not in public_js
     assert 'const effectiveId=requestedId==="me"' in public_js
+
+def test_unified_public_profile_contains_competitive_and_tournament_records():
+    profile = (STATIC / "public-profile.html").read_text(encoding="utf-8")
+    script = (STATIC / "public-profile.js").read_text(encoding="utf-8")
+    server = SERVER.read_text(encoding="utf-8")
+    assert "Career Statistics" in profile
+    assert "Gauntlet Match History" in profile
+    assert "Tournament Record" in profile
+    assert "Competitive Profile →" not in profile
+    assert "/api/players/" in script and "/career" in script
+    assert 'add_get("/api/players/{user_id}/career", self.public_driver_career)' in server
+    for marker in ("gauntlet-win-rate", "race-record", "season-points", "tournament-record", "recent-gauntlet", "tournament-history"):
+        assert marker in profile
