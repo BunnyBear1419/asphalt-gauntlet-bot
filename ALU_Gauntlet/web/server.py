@@ -2751,7 +2751,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/login", self.login)
         self.app.router.add_get("/auth/callback", self.callback)
         self.app.router.add_get("/logout", self.logout)
-        self.app.router.add_get("/healthz", self.healthz)
+        self.app.router.add_get("/rsl-healthz", self.healthz)
         self.app.router.add_get("/api/me", self.me)
         self.app.router.add_get("/api/admin/guilds", self.admin_guilds)
         self.app.router.add_get("/api/admin/branding", self.admin_branding)
