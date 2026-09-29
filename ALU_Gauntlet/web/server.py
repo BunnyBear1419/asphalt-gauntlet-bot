@@ -4861,12 +4861,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return await self._page_response("player.html", request)
 
     async def profile_page(self, request: web.Request) -> web.StreamResponse:
+        user = await self.require_user(request)
         user_id = str(request.query.get("user_id") or "").strip()
-        if user_id:
-            await self.require_user(request)
-            return await self._page_response("public-profile.html", request)
-        await self.require_user(request)
-        return web.Response(status=302, headers={"Location": "/player/profile"})
+        if user_id == "me" or not user_id:
+            return web.Response(status=302, headers={"Location": f"/profile?user_id={user.user_id}"})
+        return await self._page_response("public-profile.html", request)
 
     async def site_search(self, request: web.Request) -> web.Response:
         """Search public site content plus account-visible racing data."""
