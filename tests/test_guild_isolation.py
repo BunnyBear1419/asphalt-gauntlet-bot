@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COGS = ROOT / "ALU_Gauntlet" / "cogs"
+WEB = ROOT / "ALU_Gauntlet" / "web"
 
 
 def _source(name: str) -> str:
