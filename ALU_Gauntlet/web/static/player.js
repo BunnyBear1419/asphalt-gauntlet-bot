@@ -253,28 +253,23 @@ if(saveProfile)saveProfile.addEventListener("click",async()=>{
  const mode=document.body?.dataset?.rslPlayerMode||"profile";
  if(status)status.textContent="Saving…"; saveProfile.disabled=true;
  try{
-  if(mode==="settings"){
-    await api("/api/player/preferences?guild_id="+encodeURIComponent(guildId),{
-      method:"PUT",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({timezone:$("#profile-timezone")?.value||"UTC"})
-    });
-    if(window.RSLTheme && $("#profile-theme")?.value) await window.RSLTheme.save($("#profile-theme").value);
-    if(status)status.textContent="Settings saved ✓";
-  }else{
-    const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,5);
-    const d=await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{
-      method:"PUT",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        game_name:$("#profile-game-name")?.value||"",
-        about:$("#profile-about")?.value||"",
-        location:$("#profile-location")?.value||"",
-        platform:$("#profile-platform")?.value||"",
-        driver_type:$("#profile-driver-type")?.value||"",
-        links
-      })
-    });
-    if(status)status.textContent=d.message||"Saved ✓";
-  }
+  const links=[...document.querySelectorAll("#profile-links input")].map(x=>x.value.trim()).filter(Boolean).slice(0,5);
+  await api("/api/player/profile?guild_id="+encodeURIComponent(guildId),{
+    method:"PUT",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      rsl_display_name:$("#profile-rsl-display-name")?.value||"",
+      rsl_avatar_url:$("#profile-rsl-avatar-url")?.value||"",
+      game_name:$("#profile-game-name")?.value||"",
+      about:$("#profile-about")?.value||"",
+      location:$("#profile-location")?.value||"",
+      platform:$("#profile-platform")?.value||"",
+      driver_type:$("#profile-driver-type")?.value||"",
+      links,
+      timezone:$("#profile-timezone")?.value||"UTC"
+    })
+  });
+  if(window.RSLTheme && $("#profile-theme")?.value) await window.RSLTheme.save($("#profile-theme").value);
+  if(status)status.textContent="Settings saved ✓";
   await profile();
  }catch(e){if(status)status.textContent=e.message||"Save failed."}
  finally{saveProfile.disabled=false;setTimeout(()=>{if(status)status.textContent=""},1800)}
