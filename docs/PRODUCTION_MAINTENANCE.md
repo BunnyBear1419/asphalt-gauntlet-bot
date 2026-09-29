@@ -38,6 +38,7 @@ Any destructive cleanup requires staff review and a verified backup.
 - [ ] Search remains left of Profile.
 - [ ] Account language preference remains persisted by user.
 - [ ] Tournament result mode is stored and enforced.
+- [ ] unique active player registration remains enforced.
 - [ ] Tournament media approval is enforced.
 - [ ] Completed tournaments expose champion, standings, match history, and approved media.
 - [ ] CI is green before production deployment.
