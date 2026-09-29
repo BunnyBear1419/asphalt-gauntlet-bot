@@ -145,7 +145,7 @@ class WebControlCenter:
             limit, window = ((30, 60) if request.path == "/login" else (20, 300))
             if not self._rate_limit_auth_request(request, limit, window):
                 raise web.HTTPTooManyRequests(text="Too many sign-in attempts. Please wait and try again.")
-        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.path == "/logout" or request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             if request.cookies.get(SESSION_COOKIE) and not self._request_origin_allowed(request):
                 raise web.HTTPForbidden(text="Cross-site mutation blocked.")
         return await handler(request)
