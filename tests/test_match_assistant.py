@@ -19,7 +19,7 @@ def test_match_assistant_is_loaded_and_uses_deadline_windows():
 def test_support_is_not_duplicated_as_a_web_ticket_system():
     rules = (ROOT / "ALU_Gauntlet" / "web" / "static" / "rules.html").read_text(encoding="utf-8")
     help_page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "help.html").read_text(encoding="utf-8")
-    assert "official RSL support process" in rules
+    assert "official RSL Discord ticket channel" in rules
     assert "RSL DISCORD" in rules
     assert "official RSL staff/support process" in help_page
 
