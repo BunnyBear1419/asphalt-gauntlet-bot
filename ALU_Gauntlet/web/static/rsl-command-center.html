@@ -17,7 +17,7 @@
 .rsl-center-row small{color:var(--rsl-audit-muted,#91a5c3)}.rsl-center-ok{color:#67e8a5}.rsl-center-warn{color:#ffd166}.rsl-center-bad{color:#ff7b8a}
 .rsl-center-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.rsl-center-stat{padding:13px;border:1px solid var(--rsl-audit-line,#174a79);border-radius:10px}.rsl-center-stat small{display:block;color:var(--rsl-audit-muted,#91a5c3);font-size:11px}.rsl-center-stat strong{display:block;font-size:22px;margin-top:4px}
 .rsl-center-achievements{display:flex;flex-wrap:wrap;gap:9px}.rsl-badge{padding:9px 11px;border:1px solid var(--rsl-audit-line,#174a79);border-radius:999px;background:rgba(37,223,255,.06)}
-.rsl-center-footer{text-align:center;color:var(--rsl-audit-muted,#91a5c3);margin-top:22px;font-size:12px}
+.rsl-center-actions{display:flex;flex-wrap:wrap;gap:9px}.rsl-center-actions a{display:inline-flex;padding:10px 12px;border:1px solid var(--rsl-audit-line,#174a79);border-radius:9px;color:var(--rsl-audit-text,#f5f7ff);text-decoration:none;background:rgba(37,223,255,.04);font-size:11px;font-weight:800}.rsl-center-actions a:hover{border-color:#25dfff;color:#fff}.rsl-center-footer{text-align:center;color:var(--rsl-audit-muted,#91a5c3);margin-top:22px;font-size:12px}
 @media(max-width:850px){.rsl-center-card,.rsl-center-card.third{grid-column:span 12}.rsl-center-stats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -30,13 +30,17 @@
 <div class="rsl-center-stat"><small>SEASON RANK</small><strong id="cc-rank">—</strong></div>
 <div class="rsl-center-stat"><small>WIN RATE</small><strong id="cc-winrate">—</strong></div>
 <div class="rsl-center-stat"><small>XP LEVEL</small><strong id="cc-level">—</strong></div>
+<div class="rsl-center-stat"><small>RSL COINS</small><strong id="cc-coins">—</strong></div>
+<div class="rsl-center-stat"><small>TICKETS</small><strong id="cc-tickets">—</strong></div>
 </div></article>
+<article class="rsl-center-card wide"><h2>🚦 Getting Started</h2><div id="cc-start" class="rsl-center-list"><div class="rsl-center-row"><span>Loading your RSL checklist…</span></div></div></article>
 <article class="rsl-center-card"><h2>🔔 Notifications & Next Actions</h2><div id="cc-notifications" class="rsl-center-list"><div class="rsl-center-row"><span>Loading…</span></div></div></article>
 <article class="rsl-center-card"><h2>🏆 Achievements & Milestones</h2><div id="cc-achievements" class="rsl-center-achievements"><span class="rsl-badge">Loading…</span></div></article>
-<article class="rsl-center-card wide"><h2>📈 Career Activity</h2><div id="cc-activity" class="rsl-center-list"><div class="rsl-center-row"><span>Loading recent activity…</span></div></div></article>
+<article class="rsl-center-card wide"><h2>📈 Career &amp; Match History</h2><div id="cc-activity" class="rsl-center-list"><div class="rsl-center-row"><span>Loading recent activity…</span></div></div></article>
 <article class="rsl-center-card third"><h2>📊 RSL Records</h2><div id="cc-records" class="rsl-center-list"><div class="rsl-center-row"><span>Loading…</span></div></div></article>
 <article class="rsl-center-card third"><h2>🛡️ System Health</h2><div id="cc-health" class="rsl-center-list"><div class="rsl-center-row"><span>Checking…</span></div></div></article>
-<article class="rsl-center-card third"><h2>📅 Season</h2><div id="cc-season" class="rsl-center-list"><div class="rsl-center-row"><span>Loading…</span></div></div></article>
+<article class="rsl-center-card third"><h2>📅 Season</h2><div id="cc-season" class="rsl-center-list"><div class="rsl-center-row"><span>Loading…</span></div></article>
+<article class="rsl-center-card wide"><h2>🔗 Quick Access</h2><div class="rsl-center-actions"><a href="/player">Player Dashboard</a><a href="/profile">My Profile</a><a href="/player/settings">My Settings</a><a href="/calendar">Calendar</a><a href="/gauntlet/matches">Gauntlet Matches</a><a href="/tournaments">Tournaments</a><a href="/clubs">Clubs</a><a href="https://discord.gg/q46RQxu2fm" target="_blank" rel="noopener">Support Tickets</a></div></article>
 </section>
 <div class="rsl-center-footer">Racing Syndicate League • shared website + Discord competition center</div>
 </main>
