@@ -24,7 +24,7 @@ The workflows require these GitHub Actions secrets:
 - `DISCORD_BOT_TOKEN`
 - `MONGO_URI`
 
-After a successful workflow, verify `https://asph.discloud.app/healthz` and Discord connectivity.
+After a successful workflow, verify `https://asph.discloud.app/rsl-healthz` and Discord connectivity.
 
 ## Required production environment variables
 
@@ -75,7 +75,7 @@ The repository also contains `.discloudignore` so Git metadata, development envi
 
 After deployment, check:
 
-- `https://asph.discloud.app/healthz`
+- `https://asph.discloud.app/rsl-healthz`
 - `https://asph.discloud.app/login`
 - `https://asph.discloud.app/`
 - Discord bot is online.
