@@ -79,3 +79,15 @@ def test_global_reference_data_is_not_required_to_be_guild_partitioned():
     """Reference data may remain global; operational player state may not."""
     source = _source("challenges.py")
     assert "active_challenges" in source
+
+def test_guild_scoped_web_mutations_require_live_guild_membership():
+    source = (WEB / "server.py").read_text(encoding="utf-8")
+    for name in (
+        "create_club", "update_club", "join_club", "leave_club",
+        "manage_club_member", "register_tournament", "tournament_checkin",
+        "tournament_club_lineup",
+    ):
+        start = source.index(f"async def {name}(self, request: web.Request)")
+        end = source.find("\n    async def ", start + 10)
+        block = source[start:end if end != -1 else len(source)]
+        assert "require_guild_member(request)" in block, name
