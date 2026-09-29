@@ -11,7 +11,7 @@ async function load(){
   const requestedId=String(userId);
   const effectiveId=requestedId==="me"?(me?.id||""):requestedId;
   if(!effectiveId) throw new Error("No driver was selected.");
-  const d=await api("/api/players/"+encodeURIComponent(effectiveId));
+  const [d,career]=await Promise.all([api("/api/players/"+encodeURIComponent(effectiveId)),api("/api/players/"+encodeURIComponent(effectiveId)+"/career")]);
   const p=d.player||{};
   const edit=$("#edit-profile"); if(edit&&me&&String(me.id)===String(p.user_id)) edit.hidden=false;
   set("name",p.discord_name||p.username||p.game_name||"Driver");
@@ -29,6 +29,16 @@ async function load(){
   set("wins",p.career_wins??0); set("played",p.career_played??0); set("streak",p.streak??0);
   set("registration",p.season_registered?"Gauntlet registration: ACTIVE":"Gauntlet registration: NOT REGISTERED");
   set("xp-level",p.xp_level??1); set("xp-total",Number(p.xp_total||0).toLocaleString()); set("xp-rank",p.xp_rank?"#"+p.xp_rank:"—");
+  const g=career.gauntlet||{}, ts=career.tournament_summary||{};
+  set("gauntlet-win-rate",Number(g.win_rate||0).toFixed(1)+"%");
+  set("race-record",Number(g.race_wins||0)+"-"+Number(g.race_losses||0));
+  set("season-points",Number(g.season_points||0).toLocaleString());
+  set("track-records",Number(g.track_records||0));
+  set("tournament-events",Number(ts.events||0));
+  set("tournament-record",Number(ts.wins||0)+"-"+Number(ts.losses||0));
+  const buckets=g.score_buckets||{}; set("gauntlet-score-buckets","Match score distribution: 5-0 "+(buckets["5-0"]||0)+" • 4-1 "+(buckets["4-1"]||0)+" • 3-2 "+(buckets["3-2"]||0)+" • 2-3 "+(buckets["2-3"]||0)+" • 1-4 "+(buckets["1-4"]||0)+" • 0-5 "+(buckets["0-5"]||0));
+  const recent=$("#recent-gauntlet"); if(recent){const rows=Array.isArray(g.recent_matches)?g.recent_matches:[];recent.innerHTML=rows.length?rows.map(x=>{const oid=String(x.opponent_id||"");const label=x.result==="WIN"?"WIN":"LOSS";const who=oid?'<a href="/profile?user_id='+encodeURIComponent(oid)+'">View opponent</a>':"Opponent";return '<div class="public-profile-history-row"><strong>'+label+'</strong><span>'+esc(x.score)+'</span><span>'+who+'</span><span>'+esc(x.timestamp?new Date(Number(x.timestamp)*1000).toLocaleDateString():"—")+'</span></div>'}).join(""):'<p class="empty-state">No completed Gauntlet matches yet.</p>'}
+  const tournamentHistory=$("#tournament-history"); if(tournamentHistory){const rows=Array.isArray(career.tournaments)?career.tournaments:[];tournamentHistory.innerHTML=rows.length?rows.map(t=>'<div class="public-profile-history-row"><strong>'+esc(t.name)+'</strong><span>'+esc(t.format)+'</span><span>'+esc(t.record)+'</span><span>'+esc(t.status)+'</span></div>').join(""):'<p class="empty-state">No tournament records yet.</p>'}
   const links=$("#links"); if(links){links.innerHTML="";const values=Array.isArray(p.links)?p.links:[];if(!values.length){links.textContent="No public links added."}else values.slice(0,5).forEach(url=>{try{const u=new URL(url);if(!/^https?:$/.test(u.protocol))return;const a=document.createElement("a");a.href=u.href;a.target="_blank";a.rel="noopener noreferrer";a.textContent=u.hostname.replace(/^www\./,"");links.append(a)}catch(_){}})}
   $("#loading").hidden=true;$("#content").hidden=false;
  }catch(e){$("#loading").textContent=e.message||"Unable to load this driver profile."}
