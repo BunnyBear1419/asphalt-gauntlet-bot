@@ -37,4 +37,4 @@ def test_first_time_driver_experience_is_merged_into_player_center():
     assert "Register for Gauntlet" in player
     assert "Read RSL Rules" in player
     assert 'rsl.driverOnboarding.dismissed' in player_js
-    assert 'id="dismiss-driver-onboarding"' in player_js
+    assert 'getElementById("dismiss-driver-onboarding")' in player_js
