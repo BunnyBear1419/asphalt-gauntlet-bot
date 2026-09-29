@@ -6425,4 +6425,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
 
     async def legal_page(self, request: web.Request) -> web.Response:
         """Render the public Legal Center page."""
-        return await self._page_response("legal.html", request)\n    async def rsl_records_page(self, request):\n        return web.FileResponse(self.web_root / "static" / "rsl-records.html")\n
+        return await self._page_response("legal.html", request)
+
+    async def rsl_records_page(self, request):
+        return web.FileResponse(self.web_root / "static" / "rsl-records.html")
+
