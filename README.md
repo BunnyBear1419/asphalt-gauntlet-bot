@@ -111,14 +111,21 @@ The underlying staff status callback is intentionally hidden from Discord's slas
 
 For production monitoring, configure `HEALTH_WEBHOOK_URL`, `DISCORD_ALERT_WEBHOOK`, and the GitHub production-health secrets documented below.
 
-## v18 UX changes
+## Current UX baseline
 
 - Server Setup now lets admins choose the **Staff Role Name** and **Player Role Name**. The bot reuses an existing matching role or creates it when permitted. It never automatically grants the Staff role.
 - Custom images can be uploaded by authorized staff by posting one image directly in the configured Staff Review Channel. The bot validates the image and stores a canonical Discord CDN copy in the configured log channel; URL/DM upload is no longer required for custom images.
 - Season Automation **Disable** is a red danger button.
 - Health & Diagnostics is a single canonical staff diagnostic center; duplicate health/diagnostics entry points should not be added.
 
-<!-- CI verification trigger: production dashboard artwork deployment. -->
+## Repository hygiene
+
+- `main` is the production branch; CI/deploy owns push-to-production verification.
+- Compatibility routes/files are retained only where they protect existing bookmarks or old clients.
+- The canonical public profile is `/profile?user_id=...`; `/player/profile` is a compatibility redirect to that unified profile.
+- Automated cleanup never deletes competition history, verified results, champion records, approved media, or audit history.
+- Workflows are separated by responsibility: deployment, pull-request tests, health monitoring, backups, restore verification, manual recovery drills, and scheduled MongoDB integration tests.
+
 
 
 ## Tournament Center operations
