@@ -135,7 +135,7 @@ def test_navigation_normalizes_legacy_calendar_and_profile_markup():
 def test_player_page_no_longer_exposes_legacy_setup_route_links():
     players = (ROOT / "ALU_Gauntlet" / "web" / "static" / "players.html").read_text(encoding="utf-8")
     assert 'href="/setup"' not in players
-    assert 'href="/admin#settings"' in players
+    assert 'href="/admin#section-settings"' in players
     assert 'class="alu-dashboard players-page"' in players
 
 def test_admin_server_setup_hash_resolves_to_settings_section():
