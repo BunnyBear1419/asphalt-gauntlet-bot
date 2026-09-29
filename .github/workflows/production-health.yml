@@ -107,23 +107,34 @@ jobs:
       - name: Check production web RSL health endpoint
         run: |
           set -euo pipefail
-          HTTP_CODE=$(curl -sS -o web-health.json -w "%{http_code}" \
-            "https://asph.discloud.app/rsl-healthz" || true)
-          echo "Production web health HTTP status: $HTTP_CODE"
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "ERROR: Production web RSL health endpoint is unavailable."
-            cat web-health.json 2>/dev/null || true
-            exit 1
-          fi
-          python - <<'PY'
+          for attempt in $(seq 1 12); do
+            HTTP_CODE=$(curl -sS -o web-health.json -w "%{http_code}" \
+              "https://asph.discloud.app/rsl-healthz" || true)
+            echo "Production web health HTTP status (attempt $attempt/12): $HTTP_CODE"
+            if [ "$HTTP_CODE" = "200" ]; then
+              if python - <<'PY'
           import json
           from pathlib import Path
 
           data = json.loads(Path("web-health.json").read_text())
           if not data.get("ok"):
-              raise SystemExit(f"ERROR: Production web health reports unhealthy: {data}")
+              raise SystemExit(f"not ready: {data}")
           print("Production web RSL health endpoint passed.")
           PY
+              then
+                exit 0
+              fi
+            else
+              cat web-health.json 2>/dev/null || true
+            fi
+            if [ "$attempt" -lt 12 ]; then
+              echo "Production app may still be starting; retrying in 5 seconds."
+              sleep 5
+            fi
+          done
+          echo "ERROR: Production web RSL health endpoint did not become healthy within the startup grace period."
+          cat web-health.json 2>/dev/null || true
+          exit 1
 
       - name: Check bot heartbeat and MongoDB health signal
         env:
