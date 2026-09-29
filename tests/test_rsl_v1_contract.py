@@ -278,3 +278,19 @@ def test_xp_level_up_controls_and_leader_role_are_wired():
         assert marker in cog
     for marker in ("xp-level-channel", "xp-level-message", "xp-leader-role", "xp-leader-period"):
         assert marker in admin
+
+
+def test_v1_authorization_rechecks_live_membership_and_selected_guild():
+    source = read(SERVER)
+    assert "connected = await self._connected_guilds_for_user(user)" in source
+    assert "gid in connected" in source
+    assert "Always re-check the live Discord member" in source
+    assert "await self._is_live_guild_staff(user, guild_id, guild)" in source
+    assert "raise web.HTTPForbidden(text="Administrator access is required for this server.")" in source
+
+
+def test_v1_staff_and_tournament_permissions_are_not_based_only_on_oauth_snapshot():
+    source = read(SERVER)
+    assert "async def _is_live_tournament_staff" in source
+    assert "member.guild_permissions" in source
+    assert "tournament administrator access" in source.lower()
