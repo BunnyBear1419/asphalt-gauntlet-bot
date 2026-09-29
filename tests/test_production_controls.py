@@ -42,3 +42,15 @@ def test_release_baseline_document_exists():
         "Release Freeze",
     ):
         assert marker in doc
+
+from ALU_Gauntlet.core.production_controls import is_maintenance_enabled, is_mutating_competition_path, maintenance_message
+
+def test_maintenance_path_policy_is_read_only_friendly():
+    assert not is_mutating_competition_path("/api/gauntlet/matches", "GET")
+    assert is_mutating_competition_path("/api/gauntlet/matches/report", "POST")
+    assert is_mutating_competition_path("/api/tournaments/results", "PUT")
+    assert not is_mutating_competition_path("/api/admin/maintenance", "PUT")
+
+def test_maintenance_defaults_are_safe():
+    assert not is_maintenance_enabled({})
+    assert "temporarily paused" in maintenance_message({})
