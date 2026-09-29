@@ -157,11 +157,9 @@ body[data-rsl-player-mode="settings"] .rsl-player-main>.player-workspace-grid,
 body[data-rsl-player-mode="settings"] #career,
 body[data-rsl-player-mode="settings"] #club,
 body[data-rsl-player-mode="settings"] #help{display:none!important}
-body[data-rsl-player-mode="settings"] #profile-settings .settings-block:first-of-type,
-body[data-rsl-player-mode="settings"] #profile-links-area{display:none!important}
-body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:first-child,
-body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:last-of-type{display:none}
+body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:first-child{display:none}
 body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:nth-child(2){display:block}
+body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:last-of-type{display:block}
 body[data-rsl-player-mode="settings"] #profile-settings .settings-savebar b:after{content:"Changes are saved to your RSL account."}
 body[data-rsl-player-mode="settings"] #profile-settings{margin-top:30px}
 body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:nth-child(2){display:none}
@@ -358,17 +356,17 @@ body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-
       </header>
       <div class="settings-layout">
         <aside class="settings-menu">
-          <a class="active" href="/player/profile">Profile <small>Driver identity</small></a>
-          <a href="/player/settings">Preferences <small>Timezone &amp; theme</small></a>
-          <a href="/player/profile#profile-links-area">Links <small>Public profile</small></a>
+          <a href="/profile?user_id=me">My Profile <small>Career &amp; public view</small></a>
+          <a class="active" href="/player/settings">My Settings <small>Identity &amp; account</small></a>
+          <a href="/player/settings#profile-links-area">Public Links <small>Profile links</small></a>
         </aside>
         <div class="settings-body">
           <section class="settings-block">
-            <header><span>DRIVER IDENTITY</span><h3>Public Profile</h3><p>Your Discord identity is read-only. Edit the information other RSL drivers see.</p></header>
+            <header><span>DRIVER IDENTITY</span><h3>RSL Identity</h3><p>Choose the name and avatar RSL displays. Your actual Discord account name and avatar remain unchanged.</p></header>
             <div class="form-grid">
-              <label><span>Discord Name</span><input id="profile-discord-name" type="text" readonly></label>
+              <label><span>RSL Display Name</span><input id="profile-rsl-display-name" type="text" maxlength="32" placeholder="Name shown on RSL"></label><label><span>Discord Name</span><input id="profile-discord-name" type="text" readonly></label>
               <label><span>Game Name</span><input id="profile-game-name" type="text" maxlength="100" placeholder="Your in-game name"></label>
-              <label><span>Game ID</span><input id="profile-game-id" type="text" readonly></label>
+              <label><span>RSL Avatar URL</span><input id="profile-rsl-avatar-url" type="url" maxlength="500" placeholder="https://…"><small>Optional. Use a direct image URL.</small></label><label><span>Game ID</span><input id="profile-game-id" type="text" readonly></label>
               <label><span>Location</span><input id="profile-location" type="text" maxlength="100" placeholder="Optional"></label>
               <label><span>Platform</span><select id="profile-platform"><option value="">Choose platform…</option><option>Android</option><option>Nintendo</option><option>macOS</option><option>Steam</option><option>Epic Games</option><option>Windows</option><option>Apple iOS</option><option>Xbox</option><option>Playstation</option></select></label>
               <label><span>Driver Type</span><select id="profile-driver-type"><option value="">Choose driver type…</option><option>Manual Driver</option><option>Touch Driver</option></select></label>
