@@ -6151,7 +6151,20 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if ranked:
             current_season = max(num(row, "season_number") for row in ranked)
 
+        total_matches = await self.bot.db.matches.count_documents({"guild_id": guild_id})
+        completed_tournaments = await self.bot.db.tournaments.count_documents({"guild_id": guild_id, "status": {"$in": ["completed", "complete"]}})
+        clubs_count = await self.bot.db.clubs.count_documents({"guild_id": guild_id})
+        total_races = 0
+        async for match in self.bot.db.matches.find({"guild_id": guild_id}, {"races": 1, "races_won": 1}):
+            if isinstance(match.get("races"), list):
+                total_races += len(match.get("races") or [])
+            elif isinstance(match.get("races_won"), dict):
+                total_races += sum(int(v or 0) for v in match.get("races_won", {}).values())
         return web.json_response({
+            "total_matches": int(total_matches),
+            "completed_tournaments": int(completed_tournaments),
+            "clubs_count": int(clubs_count),
+            "total_races": int(total_races),
             "current_season": current_season,
             "records": records,
             "overall_champion": (
