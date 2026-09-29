@@ -1,49 +1,36 @@
 # Racing Syndicate League Production Maintenance
 
+## Purpose
+Operational guidance for maintaining the production RSL web control center and Discord bot without deleting competition history or bypassing deployment safety gates.
+
 ## Deployment
+Production is Discloud-first. `main` is the production branch. CI/deploy runs compilation, tests, dependency checks, deployment, restart, production smoke checks, and rollback recovery when required.
 
-Production is Discloud-first. The `main` branch is the production branch and GitHub Actions verifies compilation, tests, deployment, restart, and automated post-deployment health checks.
+Personal browser/live testing remains a final acceptance activity; it is not a substitute for automated verification.
 
-Personal browser/live testing is intentionally separate from automated verification.
+## Operational safeguards
+- Keep MongoDB Atlas access restricted and use a dedicated database user.
+- Treat `system_events` as durable audit history.
+- Use Maintenance Mode for planned competitive changes instead of taking the entire website offline.
+- Use the Dispute / Review workflow for corrections that require staff judgment; do not silently overwrite history.
+- Use automated backup verification or the manual restore drill before destructive database work.
 
-## Verification order
+## Safe cleanup policy
+Competition history is valuable data. Do not broadly delete completed tournaments, verified results, champion records, published media, player career history, or audit records.
 
-Run:
+For stale operational records, verify the collection and record age, active-event references, dependent records, audit/history coverage, and whether archiving is safer than deletion.
 
-    python -m py_compile main.py
-    pytest -q
+Any destructive cleanup requires staff review and a verified backup.
 
-The production workflow performs the repository's configured test and deployment checks. MongoDB integration checks run separately when their workflow is triggered.
-
-## Database safeguards
-
-Critical tournament protections include:
-
-- unique active player registration per tournament
-- unique active club registration per tournament
-- unique tournament action lock per match
-- indexed tournament media by tournament/status/time
-- unique notification delivery by event/user/lead time
-- deterministic match settlement identifiers
-
-Keep Atlas access restricted and use a dedicated database user.
-
-## Cleanup policy
-
-Competition history is valuable data. Do not use broad automatic deletion for completed tournaments, verified results, champion records, or published media.
-
-For stale operational records, first identify:
-
-1. the collection and record age;
-2. whether the record belongs to a live/active tournament;
-3. whether it is referenced by another record;
-4. whether an audit/history entry exists;
-5. whether the record is safe to archive rather than delete.
-
-Any destructive cleanup should be reviewed before execution.
+## Repository cleanup policy
+- Keep compatibility routes/files only when they protect existing URLs or stored links.
+- Keep the seven production workflows because each has a distinct responsibility.
+- Keep active setup/UI compatibility modules such as `setup_wizard.py`, `dashboard_setup_bridge.py`, and `ui_fixes.py`; they are imported by the running application.
+- Keep `profile.html` and `profile.js` as compatibility redirects until the legacy route is intentionally retired in a breaking release.
+- The canonical public Player Profile is `/profile?user_id=...`; settings remain under `/player/settings`.
+- The unified profile regression suite is `tests/test_unified_profile.py`.
 
 ## Final release checklist
-
 - [ ] No stale top-level `/setup` Discord command is exposed.
 - [ ] Staff setup remains available through the staff/dashboard flow.
 - [ ] Public command surface remains `/dashboard` and `/staff`.
@@ -54,7 +41,4 @@ Any destructive cleanup should be reviewed before execution.
 - [ ] Tournament media approval is enforced.
 - [ ] Completed tournaments expose champion, standings, match history, and approved media.
 - [ ] CI is green before production deployment.
-
-## Automated validation note
-
-Custom achievement-role names are validated by role ID during seasonal and XP role rotation.
+- [ ] Latest backup restore verification is green before destructive database maintenance.
