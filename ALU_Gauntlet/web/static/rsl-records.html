@@ -17,6 +17,7 @@ a{color:#72d8ff}.empty{opacity:.65}
 <section class="card"><h2>RSL Records</h2><div id="records"><p class="empty">Loading records…</p></div></section>
 <section class="card"><h2>Current Champions</h2><div id="champions"><p class="empty">Loading current standings…</p></div></section>
 <section class="card"><h2>Season History</h2><div id="seasons"><p class="empty">Loading season archives…</p></div></section>
+<section class="card"><h2>League Activity</h2><div id="activity-stats"><p class="empty">Loading league statistics…</p></div></section>
 <section class="card"><h2>Explore</h2><p><a href="/gauntlet/leaderboard">Gauntlet Leaderboard →</a></p><p><a href="/calendar">RSL Calendar →</a></p><p><a href="https://discord.gg/q46RQxu2fm">Open RSL Support Tickets →</a></p></section>
 </div></main>
 <script>
@@ -36,6 +37,7 @@ async function api(u){const r=await fetch(u);if(!r.ok)throw Error("Request faile
   const overall=d.overall_champion;
   $("#champions").innerHTML=(overall? [row("Overall Season Leader",overall.name+" • ELO "+Number(overall.elo||0).toLocaleString())].join(""):"")+
     (champs.length?champs.map(x=>row("Division "+x.division,x.name+" • ELO "+Number(x.elo||0).toLocaleString())).join(""):'<p class="empty">No current division leaders yet.</p>');
+  $("#activity-stats").innerHTML=[["Registered drivers",Number(d.driver_count||0).toLocaleString()],["Recorded races",Number(d.total_races||0).toLocaleString()],["Recorded matches",Number(d.total_matches||0).toLocaleString()],["Completed tournaments",Number(d.completed_tournaments||0).toLocaleString()],["Clubs",Number(d.clubs_count||0).toLocaleString()]].map(x=>row(x[0],x[1])).join("");
   $("#seasons").innerHTML=[
     ["Current season",d.current_season||"—"],
     ["Registered drivers",Number(d.driver_count||0).toLocaleString()],
