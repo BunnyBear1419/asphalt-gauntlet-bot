@@ -32,7 +32,7 @@ def test_all_major_coin_sources_use_the_shared_ledger():
 def test_economy_history_is_exposed_to_web_profile():
     server = (ROOT / "web" / "server.py").read_text(encoding="utf-8")
     profile = (ROOT / "web" / "static" / "profile.html").read_text(encoding="utf-8")
-    script = (ROOT / "web" / "static" / "profile.js").read_text(encoding="utf-8")
+    script = (ROOT / "web" / "static" / "player.js").read_text(encoding="utf-8")
     assert '/api/player/economy/history' in server
     assert 'recent_coin_transactions' in server
     assert 'id="rsl-economy-history"' in profile
