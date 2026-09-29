@@ -2832,6 +2832,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_put("/api/season", self.save_season)
         self.app.router.add_get("/api/players", self.player_list)
         self.app.router.add_get("/api/leaderboard", self.leaderboard)
+        self.app.router.add_get("/api/rsl/records", self.rsl_records)
         self.app.router.add_get("/api/gauntlet/leaderboard", self.gauntlet_leaderboard)
         self.app.router.add_get("/api/xp/leaderboard", self.xp_leaderboard)
         self.app.router.add_get("/api/xp/me", self.xp_me)
@@ -6086,6 +6087,95 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             player["game_name"] = prefs.get("game_name", "") or connection.get("game_name", "")
             player["asphalt_verified"] = connection.get("status") == "verified"
         return web.json_response({"players": rows})
+
+    async def rsl_records(self, request: web.Request) -> web.Response:
+        """Return public RSL records from authoritative current drivers and matches."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        guild_id = str(guild_id)
+        drivers = await self.bot.db.drivers.find({
+            "guild_id": guild_id,
+            "season_registered": True,
+        }).to_list(length=5000)
+
+        def name_for(row):
+            return str(
+                row.get("rsl_display_name")
+                or row.get("game_id")
+                or row.get("global_name")
+                or row.get("username")
+                or row.get("user_id")
+                or "RSL Driver"
+            )
+
+        def num(row, key):
+            try:
+                return int(row.get(key, 0) or 0)
+            except (TypeError, ValueError):
+                return 0
+
+        ranked = sorted(
+            drivers,
+            key=lambda row: (
+                -num(row, "elo"),
+                -num(row, "career_wins"),
+                name_for(row).casefold(),
+            ),
+        )
+        records = {
+            "highest_current_elo": None,
+            "most_current_wins": None,
+            "longest_current_streak": None,
+            "most_season_race_wins": None,
+        }
+        for key, field in (
+            ("highest_current_elo", "elo"),
+            ("most_current_wins", "career_wins"),
+            ("longest_current_streak", "streak"),
+            ("most_season_race_wins", "season_races_won"),
+        ):
+            if ranked:
+                winner = max(ranked, key=lambda row: (num(row, field), -ranked.index(row)))
+                records[key] = {
+                    "user_id": str(winner.get("user_id", "")),
+                    "name": name_for(winner),
+                    "value": num(winner, field),
+                }
+
+        division_champions = []
+        for division_number in range(1, 7):
+            members = []
+            for row in ranked:
+                try:
+                    from ..core.divisions import get_division_for_pi
+                    division = get_division_for_pi(num(row, "garage_pi"))
+                    division_name = str(division.get("name", ""))
+                except Exception:
+                    division_name = ""
+                if division_name.lower().startswith(f"division {division_number}"):
+                    members.append(row)
+            if members:
+                champion = members[0]
+                division_champions.append({
+                    "division": division_number,
+                    "name": name_for(champion),
+                    "user_id": str(champion.get("user_id", "")),
+                    "elo": num(champion, "elo"),
+                })
+
+        current_season = 0
+        if ranked:
+            current_season = max(num(row, "season_number") for row in ranked)
+
+        return web.json_response({
+            "current_season": current_season,
+            "records": records,
+            "overall_champion": (
+                {"user_id": str(ranked[0].get("user_id", "")), "name": name_for(ranked[0]), "elo": num(ranked[0], "elo")}
+                if ranked else None
+            ),
+            "division_champions": division_champions,
+            "driver_count": len(ranked),
+        })
 
     async def competition_snapshot(self, request: web.Request) -> web.Response:
         """Return the signed-in driver's live competitive snapshot for the selected guild."""
