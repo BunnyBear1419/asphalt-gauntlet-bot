@@ -21,7 +21,7 @@ def test_support_is_not_duplicated_as_a_web_ticket_system():
     help_page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "help.html").read_text(encoding="utf-8")
     assert "official RSL Discord ticket channel" in rules
     assert "RSL DISCORD" in rules
-    assert "official RSL staff/support process" in help_page
+    assert "official RSL Discord ticket channel" in help_page
 
 
 def test_command_center_record_sorting_is_valid_javascript_shape():
