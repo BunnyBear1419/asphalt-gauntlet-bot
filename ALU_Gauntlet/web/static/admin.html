@@ -182,6 +182,12 @@
       <a class="admin-tool" id="news-link" href="/news-admin"><strong>News &amp; Announcements</strong><span>Create and manage community news.</span></a>
       <a class="admin-tool" href="/calendar"><strong>Calendar</strong><span>Review the live event calendar.</span></a>
     </div>
+    <div class="admin-card" style="margin-top:16px">
+      <h2>Discord Server Configuration</h2>
+      <p>Configure the same live Discord roles, channels, timezone and achievement role names used by RSL. This is the canonical Server Setup surface.</p>
+      <div id="rsl-server-setup-fields" class="admin-grid"></div>
+      <div class="admin-actions"><button class="admin-btn primary" id="rsl-server-setup-save" type="button">Save Server Configuration</button><span class="admin-status" id="rsl-server-setup-status"></span></div>
+    </div>
   </div>
 </section>
 
@@ -312,8 +318,9 @@ async function loadGuilds(){
  guildId=d.guilds[0].id;
  select.value=guildId;
  await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});
- select.addEventListener("change",async()=>{guildId=select.value;await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});await loadBranding();});
+ select.addEventListener("change",async()=>{guildId=select.value;await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});await loadBranding();await loadRslServerSetup();});
  await loadBranding();
+ await loadRslServerSetup();
  await loadXpSettings();
  await loadServerControl();
 }
@@ -339,6 +346,70 @@ function fillForm(){
  $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
  $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);document.querySelectorAll(".admin-guild-link").forEach(a=>a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId)+(a.dataset.section?"#"+encodeURIComponent(a.dataset.section):""));
 }
+async function loadRslServerSetup(){
+ try{
+  const [optionsDoc,settingsDoc]=await Promise.all([
+   api("/api/setup/options"+q()),
+   api("/api/setup/settings"+q())
+  ]);
+  const o=optionsDoc||{},s=settingsDoc.settings||{}, root=$("rsl-server-setup-fields");
+  if(!root)return;
+  const escv=escapeHtml;
+  const groups=[
+   {title:"⚙️ Core Server Setup",fields:[
+    ["admin_role_id","Gauntlet Admin Role","role"],["player_role_id","Gauntlet Driver Role","role"],
+    ["registration_channel_id","Player Gauntlet Channel","channel"],["review_channel_id","Gauntlet Staff Channel","channel"],
+    ["log_channel_id","Gauntlet Logs Channel","channel"],["announcement_channel_id","Gauntlet Announcement Channel","channel"],
+    ["match_results_channel_id","Match Results Channel","channel"],["timezone","Server Timezone","timezone"]
+   ]},
+   {title:"🏆 Tournament Setup",fields:[
+    ["tournament_player_announcement_role_id","Tournament Driver Role","role"],["tournament_admin_role_id","Tournament Admin Role","role"],
+    ["tournament_main_channel_id","Player Tournament Channel","channel"],["tournament_log_channel_id","Tournament Logs Channel","channel"],
+    ["tournament_bracket_channel_id","Tournament Bracket / Results Channel","channel"],["tournament_admin_channel_id","Tournament Admin Channel","channel"],
+    ["tournament_announcement_channel_id","Tournament Announcement Channel","channel"]
+   ]}
+  ];
+  let html="";
+  for(const group of groups){
+   html+='<div class="admin-field full"><h3 style="margin:0 0 8px">'+escv(group.title)+'</h3><div class="admin-grid two">';
+   for(const [key,label,type] of group.fields){
+    const vals=type==="role"?(o.roles||[]):type==="channel"?(o.channels||[]):(o.timezones||[]);
+    const selected=s[key]||"";
+    html+='<div class="admin-field"><label>'+escv(label)+'</label><select data-rsl-setting="'+escv(key)+'"><option value="">Select…</option>'+
+      vals.map(x=>'<option value="'+escv(x.id||x.value)+'" '+(String(selected)===String(x.id||x.value)?"selected":"")+'>'+escv(x.name||x.label)+'</option>').join("")+
+      '</select></div>';
+   }
+   html+='</div></div>';
+  }
+  const roleGroups=[
+   {title:"XP Achievement Roles",items:Object.entries({5:"Bronze",10:"Silver",25:"Gold",50:"Platinum",75:"Champion",100:"Legend"}).map(([level,name])=>[name,"Level "+level])},
+   {title:"Gauntlet Achievement Roles",items:["Division 1 Winner","Division 2 Winner","Division 3 Winner","Division 4 Winner","Division 5 Winner","Division 6 Winner","Top Active","Top Wins","Top Player","Top Defender","Top Challenger","Most Improved","Win Streak","Season Champion"] .map(x=>[x,x])},
+   {title:"Tournament Achievement Roles",items:["Tournament Champion","Tournament Runner-Up","Tournament 3rd Place","Tournament Finalist","Tournament MVP","Top Tournament Wins","Tournament Leader","Tournament All-Star","Tournament Participant","Tournament Veteran","Perfect Tournament Run","Grand Champion"].map(x=>[x,x])}
+  ];
+  html+='<div class="admin-field full"><h3 style="margin:8px 0">🏅 Achievement Role Names</h3><p>Change Discord display names without changing achievement rules.</p><div class="admin-grid two">';
+  for(const group of roleGroups)for(const [canonical,hint] of group.items){
+   const value=(s.achievement_role_names||{})[canonical]||canonical;
+   html+='<div class="admin-field"><label>'+escv(hint)+'</label><input data-rsl-role-name="'+escv(canonical)+'" maxlength="100" value="'+escv(value)+'"></div>';
+  }
+  html+='</div></div>';
+  root.innerHTML=html;
+ }catch(e){setStatus("rsl-server-setup-status",e.message||"Unable to load server configuration.",false);}
+}
+async function saveRslServerSetup(){
+ const button=$("rsl-server-setup-save"); if(!button||!guildId)return;
+ const payload={};
+ document.querySelectorAll("[data-rsl-setting]").forEach(x=>payload[x.dataset.rslSetting]=x.value);
+ payload.achievement_role_names={};
+ document.querySelectorAll("[data-rsl-role-name]").forEach(x=>payload.achievement_role_names[x.dataset.rslRoleName]=x.value.trim());
+ button.disabled=true;setStatus("rsl-server-setup-status","Saving server configuration…");
+ try{
+  await api("/api/setup/settings"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  setStatus("rsl-server-setup-status","Server configuration saved.");
+ }catch(e){setStatus("rsl-server-setup-status",e.message||"Unable to save server configuration.",false)}
+ finally{button.disabled=false;}
+}
+$("rsl-server-setup-save")?.addEventListener("click",saveRslServerSetup);
+
 async function loadServerControl(){
  try{
   const d=await api("/api/admin/server-control"+q());
