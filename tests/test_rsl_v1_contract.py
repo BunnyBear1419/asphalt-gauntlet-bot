@@ -328,3 +328,11 @@ def test_v1_tournament_media_requires_magic_signatures_and_dimension_bounds():
         "The uploaded file does not match its declared media type.",
     ):
         assert marker in source
+
+
+def test_v1_tournament_start_and_media_review_are_atomic():
+    source = read(SERVER)
+    assert 'self._claim_tournament_action(str(oid), "START", "start")' in source
+    assert 'self._release_tournament_action(str(oid), "START")' in source
+    assert '"status": "pending"' in source[source.index("async def tournament_media_action"):source.index("async def serve_tournament_media")]
+    assert "This media submission was already reviewed." in source
