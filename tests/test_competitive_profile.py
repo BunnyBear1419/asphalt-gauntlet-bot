@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "ALU_Gauntlet" / "web" / "server.py"
 PLAYER = ROOT / "ALU_Gauntlet" / "web" / "static" / "player.html"
 PLAYER_JS = ROOT / "ALU_Gauntlet" / "web" / "static" / "player.js"
+STATIC = ROOT / "ALU_Gauntlet" / "web" / "static"
 HELP = ROOT / "ALU_Gauntlet" / "web" / "static" / "help.html"
 TOURNAMENTS = ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.html"
 PROFILE = ROOT / "ALU_Gauntlet" / "web" / "static" / "profile.html"
@@ -88,3 +89,12 @@ def test_rsl_identity_does_not_modify_discord_identity():
     assert 'rsl_display_name' in server
     assert 'rsl_avatar_url' in server
     assert 'member.edit' not in server[server.index('async def player_profile'):server.index('async def player_asphalt')]
+
+
+def test_rsl_avatar_and_public_profile_scripts_are_validated():
+    player_js = PLAYER_JS.read_text(encoding="utf-8")
+    public_js = (STATIC / "public-profile.js").read_text(encoding="utf-8")
+    assert 'const discordAvatar=prefs.rsl_avatar_url || (' in player_js
+    assert 'img.src=discordAvatar' in player_js
+    assert '\\n' not in public_js
+    assert 'const effectiveId=requestedId==="me"' in public_js
