@@ -1,0 +1,88 @@
+# RSL Launch Readiness
+
+## Release status
+- Production branch: `main`
+- Hosting: Discloud
+- Automated CI/deploy: GitHub Actions
+- Latest verified release: `7f2e2689b7daef2d9b7c351eac04699736bb9107`
+- Latest CI/deploy run: #2859
+- Automated tests: passed
+- Compile check: passed
+- Dependency audit: passed
+- Discloud deployment/restart: passed
+- Post-deployment smoke test: passed
+- Rollback path: available; not required for the latest release
+
+## Final product checks
+- [x] Primary navigation uses Rules before Companion
+- [x] No duplicate Companion navigation
+- [x] No obsolete Rules icon asset reference
+- [x] Public Profile has no duplicate leaderboard navigation action
+- [x] First-time Driver onboarding is integrated into the existing Player page
+- [x] Existing notifications, Career/season history, Operations/Recovery, and Admin systems are reused rather than duplicated
+- [x] Six RSL divisions remain the league structure
+- [x] Public slash-command surface remains intentionally small
+- [x] Security, upload validation, settlement idempotency, guild isolation, and concurrency protections are covered by regression tests
+
+## Final acceptance test matrix
+
+### Website
+- [ ] Open homepage while signed out
+- [ ] Verify navigation and profile menu
+- [ ] Sign in with Discord
+- [ ] Verify Player dashboard/onboarding
+- [ ] Verify My Settings and My Profile separation
+- [ ] Verify profile stats, XP, credits, tickets, division, and history
+- [ ] Verify Gauntlet registration/challenge/defense screens
+- [ ] Verify tournament registration, brackets, and results
+- [ ] Verify Clubs
+- [ ] Verify Calendar
+- [ ] Verify Rules, Help, and Legal pages
+- [ ] Verify ticket/support path points to the configured Discord ticket channel
+- [ ] Test desktop and mobile layouts
+- [ ] Test keyboard focus and modal close behavior
+
+### Discord
+- [ ] Confirm bot is online
+- [ ] Confirm /dashboard opens the player experience
+- [ ] Confirm /staff is restricted to staff
+- [ ] Verify player-facing actions work from Discord
+- [ ] Verify staff actions remain available if the website is unavailable
+- [ ] Verify website actions produce expected Discord notifications/logs
+
+### Competition
+- [ ] Complete a controlled five-race Gauntlet challenge
+- [ ] Verify race-win scoring
+- [ ] Verify ticket consumption only when an opponent is selected
+- [ ] Verify defense submission/review
+- [ ] Verify result approval/rejection
+- [ ] Verify settlement and replay protection
+- [ ] Verify abandoned/quitting recovery behavior
+- [ ] Verify XP, RSL Coins, roles, and season progression
+- [ ] Verify tournament registration/check-in/bracket/result flow
+
+### Operations and recovery
+- [ ] Confirm Operations/Diagnostics reports healthy state
+- [ ] Confirm audit events are recorded
+- [ ] Confirm backup exists and latest restore verification is green
+- [ ] Confirm Maintenance Mode can safely pause competition
+- [ ] Confirm stuck-match recovery path
+- [ ] Confirm season preview/finalization controls
+- [ ] Confirm release history records deployments
+- [ ] Confirm website and Discord provide an alternate operational path
+
+## Launch rule
+Do not add new feature scope during acceptance testing unless a missing requirement, security issue, data-integrity issue, or launch-blocking usability defect is discovered. Fix defects, rerun automated CI, redeploy, and then resume the acceptance matrix.
+
+## Post-launch
+For the first live season, monitor:
+- settlement/replay errors
+- ticket/coin ledger anomalies
+- failed evidence/media reviews
+- stuck processing matches
+- Discord/web notification delivery
+- tournament bracket transitions
+- database/heartbeat health
+- user-reported navigation or mobile issues
+
+Keep competition history and audit records intact. Prefer correction/reconciliation over destructive cleanup.
