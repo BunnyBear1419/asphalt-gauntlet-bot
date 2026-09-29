@@ -2600,6 +2600,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         )
         return web.Response(text=body, content_type="application/xml")
 
+    async def rsl_command_center_page(self, request: web.Request) -> web.StreamResponse:
+        """Unified player/staff command center for activity, records, notifications, and health."""
+        await self.require_user(request)
+        return await self._page_response("rsl-command-center.html", request)
+
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/robots.txt", self.robots_txt)
@@ -2611,6 +2616,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/setup", self.setup_page)
         self.app.router.add_get("/news-admin", self.news_admin_page)
         self.app.router.add_get("/admin", self.admin_page)
+        self.app.router.add_get("/rsl-center", self.rsl_command_center_page)
         self.app.router.add_get("/player", self.player_page)
         self.app.router.add_get("/player/profile", self.player_profile_page)
         self.app.router.add_get("/player/settings", self.player_settings_page)
