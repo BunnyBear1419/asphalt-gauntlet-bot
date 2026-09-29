@@ -300,3 +300,31 @@ def test_v1_generic_staff_guard_rechecks_live_connected_guilds():
     assert "connected = await self._connected_guilds_for_user(user)" in source
     assert 'if await self._is_live_guild_staff(user, guild_id, guild):' in source
     assert 'raise web.HTTPForbidden(text="Staff access is required.")' in source
+
+
+def test_v1_web_security_middleware_covers_csrf_and_oauth_abuse():
+    source = read(SERVER)
+    for marker in (
+        "async def _security_middleware",
+        "_request_origin_allowed",
+        "Cross-site mutation blocked.",
+        "Too many sign-in attempts.",
+        'request.path in {"/login", "/auth/callback"}',
+        'request.method in {"POST", "PUT", "PATCH", "DELETE"}',
+        "SESSION_COOKIE",
+    ):
+        assert marker in source
+
+
+def test_v1_tournament_media_requires_magic_signatures_and_dimension_bounds():
+    source = read(SERVER)
+    for marker in (
+        "Browser MIME types are advisory.",
+        'bytes.fromhex("ffd8ff")',
+        'bytes.fromhex("89504e470d0a1a0a")',
+        'data[:4] == bytes.fromhex("1a45dfa3")',
+        'data[4:8] == b"ftyp"',
+        "image.width > 8192 or image.height > 8192",
+        "The uploaded file does not match its declared media type.",
+    ):
+        assert marker in source
