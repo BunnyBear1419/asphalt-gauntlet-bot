@@ -378,8 +378,9 @@ async function loadNotificationPreferences(){
   const gauntlet=$("#gauntlet-notifications"), tournament=$("#tournament-notifications"), status=$("#notification-save-status");
   const gauntletDays=$("#gauntlet-notification-days"), tournamentDays=$("#tournament-notification-days");
   if(!gauntlet||!tournament)return;
+  let d={};
   try{
-    const d=await api("/api/notifications");
+    d=await api("/api/notifications");
     gauntlet.checked=Boolean(d.gauntlet_notifications);
     tournament.checked=Boolean(d.tournament_notifications);
     if(gauntletDays){const v=Number(d.gauntlet_lead_days ?? 1);gauntletDays.value=[0,1,2,3,7,14,30].includes(v)?String(v):"custom";const x=$("#gauntlet-notification-custom");if(x)x.value=String(v);}
