@@ -2669,7 +2669,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/rules", self.rules_page)
         self.app.router.add_get("/legal", self.legal_page)
         self.app.router.add_get("/players", self.players_page)
-        self.app.router.add_get("/setup", self.setup_page)
         self.app.router.add_get("/news-admin", self.news_admin_page)
         self.app.router.add_get("/admin", self.admin_page)
         self.app.router.add_get("/rsl-center", self.rsl_command_center_page)
@@ -4951,10 +4950,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 request = request.clone(rel_url=request.rel_url.with_query({**request.query, "guild_id": rows[0]["id"]}))
         await self.require_admin(request)
         return await self._page_response("players.html", request)
-    async def setup_page(self, request: web.Request) -> web.StreamResponse:
-        await self.require_admin(request)
-        return await self._page_response("setup.html", request)
-
     async def news_admin_page(self, request: web.Request) -> web.StreamResponse:
         await self.require_admin(request)
         return await self._page_response("news-admin.html", request)
@@ -5153,7 +5148,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 db_ok = False
         page_files = {
             name: (WEB_DIR / name).is_file()
-            for name in ("index.html", "player.html", "players.html", "setup.html", "app.css", "app.js")
+            for name in ("index.html", "player.html", "players.html", "app.css", "app.js")
         }
         web_files_ok = all(page_files.values())
         return web.json_response({
