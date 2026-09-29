@@ -294,3 +294,9 @@ def test_v1_staff_and_tournament_permissions_are_not_based_only_on_oauth_snapsho
     assert "async def _is_live_tournament_staff" in source
     assert "member.guild_permissions" in source
     assert "tournament administrator access" in source.lower()
+
+def test_v1_generic_staff_guard_rechecks_live_connected_guilds():
+    source = read(SERVER)
+    assert "connected = await self._connected_guilds_for_user(user)" in source
+    assert 'if await self._is_live_guild_staff(user, guild_id, guild):' in source
+    assert 'raise web.HTTPForbidden(text="Staff access is required.")' in source
