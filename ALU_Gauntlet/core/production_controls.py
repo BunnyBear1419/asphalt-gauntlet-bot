@@ -134,7 +134,7 @@ async def resolve_dispute(
     if status not in {"resolved", "rejected", "escalated"}:
         raise ValueError("Invalid dispute status.")
     now = time.time()
-    result = await db.disputes.find_one_and_update(
+    result = await db.disputes.update_one(
         {"_id": str(dispute_id), "guild_id": str(guild_id), "status": {"$in": ["open", "escalated"]}},
         {"$set": {
             "status": status,
@@ -143,12 +143,12 @@ async def resolve_dispute(
             "resolved_at": now,
             "updated_at": now,
         }},
-        return_document=True,
     )
-    if result:
+    document = await db.disputes.find_one({"_id": str(dispute_id), "guild_id": str(guild_id)})
+    if result.modified_count and document:
         await record_system_event(
             db, guild_id, staff_id, "DISPUTE_RESOLVED",
             target_type="dispute", target_id=str(dispute_id),
             details={"status": status},
         )
-    return result
+    return document
