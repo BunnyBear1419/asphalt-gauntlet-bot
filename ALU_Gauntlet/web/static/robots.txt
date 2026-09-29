@@ -4,7 +4,6 @@ Allow: /
 # Private/account/admin/API areas
 Disallow: /admin
 Disallow: /news-admin
-Disallow: /setup
 Disallow: /player
 Disallow: /players
 Disallow: /api/
