@@ -32,6 +32,8 @@ class OperationsCog(commands.Cog):
             pass
 
         state = await bot.db.season_state.find_one({"_id": f"guild_{gid}"}) if mongo_ok else None
+        settings = await bot.db.settings.find_one({"_id": gid}) if mongo_ok else None
+        maintenance = (settings or {}).get("maintenance_mode") or {}
         season = int(state.get("season_number", 1)) if state else 1
         registered = await bot.db.drivers.count_documents({"guild_id": gid, "season_registered": True, "season_number": season}) if mongo_ok else 0
         active = await bot.db.active_challenges.count_documents({"guild_id": gid, "status": {"$in": ["active", "processing"]}}) if mongo_ok else 0
@@ -55,6 +57,7 @@ class OperationsCog(commands.Cog):
         backup_text = "Not recorded this process" if not backup else f"{max(0, (now-backup)/3600):.1f}h ago"
         heartbeat = getattr(bot, 'last_health_success_at', None)
         hb_text = "Webhook not configured" if not os.getenv("HEALTH_WEBHOOK_URL") else (f"{max(0, now-heartbeat):.0f}s ago" if heartbeat else "Awaiting first successful heartbeat")
+        embed.add_field(name=await localize_text(bot, interaction.user.id, "Competition Safety", getattr(interaction, "locale", None)), value=f"{'🟠 SAFE MODE ENABLED' if maintenance.get('enabled') else '🟢 Competition live'}\\n{str(maintenance.get('message') or 'No maintenance notice.')[:180]}", inline=False)
         embed.add_field(name=await localize_text(bot, interaction.user.id, "Recovery Signals", getattr(interaction, "locale", None)), value=f"💾 Last backup: `{backup_text}`\n💓 Last heartbeat: `{hb_text}`\n{'⚠️ Stale processing challenge detected' if stale else '🟢 No stale challenge reservations'}", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
