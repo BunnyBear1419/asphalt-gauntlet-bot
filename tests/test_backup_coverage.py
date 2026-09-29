@@ -21,6 +21,7 @@ EXPECTED_OPERATIONAL_COLLECTIONS = {
     "map_records",
     "map_references",
     "system_events",
+    "disputes",
 }
 
 
