@@ -39,9 +39,9 @@ def test_competitive_profile_labels_are_consistent_across_site():
     help_page = HELP.read_text(encoding="utf-8")
     tournaments_page = TOURNAMENTS.read_text(encoding="utf-8")
     profile_page = PROFILE.read_text(encoding="utf-8")
-    assert "OPEN COMPETITIVE PROFILE" in help_page
-    assert "Open Competitive Profile" in tournaments_page
-    assert "Competitive Profile" in profile_page
+    assert "OPEN PLAYER PROFILE" in help_page
+    assert "Open Player Profile" in tournaments_page
+    assert "Player Dashboard" in profile_page
 
 
 def test_player_profile_and_settings_are_separate_routes():
