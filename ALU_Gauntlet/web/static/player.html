@@ -278,6 +278,21 @@ body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-
           </div>
         </section>
 
+        <section class="player-section" id="economy">
+          <header class="section-header"><div><span>RSL PROGRESSION</span><h2>XP, Coins &amp; Daily Tickets</h2></div><strong id="economy-status">SYNCED</strong></header>
+          <div class="metric-table">
+            <div><span>XP LEVEL</span><strong id="xp-level">—</strong></div><div><span>TOTAL XP</span><strong id="xp-total">—</strong></div>
+            <div><span>XP RANK</span><strong id="xp-rank">—</strong></div><div><span>RSL COINS</span><strong id="rsl-coins">—</strong></div>
+            <div><span>TICKETS LEFT</span><strong id="gauntlet-tickets">—</strong></div><div><span>NEXT TICKET COST</span><strong id="gauntlet-next-ticket-cost">—</strong></div>
+          </div>
+          <div class="action-row">
+            <button class="qa qa-gold" id="gauntlet-buy-ticket" type="button">🎟️ Buy Extra Ticket</button>
+            <span id="gauntlet-ticket-message" class="status-line" role="status"></span>
+          </div>
+          <div id="rsl-economy-history" class="match-table"><div><span>Date</span><span>Type</span><span>Amount</span><span>Balance</span></div><p class="empty-state">Loading coin history…</p></div>
+          <p id="economy-progress" class="section-description">XP is separate from competitive Gauntlet and Tournament rankings. Daily tickets reset and unused tickets do not carry over.</p>
+        </section>
+
         <section class="player-section" id="matches">
           <header class="section-header"><div><span>MATCH HISTORY</span><h2>Recent Matches</h2></div><a href="/gauntlet/matches">Open Match Center →</a></header>
           <div class="match-table"><div><span>#</span><span>Opponent</span><span>Result</span><span>Date</span></div><p class="empty-state">Loading match history…</p></div>
