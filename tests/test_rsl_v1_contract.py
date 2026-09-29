@@ -286,7 +286,7 @@ def test_v1_authorization_rechecks_live_membership_and_selected_guild():
     assert "gid in connected" in source
     assert "Always re-check the live Discord member" in source
     assert "await self._is_live_guild_staff(user, guild_id, guild)" in source
-    assert "raise web.HTTPForbidden(text="Administrator access is required for this server.")" in source
+    assert 'raise web.HTTPForbidden(text="Administrator access is required for this server.")' in source
 
 
 def test_v1_staff_and_tournament_permissions_are_not_based_only_on_oauth_snapshot():
