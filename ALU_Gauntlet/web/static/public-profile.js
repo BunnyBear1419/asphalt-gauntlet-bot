@@ -7,9 +7,9 @@ async function load(){
  try{
   const userId=new URLSearchParams(location.search).get("user_id");
   if(!userId) throw new Error("No driver was selected.");
-  const d=await api("/api/players/"+encodeURIComponent(userId));
+  const me=await api("/api/me").catch(()=>null);\n  const requestedId=String(userId);\n  const effectiveId=requestedId==="me"?(me?.id||""):requestedId;\n  if(!effectiveId) throw new Error("No driver was selected.");\n  const d=await api("/api/players/"+encodeURIComponent(effectiveId));
   const p=d.player||{};
-  set("name",p.discord_name||p.username||p.game_name||"Driver");
+  const edit=$("#edit-profile"); if(edit&&me&&String(me.id)===String(p.user_id)) edit.hidden=false;\n  set("name",p.discord_name||p.username||p.game_name||"Driver");
   set("discord",p.discord_username?"@"+p.discord_username:"RSL Driver");
   const avatar=$("#avatar");
   if(avatar&&p.avatar_url){const img=document.createElement("img");img.src=p.avatar_url;img.alt=(p.discord_name||"Driver")+" Discord avatar";img.onerror=()=>{img.remove()};avatar.textContent="";avatar.append(img)}
