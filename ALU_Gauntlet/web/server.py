@@ -3511,7 +3511,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"clubs": rows})
 
     async def create_club(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         guild_id = str(payload.get("guild_id", "")).strip()
         if guild_id not in {str(x) for x in user.guild_ids}:
@@ -3556,7 +3556,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
 
     async def update_club(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
         try:
@@ -3612,7 +3612,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "message": "Club profile updated."})
 
     async def join_club(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
         try:
@@ -3644,7 +3644,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "message": "You joined the club."})
 
     async def leave_club(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
         try:
@@ -3663,7 +3663,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "message": "You left the club."})
 
     async def manage_club_member(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
         try:
@@ -4205,7 +4205,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "tournament_id": str(result.inserted_id)})
 
     async def register_tournament(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         try:
             payload = await request.json()
         except Exception:
@@ -4400,7 +4400,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": True, "status": "rejected", "message": "Registration rejected."})
 
     async def tournament_club_lineup(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         from bson import ObjectId
         payload = await request.json()
         tournament_id = str(payload.get("tournament_id", "")).strip()
@@ -4847,7 +4847,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.Response(body=media.get("data") or b"", content_type=str(media.get("mime_type") or "application/octet-stream"), headers={"Cache-Control":"private, max-age=3600", "X-Content-Type-Options":"nosniff"})
 
     async def tournament_checkin(self, request: web.Request) -> web.Response:
-        user = await self.require_user(request)
+        user, _live_guild_id, _ = await self.require_guild_member(request)
         from bson import ObjectId
         try:
             oid = ObjectId(str((await request.json()).get("tournament_id", "")))
