@@ -2747,6 +2747,10 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                         {"$unset": {"admin_finalize_lock_at": "", "admin_finalize_actor": ""}},
                     )
                     raise
+                await self.bot.db.season_state.update_one(
+                    {"_id": f"guild_{guild_id}"},
+                    {"$unset": {"admin_finalize_lock_at": "", "admin_finalize_actor": ""}},
+                )
                 await self._audit(guild_id, str(user.user_id), f"Season {season_number} finalized from web administration")
                 return web.json_response({"ok": True, "result": result})
         raise web.HTTPBadRequest(text="Unsupported administration operation.")
