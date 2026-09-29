@@ -12,11 +12,14 @@ async function init(){
  $("#cc-elo").textContent=Number(c.elo??own.elo??1000).toLocaleString();
  $("#cc-rank").textContent=c.current_season_rank?"#"+c.current_season_rank:"—";
  $("#cc-winrate").textContent=(c.win_rate??(played?wins/played*100:0)).toFixed(1)+"%";
- $("#cc-level").textContent=c.xp_level??own.xp_level??"—";
+ const coins=Number(own.rsl_coins??c.rsl_coins??0); const ticketsFree=Number(own.gauntlet_tickets??0); const ticketsPaid=Number(own.gauntlet_purchased_tickets??0);
+ $("#cc-level").textContent=c.xp_level??own.xp_level??"—"; $("#cc-coins").textContent=coins.toLocaleString(); $("#cc-tickets").textContent=(ticketsFree+ticketsPaid).toLocaleString();
  const notes=[];
  if(!own.season_registered||Number(own.season_number||0)!==Number(board.players?.[0]?.season_number||own.season_number||0))notes.push(["Season registration","Review your current-season registration","rsl-center-warn"]);
  if(!own.defense_locked)notes.push(["Defense","Set or update your 5-course defense","rsl-center-warn"]);
  if(notes.length===0)notes.push(["RSL status","You're caught up on the main driver actions","rsl-center-ok"]);
+ const checklist=[["Profile",!!(own.about||own.game_id||own.game_name),"Complete your driver profile","/profile"],["Settings",true,"Review account preferences","/player/settings"],["Gauntlet registration",!!own.season_registered,"Register for the current season","/gauntlet/registration"],["Defense",!!own.defense_locked,"Submit all 5 defense courses/cars with required evidence","/gauntlet/defense"],["Calendar",true,"Check upcoming league and tournament events","/calendar"]];
+ $("#cc-start").innerHTML=checklist.map(x=>'<div class="rsl-center-row"><span>'+esc(x[0])+'<small> • '+esc(x[2])+'</small></span><a href="'+esc(x[3])+'">'+(x[1]?'Review →':'Complete →')+'</a></div>').join("");
  $("#cc-notifications").innerHTML=notes.map(x=>row(x[0],x[1],x[2])).join("");
  const badges=[];
  const add=(ok,label)=>{if(ok)badges.push('<span class="rsl-badge">'+esc(label)+'</span>')};
