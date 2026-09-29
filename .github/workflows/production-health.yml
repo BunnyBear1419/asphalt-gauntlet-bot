@@ -104,14 +104,14 @@ jobs:
           PY
 
 
-      - name: Check production web health endpoint
+      - name: Check production web RSL health endpoint
         run: |
           set -euo pipefail
           HTTP_CODE=$(curl -sS -o web-health.json -w "%{http_code}" \
-            "https://asph.discloud.app/healthz" || true)
+            "https://asph.discloud.app/rsl-healthz" || true)
           echo "Production web health HTTP status: $HTTP_CODE"
           if [ "$HTTP_CODE" != "200" ]; then
-            echo "ERROR: Production web health endpoint is unavailable."
+            echo "ERROR: Production web RSL health endpoint is unavailable."
             cat web-health.json 2>/dev/null || true
             exit 1
           fi
@@ -122,7 +122,7 @@ jobs:
           data = json.loads(Path("web-health.json").read_text())
           if not data.get("ok"):
               raise SystemExit(f"ERROR: Production web health reports unhealthy: {data}")
-          print("Production web health endpoint passed.")
+          print("Production web RSL health endpoint passed.")
           PY
 
       - name: Check bot heartbeat and MongoDB health signal
