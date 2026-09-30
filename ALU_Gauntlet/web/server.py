@@ -2968,6 +2968,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "questions": questions,
                 "translations": translations,
             })
+        webhook_url = str(payload.get("webhook_url") or "").strip()
+        if webhook_url:
+            parsed = urlsplit(webhook_url)
+            host = (parsed.hostname or "").lower()
+            if parsed.scheme != "https" or not host or host in {"localhost","127.0.0.1","0.0.0.0","::1"}:
+                raise web.HTTPBadRequest(text="Integration webhook must be a public HTTPS endpoint.")
         await self.bot.db.rsl_ticket_settings.update_one(
             {"_id": str(guild_id)},
             {"$set": {
