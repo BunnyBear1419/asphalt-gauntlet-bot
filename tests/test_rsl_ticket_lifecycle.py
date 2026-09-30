@@ -29,6 +29,9 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'fingerprint=hashlib.sha256' in text
     assert '$evidence_append' in text
     assert '"evidence":{"$each":evidence' in text
+    assert 'recent_cutoff' in text
+    assert 'recent_same' in text
+    assert 'intake_snapshot' in text
     assert 'RSL Support Rating' in text
 
 
