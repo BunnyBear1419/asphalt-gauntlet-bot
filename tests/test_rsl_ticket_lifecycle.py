@@ -366,3 +366,9 @@ def test_ticket_participant_and_retry_guards():
     assert 'int(ch.guild.id) != int(modal_interaction.guild.id)' in cog
     assert 'Bots cannot be added as ticket participants.' in cog
     assert '"$inc":{"attempts":1}' in cog
+
+
+def test_ticket_notification_finalization_is_guild_scoped():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert 'update_one({"event_key":key,"guild_id":guild_id},{"$set":{"status":"delivered"' in cog
