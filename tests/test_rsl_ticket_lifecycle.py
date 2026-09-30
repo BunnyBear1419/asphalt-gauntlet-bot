@@ -26,6 +26,9 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'canned_responses' in text
     assert 'label="Rating"' in text
     assert 'rating_submitted' in text
+    assert 'fingerprint=hashlib.sha256' in text
+    assert '$evidence_append' in text
+    assert '"evidence":{"$each":evidence' in text
     assert 'RSL Support Rating' in text
 
 
