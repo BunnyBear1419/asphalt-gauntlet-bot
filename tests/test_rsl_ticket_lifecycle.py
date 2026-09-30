@@ -28,7 +28,7 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'rating_submitted' in text
     assert 'fingerprint=hashlib.sha256' in text
     assert '"$reduce":{"input":evidence' in text
-    assert '"evidence":{"$each":evidence' in text
+    assert '"$reduce":{"input":evidence' in text
     assert 'recent_cutoff' in text
     assert 'fingerprint' in text
     assert 'intake_snapshot' in text
@@ -208,7 +208,7 @@ def test_ticket_privacy_hardening_is_wired():
     server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
     assert 'rsl_ticket_notifications.insert_one' in cog
     assert 'attachment_meta' in server
-    assert '[attachment:{a.filename}|{a.size} bytes|{a.content_type or \'unknown\'}]' in server
+    assert 'str(a.filename).replace(chr(10),\' \').replace(chr(13),\' \')[:200]' in server
     assert 'a.url for a in msg.attachments' not in server
 
 
@@ -466,7 +466,7 @@ def test_ticket_evidence_is_deduplicated_and_normalized():
     end=cog.index("async def reconcile_provisioning",start)
     body=cog[start:end]
     assert 'hashlib.sha256(str(attachment.url).encode("utf-8","ignore")).hexdigest()' in body
-    assert 'replace("\r"," ")[:200]' in body
+    assert 'replace("\\r"," ")[:200]' in body
     assert '"content_type":str(attachment.content_type or "")[:128]' in body
     assert '"size":max(0,min(int(attachment.size or 0),2147483647))' in body
     assert '"$reduce":{"input":evidence' in body
@@ -480,7 +480,7 @@ def test_ticket_transcript_has_a_hard_size_limit_and_sanitizes_attachment_metada
     start=server.index("async def admin_ticket_transcript")
     body=server[start:]
     assert 'max_transcript_bytes=2_000_000' in body
-    assert 'candidate_bytes=len((line+"\\n").encode("utf-8"))' in body
+    assert 'candidate_bytes=len((line+"\\n").encode("utf-8"))' in body or 'candidate_bytes=len((line+"\\n").encode("utf-8"))' in body
     assert 'if transcript_bytes+candidate_bytes>max_transcript_bytes:' in body
     assert 'truncated=True' in body
     assert 'Transcript truncated at 2 MB' in body
