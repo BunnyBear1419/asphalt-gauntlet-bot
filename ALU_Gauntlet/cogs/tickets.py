@@ -618,7 +618,7 @@ class TicketCog(commands.Cog):
         if evidence:
             update_pipeline=[
                 {"$set":update},
-                {"$set":{"evidence":{"$let":{"vars":{"existing":{"$ifNull":["$evidence",[]]}},"in":{"$slice":[{"$reduce":{"input":evidence,"initialValue":"$existing","in":{"$cond":[{"$in":["$this.fingerprint",{"$map":{"input":"$value","as":"item","in":"$item.fingerprint"}}]},"$value",{"$concatArrays":["$value",["$this"]]}]}}},-100]}}}}}
+                {"$set":{"evidence":{"$let":{"vars":{"existing":{"$ifNull":["$evidence",[]]}},"in":{"$slice":[{"$reduce":{"input":"$evidence","initialValue":"$existing","in":{"$cond":[{"$in":["$this.fingerprint",{"$map":{"input":"$value","as":"item","in":"$item.fingerprint"}}]},"$value",{"$concatArrays":["$value",["$this"]]}]}}},-100]}}}}}
             ]
             await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(message.guild.id)},update_pipeline)
         else:
