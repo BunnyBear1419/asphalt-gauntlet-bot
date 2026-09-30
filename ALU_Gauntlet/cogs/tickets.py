@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
+import socket
 import time
 from datetime import datetime, time as dt_time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -30,6 +32,26 @@ def _localized_type(ticket_type, locale):
     for key in ("label","description","questions"):
         if key in data: out[key]=data[key]
     return out
+
+
+async def _safe_webhook_url(url):
+    """Allow only HTTPS webhook targets on publicly routable hosts."""
+    value=str(url or "").strip()
+    if not value or len(value)>2048: return None
+    try:
+        parsed=aiohttp.client_reqrep.URL(value)
+        if parsed.scheme!="https" or parsed.username or parsed.password or parsed.port not in (None,443):
+            return None
+        host=parsed.host
+        if not host: return None
+        infos=await __import__("asyncio").get_running_loop().run_in_executor(None, socket.getaddrinfo, host, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        for info in infos:
+            addr=info[4][0]
+            ip=ipaddress.ip_address(addr)
+            if not ip.is_global: return None
+        return value
+    except Exception:
+        return None
 
 async def settings_for(guild_id):
     row = await bot.db.rsl_ticket_settings.find_one({"_id":str(guild_id)}) or {}
@@ -96,11 +118,12 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
                 delivered=True
             else:
                 settings=await settings_for(str(row.get("guild_id","")))
-                webhook=settings.get("webhook_url")
+                webhook=await _safe_webhook_url(settings.get("webhook_url"))
                 if webhook:
-                    async with aiohttp.ClientSession() as session:
-                        response=await session.post(webhook,json=payload,timeout=aiohttp.ClientTimeout(total=5))
-                        delivered=200 <= int(response.status) < 300
+                    timeout=aiohttp.ClientTimeout(total=5)
+                    async with aiohttp.ClientSession(timeout=timeout) as session:
+                        async with session.post(webhook,json=payload,allow_redirects=False) as response:
+                            delivered=200 <= int(response.status) < 300
         except Exception:
             delivered=False
         await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key},{"$set":{"status":"delivered" if delivered else "failed","delivered_at":time.time() if delivered else None}})
