@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import time
 import discord
+import aiohttp
 from discord.ext import commands, tasks
 from ..core.core import bot
 
@@ -15,6 +16,17 @@ DEFAULT_TYPES = [
  {"key":"economy","label":"Economy Issue","emoji":"🪙","description":"Credits, tickets, XP, or reward issues.","priority":"normal","category_id":"","staff_role_ids":[],"questions":["What reward or balance is affected?","What did you expect to happen?"]},
  {"key":"tournament","label":"Tournament Issue","emoji":"🏆","description":"Tournament registration, bracket, or result issues.","priority":"normal","category_id":"","staff_role_ids":[],"questions":["Tournament name or ID?","What happened?","What evidence can you provide?"]},
 ]
+
+def _localized_type(ticket_type, locale):
+    loc=str(locale or "en-US").replace("_","-").lower()
+    base=loc.split("-")[0]
+    translations=ticket_type.get("translations") or {}
+    data=translations.get(loc) or translations.get(base) or {}
+    if not isinstance(data,dict): return ticket_type
+    out=dict(ticket_type)
+    for key in ("label","description","questions"):
+        if key in data: out[key]=data[key]
+    return out
 
 async def settings_for(guild_id):
     row = await bot.db.rsl_ticket_settings.find_one({"_id":str(guild_id)}) or {}
@@ -30,6 +42,7 @@ async def settings_for(guild_id):
         "auto_close_hours":max(0,min(720,int(row.get("auto_close_hours",168) or 168))),
         "reminder_hours":max(0,min(168,int(row.get("reminder_hours",24) or 24))),
         "sla_minutes":max(0,min(10080,int(row.get("sla_minutes",60) or 60))),
+        "webhook_url":str(row.get("webhook_url") or ""),
         "types":(row.get("types") or DEFAULT_TYPES)[:25],
         "tags":[str(x)[:32] for x in (row.get("tags") or ["billing","bug","dispute","evidence","follow-up","priority","resolved","technical"])[:30]],
         "canned_responses":(row.get("canned_responses") or [{"key":"welcome","label":"Welcome","text":"Thanks for contacting RSL Support. A staff member will assist you shortly."},{"key":"evidence","label":"Evidence Request","text":"Please provide the relevant screenshots, video, match ID, and any other evidence available."},{"key":"resolved","label":"Resolved","text":"This issue appears to be resolved. If you still need help, reply here before the ticket is closed."}])[:30],
@@ -43,7 +56,8 @@ def is_staff(member,role_ids):
     return bool(p and (p.administrator or p.manage_guild or p.manage_channels)) or any(str(r.id) in {str(x) for x in role_ids} for r in getattr(member,"roles",[]))
 
 class TicketModal(discord.ui.Modal):
-    def __init__(self,cog,ticket_type):
+    def __init__(self,cog,ticket_type,locale="en-US"):
+        ticket_type=_localized_type(ticket_type,locale)
         super().__init__(title=str(ticket_type.get("label") or "RSL Support")[:45])
         self.cog,self.ticket_type=cog,ticket_type
         qs=[str(x)[:45] for x in (ticket_type.get("questions") or [])[:5]] or ["What do you need help with?"]
@@ -66,7 +80,7 @@ class TicketPanelSelect(discord.ui.Select):
         item=self.types.get(str(self.values[0]))
         if not item:
             await interaction.response.send_message("That ticket type is no longer configured.",ephemeral=True); return
-        await interaction.response.send_modal(TicketModal(self.cog,item))
+        await interaction.response.send_modal(TicketModal(self.cog,item,getattr(interaction,"locale","en-US")))
 
 class TicketPanelView(discord.ui.View):
     def __init__(self,cog,types):
@@ -275,7 +289,14 @@ class TicketCog(commands.Cog):
             if v: e.add_field(name=str(k).upper(),value=v[:1024],inline=False)
         await ch.send(content=member.mention,embed=e,view=TicketActions(self,tid))
         await log_event(guild.id,tid,"opened",member.id,type=doc["type"])
-        await self.bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild.id),"ticket_id":tid,"event":"intake_snapshot","actor_id":str(member.id),"created_at":time.time(),"answers":answers})
+        await self.bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild.id),"ticket_id":tid,"event":"intake_snapshot","actor_id":str(member.id),"created_at":time.time(),"answers":answers,"locale":str(getattr(member,"locale","en-US"))})
+        webhook=s.get("webhook_url")
+        if webhook:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    await session.post(webhook,json={"event":"ticket.opened","guild_id":str(guild.id),"ticket_id":tid,"type":doc["type"],"user_id":str(member.id),"priority":doc["priority"]},timeout=aiohttp.ClientTimeout(total=5))
+            except Exception:
+                pass
         return f"✅ Your ticket is open: {ch.mention}"
     async def _close_ticket(self,guild_id,ticket_id,actor_id,reason="closed"):
         from bson import ObjectId
