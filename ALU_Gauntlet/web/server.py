@@ -2930,6 +2930,150 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         mode = await set_maintenance_mode(self.bot.db, guild_id, enabled, message, user.user_id)
         return web.json_response({"ok": True, "guild_id": str(guild_id), "maintenance": mode})
 
+    async def admin_ticket_settings(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        from ..cogs.tickets import settings_for
+        if request.method == "GET":
+            return web.json_response(await settings_for(str(guild_id)))
+        payload = await request.json()
+        types = payload.get("types") or []
+        if len(types) > 25:
+            raise web.HTTPBadRequest(text="A maximum of 25 ticket types is supported.")
+        clean_types = []
+        for item in types:
+            key = re.sub(r"[^a-z0-9_-]", "", str(item.get("key") or "").lower())[:32]
+            if not key:
+                continue
+            questions = [str(x)[:200] for x in (item.get("questions") or [])[:5]]
+            clean_types.append({
+                "key": key,
+                "label": str(item.get("label") or key.title())[:80],
+                "emoji": str(item.get("emoji") or "🎫")[:32],
+                "description": str(item.get("description") or "")[:120],
+                "priority": str(item.get("priority") or "normal") if str(item.get("priority") or "normal") in {"low","normal","high","urgent"} else "normal",
+                "category_id": str(item.get("category_id") or ""),
+                "staff_role_ids": [str(x) for x in (item.get("staff_role_ids") or [])[:20]],
+                "questions": questions,
+            })
+        await self.bot.db.rsl_ticket_settings.update_one(
+            {"_id": str(guild_id)},
+            {"$set": {
+                "enabled": bool(payload.get("enabled", True)),
+                "panel_channel_id": str(payload.get("panel_channel_id") or ""),
+                "transcript_channel_id": str(payload.get("transcript_channel_id") or ""),
+                "closed_category_id": str(payload.get("closed_category_id") or ""),
+                "default_category_id": str(payload.get("default_category_id") or ""),
+                "staff_role_ids": [str(x) for x in (payload.get("staff_role_ids") or [])[:20]],
+                "max_open_per_user": max(1, min(10, int(payload.get("max_open_per_user", 2) or 2))),
+                "auto_close_hours": max(0, min(720, int(payload.get("auto_close_hours", 168) or 168))),
+                "reminder_hours": max(0, min(168, int(payload.get("reminder_hours", 24) or 24))),
+                "sla_minutes": max(0, min(10080, int(payload.get("sla_minutes", 60) or 60))),
+                "types": clean_types,
+                "updated_at": time.time(),
+            }},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "settings": await settings_for(str(guild_id))})
+
+    async def admin_tickets(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        from bson import ObjectId
+        status = str(request.query.get("status") or "").strip().lower()
+        query = {"guild_id": str(guild_id)}
+        if status:
+            query["status"] = status
+        limit = max(1, min(200, int(request.query.get("limit", "100") or 100)))
+        rows = await self.bot.db.rsl_tickets.find(query).sort("updated_at", -1).limit(limit).to_list(length=limit)
+        for row in rows:
+            row["_id"] = str(row.get("_id"))
+        return web.json_response({"rows": redact_document(rows)})
+
+    async def admin_ticket_stats(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        gid = str(guild_id)
+        open_statuses = ["open","assigned","investigating","awaiting_player","escalated"]
+        counts = {}
+        for status in open_statuses + ["closed"]:
+            counts[status] = await self.bot.db.rsl_tickets.count_documents({"guild_id": gid, "status": status})
+        total = sum(counts.values())
+        assigned = await self.bot.db.rsl_tickets.count_documents({"guild_id": gid, "claimed_by": {"$nin": [None, ""]}, "status": {"$ne": "closed"}})
+        now = time.time()
+        sla = await self.bot.db.rsl_tickets.count_documents({"guild_id": gid, "status": {"$in": open_statuses}, "first_response_at": None, "created_at": {"$lt": now - 3600}})
+        return web.json_response({"counts": counts, "total": total, "assigned": assigned, "sla_at_risk": sla})
+
+    async def admin_ticket_action(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        ticket_id = str(payload.get("ticket_id") or "")
+        action = str(payload.get("action") or "").lower()
+        if not ticket_id:
+            raise web.HTTPBadRequest(text="ticket_id is required.")
+        cog = self.bot.get_cog("TicketCog")
+        if cog is None:
+            raise web.HTTPServiceUnavailable(text="Ticket center is not loaded.")
+        if action == "reopen":
+            ok = await cog.reopen(str(guild_id), ticket_id, str(user.user_id))
+        elif action == "close":
+            ok = await cog._close_ticket(str(guild_id), ticket_id, str(user.user_id), "admin_dashboard")
+        elif action in {"claim","priority"}:
+            from bson import ObjectId
+            row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
+            if not row:
+                raise web.HTTPNotFound(text="Ticket not found.")
+            if action == "claim":
+                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "status": {"$ne":"closed"}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time()}})
+                ok = bool(result.modified_count)
+            else:
+                order=["low","normal","high","urgent"]; current=str(row.get("priority") or "normal"); nxt=order[(order.index(current)+1)%4] if current in order else "normal"
+                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":{"priority":nxt,"updated_at":time.time()}})
+                ok=True
+            from ..cogs.tickets import log_event
+            await log_event(str(guild_id), ticket_id, action, str(user.user_id))
+        else:
+            raise web.HTTPBadRequest(text="Unsupported ticket action.")
+        return web.json_response({"ok": ok, "ticket_id": ticket_id, "action": action})
+
+    async def admin_ticket_panel(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        channel_id = str(payload.get("channel_id") or "")
+        if not channel_id.isdigit():
+            raise web.HTTPBadRequest(text="A Discord channel ID is required.")
+        cog = self.bot.get_cog("TicketCog")
+        channel = self.bot.get_channel(int(channel_id))
+        if cog is None or not isinstance(channel, discord.TextChannel):
+            raise web.HTTPBadRequest(text="Ticket center or target text channel is unavailable.")
+        settings = await cog.settings_for(str(guild_id)) if hasattr(cog, "settings_for") else await __import__("ALU_Gauntlet.cogs.tickets", fromlist=["settings_for"]).settings_for(str(guild_id))
+        embed = discord.Embed(title="🎫 RACING SYNDICATE LEAGUE • SUPPORT CENTER", description="Choose the type of help you need below. Your ticket will be private to you and routed to the appropriate RSL support team.", color=discord.Color.blurple())
+        message = await channel.send(embed=embed, view=__import__("ALU_Gauntlet.cogs.tickets", fromlist=["TicketPanelView"]).TicketPanelView(cog, settings["types"]))
+        await self.bot.db.rsl_ticket_settings.update_one({"_id":str(guild_id)},{"$set":{"panel_channel_id":channel_id}})
+        return web.json_response({"ok": True, "message_id": str(message.id), "channel_id": channel_id})
+
+    async def admin_ticket_transcript(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_admin(request)
+        payload = await request.json()
+        ticket_id = str(payload.get("ticket_id") or "")
+        from bson import ObjectId
+        row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
+        if not row:
+            raise web.HTTPNotFound(text="Ticket not found.")
+        channel = self.bot.get_channel(int(row.get("channel_id", 0)))
+        if not channel:
+            raise web.HTTPNotFound(text="Ticket channel is unavailable.")
+        lines = [f"RSL Ticket #{ticket_id}", f"Type: {row.get('type')}", f"Opened by: {row.get('user_id')}", f"Status: {row.get('status')}", ""]
+        async for msg in channel.history(limit=500, oldest_first=True):
+            stamp = msg.created_at.astimezone(timezone.utc).isoformat()
+            text_body = msg.content or ""
+            if msg.attachments:
+                text_body += " " + " ".join(a.url for a in msg.attachments)
+            lines.append(f"[{stamp}] {msg.author} ({msg.author.id}): {text_body}")
+        data = "\n".join(lines).encode("utf-8")
+        settings = await __import__("ALU_Gauntlet.cogs.tickets", fromlist=["settings_for"]).settings_for(str(guild_id))
+        target = self.bot.get_channel(int(settings.get("transcript_channel_id") or 0)) if settings.get("transcript_channel_id") else None
+        if isinstance(target, discord.TextChannel):
+            await target.send(content=f"📄 Transcript generated by <@{user.user_id}> for ticket #{ticket_id}.", file=discord.File(BytesIO(data), filename=f"rsl-ticket-{ticket_id}.txt"))
+        return web.Response(body=data, content_type="text/plain", headers={"Content-Disposition": f'attachment; filename="rsl-ticket-{ticket_id}.txt"'})
+
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/robots.txt", self.robots_txt)
@@ -2980,6 +3124,13 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/admin/upload-asset", self.upload_brand_asset)
         self.app.router.add_get("/assets/tenant/{guild_id}/{asset_id}", self.serve_brand_asset)
         self.app.router.add_get("/assets/tournament-media/{media_id}", self.serve_tournament_media)
+        self.app.router.add_get("/api/admin/tickets/settings", self.admin_ticket_settings)
+        self.app.router.add_put("/api/admin/tickets/settings", self.admin_ticket_settings)
+        self.app.router.add_get("/api/admin/tickets", self.admin_tickets)
+        self.app.router.add_get("/api/admin/tickets/stats", self.admin_ticket_stats)
+        self.app.router.add_post("/api/admin/tickets/action", self.admin_ticket_action)
+        self.app.router.add_post("/api/admin/tickets/panel", self.admin_ticket_panel)
+        self.app.router.add_post("/api/admin/tickets/transcript", self.admin_ticket_transcript)
         self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
         self.app.router.add_get("/api/admin/operations", self.admin_operations)
         self.app.router.add_post("/api/admin/operations", self.admin_operations)
