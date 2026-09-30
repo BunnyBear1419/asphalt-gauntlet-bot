@@ -86,6 +86,7 @@ class TicketActions(discord.ui.View):
             self.add_item(discord.ui.Button(label="Members",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:members:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Tag",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:tag:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Reply",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:reply:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Rating",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:rating:{self.ticket_id}"))
         for child in self.children:
             child.callback=self._dispatch
     async def _dispatch(self,interaction):
@@ -183,6 +184,24 @@ class TicketActions(discord.ui.View):
                     await log_event(modal_interaction.guild.id,self.ticket_id,"canned_response",modal_interaction.user.id,response_key=str(item.get("key")))
                     await modal_interaction.response.send_message("💬 Canned response sent.",ephemeral=True)
             await interaction.response.send_modal(ReplyModal(title="RSL Canned Response")); return
+        elif action=="rating":
+            from bson import ObjectId
+            oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
+            row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(interaction.guild.id)}) or {}
+            if str(row.get("user_id"))!=str(interaction.user.id):
+                await interaction.response.send_message("ℹ️ Ratings are submitted by the ticket owner.",ephemeral=True); return
+            class RatingModal(discord.ui.Modal):
+                score=discord.ui.TextInput(label="Rating (1-5)",placeholder="5",max_length=1,required=True)
+                comment=discord.ui.TextInput(label="Optional feedback",style=discord.TextStyle.paragraph,max_length=1000,required=False)
+                async def on_submit(modal_self,modal_interaction):
+                    try: score_value=int(str(modal_self.score.value).strip())
+                    except ValueError: score_value=0
+                    if score_value<1 or score_value>5:
+                        await modal_interaction.response.send_message("❌ Rating must be 1 through 5.",ephemeral=True); return
+                    await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"rating":{"score":score_value,"comment":str(modal_self.comment.value or ""),"created_at":time.time()},"updated_at":time.time()}})
+                    await log_event(modal_interaction.guild.id,self.ticket_id,"rating_submitted",modal_interaction.user.id,score=score_value)
+                    await modal_interaction.response.send_message("⭐ Thanks for rating RSL Support.",ephemeral=True)
+            await interaction.response.send_modal(RatingModal(title="RSL Support Rating")); return
         elif action=="note":
             class StaffNoteModal(discord.ui.Modal):
                 note=discord.ui.TextInput(label="Private staff note",style=discord.TextStyle.paragraph,max_length=2000,required=True)
