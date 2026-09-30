@@ -276,6 +276,15 @@ def test_ticket_webhook_is_https_public_and_no_redirects():
     assert 'aiohttp.ClientTimeout(total=5)' in cog
 
 
+def test_ticket_open_provisioning_mutations_are_guild_scoped_and_state_guarded():
+    cog=TICKETS.read_text(encoding="utf-8")
+    start=cog.index("async def open_ticket")
+    end=cog.index("async def reconcile_ticket_permissions",start)
+    body=cog[start:end]
+    assert '"_id":ins.inserted_id,"guild_id":str(guild.id),"status":"provisioning","active":True' in body
+    assert '"_id":ins.inserted_id,"guild_id":str(guild.id),"status":"provisioning"' in body
+    assert '"status":{"$in":["open","assigned"]},"active":True' in body
+
 def test_ticket_state_transitions_are_atomic_and_recovery_is_reserved():
     root=Path(__file__).parents[1]
     cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
