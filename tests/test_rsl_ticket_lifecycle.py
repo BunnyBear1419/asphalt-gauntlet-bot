@@ -485,3 +485,13 @@ def test_ticket_transcript_has_a_hard_size_limit_and_sanitizes_attachment_metada
     assert 'truncated=True' in body
     assert 'Transcript truncated at 2 MB' in body
     assert 'replace(chr(10)," ").replace(chr(13)," ")[:200]' in body
+
+
+def test_ticket_transcript_posting_requires_a_private_target_channel():
+    server=MAIN.parent / "web" / "server.py"
+    text=server.read_text(encoding="utf-8")
+    start=text.index("async def admin_ticket_transcript")
+    end=text.index("def _configure_routes",start)
+    body=text[start:end]
+    assert 'everyone_can_view=target.permissions_for(target.guild.default_role).view_channel' in body
+    assert 'if not everyone_can_view:' in body
