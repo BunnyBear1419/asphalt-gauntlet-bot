@@ -132,3 +132,16 @@ def test_ticket_support_hours_are_wired():
     assert 'ticket-support-hours-enabled' in page
     assert 'ticket-support-timezone' in page
     assert 'ticket-support-days' in page
+
+
+def test_ticket_orphan_recovery_is_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
+    page=(root/"ALU_Gauntlet"/"web"/"static"/"admin.html").read_text(encoding="utf-8")
+    assert 'status":"orphaned"' in cog
+    assert 'recovery_status":"channel_missing"' in cog
+    assert 'async def recover' in cog
+    assert 'action == "recover"' in server
+    assert 'value="orphaned"' in page
+    assert 'action=status==="orphaned"?"recover"' in page
