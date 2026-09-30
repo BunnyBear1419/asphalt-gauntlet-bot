@@ -497,11 +497,12 @@ class TicketCog(commands.Cog):
     async def recover(self,guild_id,ticket_id,actor_id):
         from bson import ObjectId
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
-        row=await self.bot.db.rsl_tickets.find_one_and_update(
+        result=await self.bot.db.rsl_tickets.update_one(
             {"_id":oid,"guild_id":str(guild_id),"status":{"$in":["orphaned","failed"]},"active":False},
-            {"$set":{"status":"recovering","recovery_status":"recovery_in_progress","updated_at":time.time()}},
-            return_document=__import__("pymongo").ReturnDocument.AFTER
+            {"$set":{"status":"recovering","recovery_status":"recovery_in_progress","updated_at":time.time()}}
         )
+        if not result.modified_count: return False
+        row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id),"status":"recovering"})
         if not row: return False
         guild=self.bot.get_guild(int(guild_id))
         member=guild.get_member(int(row.get("user_id",0))) if guild else None
