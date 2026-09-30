@@ -2980,14 +2980,14 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "max_open_per_user": max(1, min(10, int(payload.get("max_open_per_user", 2) or 2))),
                 "auto_close_hours": max(0, min(720, int(payload.get("auto_close_hours", 168) or 168))),
                 "reminder_hours": max(0, min(168, int(payload.get("reminder_hours", 24) or 24))),
-                "sla_minutes": max(0, min(10080, int(payload.get("sla_minutes", 60) or 60))),
-                webhook_url = str(payload.get("webhook_url") or "").strip()
+        webhook_url = str(payload.get("webhook_url") or "").strip()
         if webhook_url:
             parsed = urlsplit(webhook_url)
             host = (parsed.hostname or "").lower()
             if parsed.scheme != "https" or not host or host in {"localhost","127.0.0.1","0.0.0.0","::1"}:
                 raise web.HTTPBadRequest(text="Integration webhook must be a public HTTPS endpoint.")
-        "webhook_url": webhook_url[:1000],
+                        "sla_minutes": max(0, min(10080, int(payload.get("sla_minutes", 60) or 60))),
+                "webhook_url": webhook_url[:1000],
                 "types": clean_types,
                 "updated_at": time.time(),
             }},
