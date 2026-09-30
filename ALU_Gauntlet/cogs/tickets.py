@@ -80,6 +80,8 @@ class TicketActions(discord.ui.View):
             self.add_item(discord.ui.Button(label="Close",style=discord.ButtonStyle.danger,custom_id=f"rsl:ticket:close:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Unlock" if self.locked else "Lock",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:lock:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Note",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:note:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Assign",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:assign:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Members",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:members:{self.ticket_id}"))
         for child in self.children:
             child.callback=self._dispatch
     async def _dispatch(self,interaction):
@@ -112,6 +114,46 @@ class TicketActions(discord.ui.View):
                 await log_event(interaction.guild.id,self.ticket_id,"locked" if locked else "unlocked",interaction.user.id)
                 msg="🔒 Ticket locked." if locked else "🔓 Ticket unlocked."
             else: msg="❌ Ticket channel not found."
+        elif action=="assign":
+            from bson import ObjectId
+            oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
+            row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(interaction.guild.id)}) or {}
+            current=str(row.get("claimed_by") or "")
+            target=str(interaction.user.id)
+            new_claim=None if current==target else target
+            new_status="open" if new_claim is None else "assigned"
+            await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"claimed_by":new_claim,"status":new_status,"updated_at":time.time(),"last_activity_at":time.time()}})
+            await log_event(interaction.guild.id,self.ticket_id,"unassigned" if new_claim is None else "assigned",interaction.user.id,assigned_to=new_claim)
+            msg="Ticket unassigned." if new_claim is None else "Ticket assigned to you."
+        elif action=="members":
+            class MemberModal(discord.ui.Modal):
+                user_id=discord.ui.TextInput(label="Discord user ID",placeholder="123456789012345678",max_length=25,required=True)
+                async def on_submit(modal_self,modal_interaction):
+                    from bson import ObjectId
+                    oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
+                    try: uid=int(str(modal_self.user_id.value).strip())
+                    except ValueError:
+                        await modal_interaction.response.send_message("❌ Invalid Discord user ID.",ephemeral=True); return
+                    row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(modal_interaction.guild.id)}) or {}
+                    ch=modal_interaction.guild.get_channel(int(row.get("channel_id",0)))
+                    m=modal_interaction.guild.get_member(uid)
+                    if not isinstance(ch,discord.TextChannel) or not m:
+                        await modal_interaction.response.send_message("❌ Member or ticket channel not found.",ephemeral=True); return
+                    members=[str(x) for x in row.get("member_ids",[]) if str(x)!=str(uid)]
+                    if str(uid) in [str(x) for x in row.get("member_ids",[])]:
+                        await ch.set_permissions(m,overwrite=None,reason="RSL ticket member removed")
+                        await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"member_ids":members,"updated_at":time.time()}})
+                        await log_event(modal_interaction.guild.id,self.ticket_id,"member_removed",modal_interaction.user.id,member_id=str(uid))
+                        msg="👤 Member removed."
+                    else:
+                        members.append(str(uid))
+                        await ch.set_permissions(m,view_channel=True,send_messages=True,read_message_history=True,attach_files=True,reason="RSL ticket member added")
+                        await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"member_ids":members,"updated_at":time.time()}})
+                        await log_event(modal_interaction.guild.id,self.ticket_id,"member_added",modal_interaction.user.id,member_id=str(uid))
+                        msg="👤 Member added."
+                    await modal_interaction.response.send_message(msg,ephemeral=True)
+            await interaction.response.send_modal(MemberModal(title="RSL Ticket Member"))
+            return
         elif action=="note":
             class StaffNoteModal(discord.ui.Modal):
                 note=discord.ui.TextInput(label="Private staff note",style=discord.TextStyle.paragraph,max_length=2000,required=True)
@@ -168,7 +210,7 @@ class TicketCog(commands.Cog):
         safe="".join(c.lower() if c.isalnum() else "-" for c in str(member.display_name))[:24].strip("-") or "player"
         ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL ticket opened")
         now=time.time()
-        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"answers":answers}
+        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"member_ids":[],"answers":answers}
         ins=await self.bot.db.rsl_tickets.insert_one(doc); tid=str(ins.inserted_id)
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
