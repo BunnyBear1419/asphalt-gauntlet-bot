@@ -111,3 +111,12 @@ def test_unified_public_profile_contains_competitive_and_tournament_records():
     assert 'add_get("/api/players/{user_id}/career", self.public_driver_career)' in server
     for marker in ("gauntlet-win-rate", "race-record", "season-points", "tournament-record", "recent-gauntlet", "tournament-history"):
         assert marker in profile
+
+
+def test_player_section_navigation_is_independent_of_registration_state():
+    page=(ROOT/"ALU_Gauntlet"/"web"/"static"/"player.html").read_text(encoding="utf-8")
+    for target in ("overview","gauntlet","defense","registration","profile-settings","career"):
+        assert f'href="#{target}"' in page
+    assert "function scrollToPlayerSection(id, updateHash)" in page
+    assert "function bindPlayerSectionNavigation()" in page
+    assert 'history.replaceState(null,"","#"+id)' in page
