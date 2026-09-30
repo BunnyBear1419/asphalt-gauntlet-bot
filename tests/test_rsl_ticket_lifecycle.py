@@ -409,3 +409,13 @@ def test_admin_ticket_actions_are_race_safe():
     assert '"last_activity_at":time.time()' in body
     assert 'ok=bool(result.modified_count)' in body
     assert 'if ok:' in body
+
+
+def test_ticket_priority_mutation_is_guild_scoped_and_atomic():
+    cog=TICKETS.read_text(encoding="utf-8")
+    assert '"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]},"priority":cur' in cog
+
+
+def test_ticket_message_activity_only_tracks_active_tickets():
+    cog=TICKETS.read_text(encoding="utf-8")
+    assert '"channel_id":str(message.channel.id),"status":{"$ne":"closed"},"active":True' in cog
