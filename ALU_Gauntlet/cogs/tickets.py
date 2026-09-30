@@ -157,6 +157,12 @@ class TicketCog(commands.Cog):
             if isinstance(cat,discord.CategoryChannel):
                 try: await ch.edit(category=cat,reason="RSL ticket closed")
                 except Exception: pass
+            try:
+                await ch.set_permissions(ch.guild.default_role,view_channel=False,send_messages=False,reason="RSL ticket closed")
+                member=ch.guild.get_member(int(row.get("user_id",0)))
+                if member:
+                    await ch.set_permissions(member,view_channel=True,send_messages=False,read_message_history=True,reason="RSL ticket closed")
+            except Exception: pass
             try: await ch.send("🔒 This ticket has been closed. Staff may reopen it if needed.",view=TicketActions(self,ticket_id,closed=True))
             except Exception: pass
         await log_event(guild_id,ticket_id,"closed",actor_id,reason=reason); return True
@@ -171,6 +177,19 @@ class TicketCog(commands.Cog):
             try: await ch.send("🔓 This ticket has been reopened.",view=TicketActions(self,ticket_id))
             except Exception: pass
         await log_event(guild_id,ticket_id,"reopened",actor_id); return True
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if not message.guild or message.author.bot:
+            return
+        row=await self.bot.db.rsl_tickets.find_one({"guild_id":str(message.guild.id),"channel_id":str(message.channel.id),"status":{"$ne":"closed"}})
+        if not row:
+            return
+        now=time.time()
+        update={"last_activity_at":now,"updated_at":now}
+        if str(message.author.id) != str(row.get("user_id")) and not row.get("first_response_at"):
+            update["first_response_at"]=now
+        await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":update})
+
     @tasks.loop(minutes=15)
     async def auto_close_loop(self):
         now=time.time()
