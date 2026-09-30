@@ -44,6 +44,7 @@ async def settings_for(guild_id):
         "auto_close_hours":max(0,min(720,int(row.get("auto_close_hours",168) or 168))),
         "reminder_hours":max(0,min(168,int(row.get("reminder_hours",24) or 24))),
         "sla_minutes":max(0,min(10080,int(row.get("sla_minutes",60) or 60))),
+        "auto_assign_enabled":bool(row.get("auto_assign_enabled",False)),
         "support_hours_enabled":bool(row.get("support_hours_enabled",False)),
         "support_hours_timezone":str(row.get("support_hours_timezone") or "UTC")[:64],
         "support_hours_start":str(row.get("support_hours_start") or "09:00")[:5],
@@ -54,6 +55,18 @@ async def settings_for(guild_id):
         "tags":[str(x)[:32] for x in (row.get("tags") or ["billing","bug","dispute","evidence","follow-up","priority","resolved","technical"])[:30]],
         "canned_responses":(row.get("canned_responses") or [{"key":"welcome","label":"Welcome","text":"Thanks for contacting RSL Support. A staff member will assist you shortly."},{"key":"evidence","label":"Evidence Request","text":"Please provide the relevant screenshots, video, match ID, and any other evidence available."},{"key":"resolved","label":"Resolved","text":"This issue appears to be resolved. If you still need help, reply here before the ticket is closed."}])[:30],
     }
+
+async def choose_auto_assignee(guild,ticket_type,settings,db):
+    role_ids=[str(x) for x in (ticket_type.get("staff_role_ids") or settings["staff_role_ids"])]
+    candidates={}
+    for rid in role_ids:
+        role=guild.get_role(int(rid)) if rid.isdigit() else None
+        if role:
+            for m in role.members:
+                if not m.bot and is_staff(m,role_ids): candidates[m.id]=m
+    if not candidates: return None
+    counts={str(m.id):await db.rsl_tickets.count_documents({"guild_id":str(guild.id),"claimed_by":str(m.id),"status":{"$ne":"closed"},"active":True}) for m in candidates.values()}
+    return min(candidates.values(),key=lambda m:(counts.get(str(m.id),0),str(m.id)))
 
 async def log_event(guild_id,ticket_id,event,actor_id,**extra):
     await bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild_id),"ticket_id":str(ticket_id),"event":str(event),"actor_id":str(actor_id),"created_at":time.time(),**extra})
@@ -311,12 +324,17 @@ class TicketCog(commands.Cog):
         now=time.time()
         doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"member_ids":[],"tags":[],"answers":answers}
         ins=await self.bot.db.rsl_tickets.insert_one(doc); tid=str(ins.inserted_id)
+        auto_assignee=await choose_auto_assignee(guild,ticket_type,s,self.bot.db) if s.get("auto_assign_enabled") else None
+        if auto_assignee:
+            doc["claimed_by"]=str(auto_assignee.id); doc["status"]="assigned"
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id},{"$set":{"claimed_by":str(auto_assignee.id),"status":"assigned","updated_at":time.time()}})
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
         for k,v in answers.items():
             if v: e.add_field(name=str(k).upper(),value=v[:1024],inline=False)
-        await ch.send(content=member.mention,embed=e,view=TicketActions(self,tid))
+        await ch.send(content=f"{member.mention}"+(f" • Assigned to <@{auto_assignee.id}>" if auto_assignee else ""),embed=e,view=TicketActions(self,tid))
         await log_event(guild.id,tid,"opened",member.id,type=doc["type"])
+        if auto_assignee: await log_event(guild.id,tid,"auto_assigned",auto_assignee.id,assigned_by="system")
         await self.bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild.id),"ticket_id":tid,"event":"intake_snapshot","actor_id":str(member.id),"created_at":time.time(),"answers":answers,"locale":str(getattr(member,"locale","en-US"))})
         webhook=s.get("webhook_url")
         if webhook:
