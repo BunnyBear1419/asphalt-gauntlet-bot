@@ -66,3 +66,18 @@ def test_ticket_analytics_and_dashboard_metrics():
     assert 'ticket-stat-resolution' in page
     assert 'ticket-stat-rating' in page
     assert 'ticket-staff-workload' in page
+
+
+def test_ticket_localization_and_integrations_are_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
+    page=(root/"ALU_Gauntlet"/"web"/"static"/"admin.html").read_text(encoding="utf-8")
+    assert "_localized_type" in cog
+    assert "interaction.locale" in cog or 'getattr(interaction,"locale"' in cog
+    assert "ticket.opened" in cog
+    assert '"webhook_url"' in server
+    assert '"translations"' in server
+    assert 'ticket-types-json' in page
+    assert 'ticket-webhook' in page
+    assert 'saveTicketSettings' in page
