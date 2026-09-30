@@ -14,6 +14,10 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'locked=not bool((row or {}).get("locked",False))' in text
     assert 'action=="reopen"' in text
     assert 'Unknown ticket action' in text
+    assert 'label="Assign"' in text
+    assert 'label="Members"' in text
+    assert 'event":"member_added"' in text
+    assert 'event":"member_removed"' in text
     assert 'event":"staff_note"' in text
 
 
