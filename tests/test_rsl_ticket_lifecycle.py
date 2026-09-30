@@ -83,6 +83,14 @@ def test_ticket_localization_and_integrations_are_wired():
     assert 'saveTicketSettings' in page
 
 
+def test_ticket_staff_transfer_workflow_exists():
+    text=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    assert 'label="Transfer"' in text
+    assert 'action=="transfer"' in text
+    assert 'is_staff(target,settings["staff_role_ids"])' in text
+    assert '"transferred"' in text
+
+
 def test_ticket_owner_can_rate_closed_ticket_once():
     text=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
     assert 'if action!="rating"' in text
