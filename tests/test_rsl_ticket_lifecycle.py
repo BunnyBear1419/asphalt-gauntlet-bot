@@ -258,3 +258,11 @@ def test_ticket_core_methods_enforce_reopen_and_close_states():
     cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
     assert '"status":"closed"' in cog
     assert 'row.get("status") in {"closed","failed","provisioning","orphaned"}' in cog
+
+
+def test_ticket_panel_refresh_persists_and_reuses_panel_message():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    assert 'existing_id=str(settings.get("panel_message_id") or "")' in server
+    assert 'await message.edit(embed=embed, view=panel_view)' in server
+    assert '"panel_message_id":str(message.id)' in server
+    assert 'await channel.fetch_message(int(existing_id))' in server
