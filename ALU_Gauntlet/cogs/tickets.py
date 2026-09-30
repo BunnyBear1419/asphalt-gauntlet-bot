@@ -83,6 +83,7 @@ async def settings_for(guild_id):
 async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player=False,webhook_payload=None):
     now=time.time()
     guild_id=str(row.get("guild_id") or "")
+    guild_id=str(row.get("guild_id") or "")
     destinations=[]
     if staff: destinations.append(("staff",message or "RSL ticket update."))
     if player: destinations.append(("player",message or "RSL ticket update."))
