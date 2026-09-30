@@ -82,6 +82,7 @@ async def settings_for(guild_id):
 
 async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player=False,webhook_payload=None):
     now=time.time()
+    guild_id=str(row.get("guild_id") or "")
     destinations=[]
     if staff: destinations.append(("staff",message or "RSL ticket update."))
     if player: destinations.append(("player",message or "RSL ticket update."))
@@ -91,7 +92,7 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
         key=f"{ticket_id}:{event}:{destination}"
         claimed=False
         try:
-            await self.bot.db.rsl_ticket_notifications.insert_one({"event_key":key,"ticket_id":str(ticket_id),"event":str(event),"destination":destination,"created_at":now,"status":"sending"})
+            await self.bot.db.rsl_ticket_notifications.insert_one({"event_key":key,"guild_id":guild_id,"ticket_id":str(ticket_id),"event":str(event),"destination":destination,"created_at":now,"status":"sending","attempts":1})
             claimed=True
         except DuplicateKeyError:
             existing=await self.bot.db.rsl_ticket_notifications.find_one({"event_key":key})
@@ -99,10 +100,10 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
             status=str(existing.get("status") or "")
             if status=="delivered": continue
             if status=="failed":
-                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"status":"failed"},{"$set":{"status":"sending","created_at":now,"retry_at":now}})
+                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"failed"},{"$set":{"status":"sending","created_at":now,"retry_at":now,"attempts":{"$add":["$attempts",1]}}})
                 claimed=bool(result.modified_count)
             elif status=="sending" and now-float(existing.get("created_at") or now)>=300:
-                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now}})
+                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now,"attempts":{"$add":["$attempts",1]}}})
                 claimed=bool(result.modified_count)
         if not claimed: continue
         delivered=False
@@ -378,6 +379,11 @@ class TicketCog(commands.Cog):
     def __init__(self,bot_instance):
         self.bot=bot_instance; self.auto_close_loop.start()
     async def cog_load(self):
+        try:
+            await self.bot.db.rsl_ticket_notifications.create_index("event_key", unique=True, name="rsl_ticket_notifications_event_key_unique")
+            await self.bot.db.rsl_ticket_notifications.create_index([("guild_id",1),("status",1),("retry_at",1)], name="rsl_ticket_notifications_retry_queue")
+        except Exception:
+            pass
         await self.reconcile_provisioning()
         await self.reconcile_missing_channels()
         await self.restore_views()
