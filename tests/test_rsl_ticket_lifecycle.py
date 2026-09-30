@@ -209,3 +209,12 @@ def test_ticket_privacy_hardening_is_wired():
     assert 'attachment_meta' in server
     assert '[attachment:{a.filename}|{a.size} bytes|{a.content_type or \'unknown\'}]' in server
     assert 'a.url for a in msg.attachments' not in server
+
+
+def test_ticket_actions_use_type_specific_staff_roles():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert 'async def ticket_staff_role_ids' in cog
+    assert 'ticket_roles=await ticket_staff_role_ids' in cog
+    assert 'Staff access is required for this ticket type.' in cog
+    assert 'is_staff(target,ticket_roles)' in cog
