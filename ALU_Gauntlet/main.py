@@ -88,6 +88,7 @@ async def _ensure_database_indexes():
     await db.rsl_tickets.create_index([("guild_id", 1), ("user_id", 1), ("type", 1), ("active", 1)], unique=True, partialFilterExpression={"active": True}, name="uniq_rsl_active_ticket_type")
     await db.rsl_ticket_events.create_index([("guild_id", 1), ("ticket_id", 1), ("created_at", -1)], name="idx_rsl_ticket_events")
     await db.rsl_ticket_notifications.create_index([("event_key", 1)], unique=True, name="uniq_rsl_ticket_notification_event")
+    await db.rsl_ticket_notifications.create_index([("guild_id", 1), ("status", 1), ("retry_at", 1)], name="idx_rsl_ticket_notification_retry")
 
 
 async def _wait_for_database(timeout=60):
