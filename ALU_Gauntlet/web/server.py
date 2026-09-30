@@ -3027,7 +3027,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 order=["low","normal","high","urgent"]; current=str(row.get("priority") or "normal"); nxt=order[(order.index(current)+1)%4] if current in order else "normal"
                 await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":{"priority":nxt,"updated_at":time.time()}})
                 ok=True
-            from ..cogs.tickets import log_event\n            await log_event(str(guild_id), ticket_id, action, str(user.user_id))
+            from ..cogs.tickets import log_event
+            await log_event(str(guild_id), ticket_id, action, str(user.user_id))
         else:
             raise web.HTTPBadRequest(text="Unsupported ticket action.")
         return web.json_response({"ok": ok, "ticket_id": ticket_id, "action": action})
@@ -3123,7 +3124,14 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/admin/upload-asset", self.upload_brand_asset)
         self.app.router.add_get("/assets/tenant/{guild_id}/{asset_id}", self.serve_brand_asset)
         self.app.router.add_get("/assets/tournament-media/{media_id}", self.serve_tournament_media)
-        self.app.router.add_get("/api/admin/tickets/settings", self.admin_ticket_settings)\n        self.app.router.add_put("/api/admin/tickets/settings", self.admin_ticket_settings)\n        self.app.router.add_get("/api/admin/tickets", self.admin_tickets)\n        self.app.router.add_get("/api/admin/tickets/stats", self.admin_ticket_stats)\n        self.app.router.add_post("/api/admin/tickets/action", self.admin_ticket_action)\n        self.app.router.add_post("/api/admin/tickets/panel", self.admin_ticket_panel)\n        self.app.router.add_post("/api/admin/tickets/transcript", self.admin_ticket_transcript)\n        self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
+        self.app.router.add_get("/api/admin/tickets/settings", self.admin_ticket_settings)
+        self.app.router.add_put("/api/admin/tickets/settings", self.admin_ticket_settings)
+        self.app.router.add_get("/api/admin/tickets", self.admin_tickets)
+        self.app.router.add_get("/api/admin/tickets/stats", self.admin_ticket_stats)
+        self.app.router.add_post("/api/admin/tickets/action", self.admin_ticket_action)
+        self.app.router.add_post("/api/admin/tickets/panel", self.admin_ticket_panel)
+        self.app.router.add_post("/api/admin/tickets/transcript", self.admin_ticket_transcript)
+        self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
         self.app.router.add_get("/api/admin/operations", self.admin_operations)
         self.app.router.add_post("/api/admin/operations", self.admin_operations)
         self.app.router.add_get("/api/players/{user_id}/activity", self.admin_activity_timeline)
