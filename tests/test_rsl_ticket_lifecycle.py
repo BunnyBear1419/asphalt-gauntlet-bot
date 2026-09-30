@@ -469,7 +469,7 @@ def test_ticket_evidence_is_deduplicated_and_normalized():
     assert 'replace("\\r"," ")[:200]' in body
     assert '"content_type":str(attachment.content_type or "")[:128]' in body
     assert '"size":max(0,min(int(attachment.size or 0),2147483647))' in body
-    assert '"$reduce":{"input":evidence' in body
+    assert '"$reduce":{"input":"$evidence"' in body
     assert '"$in":["$this.fingerprint"' in body
     assert '"$slice":[{"$reduce"' in body
     assert '"$push":{"evidence"' not in body
