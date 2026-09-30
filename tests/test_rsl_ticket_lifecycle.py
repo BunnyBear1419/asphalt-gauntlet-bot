@@ -268,6 +268,18 @@ def test_ticket_panel_refresh_persists_and_reuses_panel_message():
     assert 'await channel.fetch_message(int(existing_id))' in server
 
 
+def test_ticket_state_transitions_are_atomic_and_recovery_is_reserved():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert '"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]},"active":True' in cog
+    assert '"status":"closed","active":False' in cog
+    assert '"status":"closed","active":False' in cog
+    assert '"status":{"$in":["orphaned","failed"]},"active":False' in cog
+    assert '"status":"recovering","recovery_status":"recovery_in_progress"' in cog
+    assert 'recovery_channel_creation_failed' in cog
+    assert 'stale_recovery' in cog
+
+
 def test_ticket_recovery_accepts_failed_provisioning_records():
     cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
     server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
