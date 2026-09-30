@@ -433,6 +433,8 @@ class TicketCog(commands.Cog):
         ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL orphaned ticket recovery")
         now=time.time()
         await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"channel_id":str(ch.id),"category_id":str(cat.id) if cat else "","status":"open","active":True,"recovery_status":"recovered","updated_at":now,"last_activity_at":now}})
+        row["channel_id"]=str(ch.id)
+        await self.reconcile_ticket_permissions(guild,row,closed=False,locked=False)
         await ch.send(content=member.mention,embed=discord.Embed(title=f"🔄 {row.get('type_label','RSL Support')} — Recovered",description="This ticket channel was recreated from its preserved RSL record. Please continue here.",color=discord.Color.blurple()),view=TicketActions(self,ticket_id))
         await log_event(guild_id,ticket_id,"recovered",actor_id,recovery_status="channel_recreated")
         return True
