@@ -23,6 +23,8 @@
 - [x] Six RSL divisions remain the league structure
 - [x] Public slash-command surface remains intentionally small
 - [x] Security, upload validation, settlement idempotency, guild isolation, and concurrency protections are covered by regression tests
+- [x] Cross-cutting assurance layer added without duplicating canonical diagnostics, notifications, economy, season history, or Discord support
+- [x] Privacy export/request, evidence timeline, public status, transparency, readiness, and admin security/performance APIs are covered by regression tests
 
 ## Final acceptance test matrix
 
