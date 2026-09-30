@@ -227,7 +227,7 @@ class TicketActions(discord.ui.View):
             from bson import ObjectId
             oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
             result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$ne":"closed"},"claimed_by":None},{"$set":{"claimed_by":str(interaction.user.id),"status":"assigned","updated_at":time.time(),"last_activity_at":time.time()}})
-            if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"claim",interaction.user.id)
+            if result and result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"claim",interaction.user.id)
             msg="✅ Ticket claimed." if result.modified_count else "ℹ️ Ticket is already claimed."
         elif action=="unclaim":
             from bson import ObjectId
@@ -560,10 +560,20 @@ class TicketCog(commands.Cog):
             await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id),"status":"recovering"},{"$set":{"status":"failed","active":False,"recovery_status":"recovery_channel_creation_failed","updated_at":time.time()}})
             return False
         now=time.time()
-        await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id)},{"$set":{"channel_id":str(ch.id),"category_id":str(cat.id) if cat else "","status":"open","active":True,"recovery_status":"recovered","updated_at":now,"last_activity_at":now}})
-        row["channel_id"]=str(ch.id)
+        transition=await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id),"status":"recovering","active":False},{"$set":{"channel_id":str(ch.id),"category_id":str(cat.id) if cat else "","status":"open","active":True,"recovery_status":"recovered","updated_at":now,"last_activity_at":now}})
+        if not transition.modified_count:
+            try: await ch.delete(reason="RSL recovery state changed before initialization")
+            except Exception: pass
+            return False
+        row["channel_id"]=str(ch.id); row["status"]="open"; row["active"]=True
         await self.reconcile_ticket_permissions(guild,row,closed=False,locked=False)
-        await ch.send(content=member.mention,embed=discord.Embed(title=f"🔄 {row.get('type_label','RSL Support')} — Recovered",description="This ticket channel was recreated from its preserved RSL record. Please continue here.",color=discord.Color.blurple()),view=TicketActions(self,ticket_id))
+        try:
+            await ch.send(content=member.mention,embed=discord.Embed(title=f"🔄 {row.get('type_label','RSL Support')} — Recovered",description="This ticket channel was recreated from its preserved RSL record. Please continue here.",color=discord.Color.blurple()),view=TicketActions(self,ticket_id))
+        except Exception:
+            await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id),"status":"open","active":True,"channel_id":str(ch.id)},{"$set":{"status":"orphaned","active":False,"recovery_status":"recovery_initialization_failed","updated_at":time.time()}})
+            try: await ch.delete(reason="RSL recovered ticket initialization failed")
+            except Exception: pass
+            return False
         await log_event(guild_id,ticket_id,"recovered",actor_id,recovery_status="channel_recreated")
         return True
     async def reopen(self,guild_id,ticket_id,actor_id):
@@ -659,15 +669,15 @@ class TicketCog(commands.Cog):
         now=time.time()
         await self.reconcile_provisioning()
         await self.reconcile_missing_channels()
-        async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"}}):
+        async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"},"active":True}):
             s=await settings_for(str(row.get("guild_id","")))
             inactivity_age=support_elapsed_seconds(float(row.get("last_activity_at") or row.get("updated_at") or now),now,s)
             response_age=support_elapsed_seconds(float(row.get("created_at") or now),now,s)
             if s["reminder_hours"]>0 and inactivity_age>=s["reminder_hours"]*3600 and not row.get("reminder_sent_at"):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
                 if isinstance(ch,discord.TextChannel):
-                    await self.notify_ticket(str(row["_id"]),row,"inactivity_reminder",message="⏰ Ticket inactivity reminder: reply if you still need help; staff may close inactive tickets.",staff=True)
-                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"reminder_sent_at":None},{"$set":{"reminder_sent_at":now,"updated_at":now}})
+                    delivered=await self.notify_ticket(str(row["_id"]),row,"inactivity_reminder",message="⏰ Ticket inactivity reminder: reply if you still need help; staff=True")
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"active":True,"reminder_sent_at":None,"status":{"$ne":"closed"}},{"$set":{"reminder_sent_at":now,"updated_at":now}}) if delivered else None
                 if result.modified_count:
                     await log_event(row["guild_id"],str(row["_id"]),"inactivity_reminder","system")
             sla=s["sla_minutes"]
@@ -675,8 +685,8 @@ class TicketCog(commands.Cog):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
                 claimed=str(row.get("claimed_by") or "")
                 mentions=f" <@{claimed}>" if claimed.isdigit() else ""
-                await self.notify_ticket(str(row["_id"]),row,"sla_escalated",message=f"🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.{mentions}",staff=True,webhook_payload={"event":"ticket.sla_escalated","guild_id":row["guild_id"],"ticket_id":str(row["_id"]),"claimed_by":claimed or None})
-                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"sla_alerted_at":None},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}})
+                delivered=await self.notify_ticket(str(row["_id"]),row,"sla_escalated",message=f"🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.{mentions}",staff=True,webhook_payload={"event":"ticket.sla_escalated","guild_id":row["guild_id"],"ticket_id":str(row["_id"]),"claimed_by":claimed or None})
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"active":True,"sla_alerted_at":None,"status":{"$ne":"closed"}},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}}) if delivered else None
                 if result.modified_count:
                     await log_event(row["guild_id"],str(row["_id"]),"sla_escalated","system")
             hours=s["auto_close_hours"]
