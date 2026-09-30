@@ -167,6 +167,7 @@ def test_ticket_alerts_use_atomic_deduplication_and_claimed_staff_mention():
     assert 'f"🚨 Staff alert:' in cog
     assert '"sla_alerted_at":None,"status":{"$ne":"closed"}' in cog
     assert '"reminder_sent_at":None,"status":{"$ne":"closed"}' in cog
+    assert 'delivered=await self.notify_ticket' in cog
 
 
 def test_ticket_notification_pipeline_is_idempotent_and_player_preference_wired():
