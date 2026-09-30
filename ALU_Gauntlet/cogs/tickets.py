@@ -147,7 +147,7 @@ class TicketCog(commands.Cog):
         self.bot = bot_instance
         self.autoclose_loop.start()
 
-    async def cog_unload(self):
+    def cog_unload(self):
         self.autoclose_loop.cancel()
 
     async def open_ticket(self, interaction: discord.Interaction, guild_id: str, key: str, answers: dict):
@@ -182,7 +182,7 @@ class TicketCog(commands.Cog):
             "guild_id": guild_id, "channel_id": str(channel.id), "user_id": str(interaction.user.id),
             "type": key, "status": "open", "priority": str(t.get("priority") or "normal"),
             "claimed_by": None, "participants": [str(interaction.user.id)], "answers": answers,
-            "created_at": now, "updated_at": now, "first_response_at": None, "closed_at": None,
+            "created_at": now, "updated_at": now, "message_id": None, "first_response_at": None, "closed_at": None,
             "close_reason": None, "last_user_message_at": now, "last_staff_message_at": None,
         }
         result = await self.bot.db.rsl_tickets.insert_one(doc)
@@ -193,7 +193,7 @@ class TicketCog(commands.Cog):
         embed.add_field(name="Priority", value=str(doc["priority"]).title(), inline=True)
         for question, answer in answers.items():
             embed.add_field(name=str(question)[:256], value=str(answer)[:1024], inline=False)
-        await channel.send(content=interaction.user.mention, embed=embed, view=TicketActions(self, ticket_id))
+        sent = await channel.send(content=interaction.user.mention, embed=embed, view=TicketActions(self, ticket_id))
         await interaction.response.send_message(f"🎫 Your ticket is ready: {channel.mention}", ephemeral=True)
 
     async def _staff_check(self, interaction: discord.Interaction) -> tuple[bool, dict]:
