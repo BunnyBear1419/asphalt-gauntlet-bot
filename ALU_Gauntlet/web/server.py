@@ -3104,7 +3104,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             stamp = msg.created_at.astimezone(timezone.utc).isoformat()
             text_body = msg.content or ""
             if msg.attachments:
-                text_body += " " + " ".join(a.url for a in msg.attachments)
+                attachment_meta = " ".join(
+                    f"[attachment:{a.filename}|{a.size} bytes|{a.content_type or 'unknown'}]"
+                    for a in msg.attachments[:10]
+                )
+                text_body += " " + attachment_meta
             lines.append(f"[{stamp}] {msg.author} ({msg.author.id}): {text_body}")
         data = "\n".join(lines).encode("utf-8")
         settings = await __import__("ALU_Gauntlet.cogs.tickets", fromlist=["settings_for"]).settings_for(str(guild_id))
