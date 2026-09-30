@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import time
+from datetime import datetime, time as dt_time, timedelta, timezone
+from zoneinfo import ZoneInfo
 import discord
 import aiohttp
 from discord.ext import commands, tasks
@@ -42,6 +44,11 @@ async def settings_for(guild_id):
         "auto_close_hours":max(0,min(720,int(row.get("auto_close_hours",168) or 168))),
         "reminder_hours":max(0,min(168,int(row.get("reminder_hours",24) or 24))),
         "sla_minutes":max(0,min(10080,int(row.get("sla_minutes",60) or 60))),
+        "support_hours_enabled":bool(row.get("support_hours_enabled",False)),
+        "support_hours_timezone":str(row.get("support_hours_timezone") or "UTC")[:64],
+        "support_hours_start":str(row.get("support_hours_start") or "09:00")[:5],
+        "support_hours_end":str(row.get("support_hours_end") or "17:00")[:5],
+        "support_hours_days":[int(x) for x in row.get("support_hours_days",[0,1,2,3,4,5,6]) if str(x).isdigit() and 0<=int(x)<=6][:7],
         "webhook_url":str(row.get("webhook_url") or ""),
         "types":(row.get("types") or DEFAULT_TYPES)[:25],
         "tags":[str(x)[:32] for x in (row.get("tags") or ["billing","bug","dispute","evidence","follow-up","priority","resolved","technical"])[:30]],
@@ -384,7 +391,7 @@ class TicketCog(commands.Cog):
         now=time.time()
         async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"}}):
             s=await settings_for(str(row.get("guild_id","")))
-            age=now-float(row.get("last_activity_at") or row.get("updated_at") or now)
+            age=support_elapsed_seconds(float(row.get("last_activity_at") or row.get("updated_at") or now),now,s)
             if s["reminder_hours"]>0 and age>=s["reminder_hours"]*3600 and not row.get("reminder_sent_at"):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
                 if isinstance(ch,discord.TextChannel):
@@ -407,3 +414,27 @@ class TicketCog(commands.Cog):
     async def before_auto_close(self): await self.bot.wait_until_ready()
 
 async def setup(bot_instance): await bot_instance.add_cog(TicketCog(bot_instance))
+def support_elapsed_seconds(start_ts,end_ts,settings):
+    start=float(start_ts or end_ts); end=float(end_ts or start)
+    if end<=start: return 0.0
+    if not settings.get("support_hours_enabled"): return end-start
+    tz_name=str(settings.get("support_hours_timezone") or "UTC")
+    try: tz=ZoneInfo(tz_name)
+    except Exception: tz=timezone.utc
+    days={int(x) for x in settings.get("support_hours_days",[0,1,2,3,4,5,6]) if str(x).isdigit() and 0<=int(x)<=6}
+    try:
+        sh,sm=[int(x) for x in str(settings.get("support_hours_start","09:00")).split(":",1)]
+        eh,em=[int(x) for x in str(settings.get("support_hours_end","17:00")).split(":",1)]
+    except Exception: sh,sm,eh,em=9,0,17,0
+    total=0.0
+    cursor=datetime.fromtimestamp(start,tz).date()
+    last=datetime.fromtimestamp(end,tz).date()
+    while cursor<=last:
+        if cursor.weekday() in days:
+            a=datetime.combine(cursor,dt_time(sh,sm),tzinfo=tz).timestamp()
+            b=datetime.combine(cursor,dt_time(eh,em),tzinfo=tz).timestamp()
+            if b<a: b += 86400
+            total += max(0.0,min(end,b)-max(start,a))
+        cursor += timedelta(days=1)
+    return total
+
