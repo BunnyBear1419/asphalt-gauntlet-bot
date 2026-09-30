@@ -145,3 +145,15 @@ def test_ticket_orphan_recovery_is_wired():
     assert 'action == "recover"' in server
     assert 'value="orphaned"' in page
     assert 'action=status==="orphaned"?"recover"' in page
+
+
+def test_ticket_auto_assignment_is_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
+    page=(root/"ALU_Gauntlet"/"web"/"static"/"admin.html").read_text(encoding="utf-8")
+    assert 'async def choose_auto_assignee' in cog
+    assert 'auto_assigned' in cog
+    assert 'auto_assign_enabled' in cog
+    assert 'ticket-auto-assign' in page
+    assert 'auto_assign_enabled' in server
