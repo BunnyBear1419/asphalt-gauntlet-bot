@@ -59,59 +59,53 @@ async def settings_for(guild_id):
     }
 
 async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player=False,webhook_payload=None):
-    key=f"{ticket_id}:{event}"
     now=time.time()
-    try:
-        # A unique event key is a true delivery gate: only one worker may own a notification.
-        await self.bot.db.rsl_ticket_notifications.insert_one({"event_key":key,"ticket_id":str(ticket_id),"created_at":now,"status":"sending"})
-    except DuplicateKeyError:
-        existing=await self.bot.db.rsl_ticket_notifications.find_one({"event_key":key})
-        if not existing:
-            return False
-        status=str(existing.get("status") or "")
-        if status=="delivered":
-            return False
-        if status=="failed":
-            result=await self.bot.db.rsl_ticket_notifications.update_one(
-                {"event_key":key,"status":"failed"},
-                {"$set":{"status":"sending","created_at":now,"retry_at":now}}
-            )
-            if not result.modified_count:
-                return False
-        elif status=="sending":
-            # Recover a worker that died after claiming the event. Five minutes is
-            # long enough for Discord/HTTP delivery while preventing permanent locks.
-            if now-float(existing.get("created_at") or now) < 300:
-                return False
-            result=await self.bot.db.rsl_ticket_notifications.update_one(
-                {"event_key":key,"status":"sending","created_at":existing.get("created_at")},
-                {"$set":{"created_at":now,"retry_at":now}}
-            )
-            if not result.modified_count:
-                return False
-        else:
-            return False
-    except Exception:
-        return False
-    delivered=False
-    ch=self.bot.get_channel(int(row.get("channel_id",0)))
-    if message and isinstance(ch,discord.TextChannel) and staff:
-        try: await ch.send(message); delivered=True
-        except Exception: pass
-    if player:
+    destinations=[]
+    if staff: destinations.append(("staff",message or "RSL ticket update."))
+    if player: destinations.append(("player",message or "RSL ticket update."))
+    if webhook_payload: destinations.append(("webhook",webhook_payload))
+    delivered_any=False
+    for destination,payload in destinations:
+        key=f"{ticket_id}:{event}:{destination}"
+        claimed=False
         try:
-            user=self.bot.get_user(int(row.get("user_id",0))) or await self.bot.fetch_user(int(row.get("user_id",0)))
-            await user.send(message or "RSL ticket update."); delivered=True
-        except Exception: pass
-    if webhook_payload:
-        s=await settings_for(str(row.get("guild_id",""))); webhook=s.get("webhook_url")
-        if webhook:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    await session.post(webhook,json=webhook_payload,timeout=aiohttp.ClientTimeout(total=5)); delivered=True
-            except Exception: pass
-    await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key},{"$set":{"status":"delivered" if delivered else "failed","delivered_at":time.time() if delivered else None}})
-    return delivered
+            await self.bot.db.rsl_ticket_notifications.insert_one({"event_key":key,"ticket_id":str(ticket_id),"event":str(event),"destination":destination,"created_at":now,"status":"sending"})
+            claimed=True
+        except DuplicateKeyError:
+            existing=await self.bot.db.rsl_ticket_notifications.find_one({"event_key":key})
+            if not existing: continue
+            status=str(existing.get("status") or "")
+            if status=="delivered": continue
+            if status=="failed":
+                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"status":"failed"},{"$set":{"status":"sending","created_at":now,"retry_at":now}})
+                claimed=bool(result.modified_count)
+            elif status=="sending" and now-float(existing.get("created_at") or now)>=300:
+                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now}})
+                claimed=bool(result.modified_count)
+        if not claimed: continue
+        delivered=False
+        try:
+            if destination=="staff":
+                ch=self.bot.get_channel(int(row.get("channel_id",0)))
+                if isinstance(ch,discord.TextChannel):
+                    await ch.send(str(payload))
+                    delivered=True
+            elif destination=="player":
+                user=self.bot.get_user(int(row.get("user_id",0))) or await self.bot.fetch_user(int(row.get("user_id",0)))
+                await user.send(str(payload))
+                delivered=True
+            else:
+                settings=await settings_for(str(row.get("guild_id","")))
+                webhook=settings.get("webhook_url")
+                if webhook:
+                    async with aiohttp.ClientSession() as session:
+                        response=await session.post(webhook,json=payload,timeout=aiohttp.ClientTimeout(total=5))
+                        delivered=200 <= int(response.status) < 300
+        except Exception:
+            delivered=False
+        await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key},{"$set":{"status":"delivered" if delivered else "failed","delivered_at":time.time() if delivered else None}})
+        delivered_any=delivered_any or delivered
+    return delivered_any
 
 async def choose_auto_assignee(guild,ticket_type,settings,db):
     role_ids=[str(x) for x in (ticket_type.get("staff_role_ids") or settings["staff_role_ids"])]
