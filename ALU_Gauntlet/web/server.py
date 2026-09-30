@@ -14,6 +14,8 @@ import mimetypes
 from urllib.parse import urlsplit
 import html
 import re
+import ipaddress
+import socket
 from typing import Any
 
 from aiohttp import web
@@ -2971,9 +2973,18 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         webhook_url = str(payload.get("webhook_url") or "").strip()
         if webhook_url:
             parsed = urlsplit(webhook_url)
-            host = (parsed.hostname or "").lower()
-            if parsed.scheme != "https" or not host or host in {"localhost","127.0.0.1","0.0.0.0","::1"}:
+            host = (parsed.hostname or "").lower().rstrip(".")
+            if parsed.scheme != "https" or not host or parsed.username or parsed.password or parsed.port and not (1 <= parsed.port <= 65535):
                 raise web.HTTPBadRequest(text="Integration webhook must be a public HTTPS endpoint.")
+            try:
+                addresses={ipaddress.ip_address(host)}
+            except ValueError:
+                try:
+                    addresses={ipaddress.ip_address(info[4][0]) for info in socket.getaddrinfo(host,443,type=socket.SOCK_STREAM)}
+                except (OSError, ValueError):
+                    addresses=set()
+            if not addresses or any(ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified for ip in addresses):
+                raise web.HTTPBadRequest(text="Integration webhook must resolve to a public HTTPS endpoint.")
         await self.bot.db.rsl_ticket_settings.update_one(
             {"_id": str(guild_id)},
             {"$set": {
