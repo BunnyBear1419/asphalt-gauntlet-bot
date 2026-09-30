@@ -286,16 +286,16 @@ class TicketCog(commands.Cog):
     async def open_ticket(self,guild,member,ticket_type,answers):
         s=await settings_for(guild.id)
         if not s["enabled"]: return "🎫 Ticket support is currently disabled."
-        count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"status":{"$ne":"closed"}})
+        count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"status":{"$ne":"closed"},"active":True})
         if count>=s["max_open_per_user"]: return f"❌ You already have the maximum of {s['max_open_per_user']} open tickets."
         recent_cutoff=time.time()-300
         recent=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"created_at":{"$gte":recent_cutoff}})
         if recent>=2:
             return "⏳ Please wait a few minutes before opening another ticket."
-        recent_same=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"created_at":{"$gte":time.time()-3600},"status":{"$ne":"closed"}})
+        recent_same=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"created_at":{"$gte":time.time()-3600},"status":{"$ne":"closed"},"active":True})
         if recent_same:
             ch=guild.get_channel(int(recent_same.get("channel_id",0))); return f"❌ A recent ticket of this type already exists: {ch.mention if ch else 'ticket record'}."
-        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"status":{"$ne":"closed"}})
+        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"status":{"$ne":"closed"},"active":True})
         if existing:
             ch=guild.get_channel(int(existing.get("channel_id",0))); return f"❌ You already have an open ticket: {ch.mention if ch else 'ticket record'}."
         role_ids=[str(x) for x in (ticket_type.get("staff_role_ids") or s["staff_role_ids"])]
@@ -386,9 +386,21 @@ class TicketCog(commands.Cog):
         if evidence: update_doc["$push"]={"evidence":{"$each":evidence,"$slice":-100}}
         await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},update_doc)
 
+    async def reconcile_missing_channels(self):
+        async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"},"active":True}):
+            guild=self.bot.get_guild(int(row.get("guild_id",0)))
+            if not guild: continue
+            channel_id=int(row.get("channel_id",0))
+            channel=guild.get_channel(channel_id)
+            if channel is None:
+                try: channel=await guild.fetch_channel(channel_id)
+                except Exception: continue
+            if channel is None: continue
+            
     @tasks.loop(minutes=15)
     async def auto_close_loop(self):
         now=time.time()
+        await self.reconcile_missing_channels()
         async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"}}):
             s=await settings_for(str(row.get("guild_id","")))
             inactivity_age=support_elapsed_seconds(float(row.get("last_activity_at") or row.get("updated_at") or now),now,s)
