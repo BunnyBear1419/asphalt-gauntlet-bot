@@ -109,6 +109,8 @@
       <div class="admin-card" style="margin:0"><h3>Assigned</h3><strong id="ticket-stat-assigned">—</strong></div>
       <div class="admin-card" style="margin:0"><h3>SLA At Risk</h3><strong id="ticket-stat-sla">—</strong></div>
     </div>
+    <div class="admin-grid three"><div class="admin-card" style="margin:0"><h3>Avg First Response</h3><strong id="ticket-stat-response">—</strong></div><div class="admin-card" style="margin:0"><h3>Avg Resolution</h3><strong id="ticket-stat-resolution">—</strong></div><div class="admin-card" style="margin:0"><h3>Avg Rating</h3><strong id="ticket-stat-rating">—</strong></div></div>
+    <div class="admin-card" style="margin-top:12px"><h3>Staff Workload</h3><div id="ticket-staff-workload" class="admin-log"></div></div>
     <div class="admin-actions"><button class="admin-btn" id="ticket-refresh">Refresh Queue</button><button class="admin-btn" id="ticket-transcript">Download Transcript</button><span class="admin-status" id="ticket-status"></span></div>
   </div>
   <div class="admin-card"><h2>Ticket Settings</h2><div class="admin-grid">
@@ -594,7 +596,8 @@ $("safe-mode-toggle")?.addEventListener("click",async()=>{
   const current=await api("/api/admin/operations"+q()+"&action=status");
   const enabled=!Boolean(current.maintenance?.enabled);
   await api("/api/admin/maintenance"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled,message:enabled?"Competition safe mode enabled by staff.":""})});
-  await loadOpsStatus();
+  await loadTicketAnalytics();
+loadOpsStatus();
  }catch(e){setStatus("safe-mode-status",e.message,false)}
 });
 $("run-integrity")?.addEventListener("click",async()=>{
@@ -621,4 +624,5 @@ $("audit-search")?.addEventListener("input",renderAudit);$("audit-source")?.addE
 })();
 </script>
 </body>
-</html>
+</htmlasync function loadTicketAnalytics(){try{const d=await api("/api/admin/tickets/stats"+q());$("ticket-stat-open").textContent=String((d.counts?.open||0)+(d.counts?.assigned||0)+(d.counts?.investigating||0)+(d.counts?.awaiting_player||0)+(d.counts?.escalated||0));$("ticket-stat-assigned").textContent=String(d.assigned||0);$("ticket-stat-sla").textContent=String(d.sla_at_risk||0);$("ticket-stat-response").textContent=d.metrics?.avg_first_response_minutes==null?"—":d.metrics.avg_first_response_minutes+" min";$("ticket-stat-resolution").textContent=d.metrics?.avg_resolution_hours==null?"—":d.metrics.avg_resolution_hours+" hr";$("ticket-stat-rating").textContent=d.metrics?.avg_rating==null?"—":d.metrics.avg_rating+" / 5";const w=d.metrics?.staff_workload||{};$("ticket-staff-workload").innerHTML=Object.keys(w).length?Object.entries(w).sort((a,b)=>b[1]-a[1]).map(([id,n])=>`<div class="admin-log-row"><strong>${escapeHtml(id)}</strong> • ${n} assigned ticket(s)</div>`).join(""):"<div class="admin-log-row">No current assignments.</div>"}catch(e){setStatus("ticket-status",e.message,false)}}
+>
