@@ -75,6 +75,7 @@ class TicketActions(discord.ui.View):
             self.add_item(discord.ui.Button(label="Reopen",style=discord.ButtonStyle.success,custom_id=f"rsl:ticket:reopen:{self.ticket_id}"))
         else:
             self.add_item(discord.ui.Button(label="Claim",style=discord.ButtonStyle.primary,custom_id=f"rsl:ticket:claim:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Unclaim",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:unclaim:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Priority",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:priority:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Close",style=discord.ButtonStyle.danger,custom_id=f"rsl:ticket:close:{self.ticket_id}"))
         for child in self.children:
