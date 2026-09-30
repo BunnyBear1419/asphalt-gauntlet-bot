@@ -157,3 +157,13 @@ def test_ticket_auto_assignment_is_wired():
     assert 'auto_assign_enabled' in cog
     assert 'ticket-auto-assign' in page
     assert 'auto_assign_enabled' in server
+
+
+def test_ticket_alerts_use_atomic_deduplication_and_claimed_staff_mention():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert '"reminder_sent_at":None' in cog
+    assert '"sla_alerted_at":None' in cog
+    assert 'f"🚨 Staff alert:' in cog
+    assert '"sla_alerted_at":None},{"$set"' in cog
+    assert '"reminder_sent_at":None},{"$set"' in cog
