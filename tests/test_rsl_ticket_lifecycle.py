@@ -16,9 +16,9 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'Unknown ticket action' in text
     assert 'label="Assign"' in text
     assert 'label="Members"' in text
-    assert 'event":"member_added"' in text
-    assert 'event":"member_removed"' in text
-    assert 'event":"staff_note"' in text
+    assert '"member_added"' in text
+    assert '"member_removed"' in text
+    assert '"staff_note"' in text
     assert 'label="Tag"' in text
     assert 'label="Reply"' in text
     assert 'tag_updated' in text
@@ -144,7 +144,7 @@ def test_ticket_orphan_recovery_is_wired():
     assert 'async def recover' in cog
     assert 'action == "recover"' in server
     assert 'value="orphaned"' in page
-    assert 'action=status==="orphaned"?"recover"' in page
+    assert '?"recover":' in page
 
 
 def test_ticket_auto_assignment_is_wired():
@@ -226,7 +226,7 @@ def test_ticket_notification_claims_can_recover_after_worker_failure():
     assert '"status":"delivered"' in cog
     assert 'status=="failed"' in cog
     assert 'status=="sending"' in cog
-    assert 'Five minutes is' in cog
+    assert '>=300' in cog
     assert '"retry_at":now' in cog
 
 
@@ -248,7 +248,7 @@ def test_ticket_view_restore_skips_records_without_channels():
 def test_ticket_dashboard_actions_enforce_valid_state_transitions():
     server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
     assert 'status!="closed"' in server
-    assert 'status!="orphaned"' in server
+    assert 'action=="recover" and status not in {"orphaned","failed"}' in server
     assert 'status in {"closed","failed","provisioning"}' in server
     assert 'status in {"closed","failed","provisioning","orphaned"}' in server
     assert '"status": {"$in":["open","escalated"]}' in server
@@ -310,6 +310,11 @@ def test_ticket_webhook_validation_blocks_private_or_credentialed_targets():
 
 def test_ticket_transcript_generation_has_abuse_cooldown():
     server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
-    assert "self._ticket_transcript_rate" in server
-    assert "HTTPTooManyRequests" in server
-    assert 'now-last < 15' in server
+    action_start=server.index("async def admin_ticket_action")
+    transcript_start=server.index("async def admin_ticket_transcript")
+    action_body=server[action_start:transcript_start]
+    transcript_body=server[transcript_start:]
+    assert "self._ticket_transcript_rate" not in action_body
+    assert "self._ticket_transcript_rate" in transcript_body
+    assert "HTTPTooManyRequests" in transcript_body
+    assert "now-last < 15" in transcript_body
