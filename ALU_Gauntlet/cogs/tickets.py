@@ -327,18 +327,16 @@ class TicketCog(commands.Cog):
     async def open_ticket(self,guild,member,ticket_type,answers):
         s=await settings_for(guild.id)
         if not s["enabled"]: return "🎫 Ticket support is currently disabled."
+        key=str(ticket_type.get("key") or "general")
+        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":key,"active":True})
+        if existing:
+            ch=guild.get_channel(int(existing.get("channel_id",0))) if str(existing.get("channel_id","")).isdigit() else None
+            return f"❌ You already have an open ticket: {ch.mention if ch else 'ticket record'}."
         count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"status":{"$ne":"closed"},"active":True})
         if count>=s["max_open_per_user"]: return f"❌ You already have the maximum of {s['max_open_per_user']} open tickets."
         recent_cutoff=time.time()-300
         recent=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"created_at":{"$gte":recent_cutoff}})
-        if recent>=2:
-            return "⏳ Please wait a few minutes before opening another ticket."
-        recent_same=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"created_at":{"$gte":time.time()-3600},"status":{"$ne":"closed"},"active":True})
-        if recent_same:
-            ch=guild.get_channel(int(recent_same.get("channel_id",0))); return f"❌ A recent ticket of this type already exists: {ch.mention if ch else 'ticket record'}."
-        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"status":{"$ne":"closed"},"active":True})
-        if existing:
-            ch=guild.get_channel(int(existing.get("channel_id",0))); return f"❌ You already have an open ticket: {ch.mention if ch else 'ticket record'}."
+        if recent>=2: return "⏳ Please wait a few minutes before opening another ticket."
         role_ids=[str(x) for x in (ticket_type.get("staff_role_ids") or s["staff_role_ids"])]
         ow={guild.default_role:discord.PermissionOverwrite(view_channel=False),member:discord.PermissionOverwrite(view_channel=True,send_messages=True,read_message_history=True,attach_files=True)}
         if guild.me: ow[guild.me]=discord.PermissionOverwrite(view_channel=True,send_messages=True,manage_channels=True,read_message_history=True)
@@ -347,11 +345,28 @@ class TicketCog(commands.Cog):
             if role: ow[role]=discord.PermissionOverwrite(view_channel=True,send_messages=True,read_message_history=True,attach_files=True)
         cid=str(ticket_type.get("category_id") or s["default_category_id"] or ""); cat=guild.get_channel(int(cid)) if cid.isdigit() else None
         if not isinstance(cat,discord.CategoryChannel): cat=None
-        safe="".join(c.lower() if c.isalnum() else "-" for c in str(member.display_name))[:24].strip("-") or "player"
-        ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL ticket opened")
         now=time.time()
-        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"member_ids":[],"tags":[],"answers":answers}
-        ins=await self.bot.db.rsl_tickets.insert_one(doc); tid=str(ins.inserted_id)
+        doc={"guild_id":str(guild.id),"channel_id":"","user_id":str(member.id),"type":key,"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"provisioning","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"member_ids":[],"tags":[],"answers":answers}
+        try:
+            ins=await self.bot.db.rsl_tickets.insert_one(doc)
+        except Exception:
+            existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":key,"active":True})
+            if existing:
+                ch=guild.get_channel(int(existing.get("channel_id",0))) if str(existing.get("channel_id","")).isdigit() else None
+                return f"❌ A ticket is already being opened: {ch.mention if ch else 'please try again shortly'}."
+            return "❌ Ticket creation is temporarily busy. Please try again."
+        tid=str(ins.inserted_id)
+        try:
+            ch=await guild.create_text_channel(f"ticket-{' '.join(str(member.display_name).split())[:24].lower().replace(' ','-') or 'player'}",category=cat,overwrites=ow,reason="RSL ticket opened")
+            now=time.time()
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"status":"provisioning"},{"$set":{"channel_id":str(ch.id),"status":"open","updated_at":now,"last_activity_at":now}})
+        except Exception:
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id},{"$set":{"status":"failed","active":False,"recovery_status":"channel_creation_failed","updated_at":time.time()}})
+            try:
+                await log_event(guild.id,tid,"provisioning_failed",member.id)
+            except Exception: pass
+            return "❌ Discord could not create the ticket channel. No active ticket was created; please try again."
+        doc["_id"]=ins.inserted_id; doc["channel_id"]=str(ch.id); doc["status"]="open"
         auto_assignee=await choose_auto_assignee(guild,ticket_type,s,self.bot.db) if s.get("auto_assign_enabled") else None
         if auto_assignee:
             doc["claimed_by"]=str(auto_assignee.id); doc["status"]="assigned"
@@ -360,7 +375,11 @@ class TicketCog(commands.Cog):
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
         for k,v in answers.items():
             if v: e.add_field(name=str(k).upper(),value=v[:1024],inline=False)
-        await ch.send(content=f"{member.mention}"+(f" • Assigned to <@{auto_assignee.id}>" if auto_assignee else ""),embed=e,view=TicketActions(self,tid))
+        try:
+            await ch.send(content=f"{member.mention}"+(f" • Assigned to <@{auto_assignee.id}>" if auto_assignee else ""),embed=e,view=TicketActions(self,tid))
+        except Exception:
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id},{"$set":{"status":"orphaned","active":False,"recovery_status":"opening_message_failed","updated_at":time.time()}})
+            return "❌ The ticket channel was created but could not be initialized. Staff can recover it from Ticket Center."
         await log_event(guild.id,tid,"opened",member.id,type=doc["type"])
         if auto_assignee: await log_event(guild.id,tid,"auto_assigned",auto_assignee.id,assigned_by="system")
         await self.bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild.id),"ticket_id":tid,"event":"intake_snapshot","actor_id":str(member.id),"created_at":time.time(),"answers":answers,"locale":str(getattr(member,"locale","en-US"))})
