@@ -143,7 +143,7 @@ class TicketCog(commands.Cog):
         safe="".join(c.lower() if c.isalnum() else "-" for c in str(member.display_name))[:24].strip("-") or "player"
         ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL ticket opened")
         now=time.time()
-        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"answers":answers}
+        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"answers":answers}
         ins=await self.bot.db.rsl_tickets.insert_one(doc); tid=str(ins.inserted_id)
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
@@ -198,7 +198,7 @@ class TicketCog(commands.Cog):
         if not row:
             return
         now=time.time()
-        update={"last_activity_at":now,"updated_at":now}
+        update={"last_activity_at":now,"updated_at":now,"reminder_sent_at":None}
         if str(message.author.id) != str(row.get("user_id")) and not row.get("first_response_at"):
             update["first_response_at"]=now
         await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":update})
@@ -207,8 +207,25 @@ class TicketCog(commands.Cog):
     async def auto_close_loop(self):
         now=time.time()
         async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"}}):
-            s=await settings_for(str(row.get("guild_id",""))); hours=s["auto_close_hours"]
-            if hours>0 and now-float(row.get("last_activity_at") or row.get("updated_at") or now)>=hours*3600:
+            s=await settings_for(str(row.get("guild_id","")))
+            age=now-float(row.get("last_activity_at") or row.get("updated_at") or now)
+            if s["reminder_hours"]>0 and age>=s["reminder_hours"]*3600 and not row.get("reminder_sent_at"):
+                ch=self.bot.get_channel(int(row.get("channel_id",0)))
+                if isinstance(ch,discord.TextChannel):
+                    try: await ch.send("⏰ Ticket inactivity reminder: reply if you still need help; staff may close inactive tickets.")
+                    except Exception: pass
+                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":{"reminder_sent_at":now,"updated_at":now}})
+                await log_event(row["guild_id"],str(row["_id"]),"inactivity_reminder","system")
+            sla=s["sla_minutes"]
+            if sla>0 and not row.get("first_response_at") and age>=sla*60 and not row.get("sla_alerted_at"):
+                ch=self.bot.get_channel(int(row.get("channel_id",0)))
+                if isinstance(ch,discord.TextChannel):
+                    try: await ch.send("🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.")
+                    except Exception: pass
+                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}})
+                await log_event(row["guild_id"],str(row["_id"]),"sla_escalated","system")
+            hours=s["auto_close_hours"]
+            if hours>0 and age>=hours*3600:
                 await self._close_ticket(str(row["guild_id"]),str(row["_id"]),"system","inactivity_auto_close")
     @auto_close_loop.before_loop
     async def before_auto_close(self): await self.bot.wait_until_ready()
