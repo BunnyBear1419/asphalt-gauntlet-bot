@@ -358,3 +358,11 @@ def test_ticket_notifications_are_idempotent_and_indexed():
     assert '("guild_id",1),("status",1),("retry_at",1)' in cog
     assert '"guild_id":guild_id,"ticket_id":str(ticket_id)' in cog
     assert '"$inc":{"attempts":1}' in cog
+
+
+def test_ticket_participant_and_retry_guards():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert 'int(ch.guild.id) != int(modal_interaction.guild.id)' in cog
+    assert 'Bots cannot be added as ticket participants.' in cog
+    assert '"$inc":{"attempts":1}' in cog
