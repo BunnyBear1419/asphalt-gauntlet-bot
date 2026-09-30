@@ -636,3 +636,35 @@ async function ticketAction(ticketId,action){try{setStatus("ticket-status","Upda
 async function downloadTicketTranscript(ticketId){try{setStatus("ticket-status","Generating transcript…");const d=await fetch("/api/admin/tickets/transcript"+q(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ticket_id:ticketId})});if(!d.ok)throw new Error(await d.text()||"Transcript generation failed.");const blob=await d.blob(),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="rsl-ticket-"+ticketId+".txt";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);setStatus("ticket-status","Transcript downloaded.")}catch(e){setStatus("ticket-status",e.message,false)}}
 async function loadTicketQueue(){try{const d=await api("/api/admin/tickets"+q()+"&limit=100");const rows=d.rows||[];$("#ticket-queue").innerHTML=rows.length?rows.map(x=>{const id=escapeHtml(x._id||"");const status=String(x.status||"unknown");const primary=status==="closed"?"reopen":(status==="orphaned"||status==="failed")?"recover":status==="open"?"claim":"priority";const lockAction=x.locked?"unlock":"lock";const claimAction=x.claimed_by?"unclaim":"claim";return '<div class="admin-log-row"><strong>'+escapeHtml(x.type_label||x.type||"Ticket")+'</strong> • '+escapeHtml(status)+' • '+escapeHtml(x.priority||"normal")+(x.locked?' • 🔒 locked':'')+'<br><small>#'+id+' • '+escapeHtml(x.user_id||"")+(x.claimed_by?' • Staff '+escapeHtml(x.claimed_by):"")+'</small><div class="admin-actions" style="margin-top:8px"><button class="admin-btn" type="button" data-ticket-action="'+id+'" data-action="'+primary+'">'+(primary==="reopen"?"Reopen":primary==="recover"?"Recover":primary==="claim"?"Claim":"Cycle Priority")+'</button><button class="admin-btn" type="button" data-ticket-action="'+id+'" data-action="'+claimAction+'">'+(claimAction==="unclaim"?"Unclaim":"Claim")+'</button><button class="admin-btn" type="button" data-ticket-action="'+id+'" data-action="'+lockAction+'">'+(lockAction==="unlock"?"Unlock":"Lock")+'</button><button class="admin-btn" type="button" data-ticket-action="'+id+'" data-action="close" '+(status==="closed"?"disabled":"")+'>Close</button><button class="admin-btn" type="button" data-ticket-transcript="'+id+'">Transcript</button></div></div>'}).join(""):"<div class="admin-log-row">No tickets found.</div>";document.querySelectorAll("[data-ticket-action]").forEach(b=>b.onclick=()=>ticketAction(b.dataset.ticketAction,b.dataset.action));document.querySelectorAll("[data-ticket-transcript]").forEach(b=>b.onclick=()=>downloadTicketTranscript(b.dataset.ticketTranscript))}catch(e){$("#ticket-queue").innerHTML='<div class="admin-log-row">'+escapeHtml(e.message)+'</div>'}}
 $("ticket-save")?.addEventListener("click",saveTicketSettings);$("ticket-refresh")?.addEventListener("click",async()=>{await loadTicketAnalytics();await loadTicketQueue();});$("ticket-filter")?.addEventListener("change",loadTicketQueue);$("ticket-post-panel")?.addEventListener("click",async()=>{try{const channel=$("#ticket-panel-channel").value.trim();if(!channel)throw new Error("Enter the panel channel ID first.");const d=await api("/api/admin/tickets/panel"+q(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({channel_id:channel})});setStatus("ticket-settings-status","Discord panel posted (message "+d.message_id+").")}catch(e){setStatus("ticket-settings-status",e.message,false)}});loadTicketSettings();
+</script>
+<script>
+(function(){
+  function activate(name){
+    name=String(name||"").replace(/^section-/,"").replace(/^#/,"");
+    if(!name)return;
+    document.querySelectorAll(".admin-section").forEach(s=>s.classList.toggle("active",s.id==="section-"+name));
+    document.querySelectorAll(".admin-side button[data-section]").forEach(b=>b.classList.toggle("active",b.dataset.section===name));
+    if(history.replaceState)history.replaceState(null,"","#"+name);
+  }
+  function bind(){
+    document.querySelectorAll(".admin-side button[data-section]").forEach(b=>{
+      if(b.dataset.rslNavRecovery==="1")return;
+      b.dataset.rslNavRecovery="1";
+      b.addEventListener("click",e=>{e.preventDefault();activate(b.dataset.section);});
+    });
+    document.querySelectorAll("[data-jump]").forEach(a=>{
+      if(a.dataset.rslJumpRecovery==="1")return;
+      a.dataset.rslJumpRecovery="1";
+      a.addEventListener("click",e=>{e.preventDefault();activate(a.dataset.jump);});
+    });
+    const hash=location.hash.replace(/^#/,"");
+    if(hash)activate(hash);
+    else if(!document.querySelector(".admin-section.active"))activate("overview");
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);
+  else bind();
+  window.addEventListener("hashchange",()=>activate(location.hash.replace(/^#/,"")));
+})();
+</script>
+</body>
+</html>
