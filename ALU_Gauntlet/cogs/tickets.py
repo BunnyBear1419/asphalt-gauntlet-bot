@@ -244,7 +244,7 @@ class TicketActions(discord.ui.View):
                 locked=not bool((row or {}).get("locked",False))
                 if member:
                     await ch.set_permissions(member,view_channel=True,send_messages=not locked,read_message_history=True,attach_files=not locked,reason="RSL ticket lock toggle")
-                await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"locked":locked,"updated_at":time.time()}})
+                await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"locked":locked,"updated_at":time.time()}})
                 await log_event(interaction.guild.id,self.ticket_id,"locked" if locked else "unlocked",interaction.user.id)
                 msg="🔒 Ticket locked." if locked else "🔓 Ticket unlocked."
             else: msg="❌ Ticket channel not found."
@@ -256,7 +256,7 @@ class TicketActions(discord.ui.View):
             target=str(interaction.user.id)
             new_claim=None if current==target else target
             new_status="open" if new_claim is None else "assigned"
-            await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"claimed_by":new_claim,"status":new_status,"updated_at":time.time(),"last_activity_at":time.time()}})
+            await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"claimed_by":new_claim,"status":new_status,"updated_at":time.time(),"last_activity_at":time.time()}})
             await log_event(interaction.guild.id,self.ticket_id,"unassigned" if new_claim is None else "assigned",interaction.user.id,assigned_to=new_claim)
             msg="Ticket unassigned." if new_claim is None else "Ticket assigned to you."
         elif action=="transfer":
@@ -293,13 +293,13 @@ class TicketActions(discord.ui.View):
                     members=[str(x) for x in row.get("member_ids",[]) if str(x)!=str(uid)]
                     if str(uid) in [str(x) for x in row.get("member_ids",[])]:
                         await ch.set_permissions(m,overwrite=None,reason="RSL ticket member removed")
-                        await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"member_ids":members,"updated_at":time.time()}})
+                        await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"member_ids":members,"updated_at":time.time()}})
                         await log_event(modal_interaction.guild.id,self.ticket_id,"member_removed",modal_interaction.user.id,member_id=str(uid))
                         msg="👤 Member removed."
                     else:
                         members.append(str(uid))
                         await ch.set_permissions(m,view_channel=True,send_messages=True,read_message_history=True,attach_files=True,reason="RSL ticket member added")
-                        await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"member_ids":members,"updated_at":time.time()}})
+                        await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"member_ids":members,"updated_at":time.time()}})
                         await log_event(modal_interaction.guild.id,self.ticket_id,"member_added",modal_interaction.user.id,member_id=str(uid))
                         msg="👤 Member added."
                     await modal_interaction.response.send_message(msg,ephemeral=True)
@@ -313,7 +313,7 @@ class TicketActions(discord.ui.View):
             nxt=tags[(tags.index(current[0])+1)%len(tags)] if current and current[0] in tags else (tags[0] if tags else "general")
             if nxt in current: current.remove(nxt)
             else: current.append(nxt)
-            await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"tags":current,"updated_at":time.time()}})
+            await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"tags":current,"updated_at":time.time()}})
             await log_event(interaction.guild.id,self.ticket_id,"tag_updated",interaction.user.id,tags=current)
             msg="🏷️ Tags: "+(", ".join(current) if current else "none")
         elif action=="reply":
@@ -345,7 +345,7 @@ class TicketActions(discord.ui.View):
                     except ValueError: score_value=0
                     if score_value<1 or score_value>5:
                         await modal_interaction.response.send_message("❌ Rating must be 1 through 5.",ephemeral=True); return
-                    await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"rating":{"score":score_value,"comment":str(modal_self.comment.value or ""),"created_at":time.time()},"updated_at":time.time()}})
+                    await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"rating":{"score":score_value,"comment":str(modal_self.comment.value or ""),"created_at":time.time()},"updated_at":time.time()}})
                     await log_event(modal_interaction.guild.id,self.ticket_id,"rating_submitted",modal_interaction.user.id,score=score_value)
                     await modal_interaction.response.send_message("⭐ Thanks for rating RSL Support.",ephemeral=True)
             await interaction.response.send_modal(RatingModal(title="RSL Support Rating")); return
@@ -443,7 +443,7 @@ class TicketCog(commands.Cog):
         auto_assignee=await choose_auto_assignee(guild,ticket_type,s,self.bot.db) if s.get("auto_assign_enabled") else None
         if auto_assignee:
             doc["claimed_by"]=str(auto_assignee.id); doc["status"]="assigned"
-            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id},{"$set":{"claimed_by":str(auto_assignee.id),"status":"assigned","updated_at":time.time()}})
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id)},{"$set":{"claimed_by":str(auto_assignee.id),"status":"assigned","updated_at":time.time()}})
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
         for k,v in answers.items():
@@ -451,7 +451,7 @@ class TicketCog(commands.Cog):
         try:
             await ch.send(content=f"{member.mention}"+(f" • Assigned to <@{auto_assignee.id}>" if auto_assignee else ""),embed=e,view=TicketActions(self,tid))
         except Exception:
-            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id},{"$set":{"status":"orphaned","active":False,"recovery_status":"opening_message_failed","updated_at":time.time()}})
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id)},{"$set":{"status":"orphaned","active":False,"recovery_status":"opening_message_failed","updated_at":time.time()}})
             return "❌ The ticket channel was created but could not be initialized. Staff can recover it from Ticket Center."
         await log_event(guild.id,tid,"opened",member.id,type=doc["type"])
         if auto_assignee: await log_event(guild.id,tid,"auto_assigned",auto_assignee.id,assigned_by="system")
@@ -530,7 +530,7 @@ class TicketCog(commands.Cog):
         guild=self.bot.get_guild(int(guild_id))
         member=guild.get_member(int(row.get("user_id",0))) if guild else None
         if not guild or not member:
-            await self.bot.db.rsl_tickets.update_one({"_id":oid,"status":"recovering"},{"$set":{"status":"failed","active":False,"recovery_status":"recovery_member_unavailable","updated_at":time.time()}})
+            await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id),"status":"recovering"},{"$set":{"status":"failed","active":False,"recovery_status":"recovery_member_unavailable","updated_at":time.time()}})
             return False
         s=await settings_for(guild_id)
         types={str(x.get("key")):x for x in s["types"]}
@@ -548,10 +548,10 @@ class TicketCog(commands.Cog):
         try:
             ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL orphaned ticket recovery")
         except Exception:
-            await self.bot.db.rsl_tickets.update_one({"_id":oid,"status":"recovering"},{"$set":{"status":"failed","active":False,"recovery_status":"recovery_channel_creation_failed","updated_at":time.time()}})
+            await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id),"status":"recovering"},{"$set":{"status":"failed","active":False,"recovery_status":"recovery_channel_creation_failed","updated_at":time.time()}})
             return False
         now=time.time()
-        await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"channel_id":str(ch.id),"category_id":str(cat.id) if cat else "","status":"open","active":True,"recovery_status":"recovered","updated_at":now,"last_activity_at":now}})
+        await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id)},{"$set":{"channel_id":str(ch.id),"category_id":str(cat.id) if cat else "","status":"open","active":True,"recovery_status":"recovered","updated_at":now,"last_activity_at":now}})
         row["channel_id"]=str(ch.id)
         await self.reconcile_ticket_permissions(guild,row,closed=False,locked=False)
         await ch.send(content=member.mention,embed=discord.Embed(title=f"🔄 {row.get('type_label','RSL Support')} — Recovered",description="This ticket channel was recreated from its preserved RSL record. Please continue here.",color=discord.Color.blurple()),view=TicketActions(self,ticket_id))
@@ -601,7 +601,7 @@ class TicketCog(commands.Cog):
         evidence=update.pop("$evidence_append",None)
         update_doc={"$set":update}
         if evidence: update_doc["$push"]={"evidence":{"$each":evidence,"$slice":-100}}
-        await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},update_doc)
+        await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(message.guild.id)},update_doc)
 
     async def reconcile_provisioning(self):
         now=time.time()
@@ -638,7 +638,7 @@ class TicketCog(commands.Cog):
                 try:
                     channel=await guild.fetch_channel(channel_id)
                 except discord.NotFound:
-                    await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"active":True},{"$set":{"status":"orphaned","active":False,"recovery_status":"channel_missing","updated_at":time.time()}})
+                    await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"active":True},{"$set":{"status":"orphaned","active":False,"recovery_status":"channel_missing","updated_at":time.time()}})
                     await log_event(row["guild_id"],str(row["_id"]),"channel_missing","system",recovery_status="channel_missing")
                     continue
                 except Exception:
@@ -658,7 +658,7 @@ class TicketCog(commands.Cog):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
                 if isinstance(ch,discord.TextChannel):
                     await self.notify_ticket(str(row["_id"]),row,"inactivity_reminder",message="⏰ Ticket inactivity reminder: reply if you still need help; staff may close inactive tickets.",staff=True)
-                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"reminder_sent_at":None},{"$set":{"reminder_sent_at":now,"updated_at":now}})
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"reminder_sent_at":None},{"$set":{"reminder_sent_at":now,"updated_at":now}})
                 if result.modified_count:
                     await log_event(row["guild_id"],str(row["_id"]),"inactivity_reminder","system")
             sla=s["sla_minutes"]
@@ -667,7 +667,7 @@ class TicketCog(commands.Cog):
                 claimed=str(row.get("claimed_by") or "")
                 mentions=f" <@{claimed}>" if claimed.isdigit() else ""
                 await self.notify_ticket(str(row["_id"]),row,"sla_escalated",message=f"🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.{mentions}",staff=True,webhook_payload={"event":"ticket.sla_escalated","guild_id":row["guild_id"],"ticket_id":str(row["_id"]),"claimed_by":claimed or None})
-                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"sla_alerted_at":None},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}})
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"sla_alerted_at":None},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}})
                 if result.modified_count:
                     await log_event(row["guild_id"],str(row["_id"]),"sla_escalated","system")
             hours=s["auto_close_hours"]
