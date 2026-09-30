@@ -100,8 +100,7 @@ async def choose_auto_assignee(guild,ticket_type,settings,db):
 async def log_event(guild_id,ticket_id,event,actor_id,**extra):
     await bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild_id),"ticket_id":str(ticket_id),"event":str(event),"actor_id":str(actor_id),"created_at":time.time(),**extra})
 
-async def ticket_staff_role_ids(ticket_type_key, settings, db):
-    row=await db.rsl_ticket_settings.find_one({"types":{"$exists":True}}) if False else None
+async def ticket_staff_role_ids(ticket_type_key, settings):
     # Resolve the configured type from the current guild settings; empty type roles inherit global staff roles.
     for item in settings.get("types",[]):
         if str(item.get("key"))==str(ticket_type_key):
@@ -174,7 +173,7 @@ class TicketActions(discord.ui.View):
             from bson import ObjectId
             oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
             ticket_row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(interaction.guild.id)})
-            ticket_roles=await ticket_staff_role_ids((ticket_row or {}).get("type"),settings,bot.db)
+            ticket_roles=await ticket_staff_role_ids((ticket_row or {}).get("type"),settings)
         if action!="rating" and (not interaction.guild or not isinstance(interaction.user,discord.Member) or not is_staff(interaction.user,ticket_roles)):
             await interaction.response.send_message("Staff access is required for this ticket type.",ephemeral=True); return
         if action=="claim":
