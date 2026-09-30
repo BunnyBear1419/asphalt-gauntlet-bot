@@ -3058,6 +3058,15 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         cog = self.bot.get_cog("TicketCog")
         if cog is None:
             raise web.HTTPServiceUnavailable(text="Ticket center is not loaded.")
+        status=str(row.get("status") or "")
+        if action=="reopen" and status!="closed":
+            raise web.HTTPConflict(text="Only closed tickets can be reopened.")
+        if action=="recover" and status!="orphaned":
+            raise web.HTTPConflict(text="Only orphaned tickets can be recovered.")
+        if action=="close" and status in {"closed","failed","provisioning"}:
+            raise web.HTTPConflict(text="This ticket is not in a closable state.")
+        if action in {"claim","priority"} and status in {"closed","failed","provisioning","orphaned"}:
+            raise web.HTTPConflict(text="This ticket is not in an actionable state.")
         if action == "reopen":
             ok = await cog.reopen(str(guild_id), ticket_id, str(user.user_id))
         elif action == "recover":
@@ -3067,11 +3076,11 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         elif action in {"claim","priority"}:
             # Ticket was already loaded with an explicit guild scope above.
             if action == "claim":
-                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "status": {"$ne":"closed"}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time()}})
+                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "guild_id": str(guild_id), "status": {"$in":["open","escalated"]}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time()}})
                 ok = bool(result.modified_count)
             else:
                 order=["low","normal","high","urgent"]; current=str(row.get("priority") or "normal"); nxt=order[(order.index(current)+1)%4] if current in order else "normal"
-                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":{"priority":nxt,"updated_at":time.time()}})
+                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(guild_id),"status":{"$in":["open","assigned","escalated"]}},{"$set":{"priority":nxt,"updated_at":time.time()}})
                 ok=True
             from ..cogs.tickets import log_event
             await log_event(str(guild_id), ticket_id, action, str(user.user_id))
