@@ -44,6 +44,7 @@ def test_all_cogs_exist():
         "activity_rewards.py",
         "economy_moderation.py",
         "ticket_economy.py",
+        "tickets.py",
         "rsl_xp.py",
         "translation.py",
         "match_assistant.py",
