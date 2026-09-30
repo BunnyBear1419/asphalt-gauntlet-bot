@@ -167,3 +167,21 @@ def test_admin_internal_hash_links_use_section_navigation():
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
     assert "document.querySelectorAll('a[href^=\"#\"]')" in admin
     assert 'showSection(target.slice(1))' in admin
+
+
+def test_shohan_companion_navigation_and_box_share_theme_aware_brand_tokens():
+    css = CSS.read_text(encoding="utf-8")
+    required = (
+        "--shohan-accent:#00f5c8",
+        "--shohan-surface:#080f13",
+        ".companion-nav-trigger:before",
+        ".companion-info-menu",
+        ".partner-banner",
+        "SHOHAN'S LAB • COMPANION",
+    )
+    for token in required:
+        assert token in css
+    for theme in ("light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"):
+        assert f'html[data-theme="{theme}"]' in css
+    assert "var(--shohan-surface)" in css
+    assert "var(--shohan-accent)" in css
