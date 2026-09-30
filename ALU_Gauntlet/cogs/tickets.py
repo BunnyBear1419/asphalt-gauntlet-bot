@@ -505,7 +505,9 @@ class TicketCog(commands.Cog):
         if not row: return False
         guild=self.bot.get_guild(int(guild_id))
         member=guild.get_member(int(row.get("user_id",0))) if guild else None
-        if not guild or not member: return False
+        if not guild or not member:
+            await self.bot.db.rsl_tickets.update_one({"_id":oid,"status":"recovering"},{"$set":{"status":"failed","active":False,"recovery_status":"recovery_member_unavailable","updated_at":time.time()}})
+            return False
         s=await settings_for(guild_id)
         types={str(x.get("key")):x for x in s["types"]}
         ticket_type=types.get(str(row.get("type")),{"staff_role_ids":s["staff_role_ids"],"category_id":row.get("category_id",""),"label":row.get("type_label","RSL Support"),"priority":row.get("priority","normal")})
@@ -519,7 +521,11 @@ class TicketCog(commands.Cog):
         cat=guild.get_channel(int(cid)) if cid.isdigit() else None
         if not isinstance(cat,discord.CategoryChannel): cat=None
         safe="".join(x.lower() if x.isalnum() else "-" for x in str(member.display_name))[:24].strip("-") or "player"
-        ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL orphaned ticket recovery")
+        try:
+            ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL orphaned ticket recovery")
+        except Exception:
+            await self.bot.db.rsl_tickets.update_one({"_id":oid,"status":"recovering"},{"$set":{"status":"failed","active":False,"recovery_status":"recovery_channel_creation_failed","updated_at":time.time()}})
+            return False
         now=time.time()
         await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"channel_id":str(ch.id),"category_id":str(cat.id) if cat else "","status":"open","active":True,"recovery_status":"recovered","updated_at":now,"last_activity_at":now}})
         row["channel_id"]=str(ch.id)
@@ -576,13 +582,25 @@ class TicketCog(commands.Cog):
     async def reconcile_provisioning(self):
         now=time.time()
         cutoff=now-300
-        async for row in self.bot.db.rsl_tickets.find({"status":"provisioning","active":True}):
-            started=float(row.get("created_at") or row.get("updated_at") or now)
+        async for row in self.bot.db.rsl_tickets.find({"status":{"$in":["provisioning","recovering"]}}):
+            status=str(row.get("status") or "")
+            started=float(row.get("updated_at") or row.get("created_at") or now)
             if started > cutoff:
+                continue
+            if status=="recovering":
+                result=await self.bot.db.rsl_tickets.update_one(
+                    {"_id":row["_id"],"status":"recovering"},
+                    {"$set":{"status":"failed","active":False,"recovery_status":"stale_recovery","updated_at":now}}
+                )
+                if result.modified_count:
+                    await log_event(row["guild_id"],str(row["_id"]),"recovery_stale","system",recovery_status="stale_recovery")
+                continue
+            if not bool(row.get("active")):
                 continue
             result=await self.bot.db.rsl_tickets.update_one(
                 {"_id":row["_id"],"status":"provisioning","active":True},
-                {"$set":{"status":"failed","active":False,"recovery_status":"stale_provisioning","updated_at":now}})
+                {"$set":{"status":"failed","active":False,"recovery_status":"stale_provisioning","updated_at":now}}
+            )
             if result.modified_count:
                 await log_event(row["guild_id"],str(row["_id"]),"provisioning_stale","system",recovery_status="stale_provisioning")
 
