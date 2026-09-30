@@ -29,6 +29,8 @@ async def settings_for(guild_id):
         "reminder_hours":max(0,min(168,int(row.get("reminder_hours",24) or 24))),
         "sla_minutes":max(0,min(10080,int(row.get("sla_minutes",60) or 60))),
         "types":(row.get("types") or DEFAULT_TYPES)[:25],
+        "tags":[str(x)[:32] for x in (row.get("tags") or ["billing","bug","dispute","evidence","follow-up","priority","resolved","technical"])[:30]],
+        "canned_responses":(row.get("canned_responses") or [{"key":"welcome","label":"Welcome","text":"Thanks for contacting RSL Support. A staff member will assist you shortly."},{"key":"evidence","label":"Evidence Request","text":"Please provide the relevant screenshots, video, match ID, and any other evidence available."},{"key":"resolved","label":"Resolved","text":"This issue appears to be resolved. If you still need help, reply here before the ticket is closed."}])[:30],
     }
 
 async def log_event(guild_id,ticket_id,event,actor_id,**extra):
@@ -82,6 +84,8 @@ class TicketActions(discord.ui.View):
             self.add_item(discord.ui.Button(label="Note",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:note:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Assign",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:assign:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Members",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:members:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Tag",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:tag:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Reply",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:reply:{self.ticket_id}"))
         for child in self.children:
             child.callback=self._dispatch
     async def _dispatch(self,interaction):
@@ -154,6 +158,30 @@ class TicketActions(discord.ui.View):
                     await modal_interaction.response.send_message(msg,ephemeral=True)
             await interaction.response.send_modal(MemberModal(title="RSL Ticket Member"))
             return
+        elif action=="tag":
+            from bson import ObjectId
+            oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
+            s=await settings_for(str(interaction.guild.id)); tags=s.get("tags",[])
+            row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(interaction.guild.id)}) or {}; current=[str(x) for x in row.get("tags",[])]
+            nxt=tags[(tags.index(current[0])+1)%len(tags)] if current and current[0] in tags else (tags[0] if tags else "general")
+            if nxt in current: current.remove(nxt)
+            else: current.append(nxt)
+            await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"tags":current,"updated_at":time.time()}})
+            await log_event(interaction.guild.id,self.ticket_id,"tag_updated",interaction.user.id,tags=current)
+            msg="🏷️ Tags: "+(", ".join(current) if current else "none")
+        elif action=="reply":
+            s=await settings_for(str(interaction.guild.id)); responses=s.get("canned_responses",[])
+            class ReplyModal(discord.ui.Modal):
+                key=discord.ui.TextInput(label="Canned response key",placeholder="welcome / evidence / resolved",max_length=64,required=True)
+                async def on_submit(modal_self,modal_interaction):
+                    item=next((x for x in responses if str(x.get("key"))==str(modal_self.key.value).strip()),None)
+                    if not item:
+                        await modal_interaction.response.send_message("❌ Canned response not found.",ephemeral=True); return
+                    ch=modal_interaction.channel
+                    if isinstance(ch,discord.TextChannel): await ch.send(str(item.get("text") or "")[:1900])
+                    await log_event(modal_interaction.guild.id,self.ticket_id,"canned_response",modal_interaction.user.id,response_key=str(item.get("key")))
+                    await modal_interaction.response.send_message("💬 Canned response sent.",ephemeral=True)
+            await interaction.response.send_modal(ReplyModal(title="RSL Canned Response")); return
         elif action=="note":
             class StaffNoteModal(discord.ui.Modal):
                 note=discord.ui.TextInput(label="Private staff note",style=discord.TextStyle.paragraph,max_length=2000,required=True)
@@ -210,7 +238,7 @@ class TicketCog(commands.Cog):
         safe="".join(c.lower() if c.isalnum() else "-" for c in str(member.display_name))[:24].strip("-") or "player"
         ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL ticket opened")
         now=time.time()
-        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"member_ids":[],"answers":answers}
+        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"member_ids":[],"tags":[],"answers":answers}
         ins=await self.bot.db.rsl_tickets.insert_one(doc); tid=str(ins.inserted_id)
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
