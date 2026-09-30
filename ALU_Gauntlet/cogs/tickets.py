@@ -366,6 +366,28 @@ class TicketCog(commands.Cog):
         await self.bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild.id),"ticket_id":tid,"event":"intake_snapshot","actor_id":str(member.id),"created_at":time.time(),"answers":answers,"locale":str(getattr(member,"locale","en-US"))})
         await self.notify_ticket(tid,doc,"opened",webhook_payload={"event":"ticket.opened","guild_id":str(guild.id),"ticket_id":tid,"type":doc["type"],"user_id":str(member.id),"priority":doc["priority"]})
         return f"✅ Your ticket is open: {ch.mention}"
+    async def reconcile_ticket_permissions(self, guild, row, closed=False, locked=False):
+        ch=guild.get_channel(int(row.get("channel_id",0)))
+        if not isinstance(ch,discord.TextChannel): return False
+        owner=guild.get_member(int(row.get("user_id",0)))
+        member_ids={str(x) for x in row.get("member_ids",[])}
+        staff_ids={str(x) for x in row.get("staff_role_ids",[])}
+        if not staff_ids:
+            s=await settings_for(guild.id); staff_ids={str(x) for x in s.get("staff_role_ids",[])}
+        # Remove explicit user overwrites for ticket members no longer authorized.
+        for target in list(ch.overwrites.keys()):
+            if isinstance(target,discord.Member) and str(target.id) not in member_ids and target != owner and not target.bot:
+                try: await ch.set_permissions(target,overwrite=None,reason="RSL ticket permission reconciliation")
+                except Exception: pass
+        if owner:
+            await ch.set_permissions(owner,view_channel=True,send_messages=not closed and not locked,read_message_history=True,attach_files=not closed and not locked,reason="RSL ticket permission reconciliation")
+        for uid in member_ids:
+            m=guild.get_member(int(uid)) if uid.isdigit() else None
+            if m:
+                await ch.set_permissions(m,view_channel=True,send_messages=not closed and not locked,read_message_history=True,attach_files=not closed and not locked,reason="RSL ticket permission reconciliation")
+        await ch.set_permissions(guild.default_role,view_channel=False,send_messages=False,reason="RSL ticket permission reconciliation")
+        return True
+
     async def _close_ticket(self,guild_id,ticket_id,actor_id,reason="closed"):
         from bson import ObjectId
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
@@ -379,10 +401,7 @@ class TicketCog(commands.Cog):
                 try: await ch.edit(category=cat,reason="RSL ticket closed")
                 except Exception: pass
             try:
-                await ch.set_permissions(ch.guild.default_role,view_channel=False,send_messages=False,reason="RSL ticket closed")
-                member=ch.guild.get_member(int(row.get("user_id",0)))
-                if member:
-                    await ch.set_permissions(member,view_channel=True,send_messages=False,read_message_history=True,reason="RSL ticket closed")
+                await self.reconcile_ticket_permissions(ch.guild,row,closed=True,locked=False)
             except Exception: pass
             try: await ch.send("🔒 This ticket has been closed. Staff may reopen it if needed.",view=TicketActions(self,ticket_id,closed=True))
             except Exception: pass
@@ -429,8 +448,7 @@ class TicketCog(commands.Cog):
                 original_id=str(row.get("category_id") or "")
                 original=ch.guild.get_channel(int(original_id)) if original_id.isdigit() else None
                 if isinstance(original,discord.CategoryChannel): await ch.edit(category=original,reason="RSL ticket reopened")
-                member=ch.guild.get_member(int(row.get("user_id",0)))
-                if member: await ch.set_permissions(member,view_channel=True,send_messages=True,read_message_history=True,attach_files=True,reason="RSL ticket reopened")
+                await self.reconcile_ticket_permissions(ch.guild,row,closed=False,locked=False)
                 await ch.send("🔓 This ticket has been reopened.",view=TicketActions(self,ticket_id))
             except Exception: pass
         await log_event(guild_id,ticket_id,"reopened",actor_id)
