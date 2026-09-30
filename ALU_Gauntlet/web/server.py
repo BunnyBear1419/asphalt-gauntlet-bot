@@ -3061,8 +3061,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         status=str(row.get("status") or "")
         if action=="reopen" and status!="closed":
             raise web.HTTPConflict(text="Only closed tickets can be reopened.")
-        if action=="recover" and status!="orphaned":
-            raise web.HTTPConflict(text="Only orphaned tickets can be recovered.")
+        if action=="recover" and status not in {"orphaned","failed"}:
+            raise web.HTTPConflict(text="Only orphaned or failed tickets can be recovered.")
         if action=="close" and status in {"closed","failed","provisioning"}:
             raise web.HTTPConflict(text="This ticket is not in a closable state.")
         if action in {"claim","priority"} and status in {"closed","failed","provisioning","orphaned"}:
