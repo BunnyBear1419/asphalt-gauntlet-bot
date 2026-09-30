@@ -27,8 +27,8 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'label="Rating"' in text
     assert 'rating_submitted' in text
     assert 'fingerprint=hashlib.sha256' in text
-    assert '"$reduce":{"input":evidence' in text
-    assert '"$reduce":{"input":evidence' in text
+    assert '"$reduce":{"input":"$evidence"' in text
+    assert '"$reduce":{"input":"$evidence"' in text
     assert 'recent_cutoff' in text
     assert 'fingerprint' in text
     assert 'intake_snapshot' in text
