@@ -83,7 +83,7 @@ async def _ensure_database_indexes():
     )
 
 
-async def _wait_for_database(timeout=60):
+    await db.rsl_tickets.create_index([("guild_id", 1), ("status", 1), ("updated_at", -1)], name="idx_rsl_tickets_queue")\n    await db.rsl_tickets.create_index([("guild_id", 1), ("user_id", 1), ("status", 1)], name="idx_rsl_tickets_user_status")\n    await db.rsl_ticket_events.create_index([("guild_id", 1), ("ticket_id", 1), ("created_at", -1)], name="idx_rsl_ticket_events")\n\n\nasync def _wait_for_database(timeout=60):
     """Wait for the bot's MongoDB connection to be initialized during startup."""
     deadline = asyncio.get_running_loop().time() + timeout
     while getattr(bot, "db", None) is None:
