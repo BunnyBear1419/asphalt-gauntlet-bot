@@ -268,6 +268,15 @@ def test_ticket_panel_refresh_persists_and_reuses_panel_message():
     assert 'await channel.fetch_message(int(existing_id))' in server
 
 
+def test_ticket_webhook_is_https_public_and_no_redirects():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert 'parsed.scheme!="https"' in cog
+    assert 'not ip.is_global' in cog
+    assert 'allow_redirects=False' in cog
+    assert 'aiohttp.ClientTimeout(total=5)' in cog
+
+
 def test_ticket_state_transitions_are_atomic_and_recovery_is_reserved():
     root=Path(__file__).parents[1]
     cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
