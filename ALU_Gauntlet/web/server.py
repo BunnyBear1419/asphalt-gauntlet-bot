@@ -3168,16 +3168,27 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         if int(channel.guild.id) != int(guild_id):
             raise web.HTTPForbidden(text="Ticket channel is outside the selected server.")
         lines = [f"RSL Ticket #{ticket_id}", f"Type: {row.get('type')}", f"Opened by: {row.get('user_id')}", f"Status: {row.get('status')}", ""]
+        max_transcript_bytes=2_000_000
+        transcript_bytes=len(lines[0].encode("utf-8"))+sum(len(line.encode("utf-8")) for line in lines[1:])
+        truncated=False
         async for msg in channel.history(limit=500, oldest_first=True):
             stamp = msg.created_at.astimezone(timezone.utc).isoformat()
             text_body = msg.content or ""
             if msg.attachments:
                 attachment_meta = " ".join(
-                    f"[attachment:{a.filename}|{a.size} bytes|{a.content_type or 'unknown'}]"
+                    f"[attachment:{str(a.filename).replace(chr(10),' ').replace(chr(13),' ')[:200]}|{max(0,min(int(a.size or 0),2147483647))} bytes|{str(a.content_type or 'unknown')[:128]}]"
                     for a in msg.attachments[:10]
                 )
                 text_body += " " + attachment_meta
-            lines.append(f"[{stamp}] {msg.author} ({msg.author.id}): {text_body}")
+            line=f"[{stamp}] {msg.author} ({msg.author.id}): {text_body}"
+            candidate_bytes=len((line+"\\n").encode("utf-8"))
+            if transcript_bytes+candidate_bytes>max_transcript_bytes:
+                truncated=True
+                break
+            lines.append(line)
+            transcript_bytes+=candidate_bytes
+        if truncated:
+            lines.append("[Transcript truncated at 2 MB; older messages are complete up to this point.]")
         data = "\n".join(lines).encode("utf-8")
         settings = await __import__("ALU_Gauntlet.cogs.tickets", fromlist=["settings_for"]).settings_for(str(guild_id))
         target = self.bot.get_channel(int(settings.get("transcript_channel_id") or 0)) if settings.get("transcript_channel_id") else None
