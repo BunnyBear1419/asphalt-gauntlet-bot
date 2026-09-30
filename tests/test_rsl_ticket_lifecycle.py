@@ -400,6 +400,17 @@ def test_ticket_notification_indexes_use_one_consistent_schema():
     assert 'name="idx_rsl_ticket_notification_retry"' in main
 
 
+def test_admin_ticket_action_parity_supports_unclaim_and_lock_controls():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    start=server.index("async def admin_ticket_action")
+    end=server.index("async def admin_ticket_panel",start)
+    body=server[start:end]
+    assert 'action in {"claim","unclaim","priority","lock","unlock"}' in body
+    assert '"claimed_by":str(user.user_id)' in body
+    assert '"claimed_by":None' in body
+    assert 'locked = action == "lock"' in body
+    assert 'reconcile_ticket_permissions(guild,updated,closed=False,locked=locked)' in body
+
 def test_admin_ticket_actions_are_race_safe():
     server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
     start=server.index("async def admin_ticket_action")
