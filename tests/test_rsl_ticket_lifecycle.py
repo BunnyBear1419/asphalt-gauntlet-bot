@@ -279,3 +279,10 @@ def test_ticket_permission_reconciliation_applies_type_staff_roles():
     cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
     assert 'for item in settings.get("types",[]):' in cog
     assert 'await ch.set_permissions(role,view_channel=True,send_messages=True' in cog
+
+
+def test_ticket_view_restore_requires_a_live_discord_channel():
+    cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    assert 'channel=guild.get_channel(int(channel_id))' in cog
+    assert 'if not isinstance(channel,discord.TextChannel):' in cog
+    assert 'continue' in cog[cog.index("async def restore_views"):cog.index("async def open_ticket")]
