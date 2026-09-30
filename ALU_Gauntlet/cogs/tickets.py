@@ -63,7 +63,8 @@ async def choose_auto_assignee(guild,ticket_type,settings,db):
         role=guild.get_role(int(rid)) if rid.isdigit() else None
         if role:
             for m in role.members:
-                if not m.bot and is_staff(m,role_ids): candidates[m.id]=m
+                if not m.bot and not getattr(m,"pending",False) and is_staff(m,role_ids):
+                    candidates[m.id]=m
     if not candidates: return None
     counts={str(m.id):await db.rsl_tickets.count_documents({"guild_id":str(guild.id),"claimed_by":str(m.id),"status":{"$ne":"closed"},"active":True}) for m in candidates.values()}
     return min(candidates.values(),key=lambda m:(counts.get(str(m.id),0),str(m.id)))
