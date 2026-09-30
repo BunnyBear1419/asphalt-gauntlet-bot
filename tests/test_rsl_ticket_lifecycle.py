@@ -228,3 +228,18 @@ def test_ticket_notification_claims_can_recover_after_worker_failure():
     assert 'status=="sending"' in cog
     assert 'Five minutes is' in cog
     assert '"retry_at":now' in cog
+
+
+def test_stale_ticket_provisioning_recovery_is_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert "async def reconcile_provisioning" in cog
+    assert '"status":"provisioning","active":True' in cog
+    assert '"status":"failed","active":False,"recovery_status":"stale_provisioning"' in cog
+    assert '"provisioning_stale"' in cog
+    assert "await self.reconcile_provisioning()" in cog
+
+def test_ticket_view_restore_skips_records_without_channels():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert 'find({"channel_id":{"$ne":""}})' in cog
