@@ -86,6 +86,7 @@ class WebControlCenter:
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
         self._auth_rate: dict[str, list[float]] = {}
+        self._ticket_transcript_rate: dict[str, float] = {}
         self._configure_routes()
 
     @web.middleware
@@ -3062,6 +3063,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
         if not row:
             raise web.HTTPNotFound(text="Ticket not found.")
+        rate_key=f"{guild_id}:{user.user_id}:{ticket_id}"
+        now=time.time()
+        last=self._ticket_transcript_rate.get(rate_key,0.0)
+        if now-last < 15:
+            raise web.HTTPTooManyRequests(text="Please wait a few seconds before generating this transcript again.")
+        self._ticket_transcript_rate[rate_key]=now
         channel_id = str(row.get("channel_id") or "")
         channel = guild.get_channel(int(channel_id)) if channel_id.isdigit() else None
         if channel is not None and int(channel.guild.id) != int(guild_id):
