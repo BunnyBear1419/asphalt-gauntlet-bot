@@ -441,9 +441,9 @@ class TicketCog(commands.Cog):
         try:
             ch=await guild.create_text_channel(f"ticket-{' '.join(str(member.display_name).split())[:24].lower().replace(' ','-') or 'player'}",category=cat,overwrites=ow,reason="RSL ticket opened")
             now=time.time()
-            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"status":"provisioning"},{"$set":{"channel_id":str(ch.id),"status":"open","updated_at":now,"last_activity_at":now}})
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id),"status":"provisioning","active":True},{"$set":{"channel_id":str(ch.id),"status":"open","updated_at":now,"last_activity_at":now}})
         except Exception:
-            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id},{"$set":{"status":"failed","active":False,"recovery_status":"channel_creation_failed","updated_at":time.time()}})
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id),"status":"provisioning"},{"$set":{"status":"failed","active":False,"recovery_status":"channel_creation_failed","updated_at":time.time()}})
             try:
                 await log_event(guild.id,tid,"provisioning_failed",member.id)
             except Exception: pass
@@ -452,7 +452,7 @@ class TicketCog(commands.Cog):
         auto_assignee=await choose_auto_assignee(guild,ticket_type,s,self.bot.db) if s.get("auto_assign_enabled") else None
         if auto_assignee:
             doc["claimed_by"]=str(auto_assignee.id); doc["status"]="assigned"
-            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id)},{"$set":{"claimed_by":str(auto_assignee.id),"status":"assigned","updated_at":time.time()}})
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id),"status":"open","active":True},{"$set":{"claimed_by":str(auto_assignee.id),"status":"assigned","updated_at":time.time()}})
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
         for k,v in answers.items():
@@ -460,7 +460,7 @@ class TicketCog(commands.Cog):
         try:
             await ch.send(content=f"{member.mention}"+(f" • Assigned to <@{auto_assignee.id}>" if auto_assignee else ""),embed=e,view=TicketActions(self,tid))
         except Exception:
-            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id)},{"$set":{"status":"orphaned","active":False,"recovery_status":"opening_message_failed","updated_at":time.time()}})
+            await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id),"status":{"$in":["open","assigned"]},"active":True},{"$set":{"status":"orphaned","active":False,"recovery_status":"opening_message_failed","updated_at":time.time()}})
             return "❌ The ticket channel was created but could not be initialized. Staff can recover it from Ticket Center."
         await log_event(guild.id,tid,"opened",member.id,type=doc["type"])
         if auto_assignee: await log_event(guild.id,tid,"auto_assigned",auto_assignee.id,assigned_by="system")
