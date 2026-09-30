@@ -120,9 +120,9 @@ class TicketCog(commands.Cog):
     async def open_ticket(self,guild,member,ticket_type,answers):
         s=await settings_for(guild.id)
         if not s["enabled"]: return "🎫 Ticket support is currently disabled."
-        count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"active":True})
+        count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"status":{"$ne":"closed"}})
         if count>=s["max_open_per_user"]: return f"❌ You already have the maximum of {s['max_open_per_user']} open tickets."
-        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"active":True})
+        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"status":{"$ne":"closed"}})
         if existing:
             ch=guild.get_channel(int(existing.get("channel_id",0))); return f"❌ You already have an open ticket: {ch.mention if ch else 'ticket record'}."
         role_ids=[str(x) for x in (ticket_type.get("staff_role_ids") or s["staff_role_ids"])]
