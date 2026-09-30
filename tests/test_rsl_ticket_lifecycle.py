@@ -167,3 +167,16 @@ def test_ticket_alerts_use_atomic_deduplication_and_claimed_staff_mention():
     assert 'f"🚨 Staff alert:' in cog
     assert '"sla_alerted_at":None},{"$set"' in cog
     assert '"reminder_sent_at":None},{"$set"' in cog
+
+
+def test_ticket_notification_pipeline_is_idempotent_and_player_preference_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    main=(root/"ALU_Gauntlet"/"main.py").read_text(encoding="utf-8")
+    server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
+    page=(root/"ALU_Gauntlet"/"web"/"static"/"admin.html").read_text(encoding="utf-8")
+    assert 'async def notify_ticket' in cog
+    assert 'rsl_ticket_notifications' in cog
+    assert 'uniq_rsl_ticket_notification_event' in main
+    assert 'notify_player_dm' in cog and 'notify_player_dm' in server and 'notify_player_dm' in page
+    assert 'ticket.sla_escalated' in cog and 'ticket.closed' in cog and 'ticket.reopened' in cog
