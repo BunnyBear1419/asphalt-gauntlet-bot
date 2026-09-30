@@ -24,6 +24,9 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'tag_updated' in text
     assert 'canned_response' in text
     assert 'canned_responses' in text
+    assert 'label="Rating"' in text
+    assert 'rating_submitted' in text
+    assert 'RSL Support Rating' in text
 
 
 def test_ticket_lifecycle_tracks_activity_and_first_response():
