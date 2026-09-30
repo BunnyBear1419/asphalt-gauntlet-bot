@@ -81,3 +81,22 @@ def test_ticket_localization_and_integrations_are_wired():
     assert 'ticket-types-json' in page
     assert 'ticket-webhook' in page
     assert 'saveTicketSettings' in page
+
+
+def test_ticket_admin_queue_actions_and_transcript_are_wired():
+    root=Path(__file__).parents[1]
+    server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
+    page=(root/"ALU_Gauntlet"/"web"/"static"/"admin.html").read_text(encoding="utf-8")
+    assert 'async def admin_ticket_transcript' in server
+    assert '/api/admin/tickets/transcript' in server
+    assert 'ticketAction' in page
+    assert 'downloadTicketTranscript' in page
+    assert 'data-ticket-action' in page
+    assert 'data-ticket-transcript' in page
+    assert 'ticket-post-panel' in page
+
+
+def test_ticket_webhook_validation_is_https_only():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    assert 'parsed.scheme != "https"' in server
+    assert 'Integration webhook must be a public HTTPS endpoint.' in server
