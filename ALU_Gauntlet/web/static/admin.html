@@ -81,7 +81,7 @@
   <button data-section="server-control">🛡️ Server &amp; Bot Control</button>
   <button data-section="management">🧩 Management</button>
   <button data-section="xp">⭐ XP &amp; Progression</button>
-  <button data-section="system">🛠️ Sync &amp; System</button>
+  <button data-section="tickets">🎫 Ticket Center</button>\n  <button data-section="system">🛠️ Sync &amp; System</button>
   <button data-section="fairness">🛡️ Fairness Review</button>
 </aside>
 
@@ -102,6 +102,30 @@
   </div>
 </section>
 
+<section class="admin-section" id="section-tickets">
+  <div class="admin-card"><h2>🎫 RSL Ticket Center</h2><p>Full Discord support desk. Discord remains the conversation surface; this dashboard is the staff command center and canonical case-management view.</p>
+    <div class="admin-grid three">
+      <div class="admin-card" style="margin:0"><h3>Open</h3><strong id="ticket-stat-open">—</strong></div>
+      <div class="admin-card" style="margin:0"><h3>Assigned</h3><strong id="ticket-stat-assigned">—</strong></div>
+      <div class="admin-card" style="margin:0"><h3>SLA At Risk</h3><strong id="ticket-stat-sla">—</strong></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn" id="ticket-refresh">Refresh Queue</button><button class="admin-btn" id="ticket-transcript">Download Transcript</button><span class="admin-status" id="ticket-status"></span></div>
+  </div>
+  <div class="admin-card"><h2>Ticket Settings</h2><div class="admin-grid">
+    <div class="admin-field"><label>Panel Channel ID</label><input id="ticket-panel-channel" placeholder="Discord channel ID"></div>
+    <div class="admin-field"><label>Transcript Channel ID</label><input id="ticket-transcript-channel" placeholder="Discord channel ID"></div>
+    <div class="admin-field"><label>Default Category ID</label><input id="ticket-default-category" placeholder="Discord category ID"></div>
+    <div class="admin-field"><label>Closed Category ID</label><input id="ticket-closed-category" placeholder="Discord category ID"></div>
+    <div class="admin-field"><label>Staff Role IDs</label><textarea id="ticket-staff-roles" placeholder="One role ID per line"></textarea></div>
+    <div class="admin-field"><label>Max Open Tickets / Player</label><input id="ticket-max-open" type="number" min="1" max="10"></div>
+    <div class="admin-field"><label>Auto-Close Inactive (hours)</label><input id="ticket-autoclose" type="number" min="0" max="720"></div>
+    <div class="admin-field"><label>First Response SLA (minutes)</label><input id="ticket-sla" type="number" min="0" max="10080"></div>
+  </div><div class="admin-actions"><button class="admin-btn primary" id="ticket-save">Save Ticket Settings</button><button class="admin-btn" id="ticket-post-panel">Post / Refresh Discord Panel</button><span class="admin-status" id="ticket-settings-status"></span></div></div>
+  <div class="admin-card"><h2>Ticket Types &amp; Intake Forms</h2><p>Each type can route to different staff/category settings and collect up to five questions before the private Discord channel opens.</p>
+    <div id="ticket-types-list"></div>
+  </div>
+  <div class="admin-card"><h2>Live Queue</h2><div class="admin-actions"><select id="ticket-filter"><option value="">All tickets</option><option value="open">Open</option><option value="assigned">Assigned</option><option value="investigating">Investigating</option><option value="awaiting_player">Awaiting Player</option><option value="escalated">Escalated</option><option value="closed">Closed</option></select></div><div class="admin-log" id="ticket-queue"></div></div>
+</section>
 <section class="admin-section" id="section-branding">
   <div class="admin-card"><h2>Website Branding</h2><p>Rebrand the deployment without changing code. The selected guild's configuration is applied at request time.</p>
     <div class="admin-grid">
