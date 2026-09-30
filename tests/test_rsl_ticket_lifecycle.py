@@ -286,3 +286,15 @@ def test_ticket_view_restore_requires_a_live_discord_channel():
     assert 'channel=guild.get_channel(int(channel_id))' in cog
     assert 'if not isinstance(channel,discord.TextChannel):' in cog
     assert 'continue' in cog[cog.index("async def restore_views"):cog.index("async def open_ticket")]
+
+
+def test_ticket_notifications_are_gated_per_destination():
+    cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    start=cog.index("async def notify_ticket")
+    end=cog.index("async def choose_auto_assignee",start)
+    body=cog[start:end]
+    assert 'destinations.append(("staff"' in body
+    assert 'destinations.append(("player"' in body
+    assert 'destinations.append(("webhook"' in body
+    assert 'key=f"{ticket_id}:{event}:{destination}"' in body
+    assert '200 <= int(response.status) < 300' in body
