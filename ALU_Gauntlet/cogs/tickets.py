@@ -51,6 +51,7 @@ async def settings_for(guild_id):
         "support_hours_end":str(row.get("support_hours_end") or "17:00")[:5],
         "support_hours_days":[int(x) for x in row.get("support_hours_days",[0,1,2,3,4,5,6]) if str(x).isdigit() and 0<=int(x)<=6][:7],
         "webhook_url":str(row.get("webhook_url") or ""),
+        "notify_player_dm":bool(row.get("notify_player_dm",True)),
         "types":(row.get("types") or DEFAULT_TYPES)[:25],
         "tags":[str(x)[:32] for x in (row.get("tags") or ["billing","bug","dispute","evidence","follow-up","priority","resolved","technical"])[:30]],
         "canned_responses":(row.get("canned_responses") or [{"key":"welcome","label":"Welcome","text":"Thanks for contacting RSL Support. A staff member will assist you shortly."},{"key":"evidence","label":"Evidence Request","text":"Please provide the relevant screenshots, video, match ID, and any other evidence available."},{"key":"resolved","label":"Resolved","text":"This issue appears to be resolved. If you still need help, reply here before the ticket is closed."}])[:30],
@@ -385,7 +386,10 @@ class TicketCog(commands.Cog):
             except Exception: pass
             try: await ch.send("🔒 This ticket has been closed. Staff may reopen it if needed.",view=TicketActions(self,ticket_id,closed=True))
             except Exception: pass
-        await log_event(guild_id,ticket_id,"closed",actor_id,reason=reason); return True
+        await log_event(guild_id,ticket_id,"closed",actor_id,reason=reason)
+        s=await settings_for(guild_id)
+        await self.notify_ticket(ticket_id,row,"closed",message="🔒 Your RSL support ticket has been closed. Staff may reopen it if needed.",player=s.get("notify_player_dm",True),webhook_payload={"event":"ticket.closed","guild_id":str(guild_id),"ticket_id":str(ticket_id),"reason":reason})
+        return True
     async def recover(self,guild_id,ticket_id,actor_id):
         from bson import ObjectId
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
@@ -429,7 +433,10 @@ class TicketCog(commands.Cog):
                 if member: await ch.set_permissions(member,view_channel=True,send_messages=True,read_message_history=True,attach_files=True,reason="RSL ticket reopened")
                 await ch.send("🔓 This ticket has been reopened.",view=TicketActions(self,ticket_id))
             except Exception: pass
-        await log_event(guild_id,ticket_id,"reopened",actor_id); return True
+        await log_event(guild_id,ticket_id,"reopened",actor_id)
+        s=await settings_for(guild_id)
+        await self.notify_ticket(ticket_id,row,"reopened",message="🔓 Your RSL support ticket has been reopened.",player=s.get("notify_player_dm",True),webhook_payload={"event":"ticket.reopened","guild_id":str(guild_id),"ticket_id":str(ticket_id)})
+        return True
     @commands.Cog.listener()
     async def on_message(self, message):
         if not message.guild or message.author.bot:
