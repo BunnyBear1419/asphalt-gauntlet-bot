@@ -25,23 +25,29 @@ function publicClubProfile(c){
  const links=(c.links||[]).slice(0,5).map((v,i)=>'<a class="public-club-link" href="'+esc(v)+'" target="_blank" rel="noopener noreferrer"><span>LINK '+(i+1)+'</span><b>'+esc(v.replace(/^https?:\/\//,"").replace(/\/$/,""))+'</b>↗</a>').join("");
  const roster=(c.members||[]).map(m=>'<button type="button" class="public-club-member" data-player-profile="'+esc(m.user_id)+'"><div class="public-club-member-avatar">'+esc((m.username||"?").slice(0,1).toUpperCase())+'</div><div class="public-club-member-info"><strong>'+esc(m.username||"Driver")+'</strong><small>'+esc(m.asphalt_game_name||m.role||"Member")+'</small></div>'+verifiedBadge(m)+'<span class="public-club-member-arrow">↗</span></button>').join("");
  const formats='<span>2v2</span><span>3v3</span><span>4v4</span>';
+ const recent=Array.isArray(c.recent_tournament_results)&&c.recent_tournament_results.length
+   ? '<section class="public-club-section"><span class="eyebrow">RECENT RESULTS</span><div class="public-club-results">'+c.recent_tournament_results.slice(0,5).map(r=>'<div class="public-club-result"><span class="'+(r.result==="WIN"?"match-win":"match-loss")+'">'+esc(r.result||"—")+'</span><strong>'+esc(r.opponent||"Opponent")+'</strong><small>'+esc(r.tournament_name||"Team Tournament")+' · '+esc(r.date_label||"")+'</small></div>').join("")+'</div></section>'
+   : "";
+ const competition=c.tournament_count
+   ? "Tournament record: "+esc(c.tournament_record||"0-0")+" across "+c.tournament_count+" team tournament"+(c.tournament_count===1?"":"s")+"."
+   : "No team tournament entries yet.";
  x.innerHTML='<div class="public-club-backdrop" data-close-club-profile></div><section class="public-club-profile glass-panel" role="dialog" aria-modal="true" aria-labelledby="public-club-title">'+
  '<button class="public-club-close qa qa-blue" data-close-club-profile aria-label="Close club profile">✕</button>'+
  '<div class="public-club-hero">'+(c.image?'<img src="'+esc(c.image)+'" alt="'+esc(c.name)+' club banner">':'<div class="public-club-hero-empty">🏁</div>')+'<div class="public-club-hero-shade"></div><div class="public-club-hero-copy"><span class="eyebrow">CLUB PROFILE</span><h2 id="public-club-title">'+esc(c.name)+'</h2><p>Led by <b>'+esc(leaderName(c))+'</b></p></div></div>'+
- '<div class="public-club-body">'+
- '<div class="public-club-stat-grid unified-profile-stats"><div><small>ROSTER</small><strong>'+c.member_count+' / 20</strong></div><div><small>W / L</small><strong>'+esc(c.tournament_record||"0-0")+'</strong></div><div><small>WIN RATE</small><strong>'+clubRecordStats(c).pct+'%</strong></div><div><small>TEAM FORMATS</small><strong>2v2 · 3v3 · 4v4</strong></div><div><small>TOURNAMENT ENTRIES</small><strong>'+Number(c.tournament_count||0)+'</strong></div></div>'+
+ '<div class="public-club-body"><div class="public-club-stat-grid unified-profile-stats"><div><small>ROSTER</small><strong>'+c.member_count+' / 20</strong></div><div><small>W / L</small><strong>'+esc(c.tournament_record||"0-0")+'</strong></div><div><small>WIN RATE</small><strong>'+clubRecordStats(c).pct+'%</strong></div><div><small>TEAM FORMATS</small><strong>2v2 · 3v3 · 4v4</strong></div><div><small>TOURNAMENT ENTRIES</small><strong>'+Number(c.tournament_count||0)+'</strong></div></div>'+
  '<div class="public-club-grid"><div class="public-club-main">'+
  '<section class="public-club-section"><span class="eyebrow">ABOUT US</span><p>'+esc(c.about||"This club has not added an About Us description yet.")+'</p></section>'+
  (c.discord?'<section class="public-club-section"><span class="eyebrow">DISCORD</span><a class="public-club-discord" href="'+esc(c.discord)+'" target="_blank" rel="noopener noreferrer">Open Club Discord ↗</a></section>':"")+
  (links?'<section class="public-club-section"><span class="eyebrow">LINKS</span><div class="public-club-links">'+links+'</div></section>':"")+
- '<section class="public-club-section"><span class="eyebrow">COMPETITION</span><div class="public-club-format-row">'+formats+'</div><p class="public-club-muted">'+(c.tournament_count?("Tournament record: "+esc(c.tournament_record||"0-0")+" across "+c.tournament_count+" team tournament"+(c.tournament_count===1?"":"s")+"."): "No team tournament entries yet.")+'</p></section>+(Array.isArray(c.recent_tournament_results)&&c.recent_tournament_results.length?'<section class="public-club-section"><span class="eyebrow">RECENT RESULTS</span><div class="public-club-results">'+c.recent_tournament_results.slice(0,5).map(r=>'<div class="public-club-result"><span class="'+(r.result==="WIN"?"match-win":"match-loss")+'">'+esc(r.result||"—")+'</span><strong>'+esc(r.opponent||"Opponent")+'</strong><small>'+esc(r.tournament_name||"Team Tournament")+' · '+esc(r.date_label||"")+'</small></div>').join("")+'</div></section>':"")'+
+ '<section class="public-club-section"><span class="eyebrow">COMPETITION</span><div class="public-club-format-row">'+formats+'</div><p class="public-club-muted">'+competition+'</p></section>'+
+ recent+
  '</div><aside class="public-club-roster"><div class="public-club-roster-head"><div><span class="eyebrow">ROSTER</span><h3>Drivers</h3></div><b>'+c.member_count+'/20</b></div>'+ (roster||'<p class="public-club-muted">No members yet.</p>')+'</aside></div></div></section>';
  document.body.appendChild(x);
  x.querySelectorAll("[data-player-profile]").forEach(b=>b.onclick=()=>{window.location.href="/profile?user_id="+encodeURIComponent(b.dataset.playerProfile)});
  x.querySelectorAll("[data-close-club-profile]").forEach(b=>b.onclick=()=>x.remove());
- x.addEventListener("click",e=>{if(e.target===x)e.stopPropagation()});
  const close=()=>x.remove();
- document.addEventListener("keydown",function handler(e){if(!document.body.contains(x))return;if(e.key==="Escape"){close();document.removeEventListener("keydown",handler)}});
+ const handler=e=>{if(e.key==="Escape"&&document.body.contains(x)){close();document.removeEventListener("keydown",handler)}};
+ document.addEventListener("keydown",handler);
 }
 function editor(c){
  document.querySelector(".club-editor-overlay")?.remove();const x=document.createElement("div");x.className="club-editor-overlay";
