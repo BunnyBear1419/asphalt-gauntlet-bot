@@ -650,10 +650,14 @@ class TicketCog(commands.Cog):
                 await log_event(row["guild_id"],str(row["_id"]),"provisioning_stale","system",recovery_status="stale_provisioning")
 
     async def reconcile_missing_channels(self):
-        async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"},"active":True}):
-            guild=self.bot.get_guild(int(row.get("guild_id",0)))
+        async for row in self.bot.db.rsl_tickets.find({"status":{"$nin":["closed","provisioning","recovering"]},"active":True}):
+            guild_id=str(row.get("guild_id") or "")
+            if not guild_id.isdigit(): continue
+            guild=self.bot.get_guild(int(guild_id))
             if not guild: continue
-            channel_id=int(row.get("channel_id",0))
+            raw_channel_id=str(row.get("channel_id") or "")
+            if not raw_channel_id.isdigit(): continue
+            channel_id=int(raw_channel_id)
             channel=guild.get_channel(channel_id)
             if channel is None:
                 try:
