@@ -3102,9 +3102,22 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPForbidden(text="Target channel must belong to the selected server.")
         settings = await cog.settings_for(str(guild_id)) if hasattr(cog, "settings_for") else await __import__("ALU_Gauntlet.cogs.tickets", fromlist=["settings_for"]).settings_for(str(guild_id))
         embed = discord.Embed(title="🎫 RACING SYNDICATE LEAGUE • SUPPORT CENTER", description="Choose the type of help you need below. Your ticket will be private to you and routed to the appropriate RSL support team.", color=discord.Color.blurple())
-        message = await channel.send(embed=embed, view=__import__("ALU_Gauntlet.cogs.tickets", fromlist=["TicketPanelView"]).TicketPanelView(cog, settings["types"]))
-        await self.bot.db.rsl_ticket_settings.update_one({"_id":str(guild_id)},{"$set":{"panel_channel_id":channel_id}})
-        return web.json_response({"ok": True, "message_id": str(message.id), "channel_id": channel_id})
+        panel_view=__import__("ALU_Gauntlet.cogs.tickets", fromlist=["TicketPanelView"]).TicketPanelView(cog, settings["types"])
+        existing_id=str(settings.get("panel_message_id") or "")
+        message=None
+        if existing_id.isdigit() and str(settings.get("panel_channel_id") or "")==channel_id:
+            try:
+                message=await channel.fetch_message(int(existing_id))
+                await message.edit(embed=embed, view=panel_view)
+            except (discord.NotFound, discord.HTTPException):
+                message=None
+        if message is None:
+            message=await channel.send(embed=embed, view=panel_view)
+        await self.bot.db.rsl_ticket_settings.update_one(
+            {"_id":str(guild_id)},
+            {"$set":{"panel_channel_id":channel_id,"panel_message_id":str(message.id)}}
+        )
+        return web.json_response({"ok": True, "message_id": str(message.id), "channel_id": channel_id, "refreshed": existing_id==str(message.id)})
 
     async def admin_ticket_transcript(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
