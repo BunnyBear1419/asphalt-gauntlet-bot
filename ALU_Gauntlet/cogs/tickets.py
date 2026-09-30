@@ -60,7 +60,8 @@ async def settings_for(guild_id):
 async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player=False,webhook_payload=None):
     key=f"{ticket_id}:{event}"
     try:
-        await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key},{"$setOnInsert":{"event_key":key,"ticket_id":str(ticket_id),"created_at":time.time(),"status":"sending"}},upsert=True)
+        # A unique event key is a true delivery gate: only the first worker may send it.
+        await self.bot.db.rsl_ticket_notifications.insert_one({"event_key":key,"ticket_id":str(ticket_id),"created_at":time.time(),"status":"sending"})
     except Exception:
         return False
     delivered=False
