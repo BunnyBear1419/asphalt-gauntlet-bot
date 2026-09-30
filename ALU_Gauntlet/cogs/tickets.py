@@ -112,8 +112,9 @@ class TicketActions(discord.ui.View):
             ch=interaction.guild.get_channel(int((row or {}).get("channel_id",0)))
             if isinstance(ch,discord.TextChannel):
                 member=interaction.guild.get_member(int((row or {}).get("user_id",0)))
-                if member: locked=not bool((row or {}).get("locked",False))
-                await ch.set_permissions(member,view_channel=True,send_messages=not locked,read_message_history=True,attach_files=not locked,reason="RSL ticket lock toggle")
+                locked=not bool((row or {}).get("locked",False))
+                if member:
+                    await ch.set_permissions(member,view_channel=True,send_messages=not locked,read_message_history=True,attach_files=not locked,reason="RSL ticket lock toggle")
                 await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"locked":locked,"updated_at":time.time()}})
                 await log_event(interaction.guild.id,self.ticket_id,"locked" if locked else "unlocked",interaction.user.id)
                 msg="🔒 Ticket locked." if locked else "🔓 Ticket unlocked."
