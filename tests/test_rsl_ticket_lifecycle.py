@@ -470,7 +470,7 @@ def test_ticket_evidence_is_deduplicated_and_normalized():
     assert '"content_type":str(attachment.content_type or "")[:128]' in body
     assert '"size":max(0,min(int(attachment.size or 0),2147483647))' in body
     assert '"$reduce":{"input":evidence' in body
-    assert '"$in":["$$this.fingerprint"' in body
+    assert '"$in":["$this.fingerprint"' in body
     assert '"$slice":[{"$reduce"' in body
     assert '"$push":{"evidence"' not in body
 
@@ -480,7 +480,7 @@ def test_ticket_transcript_has_a_hard_size_limit_and_sanitizes_attachment_metada
     start=server.index("async def admin_ticket_transcript")
     body=server[start:]
     assert 'max_transcript_bytes=2_000_000' in body
-    assert 'candidate_bytes=len((line+"\\n").encode("utf-8"))' in body or 'candidate_bytes=len((line+"\\n").encode("utf-8"))' in body
+    assert 'candidate_bytes=len((line+"\\\\n").encode("utf-8"))' in body
     assert 'if transcript_bytes+candidate_bytes>max_transcript_bytes:' in body
     assert 'truncated=True' in body
     assert 'Transcript truncated at 2 MB' in body
