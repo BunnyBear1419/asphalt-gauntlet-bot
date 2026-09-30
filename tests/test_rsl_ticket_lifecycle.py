@@ -189,3 +189,13 @@ def test_ticket_permission_reconciliation_cleans_stale_members():
     assert "RSL ticket permission reconciliation" in cog
     assert "closed=True,locked=False" in cog
     assert "member_ids={str(x) for x in row.get(\"member_ids\",[])}" in cog
+
+
+def test_ticket_provisioning_reservation_and_failure_recovery_are_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert '"status":"provisioning"' in cog
+    assert '"status":"failed","active":False,"recovery_status":"channel_creation_failed"' in cog
+    assert '"status":"orphaned","active":False,"recovery_status":"opening_message_failed"' in cog
+    assert '"status":"open","updated_at":now,"last_activity_at":now' in cog
+    assert 'A ticket is already being opened' in cog
