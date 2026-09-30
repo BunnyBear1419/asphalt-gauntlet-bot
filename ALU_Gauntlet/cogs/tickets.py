@@ -368,10 +368,18 @@ class TicketCog(commands.Cog):
     async def restore_views(self):
         guilds=set()
         async for row in self.bot.db.rsl_tickets.find({"channel_id":{"$ne":""}}):
-            self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed",locked=bool(row.get("locked",False))); guilds.add(str(row.get("guild_id","")))
+            guild_id=str(row.get("guild_id") or "")
+            channel_id=str(row.get("channel_id") or "")
+            guild=self.bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
+            channel=guild.get_channel(int(channel_id)) if guild and channel_id.isdigit() else None
+            if not isinstance(channel,discord.TextChannel):
+                continue
+            self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed",locked=bool(row.get("locked",False)))
+            guilds.add(guild_id)
         for gid in guilds:
             s=await settings_for(gid)
-            if s["panel_channel_id"]: self.bot.add_view(TicketPanelView(self,s["types"]))
+            if s["panel_channel_id"]:
+                self.bot.add_view(TicketPanelView(self,s["types"]))
     async def open_ticket(self,guild,member,ticket_type,answers):
         s=await settings_for(guild.id)
         if not s["enabled"]: return "🎫 Ticket support is currently disabled."
