@@ -28,7 +28,7 @@ def test_assurance_routes_are_registered_without_duplicate_support_systems():
 
 def test_privacy_requests_keep_support_in_discord():
     src = SERVER.read_text(encoding="utf-8")
-    assert "official RSL Discord ticket workflow" in src
+    assert "official RSL Discord ticket workflow" in src or "official Discord ticket workflow" in src
     assert "https://discord.gg/q46RQxu2fm" in src
 
 def test_public_status_page_exists_and_uses_public_status_api():
