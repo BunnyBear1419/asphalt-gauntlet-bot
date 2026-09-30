@@ -298,3 +298,11 @@ def test_ticket_notifications_are_gated_per_destination():
     assert 'destinations.append(("webhook"' in body
     assert 'key=f"{ticket_id}:{event}:{destination}"' in body
     assert '200 <= int(response.status) < 300' in body
+
+
+def test_ticket_webhook_validation_blocks_private_or_credentialed_targets():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    assert "import ipaddress" in server
+    assert "socket.getaddrinfo" in server
+    assert "parsed.username or parsed.password" in server
+    assert "ip.is_private" in server
