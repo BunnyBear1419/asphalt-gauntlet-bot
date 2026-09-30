@@ -266,3 +266,10 @@ def test_ticket_panel_refresh_persists_and_reuses_panel_message():
     assert 'await message.edit(embed=embed, view=panel_view)' in server
     assert '"panel_message_id":str(message.id)' in server
     assert 'await channel.fetch_message(int(existing_id))' in server
+
+
+def test_ticket_recovery_accepts_failed_provisioning_records():
+    cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    assert '"status":{"$in":["orphaned","failed"]}' in cog
+    assert 'status not in {"orphaned","failed"}' in server
