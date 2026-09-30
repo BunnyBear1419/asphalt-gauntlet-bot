@@ -112,17 +112,17 @@ class TicketCog(commands.Cog):
     def cog_unload(self): self.auto_close_loop.cancel()
     async def restore_views(self):
         guilds=set()
-        async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"}}):
-            self.bot.add_view(TicketActions(self,str(row["_id"]))); guilds.add(str(row.get("guild_id","")))
+        async for row in self.bot.db.rsl_tickets.find({}):
+            self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed")); guilds.add(str(row.get("guild_id","")))
         for gid in guilds:
             s=await settings_for(gid)
             if s["panel_channel_id"]: self.bot.add_view(TicketPanelView(self,s["types"]))
     async def open_ticket(self,guild,member,ticket_type,answers):
         s=await settings_for(guild.id)
         if not s["enabled"]: return "🎫 Ticket support is currently disabled."
-        count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"status":{"$ne":"closed"}})
+        count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"active":True})
         if count>=s["max_open_per_user"]: return f"❌ You already have the maximum of {s['max_open_per_user']} open tickets."
-        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"status":{"$ne":"closed"}})
+        existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"active":True})
         if existing:
             ch=guild.get_channel(int(existing.get("channel_id",0))); return f"❌ You already have an open ticket: {ch.mention if ch else 'ticket record'}."
         role_ids=[str(x) for x in (ticket_type.get("staff_role_ids") or s["staff_role_ids"])]
@@ -136,7 +136,7 @@ class TicketCog(commands.Cog):
         safe="".join(c.lower() if c.isalnum() else "-" for c in str(member.display_name))[:24].strip("-") or "player"
         ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL ticket opened")
         now=time.time()
-        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"answers":answers}
+        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"answers":answers}
         ins=await self.bot.db.rsl_tickets.insert_one(doc); tid=str(ins.inserted_id)
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
@@ -150,7 +150,7 @@ class TicketCog(commands.Cog):
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
         row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id)})
         if not row or row.get("status")=="closed": return False
-        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"closed","closed_at":now,"updated_at":now,"last_activity_at":now}})
+        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"closed","active":False,"closed_at":now,"updated_at":now,"last_activity_at":now}})
         ch=self.bot.get_channel(int(row.get("channel_id",0)))
         if isinstance(ch,discord.TextChannel):
             s=await settings_for(guild_id); cid=str(s["closed_category_id"]); cat=ch.guild.get_channel(int(cid)) if cid.isdigit() else None
@@ -165,7 +165,7 @@ class TicketCog(commands.Cog):
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
         row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id)})
         if not row: return False
-        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"open","closed_at":None,"updated_at":now,"last_activity_at":now}})
+        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"open","active":True,"closed_at":None,"updated_at":now,"last_activity_at":now}})
         ch=self.bot.get_channel(int(row.get("channel_id",0)))
         if isinstance(ch,discord.TextChannel):
             try: await ch.send("🔓 This ticket has been reopened.",view=TicketActions(self,ticket_id))
