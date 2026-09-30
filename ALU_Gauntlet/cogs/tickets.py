@@ -365,8 +365,9 @@ class TicketActions(discord.ui.View):
             oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
             row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(interaction.guild.id)})
             order=["low","normal","high","urgent"]; cur=str((row or {}).get("priority","normal")); nxt=order[(order.index(cur)+1)%4] if cur in order else "normal"
-            await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"priority":nxt,"updated_at":time.time(),"last_activity_at":time.time()}})
-            await log_event(interaction.guild.id,self.ticket_id,"priority",interaction.user.id,priority=nxt); msg=f"🔺 Priority changed to **{nxt.title()}**."
+            result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]},"priority":cur},{"$set":{"priority":nxt,"updated_at":time.time(),"last_activity_at":time.time()}})
+            if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"priority",interaction.user.id,priority=nxt)
+            msg=f"🔺 Priority changed to **{nxt.title()}**." if result.modified_count else "ℹ️ Ticket state changed before this action completed."
         elif action=="close":
             ok=await self.cog._close_ticket(str(interaction.guild.id),self.ticket_id,str(interaction.user.id),"staff")
             msg="🔒 Ticket closed." if ok else "ℹ️ Ticket was already closed."
@@ -593,7 +594,7 @@ class TicketCog(commands.Cog):
     async def on_message(self, message):
         if not message.guild or message.author.bot:
             return
-        row=await self.bot.db.rsl_tickets.find_one({"guild_id":str(message.guild.id),"channel_id":str(message.channel.id),"status":{"$ne":"closed"}})
+        row=await self.bot.db.rsl_tickets.find_one({"guild_id":str(message.guild.id),"channel_id":str(message.channel.id),"status":{"$ne":"closed"},"active":True})
         if not row:
             return
         now=time.time()
