@@ -609,18 +609,20 @@ class TicketCog(commands.Cog):
             return
         now=time.time()
         update={"last_activity_at":now,"updated_at":now,"reminder_sent_at":None}
-        if message.attachments:
-            evidence=[]
-            for attachment in message.attachments[:10]:
-                fingerprint=hashlib.sha256(str(attachment.url).encode("utf-8","ignore")).hexdigest()
-                evidence.append({"name":str(attachment.filename)[:200],"url":str(attachment.url)[:2000],"size":int(attachment.size or 0),"content_type":str(attachment.content_type or ""), "fingerprint":fingerprint})
-            update["$evidence_append"]=evidence
+        evidence=[]
+        for attachment in message.attachments[:10]:
+            fingerprint=hashlib.sha256(str(attachment.url).encode("utf-8","ignore")).hexdigest()
+            evidence.append({"name":str(attachment.filename).replace("\r"," ")[:200],"url":str(attachment.url)[:2000],"size":max(0,min(int(attachment.size or 0),2147483647)),"content_type":str(attachment.content_type or "")[:128],"fingerprint":fingerprint})
         if str(message.author.id) != str(row.get("user_id")) and not row.get("first_response_at"):
             update["first_response_at"]=now
-        evidence=update.pop("$evidence_append",None)
-        update_doc={"$set":update}
-        if evidence: update_doc["$push"]={"evidence":{"$each":evidence,"$slice":-100}}
-        await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(message.guild.id)},update_doc)
+        if evidence:
+            update_pipeline=[
+                {"$set":update},
+                {"$set":{"evidence":{"$let":{"vars":{"existing":{"$ifNull":["$evidence",[]]}},"in":{"$slice":[{"$reduce":{"input":evidence,"initialValue":"$existing","in":{"$cond":[{"$in":["$this.fingerprint",{"$map":{"input":"$value","as":"item","in":"$item.fingerprint"}}]},"$value",{"$concatArrays":["$value",["$this"]]}]}}},-100]}}}}}
+            ]
+            await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(message.guild.id)},update_pipeline)
+        else:
+            await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(message.guild.id)},{"$set":update})
 
     async def reconcile_provisioning(self):
         now=time.time()
