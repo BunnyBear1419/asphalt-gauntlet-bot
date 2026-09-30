@@ -306,3 +306,10 @@ def test_ticket_webhook_validation_blocks_private_or_credentialed_targets():
     assert "socket.getaddrinfo" in server
     assert "parsed.username or parsed.password" in server
     assert "ip.is_private" in server
+
+
+def test_ticket_transcript_generation_has_abuse_cooldown():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    assert "self._ticket_transcript_rate" in server
+    assert "HTTPTooManyRequests" in server
+    assert 'now-last < 15' in server
