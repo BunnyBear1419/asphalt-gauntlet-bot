@@ -87,7 +87,7 @@ def test_ticket_staff_transfer_workflow_exists():
     text=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
     assert 'label="Transfer"' in text
     assert 'action=="transfer"' in text
-    assert 'is_staff(target,settings["staff_role_ids"])' in text
+    assert 'is_staff(target,ticket_roles)' in text
     assert '"transferred"' in text
 
 
