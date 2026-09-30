@@ -59,3 +59,12 @@ def test_club_cap_and_shared_fields_remain_explicit():
     assert '"leader_id": str(user.user_id)' in SERVER
     assert '"about":' in SERVER
     assert '"tournament_wins"' in SERVER or "tournament_wins" in CLUB_JS
+
+
+def test_clubs_page_create_flow_has_working_client_bindings():
+    source = CLUBS_JS
+    assert '$("#open-create").onclick=()=>$("#create-panel").hidden=false' in source
+    assert '$("#club-form").onsubmit=async e=>' in source
+    assert 'function publicClubProfile(c){' in source
+    assert 'const recent=Array.isArray(c.recent_tournament_results)' in source
+    assert '</section>+' not in source
