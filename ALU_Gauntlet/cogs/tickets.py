@@ -91,6 +91,12 @@ class TicketActions(discord.ui.View):
             result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$ne":"closed"},"claimed_by":None},{"$set":{"claimed_by":str(interaction.user.id),"status":"assigned","updated_at":time.time(),"last_activity_at":time.time()}})
             await log_event(interaction.guild.id,self.ticket_id,"claim",interaction.user.id)
             msg="✅ Ticket claimed." if result.modified_count else "ℹ️ Ticket is already claimed."
+        elif action=="unclaim":
+            from bson import ObjectId
+            oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
+            result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$ne":"closed"},"claimed_by":str(interaction.user.id)},{"$set":{"claimed_by":None,"status":"open","updated_at":time.time(),"last_activity_at":time.time()}})
+            if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"unclaim",interaction.user.id)
+            msg="Ticket unclaimed." if result.modified_count else "You do not own the ticket claim."
         elif action=="priority":
             from bson import ObjectId
             oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
