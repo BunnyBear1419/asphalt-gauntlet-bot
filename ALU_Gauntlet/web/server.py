@@ -31,7 +31,8 @@ from ..core.gauntlet_progression import FREE_DAILY_TICKETS, MAX_DAILY_TICKETS
 from ..core.rsl_activity import collect_overall_activity_stats
 from ..core.rsl_language import RSL_LANGUAGES, normalize_language
 from ..release import current_release_revision
-from ..core.production_controls import is_maintenance_enabled, is_mutating_competition_path, maintenance_message, set_maintenance_mode
+from ..core.production_controls import is_maintenance_enabled, is_mutating_competition_path, maintenance_message, set_maintenance_mode, record_system_event
+from ..core.platform_assurance import redact_document, privacy_export_metadata, readiness_check, public_status_snapshot, performance_bucket, SUSPICIOUS_EVENT_TYPES
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -2935,7 +2936,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/sitemap.xml", self.sitemap_xml)
         self.app.router.add_get("/help", self.help_page)
         self.app.router.add_get("/rules", self.rules_page)
-        self.app.router.add_get("/legal", self.legal_page)
+        self.app.router.add_get("/legal", self.legal_page)\n        self.app.router.add_get("/status", self.platform_status_page)
         self.app.router.add_get("/players", self.players_page)
         self.app.router.add_get("/news-admin", self.news_admin_page)
         self.app.router.add_get("/admin", self.admin_page)
@@ -2983,7 +2984,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/admin/operations", self.admin_operations)
         self.app.router.add_get("/api/players/{user_id}/activity", self.admin_activity_timeline)
         self.app.router.add_get("/api/admin/audit", self.admin_audit)
-        self.app.router.add_get("/api/admin/fairness", self.admin_fairness)
+        self.app.router.add_get("/api/admin/fairness", self.admin_fairness)\n        self.app.router.add_get("/api/admin/security/events", self.admin_security_events)\n        self.app.router.add_get("/api/admin/readiness", self.admin_readiness)\n        self.app.router.add_get("/api/admin/performance", self.admin_performance)
         self.app.router.add_post("/api/admin/sync", self.admin_sync)
         self.app.router.add_get("/api/admin/backup", self.admin_backup)
         self.app.router.add_get("/api/admin/maintenance", self.admin_maintenance)
@@ -2994,7 +2995,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/language", self.set_language)
         self.app.router.add_get("/api/theme", self.get_theme)
         self.app.router.add_put("/api/theme", self.set_theme)
-        self.app.router.add_get("/api/notifications", self.notification_preferences)
+        self.app.router.add_get("/api/notifications", self.notification_preferences)\n        self.app.router.add_get("/api/notifications/inbox", self.notification_inbox)
         self.app.router.add_get("/api/reminders", self.list_reminders)
         self.app.router.add_post("/api/reminders", self.create_reminder)
         self.app.router.add_put("/api/reminders/{reminder_id}", self.update_reminder)
@@ -3009,7 +3010,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_put("/api/news/{news_id}", self.update_news)
         self.app.router.add_delete("/api/news/{news_id}", self.delete_news)
         self.app.router.add_get("/api/guilds", self.guilds)
-        self.app.router.add_get("/api/player/me", self.player_me)
+        self.app.router.add_get("/api/player/me", self.player_me)\n        self.app.router.add_get("/api/privacy/export", self.privacy_export)\n        self.app.router.add_post("/api/privacy/request", self.privacy_request)\n        self.app.router.add_get("/api/evidence/timeline", self.evidence_timeline)\n        self.app.router.add_get("/api/transparency", self.transparency_snapshot)\n        self.app.router.add_get("/api/status/public", self.public_status)
         self.app.router.add_post("/api/player/tickets/purchase", self.player_ticket_purchase)
         self.app.router.add_get("/api/player/economy/history", self.player_economy_history)
         self.app.router.add_get("/api/profile/tournaments", self.profile_tournaments)
@@ -6799,6 +6800,135 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             "xp_level": progress.get("level", 1), "xp_total": xp, "xp_rank": xp_rank,
         }
         return web.json_response({"player": public_player})
+
+
+    async def platform_status_page(self, request: web.Request) -> web.Response:
+        return await self._page_response("status.html", request)
+
+    async def public_status(self, request: web.Request) -> web.Response:
+        heartbeat = await self.bot.db.system_events.find_one({"_id": "production_heartbeat"}) or {}
+        db_ok = False
+        try:
+            await self.bot.db.command("ping")
+            db_ok = True
+        except Exception:
+            db_ok = False
+        heartbeat_ok = bool(heartbeat) and time.time() - float(heartbeat.get("timestamp", 0) or 0) < 300
+        snapshot = public_status_snapshot(
+            web_ok=True,
+            discord_ok=bool(getattr(self.bot, "is_ready", lambda: False)()),
+            database_ok=db_ok,
+            competition_ok=True,
+            auth_ok=True,
+            notifications_ok=True,
+            release=current_release_revision(),
+        )
+        snapshot["heartbeat"] = heartbeat_ok
+        return web.json_response(snapshot)
+
+    async def admin_security_events(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        limit = max(1, min(100, int(request.query.get("limit", "50") or 50)))
+        rows = await self.bot.db.system_events.find(
+            {"guild_id": str(guild_id), "event_type": {"$in": sorted(SUSPICIOUS_EVENT_TYPES)}},
+            {"_id": 1, "timestamp": 1, "event_type": 1, "actor_id": 1, "target_type": 1, "target_id": 1, "details": 1},
+        ).sort("timestamp", -1).limit(limit).to_list(length=limit)
+        return web.json_response({"rows": [redact_document(x) for x in rows]})
+
+    async def admin_readiness(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        settings = await self.bot.db.settings.find_one({"_id": str(guild_id)}) or {}
+        heartbeat = await self.bot.db.system_events.find_one({"_id": "production_heartbeat"}) or {}
+        checks = {
+            "guild_settings": bool(settings),
+            "discord_ready": bool(getattr(self.bot, "is_ready", lambda: False)()),
+            "database_reachable": True,
+            "production_heartbeat": bool(heartbeat),
+            "maintenance_not_blocking": not bool((settings.get("maintenance_mode") or {}).get("enabled")),
+        }
+        try:
+            await self.bot.db.command("ping")
+        except Exception:
+            checks["database_reachable"] = False
+        return web.json_response(readiness_check(checks))
+
+    async def admin_performance(self, request: web.Request) -> web.Response:
+        _, guild_id, _ = await self.require_admin(request)
+        rows = await self.bot.db.system_events.find(
+            {"guild_id": str(guild_id), "event_type": "REQUEST_SLOW"},
+            {"_id": 0, "timestamp": 1, "path": 1, "method": 1, "milliseconds": 1, "bucket": 1},
+        ).sort("timestamp", -1).limit(100).to_list(length=100)
+        return web.json_response({"rows": rows})
+
+    async def notification_inbox(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        rows = await self.bot.db.notification_deliveries.find(
+            {"user_id": str(user.user_id)},
+            {"_id": 0, "event_id": 1, "lead_days": 1, "created_at": 1, "sent_at": 1, "status": 1},
+        ).sort("created_at", -1).limit(100).to_list(length=100)
+        return web.json_response({"rows": rows, "guild_id": str(guild_id)})
+
+    async def privacy_export(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        uid, gid = str(user.user_id), str(guild_id)
+        data = {
+            "profile": await self.bot.db.drivers.find_one({"_id": f"{gid}_{uid}"}),
+            "web_preferences": await self.bot.db.web_preferences.find_one({"_id": f"{gid}_{uid}"}),
+            "notification_preferences": await self.bot.db.notification_preferences.find_one({"_id": uid}),
+            "reminders": await self.bot.db.custom_reminders.find({"user_id": uid}).limit(100).to_list(length=100),
+            "economy": await self.bot.db.rsl_economy_transactions.find({"guild_id": gid, "user_id": uid}).sort("created_at", -1).limit(200).to_list(length=200),
+            "xp_history": await self.bot.db.rsl_xp_events.find({"guild_id": gid, "user_id": uid}).sort("created_at", -1).limit(200).to_list(length=200),
+        }
+        return web.json_response({"metadata": privacy_export_metadata(uid, gid), "data": redact_document(data)})
+
+    async def privacy_request(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        request_type = str(payload.get("type") or "account_data").strip().lower()
+        if request_type not in {"account_data", "delete_account", "disconnect_identity"}:
+            raise web.HTTPBadRequest(text="Unsupported privacy request.")
+        request_id = await record_system_event(
+            self.bot.db, str(guild_id), str(user.user_id), "PRIVACY_REQUEST",
+            target_type="user", target_id=str(user.user_id),
+            details={"request_type": request_type, "support_channel": "https://discord.gg/q46RQxu2fm"},
+        )
+        return web.json_response({
+            "ok": True, "request_id": request_id,
+            "message": "Request recorded. RSL staff will handle privacy/account requests through the official Discord ticket workflow.",
+            "support_url": "https://discord.gg/q46RQxu2fm",
+        }, status=202)
+
+    async def evidence_timeline(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        uid, gid = str(user.user_id), str(guild_id)
+        rows = []
+        for collection in ("tournament_media", "match_evidence", "evidence_reviews"):
+            try:
+                docs = await self.bot.db[collection].find({"guild_id": gid, "user_id": uid}).sort("created_at", -1).limit(100).to_list(length=100)
+            except Exception:
+                docs = []
+            for doc in docs:
+                row = redact_document(doc)
+                row["source_collection"] = collection
+                rows.append(row)
+        rows.sort(key=lambda x: float(x.get("created_at", x.get("timestamp", 0)) or 0), reverse=True)
+        return web.json_response({"rows": rows[:200], "guild_id": gid})
+
+    async def transparency_snapshot(self, request: web.Request) -> web.Response:
+        return web.json_response({
+            "competition": {
+                "divisions": 6,
+                "gauntlet_courses_per_challenge": 5,
+                "ticket_cycle": {"free": 5, "paid": 5, "carryover": False},
+                "opponent_rotation_hours": 4,
+                "scoring": "race wins determine challenge performance",
+            },
+            "support": {"channel": "discord", "url": "https://discord.gg/q46RQxu2fm"},
+            "records": {"corrections_are_audited": True, "history_is_retained": True},
+        })
 
     async def help_page(self, request: web.Request) -> web.Response:
         """Render the public Help Center page."""
