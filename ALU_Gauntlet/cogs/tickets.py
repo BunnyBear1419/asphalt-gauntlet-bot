@@ -453,6 +453,17 @@ class TicketCog(commands.Cog):
             if m:
                 await ch.set_permissions(m,view_channel=True,send_messages=not closed and not locked,read_message_history=True,attach_files=not closed and not locked,reason="RSL ticket permission reconciliation")
         await ch.set_permissions(guild.default_role,view_channel=False,send_messages=False,reason="RSL ticket permission reconciliation")
+        settings=await settings_for(guild.id)
+        type_roles=[]
+        for item in settings.get("types",[]):
+            if str(item.get("key"))==str(row.get("type")):
+                type_roles=[str(x) for x in (item.get("staff_role_ids") or [])]
+                break
+        role_ids=type_roles or [str(x) for x in settings.get("staff_role_ids",[])]
+        for rid in role_ids:
+            role=guild.get_role(int(rid)) if rid.isdigit() else None
+            if role:
+                await ch.set_permissions(role,view_channel=True,send_messages=True,read_message_history=True,attach_files=True,reason="RSL ticket permission reconciliation")
         return True
 
     async def _close_ticket(self,guild_id,ticket_id,actor_id,reason="closed"):
