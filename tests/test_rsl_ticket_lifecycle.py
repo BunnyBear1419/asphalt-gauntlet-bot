@@ -7,11 +7,13 @@ MAIN = Path(__file__).parents[1] / "ALU_Gauntlet" / "main.py"
 
 def test_ticket_lifecycle_has_restart_safe_controls():
     text = TICKETS.read_text(encoding="utf-8")
-    assert 'TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed")' in text
+    assert 'locked=bool(row.get("locked",False))' in text
     assert 'label="Unclaim"' in text
     assert 'action=="unclaim"' in text
-    assert 'label="Lock"' in text
-    assert 'action=="lock"' in text
+    assert 'label="Unlock" if self.locked else "Lock"' in text
+    assert 'locked=not bool((row or {}).get("locked",False))' in text
+    assert 'action=="reopen"' in text
+    assert 'Unknown ticket action' in text
     assert 'event":"staff_note"' in text
 
 
