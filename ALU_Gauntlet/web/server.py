@@ -3049,6 +3049,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPServiceUnavailable(text="Ticket center is not loaded.")
         if action == "reopen":
             ok = await cog.reopen(str(guild_id), ticket_id, str(user.user_id))
+        elif action == "recover":
+            ok = await cog.recover(str(guild_id), ticket_id, str(user.user_id))
         elif action == "close":
             ok = await cog._close_ticket(str(guild_id), ticket_id, str(user.user_id), "admin_dashboard")
         elif action in {"claim","priority"}:
