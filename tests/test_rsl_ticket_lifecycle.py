@@ -27,7 +27,7 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'label="Rating"' in text
     assert 'rating_submitted' in text
     assert 'fingerprint=hashlib.sha256' in text
-    assert '$evidence_append' in text
+    assert '"$reduce":{"input":evidence' in text
     assert '"evidence":{"$each":evidence' in text
     assert 'recent_cutoff' in text
     assert 'fingerprint' in text
@@ -376,7 +376,7 @@ def test_ticket_mutations_are_guild_scoped():
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"member_ids":members' in cog
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"tags":current' in cog
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"rating"' in cog
-    assert '{"_id":row["_id"],"guild_id":str(message.guild.id)},update_doc' in cog
+    assert '{"_id":row["_id"],"guild_id":str(message.guild.id)},update_pipeline' in cog
 
 
 def test_ticket_notifications_are_idempotent_and_indexed():
