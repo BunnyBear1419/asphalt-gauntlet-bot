@@ -330,6 +330,16 @@ def test_ticket_permission_reconciliation_applies_type_staff_roles():
     assert 'await ch.set_permissions(role,view_channel=True,send_messages=True' in cog
 
 
+def test_ticket_missing_channel_reconciliation_skips_unprovisioned_records():
+    cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    start=cog.index("async def reconcile_missing_channels")
+    end=cog.index("@tasks.loop(minutes=15)",start)
+    body=cog[start:end]
+    assert '"status":{"$nin":["closed","provisioning","recovering"]},"active":True' in body
+    assert 'raw_channel_id=str(row.get("channel_id") or "")' in body
+    assert 'if not raw_channel_id.isdigit(): continue' in body
+
+
 def test_ticket_view_restore_requires_a_live_discord_channel():
     cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
     assert 'channel=guild.get_channel(int(channel_id))' in cog
