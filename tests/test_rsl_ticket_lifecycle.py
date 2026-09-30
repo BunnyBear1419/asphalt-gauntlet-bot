@@ -458,3 +458,30 @@ def test_ticket_priority_mutation_is_guild_scoped_and_atomic():
 def test_ticket_message_activity_only_tracks_active_tickets():
     cog=TICKETS.read_text(encoding="utf-8")
     assert '"channel_id":str(message.channel.id),"status":{"$ne":"closed"},"active":True' in cog
+
+
+def test_ticket_evidence_is_deduplicated_and_normalized():
+    cog=TICKETS.read_text(encoding="utf-8")
+    start=cog.index("async def on_message")
+    end=cog.index("async def reconcile_provisioning",start)
+    body=cog[start:end]
+    assert 'hashlib.sha256(str(attachment.url).encode("utf-8","ignore")).hexdigest()' in body
+    assert 'replace("\r"," ")[:200]' in body
+    assert '"content_type":str(attachment.content_type or "")[:128]' in body
+    assert '"size":max(0,min(int(attachment.size or 0),2147483647))' in body
+    assert '"$reduce":{"input":evidence' in body
+    assert '"$in":["$$this.fingerprint"' in body
+    assert '"$slice":[{"$reduce"' in body
+    assert '"$push":{"evidence"' not in body
+
+
+def test_ticket_transcript_has_a_hard_size_limit_and_sanitizes_attachment_metadata():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    start=server.index("async def admin_ticket_transcript")
+    body=server[start:]
+    assert 'max_transcript_bytes=2_000_000' in body
+    assert 'candidate_bytes=len((line+"\\n").encode("utf-8"))' in body
+    assert 'if transcript_bytes+candidate_bytes>max_transcript_bytes:' in body
+    assert 'truncated=True' in body
+    assert 'Transcript truncated at 2 MB' in body
+    assert 'replace(chr(10)," ").replace(chr(13)," ")[:200]' in body
