@@ -7,6 +7,7 @@ from datetime import datetime, time as dt_time, timedelta, timezone
 from zoneinfo import ZoneInfo
 import discord
 import aiohttp
+from pymongo.errors import DuplicateKeyError
 from discord.ext import commands, tasks
 from ..core.core import bot
 
@@ -59,9 +60,37 @@ async def settings_for(guild_id):
 
 async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player=False,webhook_payload=None):
     key=f"{ticket_id}:{event}"
+    now=time.time()
     try:
-        # A unique event key is a true delivery gate: only the first worker may send it.
-        await self.bot.db.rsl_ticket_notifications.insert_one({"event_key":key,"ticket_id":str(ticket_id),"created_at":time.time(),"status":"sending"})
+        # A unique event key is a true delivery gate: only one worker may own a notification.
+        await self.bot.db.rsl_ticket_notifications.insert_one({"event_key":key,"ticket_id":str(ticket_id),"created_at":now,"status":"sending"})
+    except DuplicateKeyError:
+        existing=await self.bot.db.rsl_ticket_notifications.find_one({"event_key":key})
+        if not existing:
+            return False
+        status=str(existing.get("status") or "")
+        if status=="delivered":
+            return False
+        if status=="failed":
+            result=await self.bot.db.rsl_ticket_notifications.update_one(
+                {"event_key":key,"status":"failed"},
+                {"$set":{"status":"sending","created_at":now,"retry_at":now}}
+            )
+            if not result.modified_count:
+                return False
+        elif status=="sending":
+            # Recover a worker that died after claiming the event. Five minutes is
+            # long enough for Discord/HTTP delivery while preventing permanent locks.
+            if now-float(existing.get("created_at") or now) < 300:
+                return False
+            result=await self.bot.db.rsl_ticket_notifications.update_one(
+                {"event_key":key,"status":"sending","created_at":existing.get("created_at")},
+                {"$set":{"created_at":now,"retry_at":now}}
+            )
+            if not result.modified_count:
+                return False
+        else:
+            return False
     except Exception:
         return False
     delivered=False
