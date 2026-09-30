@@ -180,3 +180,12 @@ def test_ticket_notification_pipeline_is_idempotent_and_player_preference_wired(
     assert 'uniq_rsl_ticket_notification_event' in main
     assert 'notify_player_dm' in cog and 'notify_player_dm' in server and 'notify_player_dm' in page
     assert 'ticket.sla_escalated' in cog and 'ticket.closed' in cog and 'ticket.reopened' in cog
+
+
+def test_ticket_permission_reconciliation_cleans_stale_members():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert "async def reconcile_ticket_permissions" in cog
+    assert "RSL ticket permission reconciliation" in cog
+    assert "closed=True,locked=False" in cog
+    assert "member_ids={str(x) for x in row.get(\"member_ids\",[])}" in cog
