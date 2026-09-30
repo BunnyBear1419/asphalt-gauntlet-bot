@@ -3078,7 +3078,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             raise web.HTTPConflict(text="Only orphaned or failed tickets can be recovered.")
         if action=="close" and status in {"closed","failed","provisioning"}:
             raise web.HTTPConflict(text="This ticket is not in a closable state.")
-        if action in {"claim","priority"} and status in {"closed","failed","provisioning","orphaned"}:
+        if action in {"claim","unclaim","priority","lock","unlock"} and status in {"closed","failed","provisioning","orphaned"}:
             raise web.HTTPConflict(text="This ticket is not in an actionable state.")
         if action == "reopen":
             ok = await cog.reopen(str(guild_id), ticket_id, str(user.user_id))
@@ -3086,15 +3086,28 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             ok = await cog.recover(str(guild_id), ticket_id, str(user.user_id))
         elif action == "close":
             ok = await cog._close_ticket(str(guild_id), ticket_id, str(user.user_id), "admin_dashboard")
-        elif action in {"claim","priority"}:
+        elif action in {"claim","unclaim","priority","lock","unlock"}:
             # Ticket was already loaded with an explicit guild scope above.
+            active_states={"open","assigned","investigating","awaiting_player","escalated"}
             if action == "claim":
-                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "guild_id": str(guild_id), "status": {"$in":["open","assigned","investigating","awaiting_player","escalated"]}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time(),"last_activity_at":time.time()}})
+                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "guild_id": str(guild_id), "status": {"$in":list(active_states)}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time(),"last_activity_at":time.time()}})
                 ok = bool(result.modified_count)
-            else:
+            elif action == "unclaim":
+                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "guild_id": str(guild_id), "status": {"$in":list(active_states)}, "claimed_by": str(user.user_id)}, {"$set":{"claimed_by":None,"status":"open","updated_at":time.time(),"last_activity_at":time.time()}})
+                ok = bool(result.modified_count)
+            elif action == "priority":
                 order=["low","normal","high","urgent"]; current=str(row.get("priority") or "normal"); nxt=order[(order.index(current)+1)%4] if current in order else "normal"
-                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(guild_id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]}},{"$set":{"priority":nxt,"updated_at":time.time(),"last_activity_at":time.time()}})
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(guild_id),"status":{"$in":list(active_states)}},{"$set":{"priority":nxt,"updated_at":time.time(),"last_activity_at":time.time()}})
                 ok=bool(result.modified_count)
+            else:
+                locked = action == "lock"
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(guild_id),"status":{"$in":list(active_states)},"locked":not locked},{"$set":{"locked":locked,"updated_at":time.time(),"last_activity_at":time.time()}})
+                ok=bool(result.modified_count)
+                if ok:
+                    updated=await self.bot.db.rsl_tickets.find_one({"_id":row["_id"],"guild_id":str(guild_id)})
+                    if updated:
+                        try: await cog.reconcile_ticket_permissions(guild,updated,closed=False,locked=locked)
+                        except Exception: pass
             if ok:
                 from ..cogs.tickets import log_event
                 await log_event(str(guild_id), ticket_id, action, str(user.user_id))
