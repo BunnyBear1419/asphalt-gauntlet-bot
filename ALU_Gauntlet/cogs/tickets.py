@@ -127,7 +127,7 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
                             delivered=200 <= int(response.status) < 300
         except Exception:
             delivered=False
-        await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key},{"$set":{"status":"delivered" if delivered else "failed","delivered_at":time.time() if delivered else None}})
+        await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id},{"$set":{"status":"delivered" if delivered else "failed","delivered_at":time.time() if delivered else None}})
         delivered_any=delivered_any or delivered
     return delivered_any
 
