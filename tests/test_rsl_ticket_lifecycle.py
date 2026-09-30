@@ -115,3 +115,20 @@ def test_ticket_webhook_validation_is_https_only():
     server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
     assert 'parsed.scheme != "https"' in server
     assert 'Integration webhook must be a public HTTPS endpoint.' in server
+
+
+def test_ticket_support_hours_are_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
+    page=(root/"ALU_Gauntlet"/"web"/"static"/"admin.html").read_text(encoding="utf-8")
+    assert 'def support_elapsed_seconds' in cog
+    assert 'support_hours_enabled' in cog
+    assert 'support_hours_timezone' in cog
+    assert 'support_hours_days' in cog
+    assert 'response_age=support_elapsed_seconds' in cog
+    assert 'inactivity_age=support_elapsed_seconds' in cog
+    assert 'support_hours_enabled' in server
+    assert 'ticket-support-hours-enabled' in page
+    assert 'ticket-support-timezone' in page
+    assert 'ticket-support-days' in page
