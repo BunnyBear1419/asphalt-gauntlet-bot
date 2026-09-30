@@ -19,6 +19,11 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'event":"member_added"' in text
     assert 'event":"member_removed"' in text
     assert 'event":"staff_note"' in text
+    assert 'label="Tag"' in text
+    assert 'label="Reply"' in text
+    assert 'tag_updated' in text
+    assert 'canned_response' in text
+    assert 'canned_responses' in text
 
 
 def test_ticket_lifecycle_tracks_activity_and_first_response():
