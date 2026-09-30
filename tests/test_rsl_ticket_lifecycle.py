@@ -473,6 +473,10 @@ def test_ticket_evidence_is_deduplicated_and_normalized():
     assert '"$in":["$this.fingerprint"' in body
     assert '"$slice":[{"$reduce"' in body
     assert '"$push":{"evidence"' not in body
+    assert '"initialValue":"$existing"' in body
+    assert '"$in":["$this.fingerprint"' in body
+    assert '"$map":{"input":"$value","as":"item","in":"$item.fingerprint"}' in body
+    assert '"$concatArrays":["$value",["$this"]]' in body
 
 
 def test_ticket_transcript_has_a_hard_size_limit_and_sanitizes_attachment_metadata():
