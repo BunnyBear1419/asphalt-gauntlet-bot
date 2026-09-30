@@ -83,6 +83,13 @@ def test_ticket_localization_and_integrations_are_wired():
     assert 'saveTicketSettings' in page
 
 
+def test_ticket_owner_can_rate_closed_ticket_once():
+    text=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    assert 'if action!="rating"' in text
+    assert 'custom_id=f"rsl:ticket:rating:{self.ticket_id}"' in text
+    assert 'You have already rated this ticket.' in text
+
+
 def test_ticket_admin_queue_actions_and_transcript_are_wired():
     root=Path(__file__).parents[1]
     server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
