@@ -246,6 +246,13 @@ class TicketCog(commands.Cog):
         if not s["enabled"]: return "🎫 Ticket support is currently disabled."
         count=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"status":{"$ne":"closed"}})
         if count>=s["max_open_per_user"]: return f"❌ You already have the maximum of {s['max_open_per_user']} open tickets."
+        recent_cutoff=time.time()-300
+        recent=await self.bot.db.rsl_tickets.count_documents({"guild_id":str(guild.id),"user_id":str(member.id),"created_at":{"$gte":recent_cutoff}})
+        if recent>=2:
+            return "⏳ Please wait a few minutes before opening another ticket."
+        recent_same=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"created_at":{"$gte":time.time()-3600},"status":{"$ne":"closed"}})
+        if recent_same:
+            ch=guild.get_channel(int(recent_same.get("channel_id",0))); return f"❌ A recent ticket of this type already exists: {ch.mention if ch else 'ticket record'}."
         existing=await self.bot.db.rsl_tickets.find_one({"guild_id":str(guild.id),"user_id":str(member.id),"type":str(ticket_type.get("key")),"status":{"$ne":"closed"}})
         if existing:
             ch=guild.get_channel(int(existing.get("channel_id",0))); return f"❌ You already have an open ticket: {ch.mention if ch else 'ticket record'}."
@@ -268,6 +275,7 @@ class TicketCog(commands.Cog):
             if v: e.add_field(name=str(k).upper(),value=v[:1024],inline=False)
         await ch.send(content=member.mention,embed=e,view=TicketActions(self,tid))
         await log_event(guild.id,tid,"opened",member.id,type=doc["type"])
+        await self.bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild.id),"ticket_id":tid,"event":"intake_snapshot","actor_id":str(member.id),"created_at":time.time(),"answers":answers})
         return f"✅ Your ticket is open: {ch.mention}"
     async def _close_ticket(self,guild_id,ticket_id,actor_id,reason="closed"):
         from bson import ObjectId
