@@ -181,7 +181,13 @@ class TicketCog(commands.Cog):
         now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"open","active":True,"closed_at":None,"updated_at":now,"last_activity_at":now}})
         ch=self.bot.get_channel(int(row.get("channel_id",0)))
         if isinstance(ch,discord.TextChannel):
-            try: await ch.send("🔓 This ticket has been reopened.",view=TicketActions(self,ticket_id))
+            try:
+                original_id=str(row.get("category_id") or "")
+                original=ch.guild.get_channel(int(original_id)) if original_id.isdigit() else None
+                if isinstance(original,discord.CategoryChannel): await ch.edit(category=original,reason="RSL ticket reopened")
+                member=ch.guild.get_member(int(row.get("user_id",0)))
+                if member: await ch.set_permissions(member,view_channel=True,send_messages=True,read_message_history=True,attach_files=True,reason="RSL ticket reopened")
+                await ch.send("🔓 This ticket has been reopened.",view=TicketActions(self,ticket_id))
             except Exception: pass
         await log_event(guild_id,ticket_id,"reopened",actor_id); return True
     @commands.Cog.listener()
