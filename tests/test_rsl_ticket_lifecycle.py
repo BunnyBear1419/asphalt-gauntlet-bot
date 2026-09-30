@@ -10,6 +10,9 @@ def test_ticket_lifecycle_has_restart_safe_controls():
     assert 'TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed")' in text
     assert 'label="Unclaim"' in text
     assert 'action=="unclaim"' in text
+    assert 'label="Lock"' in text
+    assert 'action=="lock"' in text
+    assert 'event":"staff_note"' in text
 
 
 def test_ticket_lifecycle_tracks_activity_and_first_response():
