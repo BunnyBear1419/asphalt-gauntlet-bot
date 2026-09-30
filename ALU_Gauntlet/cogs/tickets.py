@@ -471,9 +471,14 @@ class TicketCog(commands.Cog):
     async def _close_ticket(self,guild_id,ticket_id,actor_id,reason="closed"):
         from bson import ObjectId
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
+        now=time.time()
+        result=await self.bot.db.rsl_tickets.update_one(
+            {"_id":oid,"guild_id":str(guild_id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]},"active":True},
+            {"$set":{"status":"closed","active":False,"closed_at":now,"updated_at":now,"last_activity_at":now}}
+        )
+        if not result.modified_count: return False
         row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id)})
-        if not row or row.get("status") in {"closed","failed","provisioning","orphaned"}: return False
-        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"closed","active":False,"closed_at":now,"updated_at":now,"last_activity_at":now}})
+        if not row: return False
         ch=self.bot.get_channel(int(row.get("channel_id",0)))
         if isinstance(ch,discord.TextChannel):
             s=await settings_for(guild_id); cid=str(s["closed_category_id"]); cat=ch.guild.get_channel(int(cid)) if cid.isdigit() else None
@@ -492,7 +497,11 @@ class TicketCog(commands.Cog):
     async def recover(self,guild_id,ticket_id,actor_id):
         from bson import ObjectId
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
-        row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id),"status":{"$in":["orphaned","failed"]}})
+        row=await self.bot.db.rsl_tickets.find_one_and_update(
+            {"_id":oid,"guild_id":str(guild_id),"status":{"$in":["orphaned","failed"]},"active":False},
+            {"$set":{"status":"recovering","recovery_status":"recovery_in_progress","updated_at":time.time()}},
+            return_document=__import__("pymongo").ReturnDocument.AFTER
+        )
         if not row: return False
         guild=self.bot.get_guild(int(guild_id))
         member=guild.get_member(int(row.get("user_id",0))) if guild else None
@@ -521,9 +530,14 @@ class TicketCog(commands.Cog):
     async def reopen(self,guild_id,ticket_id,actor_id):
         from bson import ObjectId
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
-        row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id),"status":"closed"})
+        now=time.time()
+        result=await self.bot.db.rsl_tickets.update_one(
+            {"_id":oid,"guild_id":str(guild_id),"status":"closed","active":False},
+            {"$set":{"status":"open","active":True,"closed_at":None,"locked":False,"updated_at":now,"last_activity_at":now}}
+        )
+        if not result.modified_count: return False
+        row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id)})
         if not row: return False
-        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"open","active":True,"closed_at":None,"locked":False,"updated_at":now,"last_activity_at":now}})
         ch=self.bot.get_channel(int(row.get("channel_id",0)))
         if isinstance(ch,discord.TextChannel):
             try:
