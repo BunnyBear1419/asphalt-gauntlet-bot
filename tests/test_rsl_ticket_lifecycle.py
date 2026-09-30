@@ -273,3 +273,9 @@ def test_ticket_recovery_accepts_failed_provisioning_records():
     server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
     assert '"status":{"$in":["orphaned","failed"]}' in cog
     assert 'status not in {"orphaned","failed"}' in server
+
+
+def test_ticket_permission_reconciliation_applies_type_staff_roles():
+    cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    assert 'for item in settings.get("types",[]):' in cog
+    assert 'await ch.set_permissions(role,view_channel=True,send_messages=True' in cog
