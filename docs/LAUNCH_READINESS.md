@@ -4,9 +4,9 @@
 - Production branch: `main`
 - Hosting: Discloud
 - Automated CI/deploy: GitHub Actions
-- Latest verified release: `7f2e2689b7daef2d9b7c351eac04699736bb9107`
-- Latest CI/deploy run: #2859
-- Automated tests: passed
+- Latest verified release: `c4427efae534b2160613f841ae3f8432063003d7`
+- Latest CI/deploy run: #2870
+- Automated tests: passed (406 passed, 2 skipped, 1 warning)
 - Compile check: passed
 - Dependency audit: passed
 - Discloud deployment/restart: passed
