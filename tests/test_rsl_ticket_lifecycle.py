@@ -251,8 +251,7 @@ def test_ticket_dashboard_actions_enforce_valid_state_transitions():
     assert 'action=="recover" and status not in {"orphaned","failed"}' in server
     assert 'status in {"closed","failed","provisioning"}' in server
     assert 'status in {"closed","failed","provisioning","orphaned"}' in server
-    assert '"status": {"$in":["open","escalated"]}' in server
-    assert '"status":{"$in":["open","assigned","escalated"]}' in server
+    assert '"status": {"$in":["open","assigned","investigating","awaiting_player","escalated"]}' in server
 
 def test_ticket_core_methods_enforce_reopen_and_close_states():
     cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
