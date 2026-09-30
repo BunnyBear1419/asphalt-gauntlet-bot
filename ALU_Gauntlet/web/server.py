@@ -2987,6 +2987,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "auto_close_hours": max(0, min(720, int(payload.get("auto_close_hours", 168) or 168))),
                 "reminder_hours": max(0, min(168, int(payload.get("reminder_hours", 24) or 24))),
                 "sla_minutes": max(0, min(10080, int(payload.get("sla_minutes", 60) or 60))),
+                "auto_assign_enabled": bool(payload.get("auto_assign_enabled", False)),
                 "support_hours_enabled": bool(payload.get("support_hours_enabled", False)),
                 "support_hours_timezone": str(payload.get("support_hours_timezone") or "UTC")[:64],
                 "support_hours_start": str(payload.get("support_hours_start") or "09:00")[:5],
