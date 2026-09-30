@@ -2999,7 +2999,18 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         assigned = await self.bot.db.rsl_tickets.count_documents({"guild_id": gid, "claimed_by": {"$nin": [None, ""]}, "status": {"$ne": "closed"}})
         now = time.time()
         sla = await self.bot.db.rsl_tickets.count_documents({"guild_id": gid, "status": {"$in": open_statuses}, "first_response_at": None, "created_at": {"$lt": now - 3600}})
-        return web.json_response({"counts": counts, "total": total, "assigned": assigned, "sla_at_risk": sla})
+        rows = await self.bot.db.rsl_tickets.find({"guild_id":gid}).to_list(length=5000)
+        responded=[r for r in rows if r.get("first_response_at") and r.get("created_at")]
+        resolved=[r for r in rows if r.get("closed_at") and r.get("created_at")]
+        response_avg=round(sum(float(r["first_response_at"])-float(r["created_at"]) for r in responded)/len(responded)/60,1) if responded else None
+        resolution_avg=round(sum(float(r["closed_at"])-float(r["created_at"]) for r in resolved)/len(resolved)/3600,1) if resolved else None
+        ratings=[r.get("rating",{}).get("score") for r in rows if isinstance(r.get("rating"),dict) and r.get("rating",{}).get("score")]
+        rating_avg=round(sum(ratings)/len(ratings),2) if ratings else None
+        by_staff={}
+        for r in rows:
+            staff=str(r.get("claimed_by") or "")
+            if staff: by_staff[staff]=by_staff.get(staff,0)+1
+        return web.json_response({"counts": counts, "total": total, "assigned": assigned, "sla_at_risk": sla, "metrics":{"avg_first_response_minutes":response_avg,"avg_resolution_hours":resolution_avg,"avg_rating":rating_avg,"ratings_count":len(ratings),"staff_workload":by_staff}})
 
     async def admin_ticket_action(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
