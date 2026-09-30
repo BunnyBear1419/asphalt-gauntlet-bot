@@ -3000,6 +3000,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "reminder_hours": max(0, min(168, int(payload.get("reminder_hours", 24) or 24))),
                 "sla_minutes": max(0, min(10080, int(payload.get("sla_minutes", 60) or 60))),
                 "auto_assign_enabled": bool(payload.get("auto_assign_enabled", False)),
+                "notify_player_dm": bool(payload.get("notify_player_dm", True)),
                 "support_hours_enabled": bool(payload.get("support_hours_enabled", False)),
                 "support_hours_timezone": str(payload.get("support_hours_timezone") or "UTC")[:64],
                 "support_hours_start": str(payload.get("support_hours_start") or "09:00")[:5],
@@ -3063,12 +3064,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
         if not row:
             raise web.HTTPNotFound(text="Ticket not found.")
-        rate_key=f"{guild_id}:{user.user_id}:{ticket_id}"
-        now=time.time()
-        last=self._ticket_transcript_rate.get(rate_key,0.0)
-        if now-last < 15:
-            raise web.HTTPTooManyRequests(text="Please wait a few seconds before generating this transcript again.")
-        self._ticket_transcript_rate[rate_key]=now
         channel_id = str(row.get("channel_id") or "")
         channel = guild.get_channel(int(channel_id)) if channel_id.isdigit() else None
         if channel is not None and int(channel.guild.id) != int(guild_id):
@@ -3147,6 +3142,12 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
         if not row:
             raise web.HTTPNotFound(text="Ticket not found.")
+        rate_key=f"{guild_id}:{user.user_id}:{ticket_id}"
+        now=time.time()
+        last=self._ticket_transcript_rate.get(rate_key,0.0)
+        if now-last < 15:
+            raise web.HTTPTooManyRequests(text="Please wait a few seconds before generating this transcript again.")
+        self._ticket_transcript_rate[rate_key]=now
         channel = self.bot.get_channel(int(row.get("channel_id", 0)))
         if not channel:
             raise web.HTTPNotFound(text="Ticket channel is unavailable.")
