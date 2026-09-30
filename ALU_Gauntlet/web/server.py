@@ -3089,14 +3089,15 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         elif action in {"claim","priority"}:
             # Ticket was already loaded with an explicit guild scope above.
             if action == "claim":
-                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "guild_id": str(guild_id), "status": {"$in":["open","escalated"]}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time()}})
+                result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "guild_id": str(guild_id), "status": {"$in":["open","escalated"]}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time(),"last_activity_at":time.time()}})
                 ok = bool(result.modified_count)
             else:
                 order=["low","normal","high","urgent"]; current=str(row.get("priority") or "normal"); nxt=order[(order.index(current)+1)%4] if current in order else "normal"
-                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(guild_id),"status":{"$in":["open","assigned","escalated"]}},{"$set":{"priority":nxt,"updated_at":time.time()}})
-                ok=True
-            from ..cogs.tickets import log_event
-            await log_event(str(guild_id), ticket_id, action, str(user.user_id))
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(guild_id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]}},{"$set":{"priority":nxt,"updated_at":time.time(),"last_activity_at":time.time()}})
+                ok=bool(result.modified_count)
+            if ok:
+                from ..cogs.tickets import log_event
+                await log_event(str(guild_id), ticket_id, action, str(user.user_id))
         else:
             raise web.HTTPBadRequest(text="Unsupported ticket action.")
         return web.json_response({"ok": ok, "ticket_id": ticket_id, "action": action})
