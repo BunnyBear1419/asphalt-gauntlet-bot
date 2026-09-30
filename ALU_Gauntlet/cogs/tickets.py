@@ -677,7 +677,7 @@ class TicketCog(commands.Cog):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
                 delivered=False
                 if isinstance(ch,discord.TextChannel):
-                    delivered=await self.notify_ticket(str(row["_id"]),row,"inactivity_reminder",message="⏰ Ticket inactivity reminder: reply if you still need help; staff=True")
+                    delivered=await self.notify_ticket(str(row["_id"]),row,"inactivity_reminder",message="⏰ Ticket inactivity reminder: reply if you still need help; staff may close inactive tickets.",staff=True)
                 if delivered:
                     result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"guild_id":str(row.get("guild_id")),"active":True,"reminder_sent_at":None,"status":{"$ne":"closed"}},{"$set":{"reminder_sent_at":now,"updated_at":now}})
                     if result.modified_count:
