@@ -56,6 +56,32 @@ async def settings_for(guild_id):
         "canned_responses":(row.get("canned_responses") or [{"key":"welcome","label":"Welcome","text":"Thanks for contacting RSL Support. A staff member will assist you shortly."},{"key":"evidence","label":"Evidence Request","text":"Please provide the relevant screenshots, video, match ID, and any other evidence available."},{"key":"resolved","label":"Resolved","text":"This issue appears to be resolved. If you still need help, reply here before the ticket is closed."}])[:30],
     }
 
+async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player=False,webhook_payload=None):
+    key=f"{ticket_id}:{event}"
+    try:
+        await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key},{"$setOnInsert":{"event_key":key,"ticket_id":str(ticket_id),"created_at":time.time(),"status":"sending"}},upsert=True)
+    except Exception:
+        return False
+    delivered=False
+    ch=self.bot.get_channel(int(row.get("channel_id",0)))
+    if message and isinstance(ch,discord.TextChannel) and staff:
+        try: await ch.send(message); delivered=True
+        except Exception: pass
+    if player:
+        try:
+            user=self.bot.get_user(int(row.get("user_id",0))) or await self.bot.fetch_user(int(row.get("user_id",0)))
+            await user.send(message or "RSL ticket update."); delivered=True
+        except Exception: pass
+    if webhook_payload:
+        s=await settings_for(str(row.get("guild_id",""))); webhook=s.get("webhook_url")
+        if webhook:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    await session.post(webhook,json=webhook_payload,timeout=aiohttp.ClientTimeout(total=5)); delivered=True
+            except Exception: pass
+    await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key},{"$set":{"status":"delivered" if delivered else "failed","delivered_at":time.time() if delivered else None}})
+    return delivered
+
 async def choose_auto_assignee(guild,ticket_type,settings,db):
     role_ids=[str(x) for x in (ticket_type.get("staff_role_ids") or settings["staff_role_ids"])]
     candidates={}
@@ -337,13 +363,7 @@ class TicketCog(commands.Cog):
         await log_event(guild.id,tid,"opened",member.id,type=doc["type"])
         if auto_assignee: await log_event(guild.id,tid,"auto_assigned",auto_assignee.id,assigned_by="system")
         await self.bot.db.rsl_ticket_events.insert_one({"guild_id":str(guild.id),"ticket_id":tid,"event":"intake_snapshot","actor_id":str(member.id),"created_at":time.time(),"answers":answers,"locale":str(getattr(member,"locale","en-US"))})
-        webhook=s.get("webhook_url")
-        if webhook:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    await session.post(webhook,json={"event":"ticket.opened","guild_id":str(guild.id),"ticket_id":tid,"type":doc["type"],"user_id":str(member.id),"priority":doc["priority"]},timeout=aiohttp.ClientTimeout(total=5))
-            except Exception:
-                pass
+        await self.notify_ticket(tid,doc,"opened",webhook_payload={"event":"ticket.opened","guild_id":str(guild.id),"ticket_id":tid,"type":doc["type"],"user_id":str(member.id),"priority":doc["priority"]})
         return f"✅ Your ticket is open: {ch.mention}"
     async def _close_ticket(self,guild_id,ticket_id,actor_id,reason="closed"):
         from bson import ObjectId
@@ -460,21 +480,16 @@ class TicketCog(commands.Cog):
             if s["reminder_hours"]>0 and inactivity_age>=s["reminder_hours"]*3600 and not row.get("reminder_sent_at"):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
                 if isinstance(ch,discord.TextChannel):
-                    try: await ch.send("⏰ Ticket inactivity reminder: reply if you still need help; staff may close inactive tickets.")
-                    except Exception: pass
+                    await self.notify_ticket(str(row["_id"]),row,"inactivity_reminder",message="⏰ Ticket inactivity reminder: reply if you still need help; staff may close inactive tickets.",staff=True)
                 result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"reminder_sent_at":None},{"$set":{"reminder_sent_at":now,"updated_at":now}})
                 if result.modified_count:
                     await log_event(row["guild_id"],str(row["_id"]),"inactivity_reminder","system")
             sla=s["sla_minutes"]
             if sla>0 and not row.get("first_response_at") and response_age>=sla*60 and not row.get("sla_alerted_at"):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
-                if isinstance(ch,discord.TextChannel):
-                    try:
-                        mentions=""
-                        claimed=str(row.get("claimed_by") or "")
-                        if claimed.isdigit(): mentions=f" <@{claimed}>"
-                        await ch.send(f"🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.{mentions}")
-                    except Exception: pass
+                claimed=str(row.get("claimed_by") or "")
+                mentions=f" <@{claimed}>" if claimed.isdigit() else ""
+                await self.notify_ticket(str(row["_id"]),row,"sla_escalated",message=f"🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.{mentions}",staff=True,webhook_payload={"event":"ticket.sla_escalated","guild_id":row["guild_id"],"ticket_id":str(row["_id"]),"claimed_by":claimed or None})
                 result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"sla_alerted_at":None},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}})
                 if result.modified_count:
                     await log_event(row["guild_id"],str(row["_id"]),"sla_escalated","system")
