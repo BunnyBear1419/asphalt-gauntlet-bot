@@ -103,7 +103,7 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
                 result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"failed"},{"$set":{"status":"sending","created_at":now,"retry_at":now},"$inc":{"attempts":1}})
                 claimed=bool(result.modified_count)
             elif status=="sending" and now-float(existing.get("created_at") or now)>=300:
-                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now,"$inc":{"attempts":1}}})
+                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now},"$inc":{"attempts":1}})
                 claimed=bool(result.modified_count)
         if not claimed: continue
         delivered=False
@@ -227,7 +227,7 @@ class TicketActions(discord.ui.View):
             from bson import ObjectId
             oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
             result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$ne":"closed"},"claimed_by":None},{"$set":{"claimed_by":str(interaction.user.id),"status":"assigned","updated_at":time.time(),"last_activity_at":time.time()}})
-            await log_event(interaction.guild.id,self.ticket_id,"claim",interaction.user.id)
+            if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"claim",interaction.user.id)
             msg="✅ Ticket claimed." if result.modified_count else "ℹ️ Ticket is already claimed."
         elif action=="unclaim":
             from bson import ObjectId
@@ -245,9 +245,9 @@ class TicketActions(discord.ui.View):
                 locked=not bool((row or {}).get("locked",False))
                 if member:
                     await ch.set_permissions(member,view_channel=True,send_messages=not locked,read_message_history=True,attach_files=not locked,reason="RSL ticket lock toggle")
-                await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"locked":locked,"updated_at":time.time()}})
-                await log_event(interaction.guild.id,self.ticket_id,"locked" if locked else "unlocked",interaction.user.id)
-                msg="🔒 Ticket locked." if locked else "🔓 Ticket unlocked."
+                result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]},"locked":not locked},{"$set":{"locked":locked,"updated_at":time.time(),"last_activity_at":time.time()}})
+                if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"locked" if locked else "unlocked",interaction.user.id)
+                msg=("🔒 Ticket locked." if locked else "🔓 Ticket unlocked.") if result.modified_count else "ℹ️ Ticket state changed before this action completed."
             else: msg="❌ Ticket channel not found."
         elif action=="assign":
             from bson import ObjectId
@@ -257,9 +257,9 @@ class TicketActions(discord.ui.View):
             target=str(interaction.user.id)
             new_claim=None if current==target else target
             new_status="open" if new_claim is None else "assigned"
-            await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"claimed_by":new_claim,"status":new_status,"updated_at":time.time(),"last_activity_at":time.time()}})
-            await log_event(interaction.guild.id,self.ticket_id,"unassigned" if new_claim is None else "assigned",interaction.user.id,assigned_to=new_claim)
-            msg="Ticket unassigned." if new_claim is None else "Ticket assigned to you."
+            result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]}},{"$set":{"claimed_by":new_claim,"status":new_status,"updated_at":time.time(),"last_activity_at":time.time()}})
+            if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"unassigned" if new_claim is None else "assigned",interaction.user.id,assigned_to=new_claim)
+            msg=("Ticket unassigned." if new_claim is None else "Ticket assigned to you.") if result.modified_count else "ℹ️ Ticket state changed before this action completed."
         elif action=="transfer":
             class TransferModal(discord.ui.Modal):
                 staff_id=discord.ui.TextInput(label="Staff Discord user ID",placeholder="123456789012345678",max_length=25,required=True)
