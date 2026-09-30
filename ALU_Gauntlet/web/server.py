@@ -82,7 +82,7 @@ class WebControlCenter:
         self.port = port
         self.auth = DiscordOAuth(bot)
         self.players = PlayerService(bot)
-        self.app = web.Application(middlewares=[self._error_middleware, self._security_middleware, self._maintenance_middleware], client_max_size=15 * 1024 * 1024)
+        self.app = web.Application(middlewares=[self._error_middleware, self._security_headers_middleware, self._security_middleware, self._maintenance_middleware], client_max_size=15 * 1024 * 1024)
         self.runner: web.AppRunner | None = None
         self.site: web.TCPSite | None = None
         self._auth_rate: dict[str, list[float]] = {}
@@ -142,6 +142,24 @@ class WebControlCenter:
         if len(self._auth_rate) > 2048:
             self._auth_rate = {k: v for k, v in self._auth_rate.items() if v and v[-1] > now - window}
         return True
+
+    def _apply_security_headers(self, request: web.Request, response: web.StreamResponse) -> web.StreamResponse:
+        """Apply browser hardening without constraining the existing page/script architecture."""
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+        response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
+        if request.scheme == "https" or str(self.auth.public_url).startswith("https://"):
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        if request.path.startswith("/api/") or request.path.startswith("/auth/") or request.path in {"/login", "/logout"}:
+            response.headers.setdefault("Cache-Control", "no-store")
+        return response
+
+    @web.middleware
+    async def _security_headers_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
+        response = await handler(request)
+        return self._apply_security_headers(request, response)
 
     @web.middleware
     async def _security_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
