@@ -484,7 +484,7 @@ def test_ticket_transcript_has_a_hard_size_limit_and_sanitizes_attachment_metada
     assert 'if transcript_bytes+candidate_bytes>max_transcript_bytes:' in body
     assert 'truncated=True' in body
     assert 'Transcript truncated at 2 MB' in body
-    assert 'replace(chr(10)," ").replace(chr(13)," ")[:200]' in body
+    assert "replace(chr(10),' ').replace(chr(13),' ')[:200]" in body
 
 
 def test_ticket_transcript_posting_requires_a_private_target_channel():
