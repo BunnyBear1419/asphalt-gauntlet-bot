@@ -243,3 +243,18 @@ def test_ticket_view_restore_skips_records_without_channels():
     root=Path(__file__).parents[1]
     cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
     assert 'find({"channel_id":{"$ne":""}})' in cog
+
+
+def test_ticket_dashboard_actions_enforce_valid_state_transitions():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    assert 'status!="closed"' in server
+    assert 'status!="orphaned"' in server
+    assert 'status in {"closed","failed","provisioning"}' in server
+    assert 'status in {"closed","failed","provisioning","orphaned"}' in server
+    assert '"status": {"$in":["open","escalated"]}' in server
+    assert '"status":{"$in":["open","assigned","escalated"]}' in server
+
+def test_ticket_core_methods_enforce_reopen_and_close_states():
+    cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    assert '"status":"closed"' in cog
+    assert 'row.get("status") in {"closed","failed","provisioning","orphaned"}' in cog
