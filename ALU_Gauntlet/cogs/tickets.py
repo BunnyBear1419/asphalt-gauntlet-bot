@@ -101,7 +101,7 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
             status=str(existing.get("status") or "")
             if status=="delivered": continue
             if status=="failed":
-                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"failed"},{"$set":{"status":"sending","created_at":now,"retry_at":now,"attempts":{"$add":["$attempts",1]}}})
+                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"failed"},{"$set":{"status":"sending","created_at":now,"retry_at":now},"$inc":{"attempts":1}})
                 claimed=bool(result.modified_count)
             elif status=="sending" and now-float(existing.get("created_at") or now)>=300:
                 result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now,"attempts":{"$add":["$attempts",1]}}})
