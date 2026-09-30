@@ -360,11 +360,14 @@ class TicketActions(discord.ui.View):
 class TicketCog(commands.Cog):
     def __init__(self,bot_instance):
         self.bot=bot_instance; self.auto_close_loop.start()
-    async def cog_load(self): await self.restore_views()
+    async def cog_load(self):
+        await self.reconcile_provisioning()
+        await self.reconcile_missing_channels()
+        await self.restore_views()
     def cog_unload(self): self.auto_close_loop.cancel()
     async def restore_views(self):
         guilds=set()
-        async for row in self.bot.db.rsl_tickets.find({}):
+        async for row in self.bot.db.rsl_tickets.find({"channel_id":{"$ne":""}}):
             self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed",locked=bool(row.get("locked",False))); guilds.add(str(row.get("guild_id","")))
         for gid in guilds:
             s=await settings_for(gid)
@@ -543,6 +546,19 @@ class TicketCog(commands.Cog):
         if evidence: update_doc["$push"]={"evidence":{"$each":evidence,"$slice":-100}}
         await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},update_doc)
 
+    async def reconcile_provisioning(self):
+        now=time.time()
+        cutoff=now-300
+        async for row in self.bot.db.rsl_tickets.find({"status":"provisioning","active":True}):
+            started=float(row.get("created_at") or row.get("updated_at") or now)
+            if started > cutoff:
+                continue
+            result=await self.bot.db.rsl_tickets.update_one(
+                {"_id":row["_id"],"status":"provisioning","active":True},
+                {"$set":{"status":"failed","active":False,"recovery_status":"stale_provisioning","updated_at":now}})
+            if result.modified_count:
+                await log_event(row["guild_id"],str(row["_id"]),"provisioning_stale","system",recovery_status="stale_provisioning")
+
     async def reconcile_missing_channels(self):
         async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"},"active":True}):
             guild=self.bot.get_guild(int(row.get("guild_id",0)))
@@ -563,6 +579,7 @@ class TicketCog(commands.Cog):
     @tasks.loop(minutes=15)
     async def auto_close_loop(self):
         now=time.time()
+        await self.reconcile_provisioning()
         await self.reconcile_missing_channels()
         async for row in self.bot.db.rsl_tickets.find({"status":{"$ne":"closed"}}):
             s=await settings_for(str(row.get("guild_id","")))
