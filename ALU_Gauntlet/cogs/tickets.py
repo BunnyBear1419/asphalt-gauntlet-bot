@@ -69,8 +69,8 @@ class TicketPanelView(discord.ui.View):
         super().__init__(timeout=None); self.add_item(TicketPanelSelect(cog,types))
 
 class TicketActions(discord.ui.View):
-    def __init__(self,cog,ticket_id,closed=False):
-        super().__init__(timeout=None); self.cog=cog; self.ticket_id=str(ticket_id)
+    def __init__(self,cog,ticket_id,closed=False,locked=False):
+        super().__init__(timeout=None); self.cog=cog; self.ticket_id=str(ticket_id); self.locked=bool(locked)
         if closed:
             self.add_item(discord.ui.Button(label="Reopen",style=discord.ButtonStyle.success,custom_id=f"rsl:ticket:reopen:{self.ticket_id}"))
         else:
@@ -78,7 +78,7 @@ class TicketActions(discord.ui.View):
             self.add_item(discord.ui.Button(label="Unclaim",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:unclaim:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Priority",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:priority:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Close",style=discord.ButtonStyle.danger,custom_id=f"rsl:ticket:close:{self.ticket_id}"))
-            self.add_item(discord.ui.Button(label="Lock",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:lock:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Unlock" if self.locked else "Lock",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:lock:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Note",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:note:{self.ticket_id}"))
         for child in self.children:
             child.callback=self._dispatch
@@ -106,10 +106,11 @@ class TicketActions(discord.ui.View):
             ch=interaction.guild.get_channel(int((row or {}).get("channel_id",0)))
             if isinstance(ch,discord.TextChannel):
                 member=interaction.guild.get_member(int((row or {}).get("user_id",0)))
-                if member: await ch.set_permissions(member,view_channel=True,send_messages=False,read_message_history=True,reason="RSL ticket locked")
-                await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"locked":True,"updated_at":time.time()}})
-                await log_event(interaction.guild.id,self.ticket_id,"locked",interaction.user.id)
-                msg="🔒 Ticket locked."
+                if member: locked=not bool((row or {}).get("locked",False))
+                await ch.set_permissions(member,view_channel=True,send_messages=not locked,read_message_history=True,attach_files=not locked,reason="RSL ticket lock toggle")
+                await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"locked":locked,"updated_at":time.time()}})
+                await log_event(interaction.guild.id,self.ticket_id,"locked" if locked else "unlocked",interaction.user.id)
+                msg="🔒 Ticket locked." if locked else "🔓 Ticket unlocked."
             else: msg="❌ Ticket channel not found."
         elif action=="note":
             class StaffNoteModal(discord.ui.Modal):
@@ -129,9 +130,11 @@ class TicketActions(discord.ui.View):
         elif action=="close":
             ok=await self.cog._close_ticket(str(interaction.guild.id),self.ticket_id,str(interaction.user.id),"staff")
             msg="🔒 Ticket closed." if ok else "ℹ️ Ticket was already closed."
-        else:
+        elif action=="reopen":
             ok=await self.cog.reopen(str(interaction.guild.id),self.ticket_id,str(interaction.user.id))
             msg="🔓 Ticket reopened." if ok else "❌ Ticket could not be reopened."
+        else:
+            await interaction.response.send_message("❌ Unknown ticket action.",ephemeral=True); return
         await interaction.response.send_message(msg,ephemeral=True)
 
 class TicketCog(commands.Cog):
@@ -142,7 +145,7 @@ class TicketCog(commands.Cog):
     async def restore_views(self):
         guilds=set()
         async for row in self.bot.db.rsl_tickets.find({}):
-            self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed")); guilds.add(str(row.get("guild_id","")))
+            self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed",locked=bool(row.get("locked",False))); guilds.add(str(row.get("guild_id","")))
         for gid in guilds:
             s=await settings_for(gid)
             if s["panel_channel_id"]: self.bot.add_view(TicketPanelView(self,s["types"]))
@@ -165,7 +168,7 @@ class TicketCog(commands.Cog):
         safe="".join(c.lower() if c.isalnum() else "-" for c in str(member.display_name))[:24].strip("-") or "player"
         ch=await guild.create_text_channel(f"ticket-{safe}",category=cat,overwrites=ow,reason="RSL ticket opened")
         now=time.time()
-        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"answers":answers}
+        doc={"guild_id":str(guild.id),"channel_id":str(ch.id),"user_id":str(member.id),"type":str(ticket_type.get("key") or "general"),"type_label":str(ticket_type.get("label") or "General Support"),"priority":str(ticket_type.get("priority") or "normal"),"status":"open","active":True,"category_id":str(cat.id) if cat else "","claimed_by":None,"created_at":now,"updated_at":now,"last_activity_at":now,"first_response_at":None,"closed_at":None,"reminder_sent_at":None,"sla_alerted_at":None,"locked":False,"answers":answers}
         ins=await self.bot.db.rsl_tickets.insert_one(doc); tid=str(ins.inserted_id)
         e=discord.Embed(title=f"🎫 {doc['type_label']}",description=f"Welcome, {member.mention}. Please describe the issue and provide evidence when relevant.",color=discord.Color.blurple())
         e.add_field(name="Priority",value=doc["priority"].title()); e.set_footer(text=f"RSL Ticket • {tid}")
@@ -200,7 +203,7 @@ class TicketCog(commands.Cog):
         oid=ObjectId(ticket_id) if ObjectId.is_valid(ticket_id) else ticket_id
         row=await self.bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(guild_id)})
         if not row: return False
-        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"open","active":True,"closed_at":None,"updated_at":now,"last_activity_at":now}})
+        now=time.time(); await self.bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"status":"open","active":True,"closed_at":None,"locked":False,"updated_at":now,"last_activity_at":now}})
         ch=self.bot.get_channel(int(row.get("channel_id",0)))
         if isinstance(ch,discord.TextChannel):
             try:
