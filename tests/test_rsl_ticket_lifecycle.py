@@ -372,3 +372,40 @@ def test_ticket_notification_finalization_is_guild_scoped():
     root=Path(__file__).parents[1]
     cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
     assert 'update_one({"event_key":key,"guild_id":guild_id},{"$set":{"status":"delivered"' in cog
+
+
+def test_ticket_notification_retry_update_uses_valid_mongo_operators():
+    cog=TICKETS.read_text(encoding="utf-8")
+    start=cog.index("async def notify_ticket")
+    end=cog.index("async def choose_auto_assignee",start)
+    body=cog[start:end]
+    assert '"$set":{"status":"sending","created_at":now,"retry_at":now},"$inc":{"attempts":1}' in body
+    assert '"$inc":{"attempts":1}}}' not in body
+    assert '"$inc":{"attempts":1}' in body
+
+
+def test_ticket_actions_only_audit_successful_state_changes():
+    cog=TICKETS.read_text(encoding="utf-8")
+    assert 'if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"claim"' in cog
+    assert 'if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"locked" if locked else "unlocked"' in cog
+    assert 'if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"unassigned" if new_claim is None else "assigned"' in cog
+
+
+def test_ticket_notification_indexes_use_one_consistent_schema():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    main=MAIN.read_text(encoding="utf-8")
+    assert 'name="uniq_rsl_ticket_notification_event"' in cog
+    assert 'name="idx_rsl_ticket_notification_retry"' in cog
+    assert 'name="uniq_rsl_ticket_notification_event"' in main
+    assert 'name="idx_rsl_ticket_notification_retry"' in main
+
+
+def test_admin_ticket_actions_are_race_safe():
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    start=server.index("async def admin_ticket_action")
+    end=server.index("async def admin_ticket_panel",start)
+    body=server[start:end]
+    assert '"last_activity_at":time.time()' in body
+    assert 'ok=bool(result.modified_count)' in body
+    assert 'if ok:' in body
