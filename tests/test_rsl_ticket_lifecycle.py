@@ -218,3 +218,13 @@ def test_ticket_actions_use_type_specific_staff_roles():
     assert 'ticket_roles=await ticket_staff_role_ids' in cog
     assert 'Staff access is required for this ticket type.' in cog
     assert 'is_staff(target,ticket_roles)' in cog
+
+
+def test_ticket_notification_claims_can_recover_after_worker_failure():
+    cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
+    assert "DuplicateKeyError" in cog
+    assert '"status":"delivered"' in cog
+    assert 'status=="failed"' in cog
+    assert 'status=="sending"' in cog
+    assert 'Five minutes is' in cog
+    assert '"retry_at":now' in cog
