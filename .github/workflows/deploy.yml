@@ -89,12 +89,16 @@ jobs:
           if [ -z "$previous" ] || [ "$previous" = "0000000000000000000000000000000000000000" ]; then
             previous="$(git rev-parse HEAD^)"
           fi
-          git cat-file -e "$previous^{commit}"
           current="$(git rev-parse HEAD)"
+          if ! git cat-file -e "$previous^{commit}" 2>/dev/null || ! git merge-base --is-ancestor "$previous" "$current" 2>/dev/null; then
+            echo "WARN: GitHub event.before is not a reachable predecessor of the release; using HEAD^ as the rollback revision."
+            previous="$(git rev-parse HEAD^)"
+          fi
           if [ "$previous" = "$current" ]; then
             echo "ERROR: Rollback revision resolves to the release being deployed."
             exit 1
           fi
+          git cat-file -e "$previous^{commit}"
           git merge-base --is-ancestor "$previous" "$current"
           echo "Rollback revision is a committed predecessor of the release."
           echo "previous_sha=$previous" >> "$GITHUB_OUTPUT"
