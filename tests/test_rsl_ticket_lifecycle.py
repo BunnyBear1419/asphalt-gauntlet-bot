@@ -276,6 +276,25 @@ def test_ticket_webhook_is_https_public_and_no_redirects():
     assert 'aiohttp.ClientTimeout(total=5)' in cog
 
 
+def test_ticket_recovery_initialization_failure_is_quarantined():
+    cog=TICKETS.read_text(encoding="utf-8")
+    start=cog.index("async def recover")
+    end=cog.index("async def reopen",start)
+    body=cog[start:end]
+    assert '"status":"recovering","active":False' in body
+    assert '"status":"orphaned","active":False,"recovery_status":"recovery_initialization_failed"' in body
+    assert 'await ch.delete(reason="RSL recovered ticket initialization failed")' in body
+
+def test_ticket_auto_close_loop_only_processes_active_tickets_and_marks_alerts_after_delivery():
+    cog=TICKETS.read_text(encoding="utf-8")
+    start=cog.index("async def auto_close_loop")
+    end=cog.index("@auto_close_loop.before_loop",start)
+    body=cog[start:end]
+    assert 'find({"status":{"$ne":"closed"},"active":True})' in body
+    assert 'reminder_sent_at":None,"status":{"$ne":"closed"}' in body
+    assert 'sla_alerted_at":None,"status":{"$ne":"closed"}' in body
+    assert 'if delivered else None' in body
+
 def test_ticket_open_provisioning_mutations_are_guild_scoped_and_state_guarded():
     cog=TICKETS.read_text(encoding="utf-8")
     start=cog.index("async def open_ticket")
