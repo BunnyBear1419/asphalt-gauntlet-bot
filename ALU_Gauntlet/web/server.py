@@ -3039,12 +3039,22 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"counts": counts, "total": total, "assigned": assigned, "sla_at_risk": sla, "metrics":{"avg_first_response_minutes":response_avg,"avg_resolution_hours":resolution_avg,"avg_rating":rating_avg,"ratings_count":len(ratings),"staff_workload":by_staff}})
 
     async def admin_ticket_action(self, request: web.Request) -> web.Response:
-        user, guild_id, _ = await self.require_admin(request)
+        user, guild_id, guild = await self.require_admin(request)
         payload = await request.json()
         ticket_id = str(payload.get("ticket_id") or "")
         action = str(payload.get("action") or "").lower()
         if not ticket_id:
             raise web.HTTPBadRequest(text="ticket_id is required.")
+        from bson import ObjectId
+        if not ObjectId.is_valid(ticket_id):
+            raise web.HTTPBadRequest(text="Invalid ticket_id.")
+        row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
+        if not row:
+            raise web.HTTPNotFound(text="Ticket not found.")
+        channel_id = str(row.get("channel_id") or "")
+        channel = guild.get_channel(int(channel_id)) if channel_id.isdigit() else None
+        if channel is not None and int(channel.guild.id) != int(guild_id):
+            raise web.HTTPForbidden(text="Ticket channel is outside the selected server.")
         cog = self.bot.get_cog("TicketCog")
         if cog is None:
             raise web.HTTPServiceUnavailable(text="Ticket center is not loaded.")
@@ -3055,10 +3065,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         elif action == "close":
             ok = await cog._close_ticket(str(guild_id), ticket_id, str(user.user_id), "admin_dashboard")
         elif action in {"claim","priority"}:
-            from bson import ObjectId
-            row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
-            if not row:
-                raise web.HTTPNotFound(text="Ticket not found.")
+            # Ticket was already loaded with an explicit guild scope above.
             if action == "claim":
                 result = await self.bot.db.rsl_tickets.update_one({"_id": row["_id"], "status": {"$ne":"closed"}, "claimed_by": None}, {"$set":{"claimed_by":str(user.user_id),"status":"assigned","updated_at":time.time()}})
                 ok = bool(result.modified_count)
@@ -3073,7 +3080,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         return web.json_response({"ok": ok, "ticket_id": ticket_id, "action": action})
 
     async def admin_ticket_panel(self, request: web.Request) -> web.Response:
-        _, guild_id, _ = await self.require_admin(request)
+        _, guild_id, guild = await self.require_admin(request)
         payload = await request.json()
         channel_id = str(payload.get("channel_id") or "")
         if not channel_id.isdigit():
@@ -3082,6 +3089,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         channel = self.bot.get_channel(int(channel_id))
         if cog is None or not isinstance(channel, discord.TextChannel):
             raise web.HTTPBadRequest(text="Ticket center or target text channel is unavailable.")
+        if int(channel.guild.id) != int(guild_id):
+            raise web.HTTPForbidden(text="Target channel must belong to the selected server.")
         settings = await cog.settings_for(str(guild_id)) if hasattr(cog, "settings_for") else await __import__("ALU_Gauntlet.cogs.tickets", fromlist=["settings_for"]).settings_for(str(guild_id))
         embed = discord.Embed(title="🎫 RACING SYNDICATE LEAGUE • SUPPORT CENTER", description="Choose the type of help you need below. Your ticket will be private to you and routed to the appropriate RSL support team.", color=discord.Color.blurple())
         message = await channel.send(embed=embed, view=__import__("ALU_Gauntlet.cogs.tickets", fromlist=["TicketPanelView"]).TicketPanelView(cog, settings["types"]))
@@ -3093,12 +3102,16 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         payload = await request.json()
         ticket_id = str(payload.get("ticket_id") or "")
         from bson import ObjectId
+        if not ObjectId.is_valid(ticket_id):
+            raise web.HTTPBadRequest(text="Invalid ticket_id.")
         row = await self.bot.db.rsl_tickets.find_one({"_id": ObjectId(ticket_id), "guild_id": str(guild_id)})
         if not row:
             raise web.HTTPNotFound(text="Ticket not found.")
         channel = self.bot.get_channel(int(row.get("channel_id", 0)))
         if not channel:
             raise web.HTTPNotFound(text="Ticket channel is unavailable.")
+        if int(channel.guild.id) != int(guild_id):
+            raise web.HTTPForbidden(text="Ticket channel is outside the selected server.")
         lines = [f"RSL Ticket #{ticket_id}", f"Type: {row.get('type')}", f"Opened by: {row.get('user_id')}", f"Status: {row.get('status')}", ""]
         async for msg in channel.history(limit=500, oldest_first=True):
             stamp = msg.created_at.astimezone(timezone.utc).isoformat()
@@ -3113,7 +3126,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         data = "\n".join(lines).encode("utf-8")
         settings = await __import__("ALU_Gauntlet.cogs.tickets", fromlist=["settings_for"]).settings_for(str(guild_id))
         target = self.bot.get_channel(int(settings.get("transcript_channel_id") or 0)) if settings.get("transcript_channel_id") else None
-        if isinstance(target, discord.TextChannel):
+        if isinstance(target, discord.TextChannel) and int(target.guild.id) == int(guild_id):
             await target.send(content=f"📄 Transcript generated by <@{user.user_id}> for ticket #{ticket_id}.", file=discord.File(BytesIO(data), filename=f"rsl-ticket-{ticket_id}.txt"))
         return web.Response(body=data, content_type="text/plain", headers={"Content-Disposition": f'attachment; filename="rsl-ticket-{ticket_id}.txt"'})
 
