@@ -462,16 +462,22 @@ class TicketCog(commands.Cog):
                 if isinstance(ch,discord.TextChannel):
                     try: await ch.send("⏰ Ticket inactivity reminder: reply if you still need help; staff may close inactive tickets.")
                     except Exception: pass
-                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":{"reminder_sent_at":now,"updated_at":now}})
-                await log_event(row["guild_id"],str(row["_id"]),"inactivity_reminder","system")
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"reminder_sent_at":None},{"$set":{"reminder_sent_at":now,"updated_at":now}})
+                if result.modified_count:
+                    await log_event(row["guild_id"],str(row["_id"]),"inactivity_reminder","system")
             sla=s["sla_minutes"]
             if sla>0 and not row.get("first_response_at") and response_age>=sla*60 and not row.get("sla_alerted_at"):
                 ch=self.bot.get_channel(int(row.get("channel_id",0)))
                 if isinstance(ch,discord.TextChannel):
-                    try: await ch.send("🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.")
+                    try:
+                        mentions=""
+                        claimed=str(row.get("claimed_by") or "")
+                        if claimed.isdigit(): mentions=f" <@{claimed}>"
+                        await ch.send(f"🚨 Staff alert: this ticket has reached its response SLA without a recorded staff response.{mentions}")
                     except Exception: pass
-                await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}})
-                await log_event(row["guild_id"],str(row["_id"]),"sla_escalated","system")
+                result=await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"sla_alerted_at":None},{"$set":{"status":"escalated","sla_alerted_at":now,"updated_at":now}})
+                if result.modified_count:
+                    await log_event(row["guild_id"],str(row["_id"]),"sla_escalated","system")
             hours=s["auto_close_hours"]
             if hours>0 and inactivity_age>=hours*3600:
                 await self._close_ticket(str(row["guild_id"]),str(row["_id"]),"system","inactivity_auto_close")
