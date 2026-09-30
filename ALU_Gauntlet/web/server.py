@@ -93,7 +93,21 @@ class WebControlCenter:
     async def _error_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
         try:
             return await handler(request)
-        except web.HTTPException:
+        except web.HTTPException as exc:
+            if exc.status == 429:
+                retry_after = exc.headers.get("Retry-After", "30")
+                if request.path.startswith("/api/"):
+                    return web.json_response(
+                        {"ok": False, "error": "Too many requests. Please wait and try again.", "retry_after": retry_after},
+                        status=429,
+                        headers={"Retry-After": retry_after, "Cache-Control": "no-store"},
+                    )
+                return web.Response(
+                    text="Too many requests. Please wait and try again.",
+                    status=429,
+                    headers={"Retry-After": retry_after, "Cache-Control": "no-store"},
+                    content_type="text/plain",
+                )
             raise
         except Exception:
             # Never expose aiohttp's generic "Server got itself in trouble"
