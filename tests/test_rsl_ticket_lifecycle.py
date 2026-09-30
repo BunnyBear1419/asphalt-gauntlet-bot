@@ -257,7 +257,7 @@ def test_ticket_dashboard_actions_enforce_valid_state_transitions():
 def test_ticket_core_methods_enforce_reopen_and_close_states():
     cog=(Path(__file__).parents[1] / "ALU_Gauntlet" / "cogs" / "tickets.py").read_text(encoding="utf-8")
     assert '"status":"closed"' in cog
-    assert 'row.get("status") in {"closed","failed","provisioning","orphaned"}' in cog
+    assert 'closed=str(row.get("status"))=="closed"' in cog
 
 
 def test_ticket_panel_refresh_persists_and_reuses_panel_message():
@@ -339,3 +339,13 @@ def test_ticket_transcript_generation_has_abuse_cooldown():
     assert "self._ticket_transcript_rate" in transcript_body
     assert "HTTPTooManyRequests" in transcript_body
     assert "now-last < 15" in transcript_body
+
+
+def test_ticket_mutations_are_guild_scoped():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"locked":locked' in cog
+    assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"member_ids":members' in cog
+    assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"tags":current' in cog
+    assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"rating"' in cog
+    assert '{"_id":row["_id"],"guild_id":str(message.guild.id)},update_doc' in cog
