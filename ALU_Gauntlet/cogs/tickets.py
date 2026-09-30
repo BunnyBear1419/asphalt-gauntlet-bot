@@ -368,7 +368,7 @@ class TicketCog(commands.Cog):
             channel=guild.get_channel(int(channel_id)) if guild and channel_id.isdigit() else None
             if not isinstance(channel,discord.TextChannel):
                 continue
-            self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed",locked=bool(row.get("locked",False)))
+            self.bot.add_view(TicketActions(self,str(row["_id"]),closed=str(row.get("status"))=="closed",locked=bool(row.get("locked",False))))
             guilds.add(guild_id)
         for gid in guilds:
             s=await settings_for(gid)
