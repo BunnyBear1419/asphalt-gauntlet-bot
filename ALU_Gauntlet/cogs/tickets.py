@@ -393,8 +393,14 @@ class TicketCog(commands.Cog):
             channel_id=int(row.get("channel_id",0))
             channel=guild.get_channel(channel_id)
             if channel is None:
-                try: channel=await guild.fetch_channel(channel_id)
-                except Exception: continue
+                try:
+                    channel=await guild.fetch_channel(channel_id)
+                except discord.NotFound:
+                    await self.bot.db.rsl_tickets.update_one({"_id":row["_id"],"active":True},{"$set":{"status":"orphaned","active":False,"recovery_status":"channel_missing","updated_at":time.time()}})
+                    await log_event(row["guild_id"],str(row["_id"]),"channel_missing","system",recovery_status="channel_missing")
+                    continue
+                except Exception:
+                    continue
             if channel is None: continue
             
     @tasks.loop(minutes=15)
