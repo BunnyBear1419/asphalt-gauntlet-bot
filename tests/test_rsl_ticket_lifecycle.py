@@ -344,7 +344,7 @@ def test_ticket_transcript_generation_has_abuse_cooldown():
 def test_ticket_mutations_are_guild_scoped():
     root=Path(__file__).parents[1]
     cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
-    assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"locked":locked' in cog
+    assert '"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$in":["open","assigned","investigating","awaiting_player","escalated"]},"locked":not locked' in cog
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"member_ids":members' in cog
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"tags":current' in cog
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"rating"' in cog
