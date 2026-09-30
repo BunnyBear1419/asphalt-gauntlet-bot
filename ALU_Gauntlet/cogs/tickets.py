@@ -100,6 +100,7 @@ class TicketActions(discord.ui.View):
             self.add_item(discord.ui.Button(label="Unlock" if self.locked else "Lock",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:lock:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Note",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:note:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Assign",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:assign:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Transfer",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:transfer:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Members",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:members:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Tag",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:tag:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Reply",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:reply:{self.ticket_id}"))
@@ -148,6 +149,23 @@ class TicketActions(discord.ui.View):
             await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"claimed_by":new_claim,"status":new_status,"updated_at":time.time(),"last_activity_at":time.time()}})
             await log_event(interaction.guild.id,self.ticket_id,"unassigned" if new_claim is None else "assigned",interaction.user.id,assigned_to=new_claim)
             msg="Ticket unassigned." if new_claim is None else "Ticket assigned to you."
+        elif action=="transfer":
+            class TransferModal(discord.ui.Modal):
+                staff_id=discord.ui.TextInput(label="Staff Discord user ID",placeholder="123456789012345678",max_length=25,required=True)
+                async def on_submit(modal_self,modal_interaction):
+                    from bson import ObjectId
+                    oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
+                    try: uid=int(str(modal_self.staff_id.value).strip())
+                    except ValueError:
+                        await modal_interaction.response.send_message("❌ Invalid Discord user ID.",ephemeral=True); return
+                    target=modal_interaction.guild.get_member(uid)
+                    if not isinstance(target,discord.Member) or not is_staff(target,settings["staff_role_ids"]):
+                        await modal_interaction.response.send_message("❌ That member is not configured as RSL staff.",ephemeral=True); return
+                    now=time.time()
+                    await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(modal_interaction.guild.id),"status":{"$ne":"closed"}},{"$set":{"claimed_by":str(target.id),"status":"assigned","updated_at":now,"last_activity_at":now}})
+                    await log_event(modal_interaction.guild.id,self.ticket_id,"transferred",modal_interaction.user.id,assigned_to=str(target.id))
+                    await modal_interaction.response.send_message(f"🔄 Ticket transferred to <@{target.id}>.",ephemeral=True)
+            await interaction.response.send_modal(TransferModal(title="Transfer RSL Ticket")); return
         elif action=="members":
             class MemberModal(discord.ui.Modal):
                 user_id=discord.ui.TextInput(label="Discord user ID",placeholder="123456789012345678",max_length=25,required=True)
