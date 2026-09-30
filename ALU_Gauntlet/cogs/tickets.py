@@ -83,7 +83,6 @@ async def settings_for(guild_id):
 async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player=False,webhook_payload=None):
     now=time.time()
     guild_id=str(row.get("guild_id") or "")
-    guild_id=str(row.get("guild_id") or "")
     destinations=[]
     if staff: destinations.append(("staff",message or "RSL ticket update."))
     if player: destinations.append(("player",message or "RSL ticket update."))
@@ -104,7 +103,7 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
                 result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"failed"},{"$set":{"status":"sending","created_at":now,"retry_at":now},"$inc":{"attempts":1}})
                 claimed=bool(result.modified_count)
             elif status=="sending" and now-float(existing.get("created_at") or now)>=300:
-                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now,"attempts":{"$add":["$attempts",1]}}})
+                result=await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id,"status":"sending","created_at":existing.get("created_at")},{"$set":{"status":"sending","created_at":now,"retry_at":now,"$inc":{"attempts":1}}})
                 claimed=bool(result.modified_count)
         if not claimed: continue
         delivered=False
@@ -290,8 +289,10 @@ class TicketActions(discord.ui.View):
                     row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(modal_interaction.guild.id)}) or {}
                     ch=modal_interaction.guild.get_channel(int(row.get("channel_id",0)))
                     m=modal_interaction.guild.get_member(uid)
-                    if not isinstance(ch,discord.TextChannel) or not m:
-                        await modal_interaction.response.send_message("❌ Member or ticket channel not found.",ephemeral=True); return
+                    if not isinstance(ch,discord.TextChannel) or int(ch.guild.id) != int(modal_interaction.guild.id) or not m:
+                        await modal_interaction.response.send_message("❌ Member or ticket channel not found in this server.",ephemeral=True); return
+                    if m.bot:
+                        await modal_interaction.response.send_message("❌ Bots cannot be added as ticket participants.",ephemeral=True); return
                     members=[str(x) for x in row.get("member_ids",[]) if str(x)!=str(uid)]
                     if str(uid) in [str(x) for x in row.get("member_ids",[])]:
                         await ch.set_permissions(m,overwrite=None,reason="RSL ticket member removed")
