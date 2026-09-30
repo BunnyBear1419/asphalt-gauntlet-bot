@@ -78,6 +78,8 @@ class TicketActions(discord.ui.View):
             self.add_item(discord.ui.Button(label="Unclaim",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:unclaim:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Priority",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:priority:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Close",style=discord.ButtonStyle.danger,custom_id=f"rsl:ticket:close:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Lock",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:lock:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Note",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:note:{self.ticket_id}"))
         for child in self.children:
             child.callback=self._dispatch
     async def _dispatch(self,interaction):
@@ -97,6 +99,26 @@ class TicketActions(discord.ui.View):
             result=await bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(interaction.guild.id),"status":{"$ne":"closed"},"claimed_by":str(interaction.user.id)},{"$set":{"claimed_by":None,"status":"open","updated_at":time.time(),"last_activity_at":time.time()}})
             if result.modified_count: await log_event(interaction.guild.id,self.ticket_id,"unclaim",interaction.user.id)
             msg="Ticket unclaimed." if result.modified_count else "You do not own the ticket claim."
+        elif action=="lock":
+            from bson import ObjectId
+            oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
+            row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(interaction.guild.id)})
+            ch=interaction.guild.get_channel(int((row or {}).get("channel_id",0)))
+            if isinstance(ch,discord.TextChannel):
+                member=interaction.guild.get_member(int((row or {}).get("user_id",0)))
+                if member: await ch.set_permissions(member,view_channel=True,send_messages=False,read_message_history=True,reason="RSL ticket locked")
+                await bot.db.rsl_tickets.update_one({"_id":oid},{"$set":{"locked":True,"updated_at":time.time()}})
+                await log_event(interaction.guild.id,self.ticket_id,"locked",interaction.user.id)
+                msg="🔒 Ticket locked."
+            else: msg="❌ Ticket channel not found."
+        elif action=="note":
+            class StaffNoteModal(discord.ui.Modal):
+                note=discord.ui.TextInput(label="Private staff note",style=discord.TextStyle.paragraph,max_length=2000,required=True)
+                async def on_submit(modal_self,modal_interaction):
+                    await bot.db.rsl_ticket_events.insert_one({"guild_id":str(modal_interaction.guild.id),"ticket_id":self.ticket_id,"event":"staff_note","actor_id":str(modal_interaction.user.id),"note":str(modal_self.note.value),"created_at":time.time()})
+                    await modal_interaction.response.send_message("📝 Private staff note saved.",ephemeral=True)
+            await interaction.response.send_modal(StaffNoteModal(title="RSL Staff Note"))
+            return
         elif action=="priority":
             from bson import ObjectId
             oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
