@@ -1,5 +1,7 @@
 """RSL Discord Ticket Center."""
 from __future__ import annotations
+
+import hashlib
 import time
 import discord
 from discord.ext import commands, tasks
@@ -314,9 +316,18 @@ class TicketCog(commands.Cog):
             return
         now=time.time()
         update={"last_activity_at":now,"updated_at":now,"reminder_sent_at":None}
+        if message.attachments:
+            evidence=[]
+            for attachment in message.attachments[:10]:
+                fingerprint=hashlib.sha256(str(attachment.url).encode("utf-8","ignore")).hexdigest()
+                evidence.append({"name":str(attachment.filename)[:200],"url":str(attachment.url)[:2000],"size":int(attachment.size or 0),"content_type":str(attachment.content_type or ""), "fingerprint":fingerprint})
+            update["$evidence_append"]=evidence
         if str(message.author.id) != str(row.get("user_id")) and not row.get("first_response_at"):
             update["first_response_at"]=now
-        await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},{"$set":update})
+        evidence=update.pop("$evidence_append",None)
+        update_doc={"$set":update}
+        if evidence: update_doc["$push"]={"evidence":{"$each":evidence,"$slice":-100}}
+        await self.bot.db.rsl_tickets.update_one({"_id":row["_id"]},update_doc)
 
     @tasks.loop(minutes=15)
     async def auto_close_loop(self):
