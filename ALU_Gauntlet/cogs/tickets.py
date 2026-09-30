@@ -382,8 +382,8 @@ class TicketCog(commands.Cog):
         self.bot=bot_instance; self.auto_close_loop.start()
     async def cog_load(self):
         try:
-            await self.bot.db.rsl_ticket_notifications.create_index("event_key", unique=True, name="rsl_ticket_notifications_event_key_unique")
-            await self.bot.db.rsl_ticket_notifications.create_index([("guild_id",1),("status",1),("retry_at",1)], name="rsl_ticket_notifications_retry_queue")
+            await self.bot.db.rsl_ticket_notifications.create_index("event_key", unique=True, name="uniq_rsl_ticket_notification_event")
+            await self.bot.db.rsl_ticket_notifications.create_index([("guild_id",1),("status",1),("retry_at",1)], name="idx_rsl_ticket_notification_retry")
         except Exception:
             pass
         await self.reconcile_provisioning()
