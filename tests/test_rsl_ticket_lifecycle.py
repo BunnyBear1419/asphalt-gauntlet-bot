@@ -199,3 +199,13 @@ def test_ticket_provisioning_reservation_and_failure_recovery_are_wired():
     assert '"status":"orphaned","active":False,"recovery_status":"opening_message_failed"' in cog
     assert '"status":"open","updated_at":now,"last_activity_at":now' in cog
     assert 'A ticket is already being opened' in cog
+
+
+def test_ticket_privacy_hardening_is_wired():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    server=(root/"ALU_Gauntlet"/"web"/"server.py").read_text(encoding="utf-8")
+    assert 'rsl_ticket_notifications.insert_one' in cog
+    assert 'attachment_meta' in server
+    assert '[attachment:{a.filename}|{a.size} bytes|{a.content_type or \'unknown\'}]' in server
+    assert 'a.url for a in msg.attachments' not in server
