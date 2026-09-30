@@ -91,6 +91,7 @@ class TicketActions(discord.ui.View):
         super().__init__(timeout=None); self.cog=cog; self.ticket_id=str(ticket_id); self.locked=bool(locked)
         if closed:
             self.add_item(discord.ui.Button(label="Reopen",style=discord.ButtonStyle.success,custom_id=f"rsl:ticket:reopen:{self.ticket_id}"))
+            self.add_item(discord.ui.Button(label="Rating",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:rating:{self.ticket_id}"))
         else:
             self.add_item(discord.ui.Button(label="Claim",style=discord.ButtonStyle.primary,custom_id=f"rsl:ticket:claim:{self.ticket_id}"))
             self.add_item(discord.ui.Button(label="Unclaim",style=discord.ButtonStyle.secondary,custom_id=f"rsl:ticket:unclaim:{self.ticket_id}"))
@@ -106,10 +107,10 @@ class TicketActions(discord.ui.View):
         for child in self.children:
             child.callback=self._dispatch
     async def _dispatch(self,interaction):
-        settings=await settings_for(str(interaction.guild.id)) if interaction.guild else {}
-        if not interaction.guild or not isinstance(interaction.user,discord.Member) or not is_staff(interaction.user,settings["staff_role_ids"]):
-            await interaction.response.send_message("Staff access is required for ticket controls.",ephemeral=True); return
         action=interaction.data.get("custom_id","").split(":")[2]
+        settings=await settings_for(str(interaction.guild.id)) if interaction.guild else {}
+        if action!="rating" and (not interaction.guild or not isinstance(interaction.user,discord.Member) or not is_staff(interaction.user,settings["staff_role_ids"])):
+            await interaction.response.send_message("Staff access is required for ticket controls.",ephemeral=True); return
         if action=="claim":
             from bson import ObjectId
             oid=ObjectId(self.ticket_id) if ObjectId.is_valid(self.ticket_id) else self.ticket_id
@@ -206,6 +207,8 @@ class TicketActions(discord.ui.View):
             row=await bot.db.rsl_tickets.find_one({"_id":oid,"guild_id":str(interaction.guild.id)}) or {}
             if str(row.get("user_id"))!=str(interaction.user.id):
                 await interaction.response.send_message("ℹ️ Ratings are submitted by the ticket owner.",ephemeral=True); return
+            if isinstance(row.get("rating"),dict) and row.get("rating",{}).get("score"):
+                await interaction.response.send_message("ℹ️ You have already rated this ticket.",ephemeral=True); return
             class RatingModal(discord.ui.Modal):
                 score=discord.ui.TextInput(label="Rating (1-5)",placeholder="5",max_length=1,required=True)
                 comment=discord.ui.TextInput(label="Optional feedback",style=discord.TextStyle.paragraph,max_length=1000,required=False)
