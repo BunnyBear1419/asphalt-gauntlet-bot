@@ -349,3 +349,12 @@ def test_ticket_mutations_are_guild_scoped():
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"tags":current' in cog
     assert '{"_id":oid,"guild_id":str(interaction.guild.id)},{"$set":{"rating"' in cog
     assert '{"_id":row["_id"],"guild_id":str(message.guild.id)},update_doc' in cog
+
+
+def test_ticket_notifications_are_idempotent_and_indexed():
+    root=Path(__file__).parents[1]
+    cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
+    assert 'create_index("event_key", unique=True' in cog
+    assert '("guild_id",1),("status",1),("retry_at",1)' in cog
+    assert '"guild_id":guild_id,"ticket_id":str(ticket_id)' in cog
+    assert '"$inc":{"attempts":1}' in cog
