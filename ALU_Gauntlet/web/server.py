@@ -2945,6 +2945,18 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             if not key:
                 continue
             questions = [str(x)[:200] for x in (item.get("questions") or [])[:5]]
+            translations = {}
+            for locale, data in (item.get("translations") or {}).items():
+                if not isinstance(data, dict):
+                    continue
+                loc = re.sub(r"[^a-zA-Z-]", "", str(locale))[:12].replace("_", "-").lower()
+                if not loc:
+                    continue
+                translations[loc] = {
+                    "label": str(data.get("label") or "")[:80],
+                    "description": str(data.get("description") or "")[:120],
+                    "questions": [str(x)[:200] for x in (data.get("questions") or [])[:5]],
+                }
             clean_types.append({
                 "key": key,
                 "label": str(item.get("label") or key.title())[:80],
@@ -2954,6 +2966,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "category_id": str(item.get("category_id") or ""),
                 "staff_role_ids": [str(x) for x in (item.get("staff_role_ids") or [])[:20]],
                 "questions": questions,
+                "translations": translations,
             })
         await self.bot.db.rsl_ticket_settings.update_one(
             {"_id": str(guild_id)},
@@ -2968,6 +2981,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 "auto_close_hours": max(0, min(720, int(payload.get("auto_close_hours", 168) or 168))),
                 "reminder_hours": max(0, min(168, int(payload.get("reminder_hours", 24) or 24))),
                 "sla_minutes": max(0, min(10080, int(payload.get("sla_minutes", 60) or 60))),
+                "webhook_url": str(payload.get("webhook_url") or "")[:1000],
                 "types": clean_types,
                 "updated_at": time.time(),
             }},
