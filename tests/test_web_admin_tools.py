@@ -56,3 +56,11 @@ def test_admin_image_upload_supports_click_and_drag_drop():
     assert 'dragover' in ADMIN
     assert 'dataTransfer.files' in ADMIN
     assert '8*1024*1024' in ADMIN
+
+
+def test_admin_document_closes_inline_script_and_has_navigation_recovery():
+    page=(ROOT/"ALU_Gauntlet"/"web"/"static"/"admin.html").read_text(encoding="utf-8")
+    assert page.rstrip().endswith("</script>\n</body>\n</html>")
+    assert "function activate(name)" in page
+    assert "data-rsl-nav-recovery" in page
+    assert 'activate(hash)' in page
