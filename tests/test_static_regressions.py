@@ -132,3 +132,19 @@ def test_rsl_performance_bonus_settlement_is_atomic_and_signed():
     assert '"rsl_performance_bonus_applied": margin' in source
     assert "return signed_margin" in source
     assert "return signed_margin if winner_id == challenger_id else -signed_margin" not in source
+
+
+def test_processing_recovery_is_explicit_and_conservative():
+    recovery = read("ALU_Gauntlet/core/rsl_recovery.py")
+    challenges = read("ALU_Gauntlet/cogs/challenges.py")
+    web = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    assistant = read("ALU_Gauntlet/cogs/match_assistant.py")
+    assert "PROCESSING_LEASE_SECONDS = 15 * 60" in recovery
+    assert 'settlement_status == "completed"' in recovery
+    assert 'status": "processing"' in recovery
+    assert 'status": "active"' in recovery
+    assert '"ticket_burned": True' in recovery
+    assert '"settlement_closed": False' in recovery
+    assert "reconcile_processing_challenges(bot.db, guild_id)" in challenges
+    assert "reconcile_processing_challenges(self.bot.db, str(guild_id))" in web
+    assert "await reconcile_processing_challenges(self.bot.db, str(guild_id))" in assistant
