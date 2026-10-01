@@ -114,7 +114,7 @@ class TournamentRoutesMixin:
         from bson import ObjectId
 
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
 
@@ -209,7 +209,7 @@ class TournamentRoutesMixin:
     async def tournament_club_lineup(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         from bson import ObjectId
-        payload = await request.json()
+        payload = await self._json_object(request)
         tournament_id = str(payload.get("tournament_id", "")).strip()
         club_id = str(payload.get("club_id", "")).strip()
         try:
@@ -243,7 +243,7 @@ class TournamentRoutesMixin:
         """Submit a participant result for staff verification."""
         user = await self.require_user(request)
         from bson import ObjectId
-        payload = await request.json()
+        payload = await self._json_object(request)
         try:
             oid = ObjectId(str(payload.get("tournament_id", "")))
         except Exception:
@@ -318,7 +318,7 @@ class TournamentRoutesMixin:
         """Tournament-admin verification endpoint for all supported tournament formats."""
         user, guild_id, _ = await self.require_tournament_admin(request)
         from bson import ObjectId
-        payload = await request.json()
+        payload = await self._json_object(request)
         try:
             oid = ObjectId(str(payload.get("tournament_id", "")))
         except Exception:
@@ -631,7 +631,7 @@ class TournamentRoutesMixin:
 
     async def tournament_media_action(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_tournament_admin(request)
-        payload = await request.json(); media_id = str(payload.get("media_id", "")).strip(); action = str(payload.get("action", "")).strip().casefold()
+        payload = await self._json_object(request); media_id = str(payload.get("media_id", "")).strip(); action = str(payload.get("action", "")).strip().casefold()
         if action not in {"approve", "reject"}: raise web.HTTPBadRequest(text="Action must be approve or reject.")
         media = await self.bot.db.tournament_media.find_one({"_id": media_id, "guild_id": guild_id})
         if not media: raise web.HTTPNotFound(text="Media submission not found.")
@@ -656,7 +656,7 @@ class TournamentRoutesMixin:
             raise web.HTTPConflict(text="Check-in is closed once the tournament is live or completed.")
         tid = str(oid)
         if int(t.get("team_size", 1)) > 1:
-            checkin_payload = await request.json()
+            checkin_payload = await self._json_object(request)
             requested_club_id = str(checkin_payload.get("club_id", "")).strip()
             reg_query = {"tournament_id": tid, "status": {"$in": ["pending", "accepted", "checked_in"]}}
             if requested_club_id:
