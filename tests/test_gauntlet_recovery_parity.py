@@ -25,7 +25,7 @@ def test_web_submission_uses_reservation_aware_recovery():
     server = (ROOT / "ALU_Gauntlet/web/server.py").read_text(encoding="utf-8")
     assert "reconcile_processing_challenges" in server
     assert 'reservation = await self.bot.db.matches.find_one' in server
-    assert 'if reservation:\n                await reconcile_processing_challenges(str(guild_id))' in server
+    assert "reconcile_processing_challenges(self.bot.db, str(guild_id))" in server
     assert 'else:\n                await release_active_challenge(active["_id"])' in server
 
 def test_match_report_and_safe_revert_are_available_on_the_web():
