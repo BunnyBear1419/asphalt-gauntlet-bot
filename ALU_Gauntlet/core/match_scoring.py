@@ -26,67 +26,113 @@ def rsl_performance_bonus(courses_beat: int) -> int:
 
 
 async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
-    """Apply the one-time RSL margin adjustment to a settled Gauntlet match.
+    """Apply the one-time RSL margin adjustment atomically when Mongo supports transactions.
 
-    The existing ELO calculation remains the base rating change. This helper
-    only adds the race-margin adjustment and records it on the match so a
-    retry cannot award the same bonus twice.
+    The base match settlement is authoritative. This helper is an optional,
+    zero-sum post-settlement adjustment, so a retry must never award it twice
+    or leave only one driver's ELO changed.
     """
     courses_beat = int(match_data.get("courses_beat", 0) or 0)
     margin = rsl_performance_bonus(courses_beat)
-
-    # A 3-2 result is intentionally neutral relative to the existing ELO
-    # settlement, but we still persist the scoring metadata for history/UI.
-    await db.matches.update_one(
-        {"_id": match_data["_id"]},
-        {"$set": {
-            "rsl_performance_bonus": margin if courses_beat >= 3 else -margin,
-            "rsl_performance_score": f"{courses_beat}-{5 - courses_beat}",
-            "rsl_performance_scoring_version": 1,
-        }},
-    )
-
-    if margin == 0:
-        await record_match_fairness_stats(db, match_data)
-        return 0
-
-    # Atomically claim the one-time adjustment. Only the first settlement
-    # attempt for this match is allowed to change driver ELO.
-    claim = await db.matches.update_one(
-        {"_id": match_data["_id"], "rsl_margin_bonus_applied": {"$ne": True}},
-        {"$set": {"rsl_margin_bonus_applied": True}},
-    )
-    if getattr(claim, "modified_count", 0) != 1:
-        return 0
+    signed_margin = margin if courses_beat >= 3 else -margin
 
     challenger_id = str(match_data.get("challenger_id"))
     opponent_id = str(match_data.get("opponent_id"))
     winner_id = str(match_data.get("w_id") or match_data.get("winner_id") or "")
+    if margin and winner_id not in {challenger_id, opponent_id}:
+        raise ValueError("Settled match does not contain a valid winner")
     loser_id = opponent_id if winner_id == challenger_id else challenger_id
 
-    if winner_id not in {challenger_id, opponent_id}:
-        # Never mutate an ambiguous settlement.
+    metadata = {
+        "rsl_performance_bonus": signed_margin,
+        "rsl_performance_score": f"{courses_beat}-{5 - courses_beat}",
+        "rsl_performance_scoring_version": 1,
+    }
+
+    client = getattr(db, "client", None)
+    if margin and client is not None:
+        # Keep the claim, both ELO writes, and applied marker in one Mongo
+        # transaction. A crash/rollback cannot strand a half-applied bonus.
+        async with await client.start_session() as session:
+            async with session.start_transaction():
+                current = await db.matches.find_one(
+                    {"_id": match_data["_id"]},
+                    {"rsl_margin_bonus_applied": 1},
+                    session=session,
+                )
+                if current and current.get("rsl_margin_bonus_applied") is True:
+                    return 0
+
+                await db.matches.update_one(
+                    {"_id": match_data["_id"], "rsl_margin_bonus_applied": {"$ne": True}},
+                    {"$set": {**metadata, "rsl_margin_bonus_applied": True}},
+                    session=session,
+                )
+                await db.drivers.update_one(
+                    {"_id": f"{match_data.get('guild_id')}_{winner_id}"},
+                    {"$inc": {"elo": margin}},
+                    session=session,
+                )
+                await db.drivers.update_one(
+                    {"_id": f"{match_data.get('guild_id')}_{loser_id}"},
+                    {"$inc": {"elo": -margin}},
+                    session=session,
+                )
+    else:
+        # Lightweight/test DBs may not expose transactions. Preserve the
+        # idempotent claim and compensate the first ELO write if the second
+        # write fails.
         await db.matches.update_one(
             {"_id": match_data["_id"]},
-            {"$unset": {"rsl_margin_bonus_applied": ""}},
+            {"$set": metadata},
         )
-        raise ValueError("Settled match does not contain a valid winner")
+        if margin == 0:
+            await record_match_fairness_stats(db, match_data)
+            return 0
 
-    await db.drivers.update_one(
-        {"_id": f"{match_data.get('guild_id')}_{winner_id}"},
-        {"$inc": {"elo": margin}},
-    )
-    await db.drivers.update_one(
-        {"_id": f"{match_data.get('guild_id')}_{loser_id}"},
-        {"$inc": {"elo": -margin}},
-    )
-    await db.matches.update_one(
-        {"_id": match_data["_id"]},
-        {"$set": {
-            "rsl_performance_bonus_applied": margin,
-            "rsl_performance_winner_bonus": margin,
-            "rsl_performance_loser_penalty": -margin,
-        }},
-    )
+        claim = await db.matches.update_one(
+            {"_id": match_data["_id"], "rsl_margin_bonus_applied": {"$ne": True}},
+            {"$set": {"rsl_margin_bonus_applied": True}},
+        )
+        if getattr(claim, "modified_count", 0) != 1:
+            return 0
+
+        winner_filter = {"_id": f"{match_data.get('guild_id')}_{winner_id}"}
+        loser_filter = {"_id": f"{match_data.get('guild_id')}_{loser_id}"}
+        try:
+            winner_result = await db.drivers.update_one(
+                winner_filter, {"$inc": {"elo": margin}}
+            )
+            if getattr(winner_result, "modified_count", 0) != 1:
+                raise RuntimeError("Winner ELO bonus could not be applied")
+            loser_result = await db.drivers.update_one(
+                loser_filter, {"$inc": {"elo": -margin}}
+            )
+            if getattr(loser_result, "modified_count", 0) != 1:
+                raise RuntimeError("Loser ELO adjustment could not be applied")
+        except Exception:
+            # Best-effort compensation for non-transactional test/lightweight
+            # stores. Production Mongo uses the transaction path above.
+            try:
+                await db.drivers.update_one(
+                    winner_filter, {"$inc": {"elo": -margin}}
+                )
+            finally:
+                await db.matches.update_one(
+                    {"_id": match_data["_id"]},
+                    {"$unset": {"rsl_margin_bonus_applied": ""}},
+                )
+            raise
+
+        await db.matches.update_one(
+            {"_id": match_data["_id"]},
+            {"$set": {
+                "rsl_performance_bonus_applied": margin,
+                "rsl_performance_winner_bonus": margin,
+                "rsl_performance_loser_penalty": -margin,
+            }},
+        )
+
     await record_match_fairness_stats(db, match_data)
-    return margin if winner_id == challenger_id else -margin
+    return signed_margin if winner_id == challenger_id else -signed_margin
+
