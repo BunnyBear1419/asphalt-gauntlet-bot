@@ -158,6 +158,24 @@ async def _apply_rsl_identity():
 @bot.event
 async def on_ready():
     await _apply_rsl_identity()
+    if getattr(bot, "_rsl_tournament_achievement_recovery_done", False):
+        return
+    bot._rsl_tournament_achievement_recovery_done = True
+    from .core.rsl_role_sync import reconcile_completed_tournament_achievement_roles
+    for guild in bot.guilds:
+        try:
+            settings = await bot.db.settings.find_one({"_id": str(guild.id)}) or {}
+            await reconcile_completed_tournament_achievement_roles(
+                bot.db,
+                guild,
+                role_names=settings.get("achievement_role_names"),
+                role_ids=settings.get("achievement_role_ids"),
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "Failed to recover tournament achievement roles for guild %s", guild.id
+            )
 
 
 async def load_cogs():
