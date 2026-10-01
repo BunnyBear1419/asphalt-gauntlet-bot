@@ -82,12 +82,12 @@ jobs:
 
       - name: Restore into isolated test database
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
         run: |
           set -e
 
-          if [ -z "$MONGO_URI" ]; then
-            echo "ERROR: MONGO_URI secret is missing."
+          if [ -z "$MONGO_CI_URI" ]; then
+            echo "ERROR: MONGO_CI_URI secret is missing."
             exit 1
           fi
 
@@ -95,11 +95,11 @@ jobs:
           import os
           from urllib.parse import urlsplit, urlunsplit
 
-          uri = os.environ["MONGO_URI"]
+          uri = os.environ["MONGO_CI_URI"]
           parts = urlsplit(uri)
 
           if not parts.scheme or not parts.netloc:
-              raise SystemExit("ERROR: MONGO_URI is not a valid MongoDB URI.")
+              raise SystemExit("ERROR: MONGO_CI_URI is not a valid MongoDB URI.")
 
           # Keep the cluster/auth/query information but remove the production
           # database name. The required slash prevents URI parsing errors when
@@ -136,7 +136,7 @@ jobs:
 
       - name: Verify restored database
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
         run: |
           set -e
 
@@ -146,7 +146,7 @@ jobs:
           import os
           from pymongo import MongoClient
 
-          uri = os.environ["MONGO_URI"]
+          uri = os.environ["MONGO_CI_URI"]
           test_db = f"restore_test_{os.environ['GITHUB_RUN_ID']}"
 
           client = MongoClient(uri, serverSelectionTimeoutMS=10000)
@@ -180,12 +180,12 @@ jobs:
       - name: Cleanup isolated test database
         if: always()
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
         run: |
           set -e
 
-          if [ -z "$MONGO_URI" ]; then
-            echo "MONGO_URI is missing; nothing to clean up."
+          if [ -z "$MONGO_CI_URI" ]; then
+            echo "MONGO_CI_URI is missing; nothing to clean up."
             exit 0
           fi
 
@@ -195,7 +195,7 @@ jobs:
           import os
           from pymongo import MongoClient
 
-          uri = os.environ["MONGO_URI"]
+          uri = os.environ["MONGO_CI_URI"]
           test_db = f"restore_test_{os.environ['GITHUB_RUN_ID']}"
 
           client = MongoClient(uri, serverSelectionTimeoutMS=10000)
