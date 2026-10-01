@@ -35,7 +35,7 @@ def test_oauth_error_responses_do_not_echo_authorization_code_or_secret():
 
 
 def test_web_security_headers_and_private_cache_contracts():
-    src = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    src = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
     assert 'X-Content-Type-Options", "nosniff' in src
     assert 'X-Frame-Options", "DENY' in src
     assert 'Referrer-Policy", "strict-origin-when-cross-origin' in src
