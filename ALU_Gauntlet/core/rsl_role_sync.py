@@ -14,6 +14,7 @@ from .rsl_roles import (
     XP_LEVEL_ROLES,
     build_gauntlet_season_roles,
     build_tournament_season_roles,
+    PERMANENT_ACHIEVEMENT_ROLES,
 )
 
 
@@ -158,6 +159,45 @@ async def sync_tournament_season_roles(
                 await member.add_roles(*additions, reason="RSL tournament role assignment")
             except Exception:
                 log.exception("Failed to add tournament seasonal roles to member %s in guild %s", member.id, guild.id)
+    return desired
+
+
+async def sync_tournament_achievement_roles(
+    guild: discord.Guild,
+    *,
+    achievements: dict[str, Iterable[str]] | None = None,
+    role_names: dict[str, str] | None = None,
+    role_ids: dict[str, str] | None = None,
+) -> dict[str, list[str]]:
+    """Add permanent tournament achievement roles without seasonal removals.
+
+    Permanent roles are additive and idempotent. A failed Discord assignment is
+    logged but never removes an existing achievement, so a later completion or
+    reconciliation can safely retry it.
+    """
+    desired = {
+        str(role): sorted({str(user_id) for user_id in users if user_id is not None})
+        for role, users in (achievements or {}).items()
+        if str(role) in PERMANENT_ACHIEVEMENT_ROLES
+    }
+    managed = await _ensure_roles(guild, PERMANENT_ACHIEVEMENT_ROLES, role_names, role_ids)
+    for role_name, users in desired.items():
+        role = managed.get(role_name)
+        if role is None:
+            continue
+        for user_id in users:
+            member = guild.get_member(int(user_id)) if str(user_id).isdigit() else None
+            if member is None:
+                continue
+            if role.id in {existing.id for existing in member.roles}:
+                continue
+            try:
+                await member.add_roles(role, reason="RSL permanent tournament achievement")
+            except Exception:
+                log.exception(
+                    "Failed to add permanent tournament achievement %s to member %s in guild %s",
+                    role_name, member.id, guild.id,
+                )
     return desired
 
 async def clear_gauntlet_season_roles(guild: discord.Guild, role_names: dict[str, str] | None = None, role_ids: dict[str, str] | None = None) -> None:
