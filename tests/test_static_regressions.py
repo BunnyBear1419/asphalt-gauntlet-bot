@@ -260,3 +260,13 @@ def test_media_limits_use_conflict_and_safe_image_bounds():
     assert 'raise web.HTTPConflict' in source
     assert "image.width > 4096 or image.height > 4096" in source
     assert "Image.DecompressionBombError" in source
+
+
+def test_shared_recovery_has_single_definition():
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[1] / "ALU_Gauntlet"
+    definitions = []
+    for path in root.rglob("*.py"):
+        text_value = path.read_text(encoding="utf-8")
+        definitions.append(text_value.count("async def reconcile_processing_challenges("))
+    assert sum(definitions) == 1
