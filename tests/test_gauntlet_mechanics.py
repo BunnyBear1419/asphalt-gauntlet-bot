@@ -89,3 +89,13 @@ def test_processing_recovery_reopens_only_without_a_settlement_reservation():
     assert 'elif not match:' in core
     assert 'time.time() - processing_at > 15 * 60' in core
     assert '"status": "active", "last_reminder": 0' in core
+
+
+def test_matchmaking_does_not_persist_daily_ticket_reset_before_selection():
+    source = Path("ALU_Gauntlet/cogs/challenges.py").read_text(encoding="utf-8")
+    start = source.index("ticket_date = user_profile.get('gauntlet_ticket_date')")
+    end = source.index("tickets = int(user_profile.get('gauntlet_tickets'", start)
+    block = source[start:end]
+    assert "await bot.db.drivers.update_one" not in block
+    assert "authoritative reset" in block
+    assert "let the selection transaction" in block
