@@ -91,6 +91,19 @@ def test_processing_recovery_reopens_only_without_a_settlement_reservation():
     assert '"status": "active", "last_reminder": 0' in core
 
 
+def test_claim_uses_shared_reservation_aware_recovery_before_reclaiming_processing():
+    core = Path("ALU_Gauntlet/core/core.py").read_text(encoding="utf-8")
+    start = core.index("async def claim_active_challenge")
+    end = core.index("async def release_active_challenge", start)
+    claim = core[start:end]
+    assert "reconcile_processing_challenges" in claim
+    assert 'if active.get("status") == "processing":' in claim
+    assert '"status": "processing", "processing_at": now' in claim
+    # The claim path must not contain its own 15-minute reopen logic; the
+    # shared recovery service owns reservation-aware stale processing recovery.
+    assert "now - processing_at > 15 * 60" not in claim
+
+
 def test_matchmaking_does_not_persist_daily_ticket_reset_before_selection():
     source = Path("ALU_Gauntlet/cogs/challenges.py").read_text(encoding="utf-8")
     start = source.index("ticket_date = user_profile.get('gauntlet_ticket_date')")
