@@ -140,7 +140,7 @@ def test_v1_security_contract_covers_auth_permissions_and_upload_bounds():
         "async def require_admin",
         "async def require_guild_member",
         "Only the club leader can edit the club.",
-        "Only the club leader can manage members.",
+        "Only the club leader or an Officer can manage members.",
         "Only tournament participants or tournament staff can upload media.",
         "This tournament is configured for Admin Only result submission.",
         "max_size = 12 * 1024 * 1024",
