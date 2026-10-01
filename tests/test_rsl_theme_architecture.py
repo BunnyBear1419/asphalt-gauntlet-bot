@@ -1,3 +1,4 @@
+from web_source import web_source
 """Regression contracts for the Racing Syndicate League theme architecture."""
 from pathlib import Path
 
@@ -25,7 +26,7 @@ def test_all_supported_themes_have_final_tokens():
 
 
 def test_navigation_dropdowns_close_when_pointer_leaves():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert 'document.querySelectorAll(".top-nav details.top-nav-dropdown")' in server
     assert 'dropdown.addEventListener("pointerenter",open)' in server
     assert 'dropdown.addEventListener("pointerleave",close)' in server
@@ -33,7 +34,7 @@ def test_navigation_dropdowns_close_when_pointer_leaves():
 
 
 def test_default_midnight_has_cross_page_audit_tokens():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     expected = (
         'html[data-theme="dark"]{--rsl-audit-bg:#020b18',
         '--rsl-audit-panel:#071427',
@@ -57,19 +58,19 @@ def test_theme_layer_is_last_and_has_accessibility_contract():
 
 
 def test_no_universal_theme_selector_can_reset_every_theme_to_midnight_blue():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert 'html[data-theme]{--rsl-audit-bg:#020817' not in server
     assert 'html[data-theme]{--rsl-audit-bg:#071427' not in server
 
 
 def test_discord_brand_exception_remains_explicit():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     css = CSS.read_text(encoding="utf-8")
     assert "#5865F2" in server or "#5865f2" in server or "#5865F2" in css or "#5865f2" in css
 
 
 def test_midnight_theme_keeps_the_intended_default_palette():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     expected = (
         "--rsl-final-bg:#020817",
         "--rsl-final-panel:#071427",
@@ -84,7 +85,7 @@ def test_midnight_theme_keeps_the_intended_default_palette():
 
 
 def test_cookie_settings_control_has_readable_typography():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     start = server.find(".rsl-cookie-settings{")
     assert start >= 0
     rule = server[start:server.find("}", start) + 1]
@@ -94,14 +95,14 @@ def test_cookie_settings_control_has_readable_typography():
 
 
 def test_cookie_footer_controls_share_the_same_utility_row():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert ".rsl-footer-utility-row{" in server
     assert ".rsl-footer-utility-row .rsl-language-switcher" in server
     assert ".rsl-footer-theme-control{" in server
 
 
 def test_shared_navigation_keeps_calendar_before_companion_and_search_before_profile():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     calendar = 'calendar_markup = \'<a href="/calendar">'
     companion = 'companion_markup = r\'\'\'<details class="top-nav-dropdown companion-nav-dropdown">'
     assert calendar in server
@@ -125,7 +126,7 @@ def test_navigation_reserves_space_for_search_and_profile_controls():
 
 
 def test_navigation_normalizes_legacy_calendar_and_profile_markup():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert "Remove any legacy/static Calendar nav entry" in server
     assert "top-user-area" in server
     assert "rsl-search-trigger" in server
@@ -147,7 +148,7 @@ def test_admin_server_setup_hash_resolves_to_settings_section():
 
 
 def test_shared_header_does_not_inject_stray_social_icons():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert 'class="top-discord-link"' not in server
     assert 'class="top-cashapp-link"' not in server
     assert "rsl-footer-social" in server
@@ -156,7 +157,7 @@ def test_shared_header_does_not_inject_stray_social_icons():
 
 
 def test_shared_navigation_cleans_legacy_companion_calendar_and_account_markup():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert 'companion_cleanup = re.compile(' in server
     assert 'href=["\\\']/calendar' in server
     assert 'class="top-user-area"' in server
