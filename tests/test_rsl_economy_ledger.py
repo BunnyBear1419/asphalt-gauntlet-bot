@@ -43,3 +43,10 @@ def test_economy_index_is_not_unique_on_missing_message_ids():
     source = (ROOT / "main.py").read_text(encoding="utf-8")
     assert "idx_rsl_economy_history" in source
     assert "uniq_rsl_economy_message_transaction" in source
+
+
+def test_pending_ledger_rows_never_report_success():
+    source = (ROOT / "core" / "rsl_economy_ledger.py").read_text(encoding="utf-8")
+    assert 'status = str(existing.get("status") or "").casefold()' in source
+    assert 'if status != "completed":' in source
+    assert 'transaction_pending' in source
