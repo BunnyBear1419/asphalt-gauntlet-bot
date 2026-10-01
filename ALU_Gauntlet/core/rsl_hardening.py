@@ -14,7 +14,7 @@ _ALLOWED = {
  MatchState.ACTIVE:{MatchState.SUBMITTED,MatchState.EXPIRED,MatchState.ABANDONED},
  MatchState.SUBMITTED:{MatchState.VERIFIED,MatchState.EXPIRED,MatchState.RECONCILIATION_REQUIRED},
  MatchState.VERIFIED:{MatchState.SETTLED,MatchState.RECONCILIATION_REQUIRED},
- MatchState.SETTLED:{MatchState.RECONCILIATION_REQUIRED},
+ MatchState.SETTLED:set(),
  MatchState.ABANDONED:{MatchState.RECONCILIATION_REQUIRED},
  MatchState.EXPIRED:{MatchState.RECONCILIATION_REQUIRED},
  MatchState.RECONCILIATION_REQUIRED:{MatchState.VERIFIED,MatchState.SETTLED},
@@ -36,7 +36,7 @@ def require_capability(ctx,capability):
 def proof_sha256(content:bytes)->str: return hashlib.sha256(content).hexdigest()
 def proof_fingerprint(*,content:bytes,metadata:Iterable[str]=())->str:
     digest=hashlib.sha256(); digest.update(content)
-    for value in metadata: digest.update(b"\\0"); digest.update(str(value).encode("utf-8","replace"))
+    for value in metadata: digest.update(b"\0"); digest.update(str(value).encode("utf-8","replace"))
     return digest.hexdigest()
 def same_proof(left,right): return hmac.compare_digest(str(left),str(right))
 
