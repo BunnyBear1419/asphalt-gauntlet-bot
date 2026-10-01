@@ -213,3 +213,11 @@ def test_rollover_preserves_schedule_duration_and_announces_once_per_transition_
     assert "season_duration = previous_end - previous_start" in source
     assert '"ends_at": now + season_duration' in source
     assert 'reason="rollover"' in source
+
+
+def test_season_reward_materialization_is_retry_safe_after_coin_ledger_duplicate():
+    source = (ROOT / "ALU_Gauntlet" / "cogs" / "season.py").read_text(encoding="utf-8")
+    assert 'if ledger.get("ok"):' in source
+    assert 'last_season_reward.reference_id' in source
+    assert 'reward_marker = f"season:{current_season}:rank:{points_rank[uid]}"' in source
+    assert '"reference_id": reward_marker' in source
