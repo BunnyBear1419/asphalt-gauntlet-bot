@@ -8,6 +8,7 @@ from discord.ext import commands
 
 from ..core.core import *
 from .translation import localize_text
+from ..core.rsl_reliability import build_reliability_snapshot
 
 
 class OperationsCog(commands.Cog):
@@ -59,6 +60,15 @@ class OperationsCog(commands.Cog):
         hb_text = "Webhook not configured" if not os.getenv("HEALTH_WEBHOOK_URL") else (f"{max(0, now-heartbeat):.0f}s ago" if heartbeat else "Awaiting first successful heartbeat")
         embed.add_field(name=await localize_text(bot, interaction.user.id, "Competition Safety", getattr(interaction, "locale", None)), value=f"{'🟠 SAFE MODE ENABLED' if maintenance.get('enabled') else '🟢 Competition live'}\\n{str(maintenance.get('message') or 'No maintenance notice.')[:180]}", inline=False)
         embed.add_field(name=await localize_text(bot, interaction.user.id, "Recovery Signals", getattr(interaction, "locale", None)), value=f"💾 Last backup: `{backup_text}`\n💓 Last heartbeat: `{hb_text}`\n{'⚠️ Stale processing challenge detected' if stale else '🟢 No stale challenge reservations'}", inline=False)
+        try:
+            reliability = await build_reliability_snapshot(bot.db, gid, settings=settings)
+            attention = int((reliability.get("attention") or {}).get("total", 0) or 0)
+            economy_ok = bool((reliability.get("economy") or {}).get("ok", False))
+            readiness = str((reliability.get("readiness") or {}).get("status", "UNKNOWN"))
+            economy_label = "OK" if economy_ok else "REVIEW"
+            embed.add_field(name=await localize_text(bot, interaction.user.id, "Reliability", getattr(interaction, "locale", None)), value=f"🧭 Readiness: `{readiness}`\n🪙 Economy: `{economy_label}`\n📋 Staff attention: `{attention}`", inline=False)
+        except Exception:
+            embed.add_field(name="Reliability", value="⚠️ Reliability snapshot unavailable; use Admin → System → Reliability & Recovery.", inline=False)
         await interaction.followup.send(embed=embed, ephemeral=True)
 
 
