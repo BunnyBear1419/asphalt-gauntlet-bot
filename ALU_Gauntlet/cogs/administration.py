@@ -138,12 +138,13 @@ class CreateTournamentModal(discord.ui.Modal, title="Host RSL Tournament"):
             return
         try:
             from ALU_Gauntlet.core.tournament import generate_tournament_bracket
+            from ALU_Gauntlet.core.rsl_tournament_rewards import DEFAULT_TOURNAMENT_REWARDS
             now = discord.utils.utcnow().isoformat()
             bracket = generate_tournament_bracket(fmt, max_players)
             doc = {
                 "guild_id": str(self.guild_id), "name": name, "description": "",
                 "format": fmt, "max_players": max_players, "team_size": team_size,
-                "result_submission_mode": result_mode, "bracket": bracket, "bracket_version": 1,
+                "result_submission_mode": result_mode, "rewards": dict(DEFAULT_TOURNAMENT_REWARDS), "bracket": bracket, "bracket_version": 1,
                 "gauntlet_only": False, "registration_deadline": None, "start_time": None, "end_time": None,
                 "status": "registration_open", "created_by": str(interaction.user.id),
                 "created_at": now, "updated_at": now,
