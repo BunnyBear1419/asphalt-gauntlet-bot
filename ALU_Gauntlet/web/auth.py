@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import os
 import secrets
 import time
@@ -18,6 +19,7 @@ SESSION_COOKIE = "alu_web_session"
 SESSION_TTL = 30 * 24 * 60 * 60
 STATE_TTL = 10 * 60
 PRODUCTION_PUBLIC_URL = "https://asph.discloud.app"
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -86,8 +88,6 @@ class DiscordOAuth:
                         error_desc = str(error_payload.get("error_description", "")).strip() if isinstance(error_payload, dict) else ""
                         detail = f" {error_code}: {error_desc}".strip() if error_code or error_desc else ""
                         log_message = f"Discord OAuth token exchange failed: HTTP {response.status}{detail}"
-                        # Keep the detailed Discord response in server logs; never expose
-                        # client secrets or authorization codes to the browser.
                         print(log_message)
                         raise web.HTTPServiceUnavailable(
                             text=f"Discord OAuth token exchange failed (HTTP {response.status}).{detail}"
@@ -119,8 +119,6 @@ class DiscordOAuth:
             raise web.HTTPBadGateway(text="Discord returned an invalid account profile.")
         guilds = await self.discord_get("/users/@me/guilds", access_token)
         if not isinstance(guilds, list):
-            # Discord should return a list here, but treat an unexpected payload
-            # as an empty guild list instead of crashing the OAuth callback.
             guilds = []
         user_id = str(profile["id"])
         admin_guild_ids: set[str] = set()
@@ -133,8 +131,6 @@ class DiscordOAuth:
                 if int(guild.get("permissions", 0)) & ADMINISTRATOR:
                     admin_guild_ids.add(gid)
                     continue
-                # Match the Discord bot's configured staff role when the bot can
-                # resolve the member. This keeps web permissions aligned with Discord.
                 discord_guild = self.bot.get_guild(int(gid))
                 member = discord_guild.get_member(int(user_id)) if discord_guild else None
                 if member is None and discord_guild:
@@ -148,8 +144,6 @@ class DiscordOAuth:
                     if role_id and any(str(role.id) == role_id for role in getattr(member, "roles", [])):
                         admin_guild_ids.add(gid)
             except Exception:
-                # A single unavailable Discord/Mongo guild lookup must not abort
-                # the entire OAuth login for the user.
                 continue
         staff = user_id in self.allowed_staff_ids or bool(admin_guild_ids)
         return WebUser(user_id=user_id, username=str(profile.get("username", "Unknown")), global_name=profile.get("global_name"), avatar=profile.get("avatar"), staff=staff, admin_guild_ids=frozenset(admin_guild_ids), guild_ids=frozenset(guild_ids))
@@ -186,12 +180,9 @@ class DiscordOAuth:
         token = secrets.token_urlsafe(32)
         now_dt = datetime.now(timezone.utc)
         expiry = now_dt + timedelta(seconds=SESSION_TTL)
-        # Defensive lazy initialization keeps authentication recoverable if a
-        # long-lived web process was started from an older module instance.
-        if not hasattr(self, "sessions"):
-            self.sessions = {}
         async with self._lock:
-            self.sessions[token] = (expiry, user)
+            # Cache timestamps as floats; Mongo stores timezone-aware datetimes.
+            self.sessions[token] = (expiry.timestamp(), user)
         db = getattr(self.bot, "db", None)
         if db is not None:
             try:
@@ -200,10 +191,8 @@ class DiscordOAuth:
                     {"$set": {"expires_at": expiry, "user": self._serialize_user(user), "created_at": now_dt, "last_seen": now_dt}},
                     upsert=True,
                 )
-            except Exception:
-                # Authentication must remain available even if the optional
-                # durable session store is temporarily unavailable.
-                pass
+            except Exception as exc:
+                logger.warning("Unable to persist web session; using in-memory session only: %s", exc)
         return token
 
     async def get_session(self, request: web.Request) -> WebUser | None:
@@ -211,10 +200,6 @@ class DiscordOAuth:
         if not token:
             return None
         now = time.time()
-        # Recover safely if a long-lived process retained an older OAuth instance
-        # created before the in-memory session cache was initialized.
-        if not hasattr(self, "sessions"):
-            self.sessions = {}
         async with self._lock:
             entry = self.sessions.get(token)
             if entry:
@@ -246,9 +231,8 @@ class DiscordOAuth:
                 {"_id": self._session_key(token)},
                 {"$set": {"expires_at": new_expiry, "last_seen": datetime.now(timezone.utc)}},
             )
-        except Exception:
-            # A broken/temporarily unavailable durable session must not turn
-            # every authenticated page request into HTTP 500.
+        except Exception as exc:
+            logger.warning("Unable to load durable web session; treating request as unauthenticated: %s", exc)
             return None
         async with self._lock:
             self.sessions[token] = (new_expiry.timestamp(), user)
