@@ -15,7 +15,7 @@ class PublicRoutesMixin:
     async def save_admin_branding(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
         incoming = payload.get("branding", payload)
@@ -71,7 +71,7 @@ class PublicRoutesMixin:
 
     async def select_admin_guild(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         gid = str(payload.get("guild_id","")).strip()
         rows = await self._admin_guilds_data(user)
         if gid not in {row["id"] for row in rows}:
@@ -122,7 +122,7 @@ class PublicRoutesMixin:
     async def save_xp_settings(self, request: web.Request) -> web.Response:
         from ..core.rsl_xp import DEFAULT_XP_SETTINGS
         _, guild_id, _ = await self.require_admin(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         clean = {k: payload[k] for k in payload if k in DEFAULT_XP_SETTINGS}
         if "curve" in clean and clean["curve"] not in {"linear", "exponential", "flat"}:
             raise web.HTTPBadRequest(text="Invalid XP curve.")
@@ -134,7 +134,7 @@ class PublicRoutesMixin:
         return web.json_response({"ok": True})
 
     async def create_gauntlet_reference(self, request: web.Request) -> web.Response:
-        user,guild_id,_=await self.require_admin(request); payload=await request.json()
+        user,guild_id,_=await self.require_admin(request); payload = await self._json_object(request)
         course=str(payload.get("course","")).strip(); title=str(payload.get("title","")).strip()[:120]; video_url=str(payload.get("video_url","")).strip()[:500]
         if course not in ALU_TRACKS or not title or not video_url: raise web.HTTPBadRequest(text="Course, title and video URL are required.")
         from bson import ObjectId
@@ -146,7 +146,7 @@ class PublicRoutesMixin:
 
     async def create_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         guild_id = str(payload.get("guild_id", "")).strip()
         if guild_id not in {str(x) for x in user.guild_ids}:
             raise web.HTTPForbidden(text="You are not a member of that server.")
@@ -191,7 +191,7 @@ class PublicRoutesMixin:
 
     async def update_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         from bson import ObjectId
         try:
             oid = ObjectId(str(payload.get("club_id", "")))
@@ -247,7 +247,7 @@ class PublicRoutesMixin:
 
     async def join_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         from bson import ObjectId
         try:
             oid = ObjectId(str(payload.get("club_id", "")))
@@ -279,7 +279,7 @@ class PublicRoutesMixin:
 
     async def leave_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         from bson import ObjectId
         try:
             oid = ObjectId(str(payload.get("club_id", "")))
@@ -298,7 +298,7 @@ class PublicRoutesMixin:
 
     async def manage_club_member(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         from bson import ObjectId
         try:
             oid = ObjectId(str(payload.get("club_id", "")))
@@ -330,7 +330,7 @@ class PublicRoutesMixin:
 
     async def update_notification_category(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         category = str(payload.get("category", "")).strip().lower()
         if category not in {"gauntlet", "tournament"}:
             raise web.HTTPBadRequest(text="Unsupported notification category.")
@@ -345,7 +345,7 @@ class PublicRoutesMixin:
 
     async def update_notification_timing(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         scope = str(payload.get("scope", "")).strip().lower()
         lead_days = payload.get("lead_days", 1)
         try:
@@ -365,7 +365,7 @@ class PublicRoutesMixin:
 
     async def update_notification_digest(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         frequency = str(payload.get("frequency", "off")).strip().lower()
         if frequency not in {"off", "daily", "weekly"}:
             raise web.HTTPBadRequest(text="Digest frequency must be off, daily, or weekly.")
@@ -387,7 +387,7 @@ class PublicRoutesMixin:
 
     async def update_notification_event(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         event_id = str(payload.get("event_id", "")).strip()[:180]
         enabled = bool(payload.get("enabled", False))
         if not event_id:
@@ -424,7 +424,7 @@ class PublicRoutesMixin:
     async def create_tournament(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_tournament_admin(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         name = str(payload.get("name", "")).strip()
@@ -477,7 +477,7 @@ class PublicRoutesMixin:
     async def register_tournament(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         tournament_id = str(payload.get("tournament_id", "")).strip()
@@ -805,7 +805,7 @@ class PublicRoutesMixin:
 
     async def create_news(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         title = str(payload.get("title","")).strip()[:120]
         body = str(payload.get("body","")).strip()[:10000]
         if not title or not body:
@@ -833,7 +833,7 @@ class PublicRoutesMixin:
         except Exception: raise web.HTTPBadRequest(text="Invalid news article ID.")
         existing = await self.bot.db.news_posts.find_one({"_id": oid, "guild_id": guild_id})
         if not existing: raise web.HTTPNotFound(text="News article not found.")
-        payload = await request.json()
+        payload = await self._json_object(request)
         updates = {}
         for key, limit in (("title",120),("category",40),("excerpt",300),("body",10000)):
             if key in payload: updates[key] = str(payload.get(key,"")).strip()[:limit]
@@ -870,7 +870,7 @@ class PublicRoutesMixin:
     async def save_setup_settings(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         allowed = {key for key, _ in SETUP_CHANNELS + SETUP_ROLES} | {"timezone"} | {
@@ -968,7 +968,7 @@ class PublicRoutesMixin:
     async def save_season(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         if "automatic_season_end" in payload:
