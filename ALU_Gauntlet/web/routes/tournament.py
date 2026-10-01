@@ -646,9 +646,12 @@ class TournamentRoutesMixin:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         from bson import ObjectId
         try:
-            oid = ObjectId(str((await request.json()).get("tournament_id", "")))
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+            payload = await self._json_object(request)
+            oid = ObjectId(str(payload.get("tournament_id", "")))
+        except web.HTTPBadRequest:
+            raise
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.") from exc
         t = await self.bot.db.tournaments.find_one({"_id": oid})
         if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
             raise web.HTTPNotFound(text="Tournament not found.")
@@ -696,9 +699,12 @@ class TournamentRoutesMixin:
         from bson import ObjectId
         from ALU_Gauntlet.core.tournament import generate_tournament_bracket
         try:
-            oid = ObjectId(str((await request.json()).get("tournament_id", "")))
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid tournament ID.")
+            payload = await self._json_object(request)
+            oid = ObjectId(str(payload.get("tournament_id", "")))
+        except web.HTTPBadRequest:
+            raise
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid tournament ID.") from exc
         t = await self.bot.db.tournaments.find_one({"_id": oid, "guild_id": guild_id})
         if not t:
             raise web.HTTPNotFound(text="Tournament not found.")
