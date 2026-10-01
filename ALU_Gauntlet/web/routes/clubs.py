@@ -120,6 +120,67 @@ class ClubsRoutesMixin:
             return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
     
     
+    async def transfer_club_leadership(self, request: web.Request) -> web.Response:
+        user, _live_guild_id, _ = await self.require_guild_member(request)
+        payload = await request.json()
+        try:
+            club_id = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        target_id = str(payload.get("user_id", "")).strip()
+        if not target_id:
+            raise web.HTTPBadRequest(text="A replacement leader is required.")
+        club = await self.bot.db.clubs.find_one({"_id": club_id})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        if str(club.get("leader_id")) != str(user.user_id):
+            raise web.HTTPForbidden(text="Only the current club leader can transfer leadership.")
+        if target_id == str(user.user_id):
+            raise web.HTTPBadRequest(text="You are already the club leader.")
+        target = await self.bot.db.club_members.find_one({"club_id": str(club_id), "user_id": target_id})
+        if not target:
+            raise web.HTTPBadRequest(text="The replacement leader must already be a club member.")
+        now = datetime.now(timezone.utc).isoformat()
+        updated = await self.bot.db.clubs.update_one(
+            {"_id": club_id, "leader_id": str(user.user_id)},
+            {"$set": {"leader_id": target_id, "updated_at": now}},
+        )
+        if not updated.modified_count:
+            raise web.HTTPConflict(text="Club leadership changed before your transfer completed.")
+        await self.bot.db.club_members.update_one(
+            {"club_id": str(club_id), "user_id": str(user.user_id)},
+            {"$set": {"role": "officer"}},
+        )
+        await self.bot.db.club_members.update_one(
+            {"club_id": str(club_id), "user_id": target_id},
+            {"$set": {"role": "leader"}},
+        )
+        await self._club_notify_user(club, target_id, "You are now the Leader of the club.")
+        return web.json_response({"ok": True, "message": "Club leadership transferred. You are now an Officer."})
+
+    async def delete_club(self, request: web.Request) -> web.Response:
+        user, _live_guild_id, _ = await self.require_guild_member(request)
+        payload = await request.json()
+        try:
+            club_id = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        club = await self.bot.db.clubs.find_one({"_id": club_id})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        if str(club.get("leader_id")) != str(user.user_id):
+            raise web.HTTPForbidden(text="Only the club leader can delete the club.")
+        registrations = await self.bot.db.tournament_club_registrations.count_documents({"club_id": str(club_id)})
+        if registrations:
+            raise web.HTTPConflict(text="This club has tournament history or registrations and cannot be deleted. Contact staff if the club needs to be retired.")
+        await self.bot.db.club_invitations.delete_many({"club_id": str(club_id)})
+        await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id)})
+        await self.bot.db.club_members.delete_many({"club_id": str(club_id)})
+        result = await self.bot.db.clubs.delete_one({"_id": club_id, "leader_id": str(user.user_id)})
+        if not result.deleted_count:
+            raise web.HTTPConflict(text="Club changed before deletion completed.")
+        return web.json_response({"ok": True, "message": "Club deleted."})
+
     async def update_club(self, request: web.Request) -> web.Response:
             user, _live_guild_id, _ = await self.require_guild_member(request)
             payload = await request.json()
