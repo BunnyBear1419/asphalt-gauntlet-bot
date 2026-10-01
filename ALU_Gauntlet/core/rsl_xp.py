@@ -119,25 +119,68 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
         return {"ok": False, "duplicate": False, "restricted": True, "amount": 0}
     boost = effective_boost(settings, role_ids, channel_id)
     final_amount = max(1, round(amount * boost))
+    event_id = str(event_id)
+    transaction_id = f"{guild_id}:{user_id}:{source}:{event_id}"
     event = {
-        "_id": f"{guild_id}:{user_id}:{source}:{event_id}",
+        "_id": transaction_id,
         "guild_id": str(guild_id), "user_id": str(user_id), "source": str(source),
-        "event_id": str(event_id), "amount": final_amount,
+        "event_id": event_id, "amount": final_amount,
         "created_at": datetime.now(timezone.utc),
         "metadata": metadata or {},
     }
+    week, month = period_keys()
+    profile_id = f"{guild_id}_{user_id}"
+
+    async def _apply(session=None):
+        kwargs = {"session": session} if session is not None else {}
+        try:
+            await db.rsl_xp_events.insert_one(event, **kwargs)
+        except Exception as exc:
+            if "duplicate" in str(exc).lower() or "e11000" in str(exc).lower():
+                return {"ok": True, "duplicate": True, "amount": 0}
+            raise
+
+        await db.drivers.update_one(
+            {"_id": profile_id},
+            {"$set": {"rsl_xp_week": week, "rsl_xp_weekly": 0}},
+            **kwargs,
+        ) if False else None
+
+        profile = await db.drivers.find_one({"_id": profile_id}, {"rsl_xp_week": 1, "rsl_xp_month": 1}, **kwargs) or {}
+        updates = {"$inc": {
+            "rsl_xp": final_amount,
+            "rsl_xp_weekly": final_amount,
+            "rsl_xp_monthly": final_amount,
+            "rsl_xp_message_count": 1 if source == "message" else 0,
+            "rsl_xp_reaction_count": 1 if source == "reaction" else 0,
+            "rsl_xp_voice_seconds": int(metadata.get("voice_seconds", 0)) if metadata else 0,
+        }, "$set": {"rsl_xp_week": week, "rsl_xp_month": month}}
+        if profile.get("rsl_xp_week") != week:
+            updates["$set"]["rsl_xp_week"] = week
+            updates["$set"]["rsl_xp_weekly"] = final_amount
+            updates["$inc"]["rsl_xp_weekly"] = 0
+        if profile.get("rsl_xp_month") != month:
+            updates["$set"]["rsl_xp_month"] = month
+            updates["$set"]["rsl_xp_monthly"] = final_amount
+            updates["$inc"]["rsl_xp_monthly"] = 0
+        await db.drivers.update_one({"_id": profile_id}, updates, **kwargs)
+        return {"ok": True, "duplicate": False, "amount": final_amount, "boost": boost}
+
+    client = getattr(db, "client", None)
+    if client is None:
+        return await _apply()
+
     try:
-        await db.rsl_xp_events.insert_one(event)
+        async with await client.start_session() as session:
+            async with session.start_transaction():
+                result = await _apply(session)
+                if result.get("duplicate"):
+                    return result
+                return result
     except Exception as exc:
         if "duplicate" in str(exc).lower() or "e11000" in str(exc).lower():
             return {"ok": True, "duplicate": True, "amount": 0}
         raise
-    week, month = period_keys()
-    profile_id = f"{guild_id}_{user_id}"
-    await db.drivers.update_one({"_id": profile_id, "$or": [{"rsl_xp_week": {"$ne": week}}, {"rsl_xp_week": {"$exists": False}}]}, {"$set": {"rsl_xp_week": week, "rsl_xp_weekly": 0}})
-    await db.drivers.update_one({"_id": profile_id, "$or": [{"rsl_xp_month": {"$ne": month}}, {"rsl_xp_month": {"$exists": False}}]}, {"$set": {"rsl_xp_month": month, "rsl_xp_monthly": 0}})
-    await db.drivers.update_one({"_id": profile_id}, {"$inc": {"rsl_xp": final_amount, "rsl_xp_weekly": final_amount, "rsl_xp_monthly": final_amount, "rsl_xp_message_count": 1 if source == "message" else 0, "rsl_xp_reaction_count": 1 if source == "reaction" else 0, "rsl_xp_voice_seconds": int(metadata.get("voice_seconds", 0)) if metadata else 0}, "$set": {"rsl_xp_week": week, "rsl_xp_month": month}}, upsert=False)
-    return {"ok": True, "duplicate": False, "amount": final_amount, "boost": boost}
 
 
 async def get_settings(db, guild_id: str) -> dict:
