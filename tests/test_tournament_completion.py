@@ -95,6 +95,19 @@ def test_admin_only_result_submission_advances_without_second_manual_review():
     assert 'Admin result entry: the submitted winner will be recorded and the bracket advanced immediately.' in tournaments
 
 
+def test_tournament_result_rejection_is_persisted_on_web_and_discord_paths():
+    server = web_source()
+    cog = COG.read_text(encoding="utf-8")
+    assert 'if action == "reject":' in server
+    assert 'await self.bot.db.tournaments.update_one(' in server
+    web_reject = server.split('if action == "reject":', 1)[1].split('else:', 1)[0]
+    assert '"bracket": bracket' in web_reject
+    assert 'if action=="reject":' in cog
+    assert 'await bot.db.tournaments.update_one(' in cog
+    discord_reject = cog.split('if action=="reject":', 1)[1].split('else:', 1)[0]
+    assert '"$set":{"bracket":bracket' in discord_reject
+
+
 def test_player_review_result_submission_still_requires_staff_verification():
     server = web_source()
     cog = COG.read_text(encoding="utf-8")
