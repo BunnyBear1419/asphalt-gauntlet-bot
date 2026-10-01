@@ -34,7 +34,9 @@ def test_known_discord_economy_nameerror_typo_is_absent():
 
 def test_setup_role_constants_are_explicitly_imported():
     source = read("ALU_Gauntlet/web/routes/public.py")
-    expected = "XP_LEVEL_ROLES, GAUNTLET_SEASONAL_ROLES, TOURNAMENT_SEASONAL_ROLES, PERMANENT_ACHIEVEMENT_ROLES"\n    assert expected in source\n    assert "from ...core.rsl_roles import" in source
+    expected = "XP_LEVEL_ROLES, GAUNTLET_SEASONAL_ROLES, TOURNAMENT_SEASONAL_ROLES, PERMANENT_ACHIEVEMENT_ROLES"
+    assert expected in source
+    assert "from ...core.rsl_roles import" in source
 
 
 def test_oauth_state_is_cookie_bound():
