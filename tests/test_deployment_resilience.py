@@ -52,7 +52,7 @@ def test_failed_smoke_test_rolls_back_previous_revision():
     assert "Determine rollback revision" in source
     assert "previous_sha" in source
     assert "Roll back to previous known-good revision" in source
-    assert "ref: ${{ steps.revision.outputs.previous_sha }}" in source
+    assert "ref: ${{ steps.predeploy.outputs.release_sha || steps.revision.outputs.previous_sha }}" in source
     assert "Deploy rollback to Discloud" in source
     assert "Restart Discloud app after rollback upload" in source
     assert "Install deployment check dependencies" in source
@@ -256,8 +256,10 @@ def test_failed_discloud_deploy_attempts_enter_recovery_path():
 def test_deployment_marks_and_verifies_exact_runtime_revision():
     source = _source()
     assert 'printf "%s\\n" "$GITHUB_SHA" > rsl-release-sha.txt' in source
-    assert 'printf "%s\\n" "${{ steps.revision.outputs.previous_sha }}" > .rsl-release-sha' in source
-    assert 'EXPECTED_ROLLBACK_SHA: ${{ steps.revision.outputs.previous_sha }}' in source
+    assert 'ROLLBACK_SHA="${{ steps.predeploy.outputs.release_sha || steps.revision.outputs.previous_sha }}"' in source
+    assert 'printf "%s\\n" "$ROLLBACK_SHA" > .rsl-release-sha' in source
+    assert 'EXPECTED_ROLLBACK_SHA: ${{ steps.predeploy.outputs.release_sha || steps.revision.outputs.previous_sha }}' in source
+    assert 'Pre-deployment production release' in source
     assert 'Rollback revision mismatch: expected' in source
     assert 'Rollback heartbeat revision mismatch: expected' in source
 
