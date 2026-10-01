@@ -36,3 +36,9 @@ def test_recovery_checkpoint_has_a_guild_scoped_index():
     main = MAIN.read_text(encoding="utf-8")
     assert "rsl_recovery_checkpoints" in main
     assert "idx_rsl_recovery_checkpoint" in main
+
+
+def test_discord_status_exposes_reliability_signals():
+    source = (ROOT / "ALU_Gauntlet" / "cogs" / "operations.py").read_text(encoding="utf-8")
+    assert "build_reliability_snapshot" in source
+    assert '"Reliability"' in source
