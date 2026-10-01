@@ -80,7 +80,7 @@ def test_web_session_cache_and_legacy_ttl_cleanup_are_type_safe():
     main = read("ALU_Gauntlet/main.py")
     assert "self.sessions[token] = (expiry.timestamp(), user)" in auth
     assert 'delete_many({"expires_at": {"$type": "number"}})' in main
-    assert "hasattr(self, "sessions")" not in auth
+    assert 'hasattr(self, "sessions")' not in auth
 
 
 def test_security_hardening_contracts_fail_closed():
