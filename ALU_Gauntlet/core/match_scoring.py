@@ -63,11 +63,19 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
                 if current and current.get("rsl_margin_bonus_applied") is True:
                     return 0
 
-                await db.matches.update_one(
+                claim = await db.matches.update_one(
                     {"_id": match_data["_id"], "rsl_margin_bonus_applied": {"$ne": True}},
-                    {"$set": {**metadata, "rsl_margin_bonus_applied": True}},
+                    {"$set": {
+                        **metadata,
+                        "rsl_margin_bonus_applied": True,
+                        "rsl_performance_bonus_applied": margin,
+                        "rsl_performance_winner_bonus": margin,
+                        "rsl_performance_loser_penalty": -margin,
+                    }},
                     session=session,
                 )
+                if getattr(claim, "modified_count", 0) != 1:
+                    return 0
                 await db.drivers.update_one(
                     {"_id": f"{match_data.get('guild_id')}_{winner_id}"},
                     {"$inc": {"elo": margin}},
@@ -134,5 +142,5 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
         )
 
     await record_match_fairness_stats(db, match_data)
-    return signed_margin if winner_id == challenger_id else -signed_margin
+    return signed_margin
 
