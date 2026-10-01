@@ -1,4 +1,5 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "ALU_Gauntlet" / "web" / "server.py"
@@ -6,7 +7,7 @@ PAGE = ROOT / "ALU_Gauntlet" / "web" / "static" / "public-profile.html"
 SCRIPT = ROOT / "ALU_Gauntlet" / "web" / "static" / "public-profile.js"
 
 def test_public_driver_profile_contract():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     page = PAGE.read_text(encoding="utf-8")
     script = SCRIPT.read_text(encoding="utf-8")
 
@@ -51,7 +52,7 @@ def test_tournament_results_link_individual_drivers():
 
 
 def test_gauntlet_match_surfaces_use_safe_opponent_ids_for_public_profiles():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     matches = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-matches.html").read_text(encoding="utf-8")
     app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
     player = (ROOT / "ALU_Gauntlet" / "web" / "static" / "player.js").read_text(encoding="utf-8")
@@ -66,7 +67,7 @@ def test_gauntlet_match_surfaces_use_safe_opponent_ids_for_public_profiles():
 
 
 def test_public_profile_uses_discord_identity_when_driver_record_is_missing():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     page = PAGE.read_text(encoding="utf-8")
     script = SCRIPT.read_text(encoding="utf-8")
 
