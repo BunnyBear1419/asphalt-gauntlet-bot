@@ -163,7 +163,7 @@ class AuthRoutesMixin:
         state = request.query.get("state", "").strip()
         code = request.query.get("code", "")
         cookie_state = str(request.cookies.get("rsl_oauth_state") or "").strip()
-        if not state || not cookie_state || not hmac.compare_digest(state, cookie_state):
+        if not state or not cookie_state or not hmac.compare_digest(state, cookie_state):
             raise web.HTTPBadRequest(text="Invalid OAuth state.")
         if not await self.auth.consume_state(state):
             raise web.HTTPBadRequest(text="Invalid or expired OAuth state.")
