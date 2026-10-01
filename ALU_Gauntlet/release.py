@@ -9,4 +9,6 @@ def current_release_revision() -> str:
         value = _MARKER.read_text(encoding="utf-8").strip()
     except (OSError, UnicodeError):
         return "unknown"
-    return value if value else "unknown"
+    if not value or not __import__("re").fullmatch(r"[0-9a-fA-F]{40}", value):
+        return "unknown"
+    return value.lower()
