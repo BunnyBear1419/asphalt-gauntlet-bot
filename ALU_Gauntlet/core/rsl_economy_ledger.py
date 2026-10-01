@@ -128,19 +128,34 @@ async def reconcile_pending_coin_transactions(db, *, guild_id: str, limit: int =
             continue
         markers = profile.get("rsl_coin_ledger_markers") or {}
         if marker not in markers:
+            amount = int(row.get("amount", 0) or 0)
+            query = {"_id": f"{gid}_{user_id}"}
+            if amount < 0:
+                query["rsl_coins"] = {"$gte": abs(amount)}
             try:
-                result = await _apply_without_transaction(
-                    db,
-                    transaction_id=transaction_id,
-                    guild_id=gid,
-                    user_id=user_id,
-                    amount=int(row.get("amount", 0) or 0),
-                    transaction_type=str(row.get("type") or "recovery"),
-                    reference_id=str(row.get("reference_id") or ""),
-                    reason=str(row.get("reason") or "Recovered pending RSL coin transaction"),
-                    metadata=row.get("metadata") or {},
+                result = await db.drivers.update_one(
+                    query,
+                    {
+                        "$inc": {"rsl_coins": amount},
+                        "$set": {f"rsl_coin_ledger_markers.{marker}": time.time()},
+                    },
                 )
-                if result.get("ok"):
+                if getattr(result, "modified_count", 0) != 1:
+                    skipped += 1
+                    continue
+                profile_after = await db.drivers.find_one(
+                    {"_id": f"{gid}_{user_id}"},
+                    {"rsl_coins": 1},
+                ) or {}
+                completed = await db.rsl_economy_transactions.update_one(
+                    {"_id": transaction_id, "status": "pending"},
+                    {"$set": {
+                        "status": "completed",
+                        "balance_after": int(profile_after.get("rsl_coins", 0) or 0),
+                        "completed_at": time.time(),
+                    }},
+                )
+                if getattr(completed, "modified_count", 0) == 1:
                     repaired += 1
                 else:
                     skipped += 1
