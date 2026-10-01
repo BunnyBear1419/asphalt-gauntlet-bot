@@ -351,6 +351,10 @@ class TournamentRoutesMixin:
                 for key in ("result_status", "winner_id", "submitted_by", "submitted_at", "proof_url", "result_notes"):
                     match.pop(key, None)
                 match["status"] = "ready"
+                await self.bot.db.tournaments.update_one(
+                    {"_id": oid},
+                    {"$set": {"bracket": bracket, "updated_at": datetime.now(timezone.utc).isoformat()}},
+                )
                 message = "Result rejected. The match is ready for another submission."
             else:
                 winner_id = str(match.get("winner_id", ""))
