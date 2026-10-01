@@ -835,6 +835,86 @@ class AdminRoutesMixin:
                 return user
         raise web.HTTPForbidden(text="Staff access is required.")
 
+    async def admin_club_leadership(self, request: web.Request) -> web.Response:
+        user, guild_id, _guild = await self.require_admin(request)
+        clubs = await self.bot.db.clubs.find({"guild_id": str(guild_id)}).sort("name_ci", 1).to_list(length=500)
+        rows = []
+        for club in clubs:
+            members = await self.bot.db.club_members.find(
+                {"club_id": str(club["_id"]), "guild_id": str(guild_id)}
+            ).sort("joined_at", 1).to_list(length=20)
+            rows.append({
+                "id": str(club["_id"]),
+                "name": str(club.get("name") or "Club"),
+                "leader_id": str(club.get("leader_id") or ""),
+                "members": [
+                    {
+                        "user_id": str(m.get("user_id") or ""),
+                        "username": str(m.get("username") or m.get("user_id") or ""),
+                        "role": str(m.get("role") or "member").casefold(),
+                    }
+                    for m in members
+                ],
+            })
+        return web.json_response({"guild_id": str(guild_id), "clubs": rows})
+
+    async def admin_club_leadership_action(self, request: web.Request) -> web.Response:
+        user, guild_id, _guild = await self.require_admin(request)
+        try:
+            payload = await request.json()
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid JSON body.")
+        club_id = str(payload.get("club_id") or "").strip()
+        target_id = str(payload.get("target_user_id") or "").strip()
+        if not club_id or not target_id:
+            raise web.HTTPBadRequest(text="Club and replacement leader are required.")
+        try:
+            oid = ObjectId(club_id)
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid club ID.") from exc
+        club = await self.bot.db.clubs.find_one({"_id": oid, "guild_id": str(guild_id)})
+        if not club:
+            raise web.HTTPNotFound(text="Club not found.")
+        target = await self.bot.db.club_members.find_one({
+            "club_id": club_id,
+            "guild_id": str(guild_id),
+            "user_id": target_id,
+        })
+        if not target:
+            raise web.HTTPNotFound(text="The replacement leader must already be a club member.")
+        old_leader_id = str(club.get("leader_id") or "")
+        if target_id == old_leader_id:
+            raise web.HTTPConflict(text="That driver is already the club leader.")
+        # Leadership transfer is atomic at the database-document level: update the
+        # club pointer first, then normalize the two affected memberships.
+        now = datetime.now(timezone.utc).isoformat()
+        result = await self.bot.db.clubs.update_one(
+            {"_id": oid, "guild_id": str(guild_id), "leader_id": old_leader_id},
+            {"$set": {"leader_id": target_id, "updated_at": now}},
+        )
+        if not result.modified_count:
+            raise web.HTTPConflict(text="The club leadership changed before this action completed.")
+        await self.bot.db.club_members.update_one(
+            {"club_id": club_id, "user_id": old_leader_id},
+            {"$set": {"role": "officer", "updated_at": now}},
+        )
+        await self.bot.db.club_members.update_one(
+            {"club_id": club_id, "user_id": target_id},
+            {"$set": {"role": "leader", "updated_at": now}},
+        )
+        await self._audit(
+            str(guild_id),
+            str(user.user_id),
+            f"Staff transferred club leadership: {club.get('name', 'Club')} {old_leader_id} -> {target_id}",
+        )
+        return web.json_response({
+            "ok": True,
+            "club_id": club_id,
+            "old_leader_id": old_leader_id,
+            "new_leader_id": target_id,
+            "message": "Club leadership transferred. The previous leader is now an Officer.",
+        })
+
     async def admin_server_control(self, request: web.Request) -> web.Response:
         _, guild_id, guild = await self.require_admin(request)
         me = guild.me
