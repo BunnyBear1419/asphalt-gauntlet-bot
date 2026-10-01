@@ -24,11 +24,11 @@ jobs:
 
       - name: Check required secret
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
         run: |
           set -e
-          if [ -z "$MONGO_URI" ]; then
-            echo "ERROR: MONGO_URI GitHub secret is missing."
+          if [ -z "$MONGO_CI_URI" ]; then
+            echo "ERROR: MONGO_CI_URI GitHub secret is missing."
             exit 1
           fi
           echo "Required secret is configured."
@@ -135,7 +135,7 @@ jobs:
 
       - name: Restore backup into isolated verification database
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
         run: |
           set -e
 
@@ -144,10 +144,10 @@ jobs:
           echo "TEST_DB=$TEST_DB" >> "$GITHUB_ENV"
 
           QUERY=""
-          BASE="$MONGO_URI"
-          if [[ "$MONGO_URI" == *\?* ]]; then
-            BASE="${MONGO_URI%%\?*}"
-            QUERY="?${MONGO_URI#*\?}"
+          BASE="$MONGO_CI_URI"
+          if [[ "$MONGO_CI_URI" == *\?* ]]; then
+            BASE="${MONGO_CI_URI%%\?*}"
+            QUERY="?${MONGO_CI_URI#*\?}"
           fi
 
           # Replace (not append to) any existing default database in the URI path.
@@ -169,18 +169,18 @@ jobs:
 
       - name: Verify restored collections and documents
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
           TEST_DB: ${{ env.TEST_DB }}
         run: |
           set -e
 
           python -m pip install --quiet pymongo
 
-          MONGO_URI="$MONGO_URI" TEST_DB="$TEST_DB" python - <<'PY'
+          MONGO_CI_URI="$MONGO_CI_URI" TEST_DB="$TEST_DB" python - <<'PY'
           import os
           from pymongo import MongoClient
 
-          uri = os.environ["MONGO_URI"]
+          uri = os.environ["MONGO_CI_URI"]
           db_name = os.environ["TEST_DB"]
 
           client = MongoClient(uri, serverSelectionTimeoutMS=15000)
@@ -238,7 +238,7 @@ jobs:
       - name: Cleanup verification database
         if: ${{ always() }}
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
           TEST_DB: ${{ env.TEST_DB }}
         run: |
           set -e
@@ -250,11 +250,11 @@ jobs:
 
           python -m pip install --quiet pymongo
 
-          MONGO_URI="$MONGO_URI" TEST_DB="$TEST_DB" python - <<'PY'
+          MONGO_CI_URI="$MONGO_CI_URI" TEST_DB="$TEST_DB" python - <<'PY'
           import os
           from pymongo import MongoClient
 
-          uri = os.environ["MONGO_URI"]
+          uri = os.environ["MONGO_CI_URI"]
           db_name = os.environ["TEST_DB"]
 
           client = MongoClient(uri, serverSelectionTimeoutMS=15000)
