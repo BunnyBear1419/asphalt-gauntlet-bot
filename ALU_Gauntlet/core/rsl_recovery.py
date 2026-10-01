@@ -56,9 +56,20 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 bonus_failed = False
                 if not reservation.get("rsl_margin_bonus_applied"):
                     try:
-                        bonus = await apply_rsl_performance_bonus(db, reservation)
-                        if bonus:
+                        await apply_rsl_performance_bonus(db, reservation)
+                        refreshed = await db.matches.find_one(
+                            {"_id": reservation["_id"]},
+                            {"rsl_margin_bonus_applied": 1},
+                        ) or {}
+                        if refreshed.get("rsl_margin_bonus_applied") is True:
                             stats["bonus_retried"] += 1
+                        else:
+                            bonus_failed = True
+                            stats["bonus_failed"] += 1
+                            log.error(
+                                "RSL performance bonus retry returned without a durable applied marker for %s",
+                                reservation.get("_id"),
+                            )
                     except Exception:
                         bonus_failed = True
                         log.exception("Failed to retry RSL performance bonus for settlement %s", reservation.get("_id"))
