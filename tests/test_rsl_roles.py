@@ -7,6 +7,7 @@ from ALU_Gauntlet.core.rsl_roles import (
     media_unlocked,
     permanent_achievement_roles,
     reconcile_seasonal_roles,
+    build_tournament_season_roles,
     xp_rank,
 )
 
@@ -128,3 +129,16 @@ def test_discord_role_sync_is_wired_to_season_lifecycle():
     assert "existing_ids = {role.id for role in member.roles}" in sync
     assert "managed[name].id in existing_ids" in sync
     assert "managed[current].id not in existing_ids" in sync
+
+
+def test_tournament_role_builder_tracks_finalists_and_replacement_roles():
+    roles = build_tournament_season_roles(
+        tournament_champion="10",
+        runner_up="20",
+        third_place="30",
+        finalists=["10", "20", "30", "40"],
+    )
+    assert roles["Tournament Champion"] == ["10"]
+    assert roles["Tournament Runner-Up"] == ["20"]
+    assert roles["Tournament 3rd Place"] == ["30"]
+    assert roles["Tournament Finalist"] == ["10", "20", "30", "40"]
