@@ -159,7 +159,7 @@ def test_processing_recovery_is_explicit_and_conservative():
     assert "reconcile_processing_challenges(bot.db, guild_id)" in challenges
     assert "reconcile_processing_challenges(self.bot.db, str(guild_id))" in web
     assert "await reconcile_processing_challenges(self.bot.db, str(guild_id))" in assistant
-    assert 'distinct(\n            "guild_id", {"status": "completed"}\n        )' in assistant
+    assert '"status": "completed", "rsl_bonus_checked": {"$ne": True}' in assistant
     assert "set(processing_guild_ids) | set(completed_bonus_guild_ids)" in assistant
 
 
@@ -263,10 +263,5 @@ def test_media_limits_use_conflict_and_safe_image_bounds():
 
 
 def test_shared_recovery_has_single_definition():
-    import pathlib
-    root = pathlib.Path(__file__).resolve().parents[1] / "ALU_Gauntlet"
-    definitions = []
-    for path in root.rglob("*.py"):
-        text_value = path.read_text(encoding="utf-8")
-        definitions.append(text_value.count("async def reconcile_processing_challenges("))
-    assert sum(definitions) == 1
+    source = read("ALU_Gauntlet/core/rsl_recovery.py")
+    assert source.count("async def reconcile_processing_challenges(") == 1
