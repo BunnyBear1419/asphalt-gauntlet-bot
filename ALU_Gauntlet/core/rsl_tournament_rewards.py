@@ -216,6 +216,14 @@ async def sync_completed_tournament_roles(db, guild, tournament: dict, *, role_n
     if not champion:
         return False
 
+    try:
+        await settle_tournament_rewards(db, tournament)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception(
+            "Failed to settle tournament rewards for %s", tournament.get("_id")
+        )
+
     recipients = await tournament_role_recipients(
         db, tournament, [champion, runner_up or "", third_place or ""] + finalists
     )
