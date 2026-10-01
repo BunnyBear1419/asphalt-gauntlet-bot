@@ -33,7 +33,10 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
 
     async for challenge in db.active_challenges.find({
         "guild_id": guild_id,
-        "status": {"$in": ["processing", "completed"]},
+        "$or": [
+            {"status": "processing"},
+            {"status": "completed", "rsl_bonus_checked": {"$ne": True}},
+        ],
     }):
         challenge_id = str(challenge.get("_id") or "")
         if not challenge_id:
@@ -94,6 +97,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                             "match_id": reservation["_id"],
                             "ticket_burned": True,
                             "settlement_closed": True,
+                            "rsl_bonus_checked": True,
                             "reconciled_at": now,
                             "reconciliation_reason": "completed_settlement",
                         },
