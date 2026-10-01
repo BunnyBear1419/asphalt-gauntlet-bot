@@ -89,7 +89,7 @@ async def _ensure_database_indexes():
     await db.rsl_ticket_events.create_index([("guild_id", 1), ("ticket_id", 1), ("created_at", -1)], name="idx_rsl_ticket_events")
     await db.rsl_ticket_notifications.create_index([("event_key", 1)], unique=True, name="uniq_rsl_ticket_notification_event")
     await db.rsl_ticket_notifications.create_index([("guild_id", 1), ("status", 1), ("retry_at", 1)], name="idx_rsl_ticket_notification_retry")
-    await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("created_at", -1)], name="uniq_rsl_recovery_checkpoint")
+    await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("created_at", -1)], name="idx_rsl_recovery_checkpoint")
 
 
 async def _wait_for_database(timeout=60):
