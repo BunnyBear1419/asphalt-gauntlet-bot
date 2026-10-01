@@ -16,8 +16,6 @@ class CoreRoutesMixin:
         self._configure_routes()
 
     @web.middleware
-
-    @web.middleware
     async def _error_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
         try:
             return await handler(request)
@@ -99,13 +97,9 @@ class CoreRoutesMixin:
         return response
 
     @web.middleware
-
-    @web.middleware
     async def _security_headers_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
         response = await handler(request)
         return self._apply_security_headers(request, response)
-
-    @web.middleware
 
     @web.middleware
     async def _security_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
@@ -117,8 +111,6 @@ class CoreRoutesMixin:
             if request.cookies.get(SESSION_COOKIE) and not self._request_origin_allowed(request):
                 raise web.HTTPForbidden(text="Cross-site mutation blocked.")
         return await handler(request)
-
-    @web.middleware
 
     @web.middleware
     async def _maintenance_middleware(self, request: web.Request, handler: Any) -> web.StreamResponse:
