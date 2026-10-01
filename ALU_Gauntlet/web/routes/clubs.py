@@ -412,8 +412,9 @@ class ClubsRoutesMixin:
         club = await self.bot.db.clubs.find_one({"_id": oid})
         if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
             raise web.HTTPNotFound(text="Club not found.")
-        if str(club.get("leader_id")) != str(user.user_id):
-            raise web.HTTPForbidden(text="Only the club leader can invite drivers.")
+        actor_role = await self._club_member_role(str(oid), str(user.user_id))
+        if actor_role not in {"leader", "officer"}:
+            raise web.HTTPForbidden(text="Only the club leader or an Officer can invite drivers.")
         target = str(payload.get("user_id", "")).strip()
         if not target or target == str(user.user_id) or not target.isdigit():
             raise web.HTTPBadRequest(text="Select a valid Discord member.")
@@ -545,8 +546,11 @@ class ClubsRoutesMixin:
         if not join_request:
             raise web.HTTPNotFound(text="Join request not found or already handled.")
         club = await self.bot.db.clubs.find_one({"_id": ObjectId(str(join_request["club_id"]))})
-        if not club or str(club.get("leader_id")) != str(user.user_id):
-            raise web.HTTPForbidden(text="Only the club leader can manage join requests.")
+        if not club:
+            raise web.HTTPNotFound(text="Club not found.")
+        actor_role = await self._club_member_role(str(join_request["club_id"]), str(user.user_id))
+        if actor_role not in {"leader", "officer"}:
+            raise web.HTTPForbidden(text="Only the club leader or an Officer can manage join requests.")
         now = datetime.now(timezone.utc)
         if str(join_request.get("expires_at", "")) <= now.isoformat():
             await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now.isoformat()}})
