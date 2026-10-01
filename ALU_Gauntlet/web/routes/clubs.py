@@ -322,7 +322,8 @@ class ClubsRoutesMixin:
                 if exc.__class__.__name__ == "DuplicateKeyError":
                     raise web.HTTPConflict(text="You are already in a club in this server.")
                 raise
-            return web.json_response({"ok": True, "message": "You joined the club."})
+            await self._club_recount_member_count(str(oid))
+        return web.json_response({"ok": True, "message": "You joined the club."})
     
     
     async def leave_club(self, request: web.Request) -> web.Response:
@@ -342,7 +343,8 @@ class ClubsRoutesMixin:
             if not removed.deleted_count:
                 raise web.HTTPConflict(text="You are not a member of this club.")
             await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
-            return web.json_response({"ok": True, "message": "You left the club."})
+            await self._club_recount_member_count(str(oid))
+        return web.json_response({"ok": True, "message": "You left the club."})
     
     
     async def _club_member_role(self, club_id: str, user_id: str):
@@ -391,7 +393,8 @@ class ClubsRoutesMixin:
                 removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
                 if removed.deleted_count:
                     await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
-                return web.json_response({"ok": True, "message": "Member removed from the club."})
+                await self._club_recount_member_count(str(oid))
+            return web.json_response({"ok": True, "message": "Member removed from the club."})
             raise web.HTTPBadRequest(text="Unsupported member action.")
     
     
@@ -586,6 +589,7 @@ class ClubsRoutesMixin:
             raise
         await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now}})
         await self.bot.db.club_join_requests.update_many({"club_id": str(club["_id"]), "user_id": str(user.user_id), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now}})
+        await self._club_recount_member_count(str(club["_id"]))
         await self._club_notify_user(str(club["leader_id"]), "RSL Club Invitation Accepted", f"{user.global_name or user.username} accepted the invitation to join **{club.get('name', 'your club')}**.")
         return web.json_response({"ok": True, "message": f"You joined {club.get('name', 'the club')}."})
 
@@ -670,6 +674,7 @@ class ClubsRoutesMixin:
             raise
         await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now.isoformat()}})
         await self.bot.db.club_invitations.update_many({"club_id": str(club["_id"]), "invitee_id": str(join_request["user_id"]), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now.isoformat()}})
+        await self._club_recount_member_count(str(club["_id"]))
         await self._club_notify_user(str(join_request["user_id"]), "RSL Club Join Request", f"Your request to join **{club.get('name', 'the club')}** was accepted.")
         return web.json_response({"ok": True, "message": f"{join_request.get('username', 'Driver')} joined the club."})
 
