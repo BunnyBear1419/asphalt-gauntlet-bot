@@ -15,6 +15,8 @@ from __future__ import annotations
 import logging
 import time
 
+from .match_scoring import apply_rsl_performance_bonus
+
 log = logging.getLogger(__name__)
 
 PROCESSING_LEASE_SECONDS = 15 * 60
@@ -27,7 +29,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
     """
     guild_id = str(guild_id)
     now = time.time()
-    stats = {"closed": 0, "reopened": 0, "pending": 0, "skipped": 0}
+    stats = {"closed": 0, "reopened": 0, "pending": 0, "skipped": 0, "bonus_retried": 0, "bonus_failed": 0}
 
     async for challenge in db.active_challenges.find({
         "guild_id": guild_id,
@@ -46,6 +48,19 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
         if reservation:
             settlement_status = str(reservation.get("settlement_status") or "").casefold()
             if settlement_status == "completed":
+                # The base settlement is authoritative, but the RSL margin bonus
+                # is an optional post-settlement adjustment. If the original
+                # request failed after the match was committed, retry it from the
+                # same deterministic reservation instead of silently losing the
+                # bonus forever. The bonus helper is itself idempotent/atomic.
+                if not reservation.get("rsl_margin_bonus_applied"):
+                    try:
+                        bonus = await apply_rsl_performance_bonus(db, reservation)
+                        if bonus:
+                            stats["bonus_retried"] += 1
+                    except Exception:
+                        log.exception("Failed to retry RSL performance bonus for settlement %s", reservation.get("_id"))
+                        stats["bonus_failed"] += 1
                 result = await db.active_challenges.update_one(
                     {
                         "_id": challenge_id,
