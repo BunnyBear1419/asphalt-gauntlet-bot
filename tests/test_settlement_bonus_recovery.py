@@ -18,3 +18,10 @@ def test_settlement_recovery_keeps_base_settlement_authoritative_on_bonus_failur
     assert 'status": "completed"' in block
     assert 'settlement_closed": True' in block
     assert 'except Exception:' in block
+
+
+def test_settlement_recovery_scans_completed_challenges_for_missing_bonus_without_reopening_them():
+    source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
+    assert '"status": {"$in": ["processing", "completed"]}' in source
+    assert 'if str(challenge.get("status") or "") != "processing":' in source
+    assert 'preserve the completed state' in source
