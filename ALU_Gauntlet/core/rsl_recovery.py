@@ -33,7 +33,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
 
     async for challenge in db.active_challenges.find({
         "guild_id": guild_id,
-        "status": "processing",
+        "status": {"$in": ["processing", "completed"]},
     }):
         challenge_id = str(challenge.get("_id") or "")
         if not challenge_id:
