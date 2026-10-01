@@ -323,7 +323,7 @@ class ClubsRoutesMixin:
                 raise web.HTTPConflict(text="You are already in a club in this server.")
             raise
         await self._club_recount_member_count(str(oid))
-    return web.json_response({"ok": True, "message": "You joined the club."})
+        return web.json_response({"ok": True, "message": "You joined the club."})
 
 
     async def leave_club(self, request: web.Request) -> web.Response:
@@ -344,7 +344,7 @@ class ClubsRoutesMixin:
             raise web.HTTPConflict(text="You are not a member of this club.")
         await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
         await self._club_recount_member_count(str(oid))
-    return web.json_response({"ok": True, "message": "You left the club."})
+        return web.json_response({"ok": True, "message": "You left the club."})
 
 
     async def _club_member_role(self, club_id: str, user_id: str):
