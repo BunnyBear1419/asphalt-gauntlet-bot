@@ -159,6 +159,8 @@ def test_processing_recovery_is_explicit_and_conservative():
     assert "reconcile_processing_challenges(bot.db, guild_id)" in challenges
     assert "reconcile_processing_challenges(self.bot.db, str(guild_id))" in web
     assert "await reconcile_processing_challenges(self.bot.db, str(guild_id))" in assistant
+    assert 'distinct(\n            "guild_id", {"status": "completed"}\n        )' in assistant
+    assert "set(processing_guild_ids) | set(completed_bonus_guild_ids)" in assistant
 
 
 def test_active_gauntlet_challenge_has_database_level_concurrency_guard():
