@@ -110,51 +110,51 @@ class ClubsRoutesMixin:
         return web.json_response({"clubs": rows})
 
     async def create_club(self, request: web.Request) -> web.Response:
-            user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await self._json_object(request)
-            guild_id = str(payload.get("guild_id", "")).strip()
-            if guild_id not in {str(x) for x in user.guild_ids}:
-                raise web.HTTPForbidden(text="You are not a member of that server.")
-            name = str(payload.get("name", "")).strip()
-            if not name or len(name) > 40:
-                raise web.HTTPBadRequest(text="Club name must be 1-40 characters.")
-            if await self.bot.db.clubs.find_one({"guild_id": guild_id, "name_ci": name.casefold()}):
+        user, _live_guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        guild_id = str(payload.get("guild_id", "")).strip()
+        if guild_id not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPForbidden(text="You are not a member of that server.")
+        name = str(payload.get("name", "")).strip()
+        if not name or len(name) > 40:
+            raise web.HTTPBadRequest(text="Club name must be 1-40 characters.")
+        if await self.bot.db.clubs.find_one({"guild_id": guild_id, "name_ci": name.casefold()}):
+            raise web.HTTPConflict(text="That club name is already taken.")
+        if await self.bot.db.club_members.find_one({"guild_id": guild_id, "user_id": str(user.user_id)}):
+            raise web.HTTPConflict(text="You are already in a club in this server.")
+        now = datetime.now(timezone.utc).isoformat()
+        discord_link = str(payload.get("discord", "")).strip()
+        if discord_link and not discord_link.lower().startswith(("http://", "https://")):
+            raise web.HTTPBadRequest(text="Discord link must begin with http:// or https://.")
+        raw_links = payload.get("links", [])
+        if not isinstance(raw_links, list):
+            raise web.HTTPBadRequest(text="Club links must be a list.")
+        clean_links = []
+        for link in raw_links[:5]:
+            value = str(link or "").strip()
+            if not value:
+                continue
+            if not value.lower().startswith(("http://", "https://")):
+                raise web.HTTPBadRequest(text="Club links must begin with http:// or https://.")
+            if len(value) > 300:
+                raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
+            clean_links.append(value)
+        doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": discord_link[:300], "links": clean_links, "image": "", "leader_id": str(user.user_id), "member_count": 1, "created_at": now, "updated_at": now}
+        try:
+            result = await self.bot.db.clubs.insert_one(doc)
+        except Exception as exc:
+            if exc.__class__.__name__ == "DuplicateKeyError":
                 raise web.HTTPConflict(text="That club name is already taken.")
-            if await self.bot.db.club_members.find_one({"guild_id": guild_id, "user_id": str(user.user_id)}):
-                raise web.HTTPConflict(text="You are already in a club in this server.")
-            now = datetime.now(timezone.utc).isoformat()
-            discord_link = str(payload.get("discord", "")).strip()
-            if discord_link and not discord_link.lower().startswith(("http://", "https://")):
-                raise web.HTTPBadRequest(text="Discord link must begin with http:// or https://.")
-            raw_links = payload.get("links", [])
-            if not isinstance(raw_links, list):
-                raise web.HTTPBadRequest(text="Club links must be a list.")
-            clean_links = []
-            for link in raw_links[:5]:
-                value = str(link or "").strip()
-                if not value:
-                    continue
-                if not value.lower().startswith(("http://", "https://")):
-                    raise web.HTTPBadRequest(text="Club links must begin with http:// or https://.")
-                if len(value) > 300:
-                    raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
-                clean_links.append(value)
-            doc = {"guild_id": guild_id, "name": name, "name_ci": name.casefold(), "about": str(payload.get("about", payload.get("about_us", ""))).strip()[:500], "discord": discord_link[:300], "links": clean_links, "image": "", "leader_id": str(user.user_id), "member_count": 1, "created_at": now, "updated_at": now}
-            try:
-                result = await self.bot.db.clubs.insert_one(doc)
-            except Exception as exc:
-                if exc.__class__.__name__ == "DuplicateKeyError":
-                    raise web.HTTPConflict(text="That club name is already taken.")
-                raise
-            try:
-                await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
-            except Exception:
-                # Compensate if the membership write fails so a club can never be left orphaned.
-                await self.bot.db.clubs.delete_one({"_id": result.inserted_id})
-                raise
-            return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
-    
-    
+            raise
+        try:
+            await self.bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "leader", "joined_at": now})
+        except Exception:
+            # Compensate if the membership write fails so a club can never be left orphaned.
+            await self.bot.db.clubs.delete_one({"_id": result.inserted_id})
+            raise
+        return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
+
+
     async def transfer_club_leadership(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await self._json_object(request)
@@ -236,117 +236,117 @@ class ClubsRoutesMixin:
         return web.json_response({"ok": True, "message": "Club deleted."})
 
     async def update_club(self, request: web.Request) -> web.Response:
-            user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await self._json_object(request)
-            from bson import ObjectId
-            try:
-                oid = ObjectId(str(payload.get("club_id", "")))
-            except Exception:
-                raise web.HTTPBadRequest(text="Invalid club ID.")
-            club = await self.bot.db.clubs.find_one({"_id": oid})
-            if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
-                raise web.HTTPNotFound(text="Club not found.")
-            if str(club.get("leader_id")) != str(user.user_id):
-                raise web.HTTPForbidden(text="Only the club leader can edit the club.")
-            updates = {}
-            if "name" in payload:
-                name = str(payload.get("name", "")).strip()
-                if not name or len(name) > 40:
-                    raise web.HTTPBadRequest(text="Club name must be 1-40 characters.")
-                duplicate = await self.bot.db.clubs.find_one({"_id": {"$ne": oid}, "guild_id": club["guild_id"], "name_ci": name.casefold()})
-                if duplicate:
-                    raise web.HTTPConflict(text="That club name is already taken.")
-                updates.update(name=name, name_ci=name.casefold())
-            if "about" in payload or "about_us" in payload:
-                updates["about"] = str(payload.get("about", payload.get("about_us", ""))).strip()[:500]
-            if "discord" in payload:
-                discord_link = str(payload.get("discord", "")).strip()
-                if discord_link and not discord_link.lower().startswith(("http://", "https://")):
-                    raise web.HTTPBadRequest(text="Discord link must begin with http:// or https://.")
-                updates["discord"] = discord_link[:300]
-            if "links" in payload:
-                links = payload.get("links", [])
-                if not isinstance(links, list):
-                    raise web.HTTPBadRequest(text="Club links must be a list.")
-                clean_links = []
-                for link in links[:5]:
-                    value = str(link or "").strip()
-                    if not value:
-                        continue
-                    if not value.lower().startswith(("http://", "https://")):
-                        raise web.HTTPBadRequest(text="Club links must begin with http:// or https://.")
-                    if len(value) > 300:
-                        raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
-                    clean_links.append(value)
-                updates["links"] = clean_links
-            if "image" in payload:
-                image = str(payload.get("image", "")).strip()
-                if image and not image.startswith("data:image/"):
-                    raise web.HTTPBadRequest(text="Club image must be an uploaded image.")
-                if len(image) > 3_000_000:
-                    raise web.HTTPBadRequest(text="Club image is too large.")
-                updates["image"] = image
-            if updates:
-                updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-                await self.bot.db.clubs.update_one({"_id": oid}, {"$set": updates})
-            return web.json_response({"ok": True, "message": "Club profile updated."})
-    
-    
+        user, _live_guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        if str(club.get("leader_id")) != str(user.user_id):
+            raise web.HTTPForbidden(text="Only the club leader can edit the club.")
+        updates = {}
+        if "name" in payload:
+            name = str(payload.get("name", "")).strip()
+            if not name or len(name) > 40:
+                raise web.HTTPBadRequest(text="Club name must be 1-40 characters.")
+            duplicate = await self.bot.db.clubs.find_one({"_id": {"$ne": oid}, "guild_id": club["guild_id"], "name_ci": name.casefold()})
+            if duplicate:
+                raise web.HTTPConflict(text="That club name is already taken.")
+            updates.update(name=name, name_ci=name.casefold())
+        if "about" in payload or "about_us" in payload:
+            updates["about"] = str(payload.get("about", payload.get("about_us", ""))).strip()[:500]
+        if "discord" in payload:
+            discord_link = str(payload.get("discord", "")).strip()
+            if discord_link and not discord_link.lower().startswith(("http://", "https://")):
+                raise web.HTTPBadRequest(text="Discord link must begin with http:// or https://.")
+            updates["discord"] = discord_link[:300]
+        if "links" in payload:
+            links = payload.get("links", [])
+            if not isinstance(links, list):
+                raise web.HTTPBadRequest(text="Club links must be a list.")
+            clean_links = []
+            for link in links[:5]:
+                value = str(link or "").strip()
+                if not value:
+                    continue
+                if not value.lower().startswith(("http://", "https://")):
+                    raise web.HTTPBadRequest(text="Club links must begin with http:// or https://.")
+                if len(value) > 300:
+                    raise web.HTTPBadRequest(text="Club links must be 300 characters or fewer.")
+                clean_links.append(value)
+            updates["links"] = clean_links
+        if "image" in payload:
+            image = str(payload.get("image", "")).strip()
+            if image and not image.startswith("data:image/"):
+                raise web.HTTPBadRequest(text="Club image must be an uploaded image.")
+            if len(image) > 3_000_000:
+                raise web.HTTPBadRequest(text="Club image is too large.")
+            updates["image"] = image
+        if updates:
+            updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await self.bot.db.clubs.update_one({"_id": oid}, {"$set": updates})
+        return web.json_response({"ok": True, "message": "Club profile updated."})
+
+
     async def join_club(self, request: web.Request) -> web.Response:
-            user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await self._json_object(request)
-            from bson import ObjectId
-            try:
-                oid = ObjectId(str(payload.get("club_id", "")))
-            except Exception:
-                raise web.HTTPBadRequest(text="Invalid club ID.")
-            club = await self.bot.db.clubs.find_one({"_id": oid})
-            if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
-                raise web.HTTPNotFound(text="Club not found.")
-            member_filter = {"guild_id": club["guild_id"], "user_id": str(user.user_id)}
-            if await self.bot.db.club_members.find_one(member_filter):
-                raise web.HTTPConflict(text="You are already in a club in this server.")
-            # Reserve a membership slot atomically. The unique membership index then
-            # protects the user-level race, while member_count protects the 20-member cap.
-            reservation = await self.bot.db.clubs.update_one(
-                {"_id": oid, "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
-                {"$inc": {"member_count": 1}},
-            )
-            if not reservation.modified_count:
-                raise web.HTTPConflict(text="That club is full.")
-            now = datetime.now(timezone.utc).isoformat()
-            try:
-                await self.bot.db.club_members.insert_one({"club_id": str(oid), "guild_id": club["guild_id"], "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": now})
-            except Exception as exc:
-                await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
-                if exc.__class__.__name__ == "DuplicateKeyError":
-                    raise web.HTTPConflict(text="You are already in a club in this server.")
-                raise
-            await self._club_recount_member_count(str(oid))
-        return web.json_response({"ok": True, "message": "You joined the club."})
-    
-    
-    async def leave_club(self, request: web.Request) -> web.Response:
-            user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await self._json_object(request)
-            from bson import ObjectId
-            try:
-                oid = ObjectId(str(payload.get("club_id", "")))
-            except Exception as exc:
-                raise web.HTTPBadRequest(text="Invalid club ID.") from exc
-            club = await self.bot.db.clubs.find_one({"_id": oid})
-            if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
-                raise web.HTTPNotFound(text="Club not found.")
-            if str(club.get("leader_id")) == str(user.user_id):
-                raise web.HTTPConflict(text="Club leaders must transfer leadership before leaving.")
-            removed = await self.bot.db.club_members.delete_one({"club_id": str(oid), "user_id": str(user.user_id)})
-            if not removed.deleted_count:
-                raise web.HTTPConflict(text="You are not a member of this club.")
+        user, _live_guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        member_filter = {"guild_id": club["guild_id"], "user_id": str(user.user_id)}
+        if await self.bot.db.club_members.find_one(member_filter):
+            raise web.HTTPConflict(text="You are already in a club in this server.")
+        # Reserve a membership slot atomically. The unique membership index then
+        # protects the user-level race, while member_count protects the 20-member cap.
+        reservation = await self.bot.db.clubs.update_one(
+            {"_id": oid, "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
+            {"$inc": {"member_count": 1}},
+        )
+        if not reservation.modified_count:
+            raise web.HTTPConflict(text="That club is full.")
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            await self.bot.db.club_members.insert_one({"club_id": str(oid), "guild_id": club["guild_id"], "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id), "role": "member", "joined_at": now})
+        except Exception as exc:
             await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
-            await self._club_recount_member_count(str(oid))
-        return web.json_response({"ok": True, "message": "You left the club."})
-    
-    
+            if exc.__class__.__name__ == "DuplicateKeyError":
+                raise web.HTTPConflict(text="You are already in a club in this server.")
+            raise
+        await self._club_recount_member_count(str(oid))
+    return web.json_response({"ok": True, "message": "You joined the club."})
+
+
+    async def leave_club(self, request: web.Request) -> web.Response:
+        user, _live_guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid club ID.") from exc
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        if str(club.get("leader_id")) == str(user.user_id):
+            raise web.HTTPConflict(text="Club leaders must transfer leadership before leaving.")
+        removed = await self.bot.db.club_members.delete_one({"club_id": str(oid), "user_id": str(user.user_id)})
+        if not removed.deleted_count:
+            raise web.HTTPConflict(text="You are not a member of this club.")
+        await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+        await self._club_recount_member_count(str(oid))
+    return web.json_response({"ok": True, "message": "You left the club."})
+
+
     async def _club_member_role(self, club_id: str, user_id: str):
         member = await self.bot.db.club_members.find_one({"club_id": str(club_id), "user_id": str(user_id)})
         return str(member.get("role", "member")).casefold() if member else None
@@ -355,49 +355,49 @@ class ClubsRoutesMixin:
         return (await self._club_member_role(club_id, user_id)) in {"leader", "officer"}
 
     async def manage_club_member(self, request: web.Request) -> web.Response:
-            user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await self._json_object(request)
-            from bson import ObjectId
-            try:
-                oid = ObjectId(str(payload.get("club_id", "")))
-            except Exception:
-                raise web.HTTPBadRequest(text="Invalid club ID.")
-            club = await self.bot.db.clubs.find_one({"_id": oid})
-            if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
-                raise web.HTTPNotFound(text="Club not found.")
-            actor_role = await self._club_member_role(str(oid), str(user.user_id))
-            if actor_role not in {"leader", "officer"}:
-                raise web.HTTPForbidden(text="Only the club leader or an Officer can manage members.")
-            target = str(payload.get("user_id", "")).strip()
-            if target == str(user.user_id):
-                raise web.HTTPBadRequest(text="You cannot manage your own membership.")
-            member = await self.bot.db.club_members.find_one({"club_id": str(oid), "user_id": target})
-            if not member:
-                raise web.HTTPNotFound(text="Club member not found.")
-            target_role = str(member.get("role", "member")).casefold()
-            action = str(payload.get("action", "")).casefold()
-            if action in {"promote", "demote"}:
-                if actor_role != "leader":
-                    raise web.HTTPForbidden(text="Only the club leader can promote or demote Officers.")
-                if target_role == "leader":
-                    raise web.HTTPForbidden(text="The club leader cannot be changed through member management.")
-                value = "officer" if action == "promote" else "member"
-                await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
-                return web.json_response({"ok": True, "message": "Member promoted to Officer." if value == "officer" else "Officer demoted to Member."})
-            if action == "kick":
-                # Officers may remove regular Members. Only the Leader may remove an Officer.
-                if target_role == "leader":
-                    raise web.HTTPForbidden(text="The club leader cannot be kicked.")
-                if target_role == "officer" and actor_role != "leader":
-                    raise web.HTTPForbidden(text="Officers cannot kick another Officer.")
-                removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
-                if removed.deleted_count:
-                    await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
-                await self._club_recount_member_count(str(oid))
-            return web.json_response({"ok": True, "message": "Member removed from the club."})
-            raise web.HTTPBadRequest(text="Unsupported member action.")
-    
-    
+        user, _live_guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        from bson import ObjectId
+        try:
+            oid = ObjectId(str(payload.get("club_id", "")))
+        except Exception:
+            raise web.HTTPBadRequest(text="Invalid club ID.")
+        club = await self.bot.db.clubs.find_one({"_id": oid})
+        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+            raise web.HTTPNotFound(text="Club not found.")
+        actor_role = await self._club_member_role(str(oid), str(user.user_id))
+        if actor_role not in {"leader", "officer"}:
+            raise web.HTTPForbidden(text="Only the club leader or an Officer can manage members.")
+        target = str(payload.get("user_id", "")).strip()
+        if target == str(user.user_id):
+            raise web.HTTPBadRequest(text="You cannot manage your own membership.")
+        member = await self.bot.db.club_members.find_one({"club_id": str(oid), "user_id": target})
+        if not member:
+            raise web.HTTPNotFound(text="Club member not found.")
+        target_role = str(member.get("role", "member")).casefold()
+        action = str(payload.get("action", "")).casefold()
+        if action in {"promote", "demote"}:
+            if actor_role != "leader":
+                raise web.HTTPForbidden(text="Only the club leader can promote or demote Officers.")
+            if target_role == "leader":
+                raise web.HTTPForbidden(text="The club leader cannot be changed through member management.")
+            value = "officer" if action == "promote" else "member"
+            await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
+            return web.json_response({"ok": True, "message": "Member promoted to Officer." if value == "officer" else "Officer demoted to Member."})
+        if action == "kick":
+            # Officers may remove regular Members. Only the Leader may remove an Officer.
+            if target_role == "leader":
+                raise web.HTTPForbidden(text="The club leader cannot be kicked.")
+            if target_role == "officer" and actor_role != "leader":
+                raise web.HTTPForbidden(text="Officers cannot kick another Officer.")
+            removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
+            if removed.deleted_count:
+                await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            await self._club_recount_member_count(str(oid))
+        return web.json_response({"ok": True, "message": "Member removed from the club."})
+        raise web.HTTPBadRequest(text="Unsupported member action.")
+
+
     async def club_member_search(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         guild_id = str(request.query.get("guild_id", "")).strip()
@@ -707,5 +707,5 @@ class ClubsRoutesMixin:
 
 
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
-            await self.require_user(request)
-            return await self._page_response("clubs.html", request)
+        await self.require_user(request)
+        return await self._page_response("clubs.html", request)
