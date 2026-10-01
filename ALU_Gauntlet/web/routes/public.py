@@ -932,13 +932,17 @@ class PublicRoutesMixin:
         except Exception:
             db_ok = False
         heartbeat_ok = bool(heartbeat) and time.time() - float(heartbeat.get("timestamp", 0) or 0) < 300
+        discord_ok = bool(getattr(self.bot, "is_ready", lambda: False)())
+        auth_ok = bool(getattr(self.auth, "configured", False))
+        competition_ok = bool(heartbeat_ok and discord_ok and db_ok)
+        notifications_ok = not bool(getattr(self.bot, "last_health_error", None))
         snapshot = public_status_snapshot(
             web_ok=True,
-            discord_ok=bool(getattr(self.bot, "is_ready", lambda: False)()),
+            discord_ok=discord_ok,
             database_ok=db_ok,
-            competition_ok=True,
-            auth_ok=True,
-            notifications_ok=True,
+            competition_ok=competition_ok,
+            auth_ok=auth_ok,
+            notifications_ok=notifications_ok,
             release=current_release_revision(),
         )
         snapshot["heartbeat"] = heartbeat_ok
