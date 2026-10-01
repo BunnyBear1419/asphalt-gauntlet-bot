@@ -110,3 +110,8 @@ def test_tournament_media_storage_growth_is_bounded():
     assert "max_tournament_media = 100" in source
     assert '"uploaded_by": str(user.user_id)' in source
     assert 'update["$unset"] = {"data": ""}' in source
+
+def test_fairness_division_lookup_failure_fails_closed():
+    source = read("ALU_Gauntlet/core/fairness.py")
+    assert "same_division = False" in source
+    assert "same_division = True" not in source
