@@ -324,7 +324,7 @@ class AdminRoutesMixin:
             return web.json_response({"current_revision": current_release_revision(), "events": events[:50]})
         if request.method == "POST":
             try:
-                payload = await request.json()
+                payload = await self._json_object(request)
             except Exception as exc:
                 raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
             action = str(payload.get("action") or "").strip().lower()
@@ -469,7 +469,7 @@ class AdminRoutesMixin:
             mode = (settings.get("maintenance_mode") or {})
             return web.json_response({"ok": True, "guild_id": str(guild_id), "maintenance": mode})
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON payload.")
         enabled = bool(payload.get("enabled"))
@@ -482,7 +482,7 @@ class AdminRoutesMixin:
         from ..cogs.tickets import settings_for
         if request.method == "GET":
             return web.json_response(await settings_for(str(guild_id)))
-        payload = await request.json()
+        payload = await self._json_object(request)
         types = payload.get("types") or []
         if len(types) > 25:
             raise web.HTTPBadRequest(text="A maximum of 25 ticket types is supported.")
@@ -597,7 +597,7 @@ class AdminRoutesMixin:
 
     async def admin_ticket_action(self, request: web.Request) -> web.Response:
         user, guild_id, guild = await self.require_admin(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         ticket_id = str(payload.get("ticket_id") or "")
         action = str(payload.get("action") or "").lower()
         if not ticket_id:
@@ -661,7 +661,7 @@ class AdminRoutesMixin:
 
     async def admin_ticket_panel(self, request: web.Request) -> web.Response:
         _, guild_id, guild = await self.require_admin(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         channel_id = str(payload.get("channel_id") or "")
         if not channel_id.isdigit():
             raise web.HTTPBadRequest(text="A Discord channel ID is required.")
@@ -692,7 +692,7 @@ class AdminRoutesMixin:
 
     async def admin_ticket_transcript(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_admin(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         ticket_id = str(payload.get("ticket_id") or "")
         from bson import ObjectId
         if not ObjectId.is_valid(ticket_id):
@@ -745,7 +745,7 @@ class AdminRoutesMixin:
     async def admin_revert_gauntlet_match(self, request: web.Request) -> web.Response:
         """Staff-only safe Gauntlet match rollback using the shared settlement service."""
         user, guild_id, _ = await self.require_admin(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         match_id = str(payload.get("match_id") or "").strip()
         if not match_id:
             raise web.HTTPBadRequest(text="match_id is required.")
@@ -862,7 +862,7 @@ class AdminRoutesMixin:
     async def admin_club_leadership_action(self, request: web.Request) -> web.Response:
         user, guild_id, _guild = await self.require_admin(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         club_id = str(payload.get("club_id") or "").strip()
@@ -944,7 +944,7 @@ class AdminRoutesMixin:
     async def admin_create_role(self, request: web.Request) -> web.Response:
         user, guild_id, guild = await self.require_admin(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         name = str(payload.get("name", "")).strip()[:100]
@@ -970,7 +970,7 @@ class AdminRoutesMixin:
     async def admin_create_channel(self, request: web.Request) -> web.Response:
         user, guild_id, guild = await self.require_admin(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         name = str(payload.get("name", "")).strip()[:100]
@@ -1036,7 +1036,7 @@ class AdminRoutesMixin:
                 raise web.HTTPBadRequest(text=f"Invalid identity upload: {str(exc)[:180]}") from exc
         else:
             try:
-                payload = await request.json()
+                payload = await self._json_object(request)
             except Exception:
                 raise web.HTTPBadRequest(text="Invalid JSON body.")
             username = str(payload.get("username", "")).strip()[:80]
