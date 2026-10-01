@@ -169,7 +169,7 @@ async def _ensure_advisory_rsl_indexes():
         (db.active_challenges, [("guild_id", 1), ("status", 1), ("processing_at", 1)], "idx_active_challenge_status_processing"),
         (db.active_challenges, [("guild_id", 1), ("status", 1), ("rsl_bonus_checked", 1)], "idx_active_challenge_bonus_recovery"),
         (db.rsl_economy_transactions, [("guild_id", 1), ("status", 1), ("created_at", 1)], "idx_rsl_economy_pending_recovery"),
-        (db.drivers, [("guild_id", 1), ("rsl_xp", 1)], "idx_rsl_xp_role_reconciliation"),
+        (db.drivers, [("guild_id", 1), ("rsl_xp_role_sync_pending", 1)], "idx_rsl_xp_role_reconciliation"),
     ):
         try:
             await collection.create_index(keys, name=name)
