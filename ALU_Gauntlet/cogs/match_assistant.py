@@ -14,6 +14,7 @@ from pymongo.errors import DuplicateKeyError
 
 from .translation import localize_text
 from ..core.rsl_recovery import reconcile_processing_challenges
+from ..core.rsl_economy_ledger import reconcile_pending_coin_transactions
 
 MATCH_CENTER_URL = "https://asph.discloud.app/gauntlet/matches"
 REMINDER_WINDOWS = (
@@ -133,8 +134,21 @@ class MatchAssistantCog(commands.Cog):
         for guild_id in guild_ids:
             try:
                 await reconcile_processing_challenges(self.bot.db, str(guild_id))
+                await reconcile_pending_coin_transactions(
+                    self.bot.db, guild_id=str(guild_id)
+                )
             except Exception:
                 # Recovery must not stop deadline reminders for other guilds.
+                continue
+        pending_coin_guild_ids = await self.bot.db.rsl_economy_transactions.distinct(
+            "guild_id", {"status": "pending"}
+        )
+        for guild_id in set(pending_coin_guild_ids) - guild_ids:
+            try:
+                await reconcile_pending_coin_transactions(
+                    self.bot.db, guild_id=str(guild_id)
+                )
+            except Exception:
                 continue
         async for challenge in self.bot.db.active_challenges.find({"status": {"$in": ["active", "processing"]}}):
             try:
