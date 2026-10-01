@@ -104,6 +104,7 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
         "pending_references": ("reference_pending", {"guild_id": gid, "status": "pending"}),
         "pending_defense": ("drivers", {"guild_id": gid, "defense_review_pending": True}),
         "stale_matches": ("active_challenges", {"guild_id": gid, "status": "processing", "processing_at": {"$lt": now - 900}}),
+        "completed_bonus_recovery": ("active_challenges", {"guild_id": gid, "status": "completed"}),
         "security_events": ("system_events", {"guild_id": gid, "event_type": {"$in": [
             "AUTH_FAILURE", "RATE_LIMIT", "UPLOAD_REJECTED", "PERMISSION_DENIED",
             "ECONOMY_ANOMALY", "XP_ANOMALY", "MATCH_ANOMALY",
@@ -114,6 +115,20 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
             counts[key] = int(await db[collection].count_documents(query))
         except Exception:
             counts[key] = 0
+    counts["total"] = sum(counts.values())
+    try:
+        counts["pending_coin_transactions"] = int(
+            await db.rsl_economy_transactions.count_documents(
+                {"guild_id": gid, "status": "pending"}
+            )
+        )
+    except Exception:
+        counts["pending_coin_transactions"] = 0
+    try:
+        state = await db.season_state.find_one({"_id": f"guild_{gid}"}, {"gauntlet_role_snapshot": 1})
+        counts["season_role_recovery"] = 1 if (state or {}).get("gauntlet_role_snapshot") else 0
+    except Exception:
+        counts["season_role_recovery"] = 0
     counts["total"] = sum(counts.values())
     return counts
 
