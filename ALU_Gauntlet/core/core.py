@@ -4355,8 +4355,14 @@ async def get_guild_local_date(guild_id: str) -> str:
         return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 async def claim_active_challenge(guild_id: str, user_id: str):
-    """Atomically claim an active challenge; recover stale processing locks."""
+    """Atomically claim an active challenge; use shared recovery before claiming."""
     active_id = f"{guild_id}_{user_id}"
+    # Reconcile stale processing through the same reservation-aware recovery path
+    # used by Discord/web submission and the Match Assistant. In particular, do
+    # not reopen a challenge after its deterministic settlement reservation has
+    # already completed.
+    from .rsl_recovery import reconcile_processing_challenges
+    await reconcile_processing_challenges(bot.db, str(guild_id))
     active = await bot.db.active_challenges.find_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id)})
     if not active:
         return None
@@ -4364,16 +4370,6 @@ async def claim_active_challenge(guild_id: str, user_id: str):
     if float(active.get("expires_at", now + 1)) <= now:
         await bot.db.active_challenges.update_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id), "status": {"$in": ["active", "processing"]}}, {"$set": {"status": "expired", "expired_at": now, "abandon_reason": "timeout", "ticket_burned": True, "settlement_closed": True}})
         return None
-    if active.get("status") == "processing":
-        processing_at = float(active.get("processing_at", 0))
-        if now - processing_at > 15 * 60:
-            await bot.db.active_challenges.update_one(
-                {"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id), "status": "processing", "processing_at": active.get("processing_at")},
-                {"$set": {"status": "active", "last_reminder": 0}, "$unset": {"processing_at": ""}},
-            )
-            active = await bot.db.active_challenges.find_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id)})
-        else:
-            return None
     if active.get("status") != "active":
         return None
     result = await bot.db.active_challenges.update_one(
