@@ -252,6 +252,42 @@ class TournamentDashboardView(discord.ui.View):
                 self.add_item(discord.ui.Button(label=f"Match {match.get('id')}",style=discord.ButtonStyle.secondary,disabled=True))
         self.add_item(discord.ui.Button(label="Refresh",style=discord.ButtonStyle.secondary,custom_id="alu_tourney_refresh"))
 
+async def _sync_completed_tournament_roles(tournament):
+    """Best-effort Discord recognition after a tournament becomes completed."""
+    guild_id = str(tournament.get("guild_id") or "")
+    guild = bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
+    if guild is None:
+        return
+    champion = str(tournament.get("champion_id") or "") or None
+    runner_up = None
+    third_place = None
+    finalists = []
+    standings = tournament.get("standings") or []
+    if standings:
+        ordered = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
+        if champion is None and ordered: champion = ordered[0]
+        if len(ordered) > 1: runner_up = ordered[1]
+        if len(ordered) > 2: third_place = ordered[2]
+        finalists = ordered[:4]
+    else:
+        matches = _matches(tournament)
+        finals = [m for m in matches if m.get("status") == "completed" and str(m.get("bracket") or "") == "grand_final"]
+        if not finals: finals = [m for m in matches if m.get("status") == "completed" and not m.get("winner_to")]
+        if finals:
+            slots = [str(x) for x in (finals[-1].get("player_slots") or []) if x]
+            finalists = slots[:4]
+            winner = str(finals[-1].get("winner_id") or "")
+            if winner:
+                champion = champion or winner
+                runner_up = next((x for x in slots if x != winner), None)
+    if not champion: return
+    try:
+        from ..core.rsl_role_sync import sync_tournament_season_roles
+        settings = await bot.db.settings.find_one({"_id": guild_id}) or {}
+        await sync_tournament_season_roles(guild, tournament_champion=champion, runner_up=runner_up, third_place=third_place, finalists=finalists, role_names=settings.get("achievement_role_names"), role_ids=settings.get("achievement_role_ids"))
+    except Exception:
+        log.exception("Failed to synchronize tournament roles for completed tournament %s", tournament.get("_id"))
+
 async def build_tournament_embed(tournament_id):
     from bson import ObjectId
     t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
@@ -425,6 +461,8 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
             {"_id":t["_id"]},
             {"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"standings":t.get("standings"),"updated_at":discord.utils.utcnow().isoformat()}}
         )
+        if t.get("status") == "completed":
+            await _sync_completed_tournament_roles(t)
         return True, message
     finally:
         await _release_action(tournament_id, str(match_id))
