@@ -1,4 +1,5 @@
 from pathlib import Path
+from web_source import web_source
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +14,7 @@ def test_discord_presence_intent_is_enabled():
 
 
 def test_live_counter_uses_presence_states_and_excludes_bots():
-    source = SERVER.read_text(encoding="utf-8")
+    source = web_source()
     assert 'getattr(guild, "presences", None)' in source
     assert '{"online", "idle", "dnd"}' in source
     assert 'getattr(member, "bot", False)' in source
@@ -21,7 +22,7 @@ def test_live_counter_uses_presence_states_and_excludes_bots():
 
 
 def test_server_render_and_api_share_live_counter():
-    source = SERVER.read_text(encoding="utf-8")
+    source = web_source()
     assert "online, total = self._discord_community_counts(guild)" in source
     assert '"online_members": online' in source
     assert '"server_members": total' in source
