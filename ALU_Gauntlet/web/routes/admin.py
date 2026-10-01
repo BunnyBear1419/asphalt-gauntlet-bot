@@ -886,23 +886,59 @@ class AdminRoutesMixin:
         old_leader_id = str(club.get("leader_id") or "")
         if target_id == old_leader_id:
             raise web.HTTPConflict(text="That driver is already the club leader.")
-        # Leadership transfer is atomic at the database-document level: update the
-        # club pointer first, then normalize the two affected memberships.
         now = datetime.now(timezone.utc).isoformat()
-        result = await self.bot.db.clubs.update_one(
-            {"_id": oid, "guild_id": str(guild_id), "leader_id": old_leader_id},
-            {"$set": {"leader_id": target_id, "updated_at": now}},
-        )
-        if not result.modified_count:
-            raise web.HTTPConflict(text="The club leadership changed before this action completed.")
-        await self.bot.db.club_members.update_one(
-            {"club_id": club_id, "user_id": old_leader_id},
-            {"$set": {"role": "officer", "updated_at": now}},
-        )
-        await self.bot.db.club_members.update_one(
-            {"club_id": club_id, "user_id": target_id},
-            {"$set": {"role": "leader", "updated_at": now}},
-        )
+        client = getattr(self.bot.db, "client", None)
+        if client is not None:
+            async with await client.start_session() as session:
+                async with session.start_transaction():
+                    result = await self.bot.db.clubs.update_one(
+                        {"_id": oid, "guild_id": str(guild_id), "leader_id": old_leader_id},
+                        {"$set": {"leader_id": target_id, "updated_at": now}},
+                        session=session,
+                    )
+                    if not result.modified_count:
+                        raise web.HTTPConflict(text="The club leadership changed before this action completed.")
+                    old_role = await self.bot.db.club_members.update_one(
+                        {"club_id": club_id, "user_id": old_leader_id},
+                        {"$set": {"role": "officer", "updated_at": now}},
+                        session=session,
+                    )
+                    new_role = await self.bot.db.club_members.update_one(
+                        {"club_id": club_id, "user_id": target_id},
+                        {"$set": {"role": "leader", "updated_at": now}},
+                        session=session,
+                    )
+                    if not old_role.modified_count or not new_role.modified_count:
+                        raise web.HTTPConflict(text="Club membership changed before this action completed.")
+        else:
+            result = await self.bot.db.clubs.update_one(
+                {"_id": oid, "guild_id": str(guild_id), "leader_id": old_leader_id},
+                {"$set": {"leader_id": target_id, "updated_at": now}},
+            )
+            if not result.modified_count:
+                raise web.HTTPConflict(text="The club leadership changed before this action completed.")
+            old_role = await self.bot.db.club_members.update_one(
+                {"club_id": club_id, "user_id": old_leader_id},
+                {"$set": {"role": "officer", "updated_at": now}},
+            )
+            new_role = await self.bot.db.club_members.update_one(
+                {"club_id": club_id, "user_id": target_id},
+                {"$set": {"role": "leader", "updated_at": now}},
+            )
+            if not old_role.modified_count or not new_role.modified_count:
+                await self.bot.db.clubs.update_one(
+                    {"_id": oid, "guild_id": str(guild_id), "leader_id": target_id},
+                    {"$set": {"leader_id": old_leader_id, "updated_at": now}},
+                )
+                await self.bot.db.club_members.update_one(
+                    {"club_id": club_id, "user_id": old_leader_id},
+                    {"$set": {"role": "leader", "updated_at": now}},
+                )
+                await self.bot.db.club_members.update_one(
+                    {"club_id": club_id, "user_id": target_id},
+                    {"$set": {"role": "member", "updated_at": now}},
+                )
+                raise web.HTTPConflict(text="Club leadership transfer could not be completed safely.")
         await self._audit(
             str(guild_id),
             str(user.user_id),
