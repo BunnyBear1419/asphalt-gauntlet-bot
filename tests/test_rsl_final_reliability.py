@@ -1,4 +1,5 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "ALU_Gauntlet" / "core" / "rsl_reliability.py"
@@ -22,7 +23,7 @@ def test_final_reliability_helpers_cover_requested_controls():
 
 
 def test_reliability_admin_surface_is_merged_into_existing_operations_center():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     admin = ADMIN.read_text(encoding="utf-8")
     assert 'action == "reliability"' in server
     assert 'action == "recovery_checkpoint"' in server
