@@ -7,18 +7,18 @@ web source instead. Runtime behavior is unaffected.
 from pathlib import Path
 
 _WEB_FAMILIES = (
-    "_web_context.py",
-    "control_center.py",
-    "routes/core.py",
     "routes/admin.py",
-    "routes/gauntlet.py",
+    "routes/public.py",
     "routes/tournament.py",
     "routes/clubs.py",
     "routes/calendar.py",
     "routes/trust.py",
     "routes/auth.py",
     "routes/player.py",
-    "routes/public.py",
+    "routes/gauntlet.py",
+    "control_center.py",
+    "_web_context.py",
+    "routes/core.py",
 )
 
 _original_read_text = Path.read_text
