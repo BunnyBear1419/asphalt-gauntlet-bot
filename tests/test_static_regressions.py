@@ -1,6 +1,4 @@
 from pathlib import Path
-import re
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,8 +23,8 @@ def test_club_handlers_have_one_authoritative_web_owner():
     clubs = read("ALU_Gauntlet/web/routes/clubs.py")
     public = read("ALU_Gauntlet/web/routes/public.py")
     for name in ("create_club", "join_club", "leave_club", "update_club", "manage_club_member"):
-        assert len(re.findall(rf"async def {name}\\(", clubs)) == 1
-        assert not re.search(rf"async def {name}\\(", public)
+        assert clubs.count(f"async def {name}(") == 1
+        assert f"async def {name}(" not in public
 
 
 def test_known_discord_economy_nameerror_typo_is_absent():
