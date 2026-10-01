@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-READ_ONLY_TOPICS=frozenset({"rules","navigation","tickets","credits","xp","public_stats","diagnostics"})
+READ_ONLY_TOPICS=frozenset({"rules","navigation","tickets","credits","xp","public_stats"})
 ALLOWED_ACTIONS=frozenset({
     "explain_rules",
     "navigate",
@@ -16,7 +16,6 @@ ALLOWED_ACTIONS=frozenset({
     "explain_credits",
     "explain_xp",
     "show_public_stats",
-    "show_diagnostics",
 })
 FORBIDDEN_ACTIONS=frozenset({"settle_match","verify_result","approve_proof","award_credits","change_ranking","change_bracket","punish_player","edit_competition"})
 
@@ -33,7 +32,7 @@ def validate_request(request:AssistantRequest)->None:
         raise ValueError("A question is required.")
 
 def safe_context(data:dict[str,Any])->dict[str,Any]:
-    allowed={"rules","navigation","ticket_status","credits","xp","public_stats","diagnostics"}
+    allowed={"rules","navigation","ticket_status","credits","xp","public_stats"}
     return {k:data[k] for k in allowed if k in data}
 
 def action_allowed(action:str)->bool:
