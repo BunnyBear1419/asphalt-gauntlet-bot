@@ -1,3 +1,4 @@
+from web_source import web_source
 """Regression checks for the unified RSL Player Profile direction."""
 from pathlib import Path
 
@@ -12,7 +13,7 @@ PROFILE = ROOT / "ALU_Gauntlet" / "web" / "static" / "profile.html"
 
 
 def test_unified_profile_apis_are_registered():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert 'add_get("/api/competition/snapshot"' in server
     assert 'add_get("/api/competition/recent-matches"' in server
     assert 'add_get("/api/player/career"' in server
@@ -45,7 +46,7 @@ def test_unified_profile_labels_are_consistent_across_site():
 
 
 def test_player_profile_and_settings_are_separate_routes():
-    server=SERVER.read_text(encoding="utf-8")
+    server=web_source()
     assert 'add_get("/player/profile", self.player_profile_page)' in server
     assert 'add_get("/player/settings", self.player_settings_page)' in server
     assert 'headers={"Location": f"/profile?user_id={user.user_id}"}' in server
@@ -58,7 +59,7 @@ def test_player_profile_and_settings_are_separate_routes():
 
 def test_challenge_submission_requires_five_individual_proofs():
     challenges=(ROOT/"ALU_Gauntlet"/"cogs"/"challenges.py").read_text(encoding="utf-8")
-    server=SERVER.read_text(encoding="utf-8")
+    server=web_source()
     matches=(ROOT/"ALU_Gauntlet"/"web"/"static"/"gauntlet-matches.html").read_text(encoding="utf-8")
     for marker in ("proof1", "proof2", "proof3", "proof4", "proof5", "discord.Attachment", "challenger_proof_urls", "race_proofs"):
         assert marker in challenges
@@ -71,7 +72,7 @@ def test_challenge_submission_requires_five_individual_proofs():
 
 
 def test_my_profile_is_public_view_and_my_settings_owns_profile_editing():
-    server=SERVER.read_text(encoding="utf-8")
+    server=web_source()
     player=PLAYER.read_text(encoding="utf-8")
     public=(STATIC/"public-profile.html").read_text(encoding="utf-8")
     public_js=(STATIC/"public-profile.js").read_text(encoding="utf-8")
@@ -85,7 +86,7 @@ def test_my_profile_is_public_view_and_my_settings_owns_profile_editing():
 
 
 def test_rsl_identity_does_not_modify_discord_identity():
-    server=SERVER.read_text(encoding="utf-8")
+    server=web_source()
     assert 'rsl_display_name' in server
     assert 'rsl_avatar_url' in server
     assert 'member.edit' not in server[server.index('async def player_profile'):server.index('async def player_asphalt')]
@@ -102,7 +103,7 @@ def test_rsl_avatar_and_public_profile_scripts_are_validated():
 def test_unified_public_profile_contains_competitive_and_tournament_records():
     profile = (STATIC / "public-profile.html").read_text(encoding="utf-8")
     script = (STATIC / "public-profile.js").read_text(encoding="utf-8")
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert "Career Statistics" in profile
     assert "Gauntlet Match History" in profile
     assert "Tournament Record" in profile
