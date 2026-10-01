@@ -47,9 +47,9 @@ from PIL import Image
 
 import io
 
-import sys
+import sys  # noqa: F401
 
-import platform
+import platform  # noqa: F401
 
 load_dotenv()
 
