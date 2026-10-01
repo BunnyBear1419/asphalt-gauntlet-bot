@@ -230,6 +230,13 @@ class ClubsRoutesMixin:
             return web.json_response({"ok": True, "message": "You left the club."})
     
     
+    async def _club_member_role(self, club_id: str, user_id: str):
+        member = await self.bot.db.club_members.find_one({"club_id": str(club_id), "user_id": str(user_id)})
+        return str(member.get("role", "member")).casefold() if member else None
+
+    async def _club_is_manager(self, club_id: str, user_id: str) -> bool:
+        return (await self._club_member_role(club_id, user_id)) in {"leader", "officer"}
+
     async def manage_club_member(self, request: web.Request) -> web.Response:
             user, _live_guild_id, _ = await self.require_guild_member(request)
             payload = await request.json()
@@ -239,28 +246,38 @@ class ClubsRoutesMixin:
             except Exception:
                 raise web.HTTPBadRequest(text="Invalid club ID.")
             club = await self.bot.db.clubs.find_one({"_id": oid})
-            if not club or str(club.get("leader_id")) != str(user.user_id):
-                raise web.HTTPForbidden(text="Only the club leader can manage members.")
+            if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+                raise web.HTTPNotFound(text="Club not found.")
+            actor_role = await self._club_member_role(str(oid), str(user.user_id))
+            if actor_role not in {"leader", "officer"}:
+                raise web.HTTPForbidden(text="Only the club leader or an Officer can manage members.")
             target = str(payload.get("user_id", "")).strip()
             if target == str(user.user_id):
-                raise web.HTTPBadRequest(text="The club leader cannot manage their own membership.")
+                raise web.HTTPBadRequest(text="You cannot manage your own membership.")
             member = await self.bot.db.club_members.find_one({"club_id": str(oid), "user_id": target})
             if not member:
                 raise web.HTTPNotFound(text="Club member not found.")
+            target_role = str(member.get("role", "member")).casefold()
             action = str(payload.get("action", "")).casefold()
-            if action == "promote":
-                value = "officer"
-            elif action == "demote":
-                value = "member"
-            elif action == "kick":
+            if action in {"promote", "demote"}:
+                if actor_role != "leader":
+                    raise web.HTTPForbidden(text="Only the club leader can promote or demote Officers.")
+                if target_role == "leader":
+                    raise web.HTTPForbidden(text="The club leader cannot be changed through member management.")
+                value = "officer" if action == "promote" else "member"
+                await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
+                return web.json_response({"ok": True, "message": "Member promoted to Officer." if value == "officer" else "Officer demoted to Member."})
+            if action == "kick":
+                # Officers may remove regular Members. Only the Leader may remove an Officer.
+                if target_role == "leader":
+                    raise web.HTTPForbidden(text="The club leader cannot be kicked.")
+                if target_role == "officer" and actor_role != "leader":
+                    raise web.HTTPForbidden(text="Officers cannot kick another Officer.")
                 removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
                 if removed.deleted_count:
                     await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
                 return web.json_response({"ok": True, "message": "Member removed from the club."})
-            else:
-                raise web.HTTPBadRequest(text="Unsupported member action.")
-            await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
-            return web.json_response({"ok": True, "message": "Member role updated."})
+            raise web.HTTPBadRequest(text="Unsupported member action.")
     
     
     async def club_member_search(self, request: web.Request) -> web.Response:
@@ -309,8 +326,8 @@ class ClubsRoutesMixin:
     async def club_join_requests(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         now = datetime.now(timezone.utc).isoformat()
-        clubs = await self.bot.db.clubs.find({"leader_id": str(user.user_id)}).to_list(length=100)
-        club_ids = [str(x["_id"]) for x in clubs]
+        memberships = await self.bot.db.club_members.find({"user_id": str(user.user_id), "role": {"$in": ["leader", "officer"]}}, {"club_id": 1}).to_list(length=100)
+        club_ids = [str(x.get("club_id")) for x in memberships if x.get("club_id")]
         await self.bot.db.club_join_requests.update_many(
             {"club_id": {"$in": club_ids}, "status": "pending", "expires_at": {"$lte": now}},
             {"$set": {"status": "expired", "updated_at": now}},
