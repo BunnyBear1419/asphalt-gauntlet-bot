@@ -143,57 +143,57 @@ async def join_club(self, request: web.Request) -> web.Response:
             raise
         return web.json_response({"ok": True, "message": "You joined the club."})
 
-async def leave_club(self, request: web.Request) -> web.Response:
-        user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
-        from bson import ObjectId
-        try:
-            oid = ObjectId(str(payload.get("club_id", "")))
-        except Exception as exc:
-            raise web.HTTPBadRequest(text="Invalid club ID.") from exc
-        club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
-            raise web.HTTPNotFound(text="Club not found.")
-        if str(club.get("leader_id")) == str(user.user_id):
-            raise web.HTTPConflict(text="Club leaders must transfer leadership before leaving.")
-        removed = await self.bot.db.club_members.delete_one({"club_id": str(oid), "user_id": str(user.user_id)})
-        if not removed.deleted_count:
-            raise web.HTTPConflict(text="You are not a member of this club.")
-        await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
-        return web.json_response({"ok": True, "message": "You left the club."})
-
-async def manage_club_member(self, request: web.Request) -> web.Response:
-        user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
-        from bson import ObjectId
-        try:
-            oid = ObjectId(str(payload.get("club_id", "")))
-        except Exception:
-            raise web.HTTPBadRequest(text="Invalid club ID.")
-        club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("leader_id")) != str(user.user_id):
-            raise web.HTTPForbidden(text="Only the club leader can manage members.")
-        target = str(payload.get("user_id", "")).strip()
-        if target == str(user.user_id):
-            raise web.HTTPBadRequest(text="The club leader cannot manage their own membership.")
-        member = await self.bot.db.club_members.find_one({"club_id": str(oid), "user_id": target})
-        if not member:
-            raise web.HTTPNotFound(text="Club member not found.")
-        action = str(payload.get("action", "")).casefold()
-        if action == "promote":
-            value = "officer"
-        elif action == "demote":
-            value = "member"
-        elif action == "kick":
-            removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
-            if removed.deleted_count:
-                await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
-            return web.json_response({"ok": True, "message": "Member removed from the club."})
-        else:
-            raise web.HTTPBadRequest(text="Unsupported member action.")
-        await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
-        return web.json_response({"ok": True, "message": "Member role updated."})
-
+    async def leave_club(self, request: web.Request) -> web.Response:
+            user, _live_guild_id, _ = await self.require_guild_member(request)
+            payload = await request.json()
+            from bson import ObjectId
+            try:
+                oid = ObjectId(str(payload.get("club_id", "")))
+            except Exception as exc:
+                raise web.HTTPBadRequest(text="Invalid club ID.") from exc
+            club = await self.bot.db.clubs.find_one({"_id": oid})
+            if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+                raise web.HTTPNotFound(text="Club not found.")
+            if str(club.get("leader_id")) == str(user.user_id):
+                raise web.HTTPConflict(text="Club leaders must transfer leadership before leaving.")
+            removed = await self.bot.db.club_members.delete_one({"club_id": str(oid), "user_id": str(user.user_id)})
+            if not removed.deleted_count:
+                raise web.HTTPConflict(text="You are not a member of this club.")
+            await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            return web.json_response({"ok": True, "message": "You left the club."})
+    
+    async def manage_club_member(self, request: web.Request) -> web.Response:
+            user, _live_guild_id, _ = await self.require_guild_member(request)
+            payload = await request.json()
+            from bson import ObjectId
+            try:
+                oid = ObjectId(str(payload.get("club_id", "")))
+            except Exception:
+                raise web.HTTPBadRequest(text="Invalid club ID.")
+            club = await self.bot.db.clubs.find_one({"_id": oid})
+            if not club or str(club.get("leader_id")) != str(user.user_id):
+                raise web.HTTPForbidden(text="Only the club leader can manage members.")
+            target = str(payload.get("user_id", "")).strip()
+            if target == str(user.user_id):
+                raise web.HTTPBadRequest(text="The club leader cannot manage their own membership.")
+            member = await self.bot.db.club_members.find_one({"club_id": str(oid), "user_id": target})
+            if not member:
+                raise web.HTTPNotFound(text="Club member not found.")
+            action = str(payload.get("action", "")).casefold()
+            if action == "promote":
+                value = "officer"
+            elif action == "demote":
+                value = "member"
+            elif action == "kick":
+                removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
+                if removed.deleted_count:
+                    await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+                return web.json_response({"ok": True, "message": "Member removed from the club."})
+            else:
+                raise web.HTTPBadRequest(text="Unsupported member action.")
+            await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
+            return web.json_response({"ok": True, "message": "Member role updated."})
+    
     async def clubs(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         guild_ids = {str(x) for x in user.guild_ids}
