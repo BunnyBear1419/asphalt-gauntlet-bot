@@ -41,7 +41,8 @@ def fair_match_snapshot(challenger: dict[str, Any], opponent: dict[str, Any]) ->
         from .core import get_division_for_pi
         same_division = get_division_for_pi(challenger_pi)["name"] == get_division_for_pi(opponent_pi)["name"]
     except Exception:
-        same_division = True
+        # A division lookup failure must never be interpreted as a safe match.
+        same_division = False
     return {
         "challenger_elo": challenger_elo,
         "opponent_elo": opponent_elo,
