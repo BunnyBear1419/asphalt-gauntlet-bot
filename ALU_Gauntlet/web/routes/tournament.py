@@ -462,6 +462,8 @@ class TournamentRoutesMixin:
         finally:
             await self._release_tournament_action(str(oid), match_id)
 
+        if t.get("status") == "completed":
+            await self._sync_completed_tournament_roles(t)
         cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
         channel_id = cfg.get("match_results_channel_id")
         channel = self.bot.get_channel(int(channel_id)) if channel_id else None
@@ -471,6 +473,40 @@ class TournamentRoutesMixin:
             except Exception:
                 log.exception("Unable to post tournament verification notice")
         return web.json_response({"ok": True, "message": message, "bracket": bracket, "champion_id": t.get("champion_id"), "standings": t.get("standings")})
+
+    async def _sync_completed_tournament_roles(self, tournament: dict[str, Any]) -> None:
+        """Best-effort Discord recognition after web result completion."""
+        guild_id = str(tournament.get("guild_id") or "")
+        guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == guild_id), None)
+        if guild is None: return
+        champion = str(tournament.get("champion_id") or "") or None
+        runner_up = None; third_place = None; finalists = []
+        standings = tournament.get("standings") or []
+        if standings:
+            ordered = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
+            if champion is None and ordered: champion = ordered[0]
+            if len(ordered) > 1: runner_up = ordered[1]
+            if len(ordered) > 2: third_place = ordered[2]
+            finalists = ordered[:4]
+        else:
+            bracket = tournament.get("bracket") or {}; groups = []
+            for key in ("rounds", "winners", "losers"): groups.extend(bracket.get(key) or [])
+            for key in ("grand_final", "grand_final_reset"):
+                if isinstance(bracket.get(key), dict): groups.append({"matches": [bracket[key]]})
+            matches = [m for group in groups for m in group.get("matches", [])]
+            finals = [m for m in matches if m.get("status") == "completed" and str(m.get("bracket") or "") == "grand_final"]
+            if not finals: finals = [m for m in matches if m.get("status") == "completed" and not m.get("winner_to")]
+            if finals:
+                final_match = finals[-1]; slots = [str(x) for x in (final_match.get("player_slots") or []) if x]
+                finalists = slots[:4]; winner = str(final_match.get("winner_id") or "")
+                if winner: champion = champion or winner; runner_up = next((x for x in slots if x != winner), None)
+        if not champion: return
+        try:
+            from ...core.rsl_role_sync import sync_tournament_season_roles
+            settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            await sync_tournament_season_roles(guild, tournament_champion=champion, runner_up=runner_up, third_place=third_place, finalists=finalists, role_names=settings.get("achievement_role_names"), role_ids=settings.get("achievement_role_ids"))
+        except Exception:
+            log.exception("Failed to synchronize tournament roles for completed tournament %s", tournament.get("_id"))
 
     async def _tournament_result_payload(self, tournament: dict[str, Any]) -> dict[str, Any]:
         """Build normalized standings/history from the verified tournament bracket."""
