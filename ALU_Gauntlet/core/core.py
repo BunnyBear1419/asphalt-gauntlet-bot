@@ -1607,7 +1607,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
     # replica-set deployments do; the local mock falls back to the legacy-safe path).
     async def _atomic_settlement(session):
         await bot.db.matches.insert_one(reservation, session=session)
-        await bot.db.drivers.update_one(
+        winner_result = await bot.db.drivers.update_one(
             {"_id": f"{guild_id}_{w_id}"},
             {"$set": {"elo": new_w_elo}, "$inc": {"career_wins": 1, "career_played": 1, "streak": 1,
                 "season_points": int(reservation["season_points_challenger"] if w_id == challenger_id else reservation["season_points_defender"]),
@@ -1615,7 +1615,7 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
                 "season_matches": 1}},
             session=session,
         )
-        await bot.db.drivers.update_one(
+        loser_result = await bot.db.drivers.update_one(
             {"_id": f"{guild_id}_{l_id}"},
             {"$set": {"elo": new_l_elo, "streak": 0}, "$inc": {"career_played": 1,
                 "season_points": int(reservation["season_points_challenger"] if l_id == challenger_id else reservation["season_points_defender"]),
@@ -1623,11 +1623,15 @@ async def process_match_result(guild_id: str, challenger_id: str, opponent_id: s
                 "season_matches": 1}},
             session=session,
         )
-        await bot.db.matches.update_one(
+        if getattr(winner_result, "modified_count", 0) != 1 or getattr(loser_result, "modified_count", 0) != 1:
+            raise RuntimeError("MATCH_SETTLEMENT_DRIVER_UPDATE_FAILED")
+        final_result = await bot.db.matches.update_one(
             {"_id": match_id, "guild_id": guild_id, "settlement_status": "pending"},
             {"$set": {"settlement_status": "completed", "settled_at": time.time()}},
             session=session,
         )
+        if getattr(final_result, "modified_count", 0) != 1:
+            raise RuntimeError("MATCH_SETTLEMENT_FINALIZE_FAILED")
 
     if bot.mongo_client:
         try:
