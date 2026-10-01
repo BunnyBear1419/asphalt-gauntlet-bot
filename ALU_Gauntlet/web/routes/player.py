@@ -179,7 +179,7 @@ class PlayerRoutesMixin:
         """Generate or stage a five-course defense using the same driver records as Discord."""
         user, guild_id, _ = await self.require_guild_member(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         action = str(payload.get("action", "generate")).strip().casefold()
@@ -284,7 +284,7 @@ class PlayerRoutesMixin:
         """Submit a web registration through the same canonical Discord workflow."""
         user, guild_id, guild = await self.require_guild_member(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         game_id = str(payload.get("game_id", "")).strip()
@@ -367,7 +367,7 @@ class PlayerRoutesMixin:
     async def player_profile(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         game_name = str(payload.get("game_name", "")).strip()[:100]
@@ -417,7 +417,7 @@ class PlayerRoutesMixin:
         """Link a player's Asphalt Legends identity to their Discord/web account."""
         user, guild_id, _ = await self.require_guild_member(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         game_id = str(payload.get("game_id", "")).strip()[:100]
@@ -464,7 +464,7 @@ class PlayerRoutesMixin:
     async def player_preferences(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             raise web.HTTPBadRequest(text="Invalid JSON body.")
         allowed = {"web_notifications", "dm_notifications", "timezone"}
