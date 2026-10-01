@@ -72,3 +72,20 @@ def test_officer_role_and_manager_permissions_are_enforced():
     assert 'officer&&canManage&&targetRole==="member"' in JS
     assert 'self.owner_role != "leader"' in PLAYER
     assert 'Only the club leader or an Officer can manage members.' in PLAYER
+
+
+def test_staff_can_recover_club_leadership():
+    admin = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "admin.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
+    assert "async def admin_club_leadership" in admin
+    assert "async def admin_club_leadership_action" in admin
+    assert 'await self.require_admin(request)' in admin
+    assert '"leader_id": target_id' in admin
+    assert '"role": "officer"' in admin
+    assert 'Staff transferred club leadership:' in admin
+    assert 'add_get("/api/admin/clubs/leadership", self.admin_club_leadership)' in core
+    assert 'add_post("/api/admin/clubs/leadership", self.admin_club_leadership_action)' in core
+    assert 'id="club-leadership-transfer"' in page
+    assert '"/api/admin/clubs/leadership"+q()' in page
+    assert 'The current leader will become an Officer.' in page
