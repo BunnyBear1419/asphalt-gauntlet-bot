@@ -68,7 +68,7 @@ def test_auth_rate_limiter_and_oauth_cookie_hardening():
 
 
 def test_web_sessions_use_datetime_ttl_index():
-    auth = read("ALU_Gauntlet/web/routes/auth.py")
+    auth = read("ALU_Gauntlet/web/auth.py")
     main = read("ALU_Gauntlet/main.py")
     assert "datetime.now(timezone.utc)" in auth
     assert 'name="ttl_web_sessions"' in main
