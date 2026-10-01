@@ -240,6 +240,12 @@ async def reconcile_completed_tournament_achievement_roles(
                 if uid:
                     participants.add(str(uid))
 
+        try:
+            from .rsl_tournament_rewards import settle_tournament_rewards
+            await settle_tournament_rewards(db, tournament)
+        except Exception:
+            log.exception("Failed to recover tournament rewards for %s", tournament_id)
+
         achievements: dict[str, set[str]] = {}
         if participants:
             achievements["Tournament Participant"] = participants
