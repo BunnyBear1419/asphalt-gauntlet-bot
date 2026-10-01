@@ -34,16 +34,12 @@ class ChallengesCog(commands.Cog):
         today = await get_guild_local_date(guild_id)
         ticket_date = user_profile.get('gauntlet_ticket_date')
         if ticket_date != today:
-            await bot.db.drivers.update_one(
-                {'_id': f'{guild_id}_{user_id}'},
-                {'$set': {
-                    'gauntlet_ticket_date': today,
-                    'gauntlet_tickets': FREE_DAILY_TICKETS,
-                    'gauntlet_purchased_tickets': 0,
-                    'gauntlet_refreshes': 0,
-                    'gauntlet_opponent_refresh_at': time.time(),
-                }},
-            )
+            # Do not persist a daily reset during matchmaking. Ticket purchase and
+            # opponent-selection transactions both reset the same daily state
+            # atomically; writing here could race a paid purchase at midnight and
+            # erase its newly purchased ticket. Treat an expired date as fresh for
+            # the read-only eligibility check and let the selection transaction
+            # perform the authoritative reset.
             user_profile['gauntlet_ticket_date'] = today
             user_profile['gauntlet_tickets'] = FREE_DAILY_TICKETS
             user_profile['gauntlet_purchased_tickets'] = 0
