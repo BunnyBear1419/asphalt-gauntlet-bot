@@ -127,6 +127,7 @@ def test_rsl_performance_bonus_settlement_is_atomic_and_signed():
     source = read("ALU_Gauntlet/core/match_scoring.py")
     assert "async with await client.start_session() as session:" in source
     assert "async with session.start_transaction():" in source
+    assert "if getattr(winner_result, \"modified_count\", 0) != 1 or getattr(loser_result, \"modified_count\", 0) != 1" in source
     assert '"rsl_margin_bonus_applied": True' in source
     assert '"rsl_performance_bonus_applied": margin' in source
     assert "return signed_margin" in source
