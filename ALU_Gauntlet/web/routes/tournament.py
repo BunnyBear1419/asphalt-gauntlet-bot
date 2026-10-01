@@ -560,7 +560,7 @@ class TournamentRoutesMixin:
             recipients = await tournament_role_recipients(
                 self.bot.db,
                 tournament,
-                [x for x in [champion, runner_up, third_place] if x] + list(finalists),
+                [champion or "", runner_up or "", third_place or ""] + list(finalists),
             )
             champion_users = recipients.get("0", [])
             runner_users = recipients.get("1", [])
