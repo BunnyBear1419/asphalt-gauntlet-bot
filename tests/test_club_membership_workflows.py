@@ -5,6 +5,7 @@ CLUBS = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "clubs.py").read_text(encodi
 CORE = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
 MAIN = (ROOT / "ALU_Gauntlet" / "main.py").read_text(encoding="utf-8")
 JS = (ROOT / "ALU_Gauntlet" / "web" / "static" / "clubs.js").read_text(encoding="utf-8")
+PLAYER = (ROOT / "ALU_Gauntlet" / "cogs" / "player.py").read_text(encoding="utf-8")
 
 
 def test_club_membership_workflow_handlers_and_routes_exist():
@@ -58,3 +59,16 @@ def test_club_membership_safeguards_are_present():
     assert "Only the club leader can manage join requests." in CLUBS
     assert "expires_at" in CLUBS
     assert "DuplicateKeyError" in CLUBS
+
+
+def test_officer_role_and_manager_permissions_are_enforced():
+    assert 'value = "officer" if action == "promote" else "member"' in CLUBS
+    assert 'actor_role not in {"leader", "officer"}' in CLUBS
+    assert 'Only the club leader can promote or demote Officers.' in CLUBS
+    assert 'Only the club leader or an Officer can invite drivers.' in CLUBS
+    assert 'Only the club leader or an Officer can manage join requests.' in CLUBS
+    assert 'target_role == "officer" and actor_role != "leader"' in CLUBS
+    assert 'roleLabel=r=>r==="leader"?"Leader":r==="officer"?"Officer":"Member"' in JS
+    assert 'officer&&canManage&&targetRole==="member"' in JS
+    assert 'self.owner_role != "leader"' in PLAYER
+    assert 'Only the club leader or an Officer can manage members.' in PLAYER
