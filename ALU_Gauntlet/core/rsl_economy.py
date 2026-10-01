@@ -166,7 +166,19 @@ async def purchase_daily_ticket(db, *, guild_id: str, user_id: str, today: str) 
                     session=session,
                 )
                 if existing:
-                    return _result(existing, transaction_id)
+                    profile_after = await db.drivers.find_one(
+                        {"_id": driver_id},
+                        {"rsl_coins": 1, "gauntlet_tickets": 1, "gauntlet_purchased_tickets": 1},
+                        session=session,
+                    )
+                    return {
+                        "ok": existing.get("status") == "completed",
+                        "reason": "already_processed",
+                        "cost": abs(int(existing.get("amount", 0) or 0)),
+                        "purchased_tickets": int((profile_after or {}).get("gauntlet_purchased_tickets", 0) or 0),
+                        "tickets_remaining": int((profile_after or {}).get("gauntlet_tickets", 0) or 0),
+                        "transaction_id": transaction_id,
+                    }
 
                 document = {
                     "_id": transaction_id,
