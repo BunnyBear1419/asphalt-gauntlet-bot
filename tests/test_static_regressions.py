@@ -148,3 +148,14 @@ def test_processing_recovery_is_explicit_and_conservative():
     assert "reconcile_processing_challenges(bot.db, guild_id)" in challenges
     assert "reconcile_processing_challenges(self.bot.db, str(guild_id))" in web
     assert "await reconcile_processing_challenges(self.bot.db, str(guild_id))" in assistant
+
+
+def test_active_gauntlet_challenge_has_database_level_concurrency_guard():
+    main = read("ALU_Gauntlet/main.py")
+    core = read("ALU_Gauntlet/core/core.py")
+    assert 'name="uniq_active_gauntlet_challenge_per_player"' in main
+    assert 'partialFilterExpression={"status": {"$in": ["active", "processing"]}}' in main
+    # The selection path must still use the atomic ticket debit/create contract.
+    assert '"gauntlet_tickets": {"$gt": 0}' in core
+    assert '{"$inc": {"gauntlet_tickets": -1}}' in core
+    assert "session=session" in core
