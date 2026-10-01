@@ -195,6 +195,7 @@ class AuthRoutesMixin:
         response.headers["Cache-Control"] = "no-store"
         response.headers["Pragma"] = "no-cache"
         self.auth.set_session_cookie(response, session)
+        response.del_cookie("rsl_oauth_state", path="/")
         return response
 
     async def logout(self, request: web.Request) -> web.StreamResponse:
