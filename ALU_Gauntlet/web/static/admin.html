@@ -297,6 +297,14 @@
     </div>
     <div id="diagnostic-results" class="admin-status"></div>
   </div>
+  <div class="admin-card"><h2>Club Leadership Recovery</h2><p>Staff can transfer leadership when a club leader is inactive or unavailable. The selected replacement must already be a club member. The previous leader is automatically changed to Officer.</p>
+    <div class="admin-grid">
+      <div class="admin-field"><label for="club-leadership-club">Club</label><select id="club-leadership-club"><option value="">Loading clubs…</option></select></div>
+      <div class="admin-field"><label for="club-leadership-target">New Leader</label><select id="club-leadership-target"><option value="">Select a club first</option></select></div>
+    </div>
+    <div class="admin-actions"><button class="admin-btn primary" id="club-leadership-load">Refresh Clubs</button><button class="admin-btn danger" id="club-leadership-transfer">Transfer Leadership</button><span class="admin-status" id="club-leadership-status"></span></div>
+    <div id="club-leadership-members" class="admin-log" style="margin-top:12px"></div>
+  </div>
   <div class="admin-card"><h2>Gauntlet Match Recovery</h2><p>Review a reported match by ID. Automatic rollback is allowed only when stored settlement snapshots prove that no later match or state change would be overwritten.</p>
     <div class="admin-grid">
       <div class="admin-field full"><label for="recovery-match-id">Match ID</label><input id="recovery-match-id" placeholder="e.g. guild_user:match"></div>
@@ -609,6 +617,34 @@ $("safe-mode-toggle")?.addEventListener("click",async()=>{
   const enabled=!Boolean(current.maintenance?.enabled);
   await api("/api/admin/maintenance"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled,message:enabled?"Competition safe mode enabled by staff.":""})});
   await loadTicketAnalytics();loadTicketSettings();
+async function loadClubLeadership(){
+ try{
+  const d=await api("/api/admin/clubs/leadership"+q());
+  const clubs=d.clubs||[], cs=$("club-leadership-club"), ts=$("club-leadership-target");
+  cs.innerHTML=clubs.length?clubs.map(c=>'<option value="'+escapeHtml(c.id)+'">'+escapeHtml(c.name)+'</option>').join(""):'<option value="">No clubs found</option>';
+  function render(){
+   const c=clubs.find(x=>String(x.id)===String(cs.value));
+   const members=c?.members||[];
+   ts.innerHTML=members.length?members.map(m=>'<option value="'+escapeHtml(m.user_id)+'">'+escapeHtml(m.username)+' • '+escapeHtml(m.role||"member")+(String(m.user_id)===String(c.leader_id)?" • CURRENT LEADER":"")+'</option>').join(""):'<option value="">No members</option>';
+   $("club-leadership-members").innerHTML=members.length?members.map(m=>'<div class="admin-log-row"><strong>'+escapeHtml(m.username)+'</strong> • '+escapeHtml(m.role||"member")+(String(m.user_id)===String(c.leader_id)?" • 👑 CURRENT LEADER":"")+'</div>').join(""):'<div class="admin-log-row">No members found.</div>';
+  }
+  cs.onchange=render; render();
+  setStatus("club-leadership-status","Club leadership data refreshed.");
+ }catch(e){setStatus("club-leadership-status",e.message,false)}
+}
+$("club-leadership-load")?.addEventListener("click",loadClubLeadership);
+$("club-leadership-transfer")?.addEventListener("click",async()=>{
+ const clubId=$("club-leadership-club")?.value,target=$("club-leadership-target")?.value;
+ if(!clubId||!target){setStatus("club-leadership-status","Select a club and replacement leader.",false);return}
+ const clubName=$("club-leadership-club")?.selectedOptions?.[0]?.textContent||"this club";
+ if(!confirm("Transfer leadership of "+clubName+" to the selected member? The current leader will become an Officer."))return;
+ try{
+  const d=await api("/api/admin/clubs/leadership"+q(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({club_id:clubId,target_user_id:target})});
+  setStatus("club-leadership-status",d.message||"Club leadership transferred.");
+  await loadClubLeadership();
+ }catch(e){setStatus("club-leadership-status",e.message,false)}
+});
+loadClubLeadership();
 loadOpsStatus();
  }catch(e){setStatus("safe-mode-status",e.message,false)}
 });
