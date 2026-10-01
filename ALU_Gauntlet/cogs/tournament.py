@@ -261,110 +261,18 @@ async def _sync_completed_tournament_roles(tournament):
     guild = bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
     if guild is None:
         return
-    champion = str(tournament.get("champion_id") or "") or None
-    runner_up = None
-    third_place = None
-    finalists = []
-    standings = tournament.get("standings") or []
-    if standings:
-        ordered = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
-        if champion is None and ordered:
-            champion = ordered[0]
-        if len(ordered) > 1:
-            runner_up = ordered[1]
-        if len(ordered) > 2:
-            third_place = ordered[2]
-        finalists = ordered[:4]
-    else:
-        matches = _matches(tournament)
-        finals = [m for m in matches if m.get("status") == "completed" and str(m.get("bracket") or "") == "grand_final"]
-        if not finals:
-            finals = [m for m in matches if m.get("status") == "completed" and not m.get("winner_to")]
-        if finals:
-            slots = [str(x) for x in (finals[-1].get("player_slots") or []) if x]
-            finalists = slots[:4]
-            winner = str(finals[-1].get("winner_id") or "")
-            if winner:
-                champion = champion or winner
-                runner_up = next((x for x in slots if x != winner), None)
-    if not champion:
-        return
     try:
-        from ..core.rsl_role_sync import sync_tournament_season_roles, sync_tournament_achievement_roles
-        from ..core.rsl_tournament_rewards import tournament_role_recipients
+        from ..core.rsl_tournament_rewards import sync_completed_tournament_roles
         settings = await bot.db.settings.find_one({"_id": guild_id}) or {}
-        try:
-            from ..core.rsl_tournament_rewards import settle_tournament_rewards
-            await settle_tournament_rewards(bot.db, tournament)
-        except Exception:
-            log.exception("Failed to settle tournament rewards for %s", tournament.get("_id"))
-        recipients = await tournament_role_recipients(
+        await sync_completed_tournament_roles(
             bot.db,
+            guild,
             tournament,
-            [champion or "", runner_up or "", third_place or ""] + list(finalists),
-        )
-        champion_users = recipients.get("0", [])
-        runner_users = recipients.get("1", [])
-        third_users = recipients.get("2", [])
-        finalist_users = [uid for index in range(3, 3 + len(finalists)) for uid in recipients.get(str(index), [])]
-        await sync_tournament_season_roles(
-            guild,
-            tournament_champion=champion_users,
-            runner_up=runner_users,
-            third_place=third_users,
-            finalists=finalist_users,
-            role_names=settings.get("achievement_role_names"),
-            role_ids=settings.get("achievement_role_ids"),
-        )
-
-        # Permanent achievements are additive. Participant and perfect-run are
-        # derived from authoritative completed-tournament standings; veteran and
-        # grand-champion remain explicit flags until their product thresholds are
-        # defined rather than silently inventing eligibility rules.
-        participant_users = []
-        perfect_users = []
-        if int(tournament.get("team_size", 1)) > 1:
-            club_ids = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
-            if club_ids:
-                async for registration in bot.db.tournament_club_registrations.find({
-                    "tournament_id": str(tournament.get("_id")),
-                    "club_id": {"$in": club_ids},
-                    "status": {"$in": ["accepted", "checked_in"]},
-                }):
-                    participant_users.extend(str(uid) for uid in (registration.get("lineup") or []) if uid)
-        else:
-            participant_users = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
-
-        champion_row = next(
-            (row for row in standings if str(row.get("entrant_id")) == str(champion)),
-            None,
-        )
-        if champion_row is not None and int(champion_row.get("losses", 0) or 0) == 0:
-            if int(tournament.get("team_size", 1)) > 1:
-                champion_club = str(champion)
-                async for registration in bot.db.tournament_club_registrations.find({
-                    "tournament_id": str(tournament.get("_id")),
-                    "club_id": champion_club,
-                    "status": {"$in": ["accepted", "checked_in"]},
-                }):
-                    perfect_users.extend(str(uid) for uid in (registration.get("lineup") or []) if uid)
-            else:
-                perfect_users = [str(champion)]
-
-        achievements = {}
-        if participant_users:
-            achievements["Tournament Participant"] = participant_users
-        if perfect_users:
-            achievements["Perfect Tournament Run"] = perfect_users
-        await sync_tournament_achievement_roles(
-            guild,
-            achievements=achievements,
             role_names=settings.get("achievement_role_names"),
             role_ids=settings.get("achievement_role_ids"),
         )
     except Exception:
         log.exception("Failed to synchronize tournament roles for completed tournament %s", tournament.get("_id"))
-
 async def build_tournament_embed(tournament_id):
     from bson import ObjectId
     t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
