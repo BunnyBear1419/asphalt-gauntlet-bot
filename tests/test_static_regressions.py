@@ -103,3 +103,10 @@ def test_scheduled_mongo_workflows_do_not_use_production_secret():
         source = read(path)
         assert "secrets.MONGO_CI_URI" in source
         assert "secrets.MONGO_URI" not in source
+
+def test_tournament_media_storage_growth_is_bounded():
+    source = read("ALU_Gauntlet/web/routes/tournament.py")
+    assert "max_user_media = 20" in source
+    assert "max_tournament_media = 100" in source
+    assert '"uploaded_by": str(user.user_id)' in source
+    assert 'update["$unset"] = {"data": ""}' in source
