@@ -25,24 +25,24 @@ jobs:
 
       - name: Create MongoDB backup
         env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MONGO_CI_URI: ${{ secrets.MONGO_CI_URI }}
         run: |
           set -euo pipefail
 
           mkdir -p backup
 
           # The bot uses the asphalt_gauntlet database.
-          # Strip the database name from MONGO_URI while preserving
+          # Strip the database name from MONGO_CI_URI while preserving
           # query options. MongoDB requires "/" before a query string.
           BACKUP_URI=$(python - <<'PY'
           import os
           from urllib.parse import urlsplit, urlunsplit
 
-          uri = os.environ["MONGO_URI"]
+          uri = os.environ["MONGO_CI_URI"]
           parts = urlsplit(uri)
 
           if not parts.scheme or not parts.netloc:
-              raise SystemExit("ERROR: MONGO_URI is invalid.")
+              raise SystemExit("ERROR: MONGO_CI_URI is invalid.")
 
           print(urlunsplit((
               parts.scheme,
