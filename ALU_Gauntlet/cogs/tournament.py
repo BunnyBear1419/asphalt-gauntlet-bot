@@ -291,18 +291,29 @@ async def _sync_completed_tournament_roles(tournament):
         return
     try:
         from ..core.rsl_role_sync import sync_tournament_season_roles, sync_tournament_achievement_roles
+        from ..core.rsl_tournament_rewards import _entrant_users
         settings = await bot.db.settings.find_one({"_id": guild_id}) or {}
         try:
             from ..core.rsl_tournament_rewards import settle_tournament_rewards
             await settle_tournament_rewards(bot.db, tournament)
         except Exception:
             log.exception("Failed to settle tournament rewards for %s", tournament.get("_id"))
+        team_event = int(tournament.get("team_size", 1) or 1) > 1
+        champion_users = await _entrant_users(bot.db, tournament, champion) if team_event else ([champion] if champion else [])
+        runner_users = await _entrant_users(bot.db, tournament, runner_up) if team_event and runner_up else ([runner_up] if runner_up else [])
+        third_users = await _entrant_users(bot.db, tournament, third_place) if team_event and third_place else ([third_place] if third_place else [])
+        finalist_users = []
+        if team_event:
+            for entrant_id in finalists:
+                finalist_users.extend(await _entrant_users(bot.db, tournament, entrant_id))
+        else:
+            finalist_users = list(finalists)
         await sync_tournament_season_roles(
             guild,
-            tournament_champion=champion,
-            runner_up=runner_up,
-            third_place=third_place,
-            finalists=finalists,
+            tournament_champion=champion_users,
+            runner_up=runner_users,
+            third_place=third_users,
+            finalists=finalist_users,
             role_names=settings.get("achievement_role_names"),
             role_ids=settings.get("achievement_role_ids"),
         )
