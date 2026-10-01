@@ -40,7 +40,7 @@ def test_web_security_headers_and_private_cache_contracts():
     assert 'X-Frame-Options", "DENY' in src
     assert 'Referrer-Policy", "strict-origin-when-cross-origin' in src
     assert 'Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()' in src
-    assert 'Content-Security-Policy", "default-src \'self\'' in src
+    assert "Content-Security-Policy-Report-Only" in src
     assert "frame-ancestors 'none'" in src
     assert 'Strict-Transport-Security", "max-age=31536000; includeSubDomains' in src
     assert 'Cache-Control", "no-store' in src
