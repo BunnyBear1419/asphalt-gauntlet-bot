@@ -186,9 +186,12 @@ class AuthRoutesMixin:
             raise
         except Exception as exc:
             log.exception("Discord OAuth callback failed during %s", stage)
+            # Keep provider/network/database details server-side. Returning the
+            # exception text can disclose internal implementation or upstream
+            # response details to an unauthenticated browser.
             return web.Response(
                 status=503,
-                text=f"Discord sign-in failed during {stage}. {type(exc).__name__}: {exc}",
+                text="Discord sign-in failed. Please try again in a moment.",
                 content_type="text/plain",
                 headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
             )
