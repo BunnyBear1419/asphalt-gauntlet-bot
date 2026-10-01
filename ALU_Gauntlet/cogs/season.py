@@ -167,7 +167,7 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
     # Apply Discord recognition only after the season snapshot/rewards are built.
     # Role failures are non-fatal: competitive settlement and the archived record
     # remain authoritative even if Discord permissions/hierarchy block a role change.
-    role_snapshot = {}
+    role_snapshot = state.get("gauntlet_role_snapshot") or {}
     try:
         activity_stats = await collect_overall_activity_stats(
             bot.db, guild_id=guild_id, season_number=current_season
