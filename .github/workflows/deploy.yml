@@ -158,9 +158,13 @@ jobs:
           # A transient Mongo outage on the runner must not block a deployment.
           # If the baseline is unavailable, the post-deploy smoke gate still requires
           # a fresh healthy heartbeat, so safety is preserved.
-          heartbeat_at=$(MONGO_URI="$MONGO_URI" python -c 'import os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}); c.close(); print(float(h.get("timestamp",0)) if h else 0)') || heartbeat_at=0
+          heartbeat_json=$(MONGO_URI="$MONGO_URI" python -c 'import json,os; from pymongo import MongoClient; c=MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=10000); h=c["asphalt_gauntlet"].system_events.find_one({"_id":"production_heartbeat"}) or {}; c.close(); print(json.dumps({"timestamp":float(h.get("timestamp",0) or 0),"release_sha":str(h.get("release_sha","") or "")}))') || heartbeat_json='{"timestamp":0,"release_sha":""}'
+          heartbeat_at=$(python -c 'import json,sys; print(json.load(sys.stdin)["timestamp"])' <<< "$heartbeat_json")
+          release_sha=$(python -c 'import json,sys; print(json.load(sys.stdin)["release_sha"])' <<< "$heartbeat_json")
           echo "heartbeat_at=$heartbeat_at" >> "$GITHUB_OUTPUT"
+          echo "release_sha=$release_sha" >> "$GITHUB_OUTPUT"
           echo "Pre-deployment heartbeat baseline: $heartbeat_at"
+          echo "Pre-deployment production release: ${release_sha:-unknown}"
       # Retry transient Discloud deployment failures, including temporary 429s.
       - name: Deploy to Discloud (attempt 1)
         id: deploy1
@@ -390,7 +394,7 @@ jobs:
         if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ steps.revision.outputs.previous_sha }}
+          ref: ${{ steps.predeploy.outputs.release_sha || steps.revision.outputs.previous_sha }}
           fetch-depth: 0
 
       - name: Clean failed-release workspace before rollback upload
@@ -402,9 +406,15 @@ jobs:
           # upload contains only the known-good Git revision.
           git clean -fdx
           echo "Rollback workspace restored to the exact committed revision."
-          printf "%s\n" "${{ steps.revision.outputs.previous_sha }}" > .rsl-release-sha
-          printf "%s\n" "${{ steps.revision.outputs.previous_sha }}" > rsl-release-sha.txt
-          echo "Rollback release markers written for ${{ steps.revision.outputs.previous_sha }}."
+          ROLLBACK_SHA="${{ steps.predeploy.outputs.release_sha || steps.revision.outputs.previous_sha }}"
+          if [ -z "$ROLLBACK_SHA" ]; then
+            echo "ERROR: No known-good production release SHA is available for rollback."
+            exit 1
+          fi
+          git cat-file -e "$ROLLBACK_SHA^{commit}"
+          printf "%s\n" "$ROLLBACK_SHA" > .rsl-release-sha
+          printf "%s\n" "$ROLLBACK_SHA" > rsl-release-sha.txt
+          echo "Rollback release markers written for $ROLLBACK_SHA."
 
       - name: Capture pre-rollback heartbeat
         id: rollback_predeploy
@@ -488,7 +498,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
           PREVIOUS_ROLLBACK_HEARTBEAT_AT: ${{ steps.rollback_predeploy.outputs.heartbeat_at }}
-          EXPECTED_ROLLBACK_SHA: ${{ steps.revision.outputs.previous_sha }}
+          EXPECTED_ROLLBACK_SHA: ${{ steps.predeploy.outputs.release_sha || steps.revision.outputs.previous_sha }}
         run: |
           set -euo pipefail
           for attempt in $(seq 1 6); do
