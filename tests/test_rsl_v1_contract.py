@@ -334,7 +334,10 @@ def test_v1_tournament_start_and_media_review_are_atomic():
     source = read(SERVER)
     assert 'self._claim_tournament_action(str(oid), "START", "start")' in source
     assert 'self._release_tournament_action(str(oid), "START")' in source
-    assert '"status": "pending"' in source[source.index("async def tournament_media_action"):source.index("async def serve_tournament_media")]
+    tournament_routes = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "tournament.py").read_text(encoding="utf-8")
+    media_start = tournament_routes.index("async def tournament_media_action")
+    media_end = tournament_routes.index("async def tournament_checkin", media_start)
+    assert '"status": "pending"' in tournament_routes[media_start:media_end]
     assert "This media submission was already reviewed." in source
 
 
