@@ -140,29 +140,23 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
                 return {"ok": True, "duplicate": True, "amount": 0}
             raise
 
-        await db.drivers.update_one(
-            {"_id": profile_id},
-            {"$set": {"rsl_xp_week": week, "rsl_xp_weekly": 0}},
-            **kwargs,
-        ) if False else None
-
         profile = await db.drivers.find_one({"_id": profile_id}, {"rsl_xp_week": 1, "rsl_xp_month": 1}, **kwargs) or {}
-        updates = {"$inc": {
+        inc = {
             "rsl_xp": final_amount,
-            "rsl_xp_weekly": final_amount,
-            "rsl_xp_monthly": final_amount,
             "rsl_xp_message_count": 1 if source == "message" else 0,
             "rsl_xp_reaction_count": 1 if source == "reaction" else 0,
             "rsl_xp_voice_seconds": int(metadata.get("voice_seconds", 0)) if metadata else 0,
-        }, "$set": {"rsl_xp_week": week, "rsl_xp_month": month}}
-        if profile.get("rsl_xp_week") != week:
-            updates["$set"]["rsl_xp_week"] = week
-            updates["$set"]["rsl_xp_weekly"] = final_amount
-            updates["$inc"]["rsl_xp_weekly"] = 0
-        if profile.get("rsl_xp_month") != month:
-            updates["$set"]["rsl_xp_month"] = month
-            updates["$set"]["rsl_xp_monthly"] = final_amount
-            updates["$inc"]["rsl_xp_monthly"] = 0
+        }
+        set_fields = {"rsl_xp_week": week, "rsl_xp_month": month}
+        if profile.get("rsl_xp_week") == week:
+            inc["rsl_xp_weekly"] = final_amount
+        else:
+            set_fields["rsl_xp_weekly"] = final_amount
+        if profile.get("rsl_xp_month") == month:
+            inc["rsl_xp_monthly"] = final_amount
+        else:
+            set_fields["rsl_xp_monthly"] = final_amount
+        updates = {"$inc": inc, "$set": set_fields}
         await db.drivers.update_one({"_id": profile_id}, updates, **kwargs)
         return {"ok": True, "duplicate": False, "amount": final_amount, "boost": boost}
 
