@@ -4,14 +4,22 @@
 - Production branch: `main`
 - Hosting: Discloud
 - Automated CI/deploy: GitHub Actions
-- Latest verified release: `c4427efae534b2160613f841ae3f8432063003d7`
-- Latest CI/deploy run: #2870
-- Automated tests: passed (406 passed, 2 skipped, 1 warning)
+- Latest verified release: `eed421b2bd159fd1f4656edb2f353068052ac5b9`
+- Latest CI/deploy run: #3222
+- Automated tests: passed (508 passed, 2 skipped, 1 warning)
+- Production module import smoke gate: passed
 - Compile check: passed
 - Dependency audit: passed
 - Discloud deployment/restart: passed
 - Post-deployment smoke test: passed
-- Rollback path: available; not required for the latest release
+- Production OAuth/login smoke test: passed
+- Production heartbeat/health checks: passed
+- Rollback path: available; not required for the latest successful release
+
+## Current assurance status
+The automated implementation and regression phase is complete for the current release. Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
+
+The remaining unchecked acceptance items below are intentionally manual/live acceptance tests. They are not marked complete based solely on automated tests.
 
 ## Final product checks
 - [x] Primary navigation uses Rules before Companion
