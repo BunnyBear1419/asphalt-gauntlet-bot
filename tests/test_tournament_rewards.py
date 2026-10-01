@@ -31,3 +31,13 @@ def test_tournament_creation_snapshots_reward_configuration():
     cog = (ROOT / "ALU_Gauntlet" / "cogs" / "administration.py").read_text(encoding="utf-8")
     assert '"rewards": rewards' in web
     assert '"rewards": dict(DEFAULT_TOURNAMENT_REWARDS)' in cog
+
+
+def test_tournament_reward_ids_are_unique_per_player_and_participation_is_additive():
+    source = (ROOT / "ALU_Gauntlet" / "core" / "rsl_tournament_rewards.py").read_text(encoding="utf-8")
+    assert 'prefix = f"tournament:{tournament_id}:{user_id}:{placement or \'participation\'}"' in source
+    assert 'reference_id=f"{prefix}:coins"' in source
+    assert 'event_id=f"{prefix}:xp"' in source
+    assert 'async def _all_participant_users' in source
+    assert 'for user_id in participant_users:' in source
+    assert 'if not await reward_user(user_id, None):' in source
