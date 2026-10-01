@@ -43,6 +43,20 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_club_name_per_guild",
     )
+    await db.club_invitations.create_index(
+        [("club_id", 1), ("invitee_id", 1)],
+        unique=True,
+        partialFilterExpression={"status": "pending"},
+        name="uniq_pending_club_invitation",
+    )
+    await db.club_join_requests.create_index(
+        [("club_id", 1), ("user_id", 1)],
+        unique=True,
+        partialFilterExpression={"status": "pending"},
+        name="uniq_pending_club_join_request",
+    )
+    await db.club_invitations.create_index([("invitee_id", 1), ("status", 1), ("created_at", -1)], name="idx_club_invitations")
+    await db.club_join_requests.create_index([("club_id", 1), ("status", 1), ("created_at", -1)], name="idx_club_join_requests")
     await db.tournament_action_locks.create_index(
         [("tournament_id", 1), ("match_id", 1)],
         unique=True,
