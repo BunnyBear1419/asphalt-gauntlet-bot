@@ -103,7 +103,7 @@ class GauntletRoutesMixin:
         """Submit five attack runs for the signed-in driver's active challenge."""
         user,guild_id,_=await self.require_guild_member(request)
         payload = await self._json_object(request)
-        from ...core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge, reconcile_processing_challenges
+        from ...core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge
         uid=str(user.user_id); active=await claim_active_challenge(str(guild_id),uid)
         if not active: raise web.HTTPConflict(text="No active challenge is available to submit.")
         try:
@@ -150,7 +150,7 @@ class GauntletRoutesMixin:
                 "guild_id": str(guild_id),
             })
             if reservation:
-                await reconcile_processing_challenges(str(guild_id))
+                await reconcile_processing_challenges(self.bot.db, str(guild_id))
             else:
                 await release_active_challenge(active["_id"])
             raise
