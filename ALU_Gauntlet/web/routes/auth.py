@@ -240,7 +240,7 @@ class AuthRoutesMixin:
     async def set_language(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid language request.") from exc
         language = str(payload.get("language", "en")).strip()
@@ -265,7 +265,7 @@ class AuthRoutesMixin:
     async def set_theme(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid theme request.") from exc
         theme = str(payload.get("theme", "dark")).strip().lower()
