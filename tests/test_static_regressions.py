@@ -123,6 +123,18 @@ def test_rsl_role_sync_does_not_silently_swallow_discord_role_failures():
     assert "Failed to add seasonal RSL roles" in source
 
 
+def test_match_settlement_checks_every_atomic_write_and_has_unique_replay_key():
+    core = read("ALU_Gauntlet/core/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert 'winner_result = await bot.db.drivers.update_one(' in core
+    assert 'loser_result = await bot.db.drivers.update_one(' in core
+    assert 'if getattr(winner_result, "modified_count", 0) != 1 or getattr(loser_result, "modified_count", 0) != 1' in core
+    assert 'final_result = await bot.db.matches.update_one(' in core
+    assert 'if getattr(final_result, "modified_count", 0) != 1' in core
+    assert 'name="uniq_gauntlet_settlement_id"' in main
+    assert 'unique=True' in main
+    assert 'sparse=True' in main
+
 def test_rsl_performance_bonus_settlement_is_atomic_and_signed():
     source = read("ALU_Gauntlet/core/match_scoring.py")
     assert "async with await client.start_session() as session:" in source
