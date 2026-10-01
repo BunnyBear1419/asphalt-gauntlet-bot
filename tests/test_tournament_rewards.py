@@ -61,3 +61,11 @@ def test_double_elimination_standings_include_losers_bracket_third_place():
         assert 'if m.get("winner_to") == "GF-M1" and m.get("status") == "completed"' in source
         assert 'lb_loser = next(' in source
         assert '([{"entrant_id": lb_loser}] if lb_loser else [])' in source
+
+
+
+def test_tournament_reward_settlement_verifies_final_marker_persistence():
+    source = (ROOT / "ALU_Gauntlet/core/rsl_tournament_rewards.py").read_text(encoding="utf-8")
+    assert 'marker_result = await db.tournaments.update_one(' in source
+    assert 'settlement_marker_persist_failed' in source
+    assert 'getattr(marker_result, "matched_count", 1) != 1' in source
