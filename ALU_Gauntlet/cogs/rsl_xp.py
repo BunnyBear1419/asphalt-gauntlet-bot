@@ -212,7 +212,7 @@ class RSLXPCog(commands.Cog):
             try:
                 settings = await self._settings(guild.id)
                 cursor = self.bot.db.drivers.find(
-                    {"guild_id": str(guild.id), "rsl_xp": {"$exists": True}},
+                    {"guild_id": str(guild.id), "rsl_xp": {"$exists": True}, "rsl_xp_role_sync_pending": {"$ne": False}},
                     {"user_id": 1, "rsl_xp": 1},
                 )
                 async for driver in cursor:
