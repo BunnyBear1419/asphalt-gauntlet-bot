@@ -56,3 +56,20 @@ def test_deploy_has_undefined_name_and_validated_rollback_gates():
     assert "ruff check ALU_Gauntlet tests --select F821" in source
     assert '^[0-9a-fA-F]{40}$' in source
     assert "PREVIOUS_SHA" in source
+
+
+def test_auth_rate_limiter_and_oauth_cookie_hardening():
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    auth = read("ALU_Gauntlet/web/routes/auth.py")
+    assert "import os" in core
+    assert 'os.getenv("RSL_TRUSTED_PROXY_IPS"' in core
+    assert "hmac.compare_digest(state, cookie_state)" in auth
+    assert 'secure=self.auth.public_url.startswith("https://")' in auth
+
+
+def test_web_sessions_use_datetime_ttl_index():
+    auth = read("ALU_Gauntlet/web/routes/auth.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "datetime.now(timezone.utc)" in auth
+    assert 'name="ttl_web_sessions"' in main
+    assert "expireAfterSeconds=0" in main
