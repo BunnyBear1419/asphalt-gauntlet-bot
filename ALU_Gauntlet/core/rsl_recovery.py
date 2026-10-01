@@ -92,8 +92,9 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 stats["pending"] += 1
             continue
 
+        raw_processing_at = challenge.get("processing_at")
         try:
-            processing_at = float(challenge.get("processing_at", now) or now)
+            processing_at = float(raw_processing_at) if raw_processing_at is not None else now
         except (TypeError, ValueError):
             processing_at = now
 
