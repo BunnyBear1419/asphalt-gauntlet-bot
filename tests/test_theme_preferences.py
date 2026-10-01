@@ -1,14 +1,15 @@
 from pathlib import Path
 import ast
+from web_source import web_source
 
 ROOT=Path(__file__).resolve().parents[1]
 SERVER=ROOT/"ALU_Gauntlet"/"web"/"server.py"
 STATIC=ROOT/"ALU_Gauntlet"/"web"/"static"
 
 def test_theme_runtime_files_and_server_parse():
-    ast.parse(SERVER.read_text(encoding="utf-8"), filename=str(SERVER))
+    ast.parse(web_source(), filename=str(SERVER))
     assert (STATIC/"theme.js").is_file()
-    source=SERVER.read_text(encoding="utf-8")
+    source=web_source()
     assert '"/api/theme"' in source
     assert "THEMES" in source
     assert "get_theme" in source
@@ -38,7 +39,7 @@ def test_light_theme_css_exists():
         assert f'html[data-theme="{theme_name}"]' in source
 
 def test_cross_page_theme_contract_covers_all_themes():
-    source=SERVER.read_text(encoding="utf-8")
+    source=web_source()
     themes=("dark","light","ocean","purple","crimson","emerald","sunset","graphite")
     assert 'id="rsl-cross-page-theme-audit"' in source
     assert "theme_audit_css" in source
@@ -50,7 +51,7 @@ def test_cross_page_theme_contract_covers_all_themes():
 def test_all_static_html_pages_are_theme_renderable():
     pages=sorted(STATIC.glob("*.html"))
     assert pages, "No static HTML pages found."
-    source=SERVER.read_text(encoding="utf-8")
+    source=web_source()
     assert 'body = body.replace("</body>", theme_audit_css + "\n</body>", 1)' in source
     for page in pages:
         assert page.suffix == ".html"
