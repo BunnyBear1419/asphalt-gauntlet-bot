@@ -292,6 +292,11 @@ async def _sync_completed_tournament_roles(tournament):
     try:
         from ..core.rsl_role_sync import sync_tournament_season_roles, sync_tournament_achievement_roles
         settings = await bot.db.settings.find_one({"_id": guild_id}) or {}
+        try:
+            from ..core.rsl_tournament_rewards import settle_tournament_rewards
+            await settle_tournament_rewards(bot.db, tournament)
+        except Exception:
+            log.exception("Failed to settle tournament rewards for %s", tournament.get("_id"))
         await sync_tournament_season_roles(
             guild,
             tournament_champion=champion,
