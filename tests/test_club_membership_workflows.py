@@ -89,3 +89,22 @@ def test_staff_can_recover_club_leadership():
     assert 'id="club-leadership-transfer"' in page
     assert '"/api/admin/clubs/leadership"+q()' in page
     assert 'The current leader will become an Officer.' in page
+
+
+def test_leader_can_transfer_or_delete_club():
+    clubs = Path("ALU_Gauntlet/web/routes/clubs.py").read_text(encoding="utf-8")
+    core = Path("ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
+    js = Path("ALU_Gauntlet/web/static/clubs.js").read_text(encoding="utf-8")
+    assert "async def transfer_club_leadership" in clubs
+    assert "Only the current club leader can transfer leadership." in clubs
+    assert '{"$set": {"role": "officer"}}' in clubs
+    assert '"role": "leader"' in clubs
+    assert "async def delete_club" in clubs
+    assert "Only the club leader can delete the club." in clubs
+    assert "tournament history or registrations" in clubs
+    assert 'self.app.router.add_post("/api/clubs/transfer-leadership", self.transfer_club_leadership)' in core
+    assert 'self.app.router.add_post("/api/clubs/delete", self.delete_club)' in core
+    assert 'id="transfer-club-leader"' in js
+    assert 'id="delete-club"' in js
+    assert "/api/clubs/transfer-leadership" in js
+    assert "/api/clubs/delete" in js
