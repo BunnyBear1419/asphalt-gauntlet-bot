@@ -76,16 +76,18 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
                 )
                 if getattr(claim, "modified_count", 0) != 1:
                     return 0
-                await db.drivers.update_one(
+                winner_result = await db.drivers.update_one(
                     {"_id": f"{match_data.get('guild_id')}_{winner_id}"},
                     {"$inc": {"elo": margin}},
                     session=session,
                 )
-                await db.drivers.update_one(
+                loser_result = await db.drivers.update_one(
                     {"_id": f"{match_data.get('guild_id')}_{loser_id}"},
                     {"$inc": {"elo": -margin}},
                     session=session,
                 )
+                if getattr(winner_result, "modified_count", 0) != 1 or getattr(loser_result, "modified_count", 0) != 1:
+                    raise RuntimeError("RSL performance bonus could not update both drivers")
     else:
         # Lightweight/test DBs may not expose transactions. Preserve the
         # idempotent claim and compensate the first ELO write if the second
