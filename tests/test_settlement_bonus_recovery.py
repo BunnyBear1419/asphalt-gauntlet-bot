@@ -22,6 +22,7 @@ def test_settlement_recovery_keeps_base_settlement_authoritative_on_bonus_failur
 
 def test_settlement_recovery_scans_completed_challenges_for_missing_bonus_without_reopening_them():
     source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
-    assert '"status": {"$in": ["processing", "completed"]}' in source
+    assert '"status": "processing"' in source
+    assert '"status": "completed", "rsl_bonus_checked": {"$ne": True}' in source
     assert 'if str(challenge.get("status") or "") != "processing":' in source
     assert 'preserve the completed state' in source
