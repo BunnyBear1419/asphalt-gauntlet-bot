@@ -482,6 +482,14 @@ class ClubsRoutesMixin:
             raise web.HTTPConflict(text="That driver is already in a club in this server.")
         if await self.bot.db.club_join_requests.find_one({"club_id": str(oid), "user_id": target, "status": "pending"}):
             raise web.HTTPConflict(text="That driver already has a pending join request for this club.")
+        await self._ensure_club_indexes()
+        if await self.bot.db.club_invitations.count_documents({"club_id": str(oid), "status": "pending"}) >= 50:
+            raise web.HTTPConflict(text="This club already has the maximum number of pending invitations.")
+        if await self.bot.db.club_invitations.count_documents({"invitee_id": target, "status": "pending"}) >= 5:
+            raise web.HTTPConflict(text="That driver already has the maximum number of pending club invitations.")
+        await self._ensure_club_indexes()
+        if await self.bot.db.club_join_requests.count_documents({"club_id": str(oid), "status": "pending"}) >= 50:
+            raise web.HTTPConflict(text="This club already has the maximum number of pending join requests.")
         if int(club.get("member_count", 0) or 0) >= 20:
             raise web.HTTPConflict(text="That club is full.")
         guild = self.bot.get_guild(int(club["guild_id"]))
@@ -503,9 +511,9 @@ class ClubsRoutesMixin:
             "invitee_id": target,
             "invitee_name": str(member.display_name or member.name or target),
             "status": "pending",
-            "created_at": now.isoformat(),
-            "expires_at": expires.isoformat(),
-            "updated_at": now.isoformat(),
+            "created_at": now,
+            "expires_at": expires,
+            "updated_at": now,
         }
         try:
             await self.bot.db.club_invitations.insert_one(doc)
@@ -527,7 +535,8 @@ class ClubsRoutesMixin:
         if not invite:
             raise web.HTTPNotFound(text="Invitation not found or already handled.")
         now = datetime.now(timezone.utc)
-        if str(invite.get("expires_at", "")) <= now.isoformat():
+        expires_at = self._club_datetime(invite.get("expires_at"))
+        if expires_at is not None and expires_at <= now:
             await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now.isoformat()}})
             raise web.HTTPConflict(text="That invitation has expired.")
         if action == "decline":
@@ -536,6 +545,17 @@ class ClubsRoutesMixin:
         club = await self.bot.db.clubs.find_one({"_id": ObjectId(str(invite["club_id"]))})
         if not club:
             raise web.HTTPNotFound(text="Club no longer exists.")
+        guild = self.bot.get_guild(int(club["guild_id"]))
+        if guild is None:
+            raise web.HTTPNotFound(text="Discord server is not available.")
+        live_member = guild.get_member(int(user.user_id))
+        if live_member is None:
+            try:
+                live_member = await guild.fetch_member(int(user.user_id))
+            except Exception:
+                live_member = None
+        if live_member is None:
+            raise web.HTTPForbidden(text="You must still be a member of this Discord server to accept the invitation.")
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": str(user.user_id)}):
             raise web.HTTPConflict(text="You are already in a club in this server.")
         reservation = await self.bot.db.clubs.update_one(
@@ -582,7 +602,7 @@ class ClubsRoutesMixin:
             "guild_id": str(club["guild_id"]), "club_id": str(oid), "club_name": str(club.get("name") or "Club"),
             "user_id": str(user.user_id), "username": str(user.global_name or user.username or user.user_id),
             "message": str(payload.get("message", "")).strip()[:500], "status": "pending",
-            "created_at": now.isoformat(), "expires_at": (now + timedelta(days=7)).isoformat(), "updated_at": now.isoformat(),
+            "created_at": now, "expires_at": (now + timedelta(days=7)), "updated_at": now,
         }
         try:
             await self.bot.db.club_join_requests.insert_one(doc)
@@ -612,7 +632,8 @@ class ClubsRoutesMixin:
         if actor_role not in {"leader", "officer"}:
             raise web.HTTPForbidden(text="Only the club leader or an Officer can manage join requests.")
         now = datetime.now(timezone.utc)
-        if str(join_request.get("expires_at", "")) <= now.isoformat():
+        expires_at = self._club_datetime(join_request.get("expires_at"))
+        if expires_at is not None and expires_at <= now:
             await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now.isoformat()}})
             raise web.HTTPConflict(text="That join request has expired.")
         if action == "decline":
