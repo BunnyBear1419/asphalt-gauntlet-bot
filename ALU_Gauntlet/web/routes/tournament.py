@@ -432,8 +432,21 @@ class TournamentRoutesMixin:
                             t["champion_id"] = winner_id
                             t["completed_at"] = datetime.now(timezone.utc).isoformat()
                             loser = next((str(x) for x in (match.get("player_slots") or []) if str(x) != str(winner_id)), None)
+                            lb_final = next((
+                                m for group in (bracket.get("losers") or [])
+                                for m in (group.get("matches") or [])
+                                if m.get("winner_to") == "GF-M1" and m.get("status") == "completed"
+                            ), None)
+                            lb_loser = None
+                            if lb_final:
+                                lb_winner = str(lb_final.get("winner_id") or "")
+                                lb_loser = next(
+                                    (str(x) for x in (lb_final.get("player_slots") or []) if str(x) != lb_winner),
+                                    None,
+                                )
                             t["standings"] = ([{"entrant_id": str(winner_id)}] +
-                                              ([{"entrant_id": loser}] if loser else []))
+                                              ([{"entrant_id": loser}] if loser else []) +
+                                              ([{"entrant_id": lb_loser}] if lb_loser else []))
                         else:
                             reset = bracket.get("grand_final_reset")
                             if isinstance(reset, dict):
@@ -445,8 +458,21 @@ class TournamentRoutesMixin:
                         t["champion_id"] = winner_id
                         t["completed_at"] = datetime.now(timezone.utc).isoformat()
                         loser = next((str(x) for x in (match.get("player_slots") or []) if str(x) != str(winner_id)), None)
+                        lb_final = next((
+                            m for group in (bracket.get("losers") or [])
+                            for m in (group.get("matches") or [])
+                            if m.get("winner_to") == "GF-M1" and m.get("status") == "completed"
+                        ), None)
+                        lb_loser = None
+                        if lb_final:
+                            lb_winner = str(lb_final.get("winner_id") or "")
+                            lb_loser = next(
+                                (str(x) for x in (lb_final.get("player_slots") or []) if str(x) != lb_winner),
+                                None,
+                            )
                         t["standings"] = ([{"entrant_id": str(winner_id)}] +
-                                          ([{"entrant_id": loser}] if loser else []))
+                                          ([{"entrant_id": loser}] if loser else []) +
+                                          ([{"entrant_id": lb_loser}] if lb_loser else []))
                     elif match.get("bracket") == "winners" and match.get("winner_to") == "GF-M1" and winner_id:
                         # The Winners Final feeds the first Grand Final match, so its
                         # winner is the protected finalist for the double-elimination
