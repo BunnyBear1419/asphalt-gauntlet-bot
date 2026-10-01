@@ -180,3 +180,90 @@ async def settle_tournament_rewards(db, tournament: dict) -> dict:
     if getattr(marker_result, "matched_count", 1) != 1:
         return {"ok": False, "settled": settled, "reason": "settlement_marker_persist_failed"}
     return {"ok": True, "settled": settled, "marker": marker}
+
+
+async def sync_completed_tournament_roles(db, guild, tournament: dict, *, role_names=None, role_ids=None) -> bool:
+    """Apply tournament seasonal/achievement roles using resolved entrant recipients."""
+    from .rsl_role_sync import sync_tournament_season_roles, sync_tournament_achievement_roles
+    champion = str(tournament.get("champion_id") or "") or None
+    runner_up = third_place = None
+    finalists = []
+    standings = tournament.get("standings") or []
+    if standings:
+        ordered = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
+        champion = champion or (ordered[0] if ordered else None)
+        runner_up = ordered[1] if len(ordered) > 1 else None
+        third_place = ordered[2] if len(ordered) > 2 else None
+        finalists = ordered[:4]
+    else:
+        bracket = tournament.get("bracket") or {}
+        groups = []
+        for key in ("rounds", "winners", "losers"):
+            groups.extend(bracket.get(key) or [])
+        for key in ("grand_final", "grand_final_reset"):
+            if isinstance(bracket.get(key), dict):
+                groups.append({"matches": [bracket[key]]})
+        matches = [m for group in groups for m in group.get("matches", [])]
+        finals = [m for m in matches if m.get("status") == "completed" and str(m.get("bracket") or "") == "grand_final"]
+        if not finals:
+            finals = [m for m in matches if m.get("status") == "completed" and not m.get("winner_to")]
+        if finals:
+            slots = [str(x) for x in (finals[-1].get("player_slots") or []) if x]
+            winner = str(finals[-1].get("winner_id") or "")
+            champion = champion or (winner or None)
+            runner_up = next((x for x in slots if x != winner), None)
+            finalists = slots[:4]
+    if not champion:
+        return False
+
+    recipients = await tournament_role_recipients(
+        db, tournament, [champion, runner_up or "", third_place or ""] + finalists
+    )
+    await sync_tournament_season_roles(
+        guild,
+        tournament_champion=recipients.get("0", []),
+        runner_up=recipients.get("1", []),
+        third_place=recipients.get("2", []),
+        finalists=[
+            uid for index in range(3, 3 + len(finalists))
+            for uid in recipients.get(str(index), [])
+        ],
+        role_names=role_names,
+        role_ids=role_ids,
+    )
+
+    participant_users = []
+    perfect_users = []
+    team_event = int(tournament.get("team_size", 1) or 1) > 1
+    if team_event:
+        club_ids = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
+        async for registration in db.tournament_club_registrations.find({
+            "tournament_id": str(tournament.get("_id")),
+            "club_id": {"$in": club_ids},
+            "status": {"$in": ["accepted", "checked_in"]},
+        }):
+            participant_users.extend(str(uid) for uid in (registration.get("lineup") or []) if uid)
+    else:
+        participant_users = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
+
+    champion_row = next((row for row in standings if str(row.get("entrant_id")) == str(champion)), None)
+    if champion_row is not None and int(champion_row.get("losses", 0) or 0) == 0:
+        if team_event:
+            async for registration in db.tournament_club_registrations.find({
+                "tournament_id": str(tournament.get("_id")),
+                "club_id": str(champion),
+                "status": {"$in": ["accepted", "checked_in"]},
+            }):
+                perfect_users.extend(str(uid) for uid in (registration.get("lineup") or []) if uid)
+        else:
+            perfect_users = [str(champion)]
+
+    achievements = {}
+    if participant_users:
+        achievements["Tournament Participant"] = list(dict.fromkeys(participant_users))
+    if perfect_users:
+        achievements["Perfect Tournament Run"] = list(dict.fromkeys(perfect_users))
+    await sync_tournament_achievement_roles(
+        guild, achievements=achievements, role_names=role_names, role_ids=role_ids
+    )
+    return True
