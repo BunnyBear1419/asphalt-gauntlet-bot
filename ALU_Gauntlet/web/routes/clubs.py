@@ -155,7 +155,7 @@ class ClubsRoutesMixin:
             {"club_id": str(club_id), "user_id": target_id},
             {"$set": {"role": "leader"}},
         )
-        await self._club_notify_user(club, target_id, "You are now the Leader of the club.")
+        await self._club_notify_user(target_id, "Club leadership transferred", f"You are now the Leader of {club.get('name', 'the club')}.")
         return web.json_response({"ok": True, "message": "Club leadership transferred. You are now an Officer."})
 
     async def delete_club(self, request: web.Request) -> web.Response:
