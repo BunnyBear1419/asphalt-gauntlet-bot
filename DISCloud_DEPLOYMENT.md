@@ -37,6 +37,7 @@ Set these in Discloud's environment-variable configuration. **Do not commit thei
 - `WEB_PUBLIC_URL=https://asph.discloud.app` — public website URL.
 - `WEB_STAFF_USER_IDS` — optional comma-separated Discord user IDs that should have global web staff access.
 - `BACKUP_DIR=./backups` — optional local backup directory.
+- `RSL_TRUSTED_PROXY_IPS` — optional comma-separated IP addresses of the direct reverse-proxy peers whose `X-Forwarded-For` header may be trusted for auth rate limiting. Leave empty unless the direct peer is known and controlled.
 
 Optional:
 
@@ -85,3 +86,9 @@ After deployment, check:
 - Staff dashboard works.
 
 Do not delete or recreate the existing `asph` app just to change deployment method. The goal is to update the existing service in place.
+
+## Auth rate-limit proxy trust
+
+The login and OAuth callback rate limiter keys requests by the direct peer address by default. `X-Forwarded-For` is only trusted when the direct `request.remote` address appears in `RSL_TRUSTED_PROXY_IPS`. This prevents clients from spoofing the header, but a reverse-proxy deployment with an unconfigured trusted-peer list can place visitors behind the same rate-limit bucket. If that occurs, inspect the application log for the direct peer address and add only the confirmed proxy address(es) to `RSL_TRUSTED_PROXY_IPS`; never trust arbitrary client-supplied addresses.
+
+For local HTTP development, use an HTTP `WEB_PUBLIC_URL` so the OAuth state cookie is not marked Secure. Production must use HTTPS.
