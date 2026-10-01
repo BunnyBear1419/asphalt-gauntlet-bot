@@ -162,8 +162,10 @@ async def settle_tournament_rewards(db, tournament: dict) -> dict:
                 return {"ok": False, "settled": settled, "reason": f"{placement}_reward_failed"}
 
     marker = f"tournament:{tournament_id}:rewards_settled"
-    await db.tournaments.update_one(
+    marker_result = await db.tournaments.update_one(
         {"_id": tournament.get("_id")},
         {"$set": {"rewards_settled": True, "rewards_settled_marker": marker}},
     )
+    if getattr(marker_result, "matched_count", 1) != 1:
+        return {"ok": False, "settled": settled, "reason": "settlement_marker_persist_failed"}
     return {"ok": True, "settled": settled, "marker": marker}
