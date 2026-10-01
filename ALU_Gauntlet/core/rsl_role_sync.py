@@ -10,8 +10,10 @@ log = logging.getLogger(__name__)
 
 from .rsl_roles import (
     GAUNTLET_SEASONAL_ROLES,
+    TOURNAMENT_SEASONAL_ROLES,
     XP_LEVEL_ROLES,
     build_gauntlet_season_roles,
+    build_tournament_season_roles,
 )
 
 
@@ -103,6 +105,60 @@ async def sync_gauntlet_season_roles(
                 log.exception("Failed to add seasonal RSL roles to member %s in guild %s", member.id, guild.id)
     return desired
 
+
+async def sync_tournament_season_roles(
+    guild: discord.Guild,
+    *,
+    tournament_champion: str | int | None,
+    runner_up: str | int | None = None,
+    third_place: str | int | None = None,
+    finalists: Iterable[str | int] = (),
+    role_names: dict[str, str] | None = None,
+    role_ids: dict[str, str] | None = None,
+) -> dict[str, list[str]]:
+    """Apply the current tournament-season recognition roles.
+
+    Tournament completion is authoritative: seasonal tournament roles are
+    reconciled from the newly completed event so an older champion/runner-up
+    cannot retain a stale seasonal role after a replacement event completes.
+    """
+    desired = build_tournament_season_roles(
+        tournament_champion=tournament_champion,
+        runner_up=runner_up,
+        third_place=third_place,
+        finalists=finalists,
+    )
+    managed = await _ensure_roles(guild, TOURNAMENT_SEASONAL_ROLES, role_names, role_ids)
+    desired_by_user: dict[str, set[str]] = {}
+    for role_name, users in desired.items():
+        for user_id in users:
+            desired_by_user.setdefault(str(user_id), set()).add(role_name)
+
+    for member in guild.members:
+        existing_ids = {role.id for role in member.roles}
+        removals = [
+            managed[name]
+            for name in TOURNAMENT_SEASONAL_ROLES
+            if name in managed
+            and managed[name].id in existing_ids
+            and name not in desired_by_user.get(str(member.id), set())
+        ]
+        additions = [
+            managed[name]
+            for name in desired_by_user.get(str(member.id), set())
+            if name in managed and managed[name].id not in existing_ids
+        ]
+        if removals:
+            try:
+                await member.remove_roles(*removals, reason="RSL tournament role rotation")
+            except Exception:
+                log.exception("Failed to remove tournament seasonal roles from member %s in guild %s", member.id, guild.id)
+        if additions:
+            try:
+                await member.add_roles(*additions, reason="RSL tournament role assignment")
+            except Exception:
+                log.exception("Failed to add tournament seasonal roles to member %s in guild %s", member.id, guild.id)
+    return desired
 
 async def clear_gauntlet_season_roles(guild: discord.Guild, role_names: dict[str, str] | None = None, role_ids: dict[str, str] | None = None) -> None:
     """Remove managed Gauntlet seasonal roles when a new season opens."""
