@@ -73,3 +73,33 @@ def test_web_sessions_use_datetime_ttl_index():
     assert "datetime.now(timezone.utc)" in auth
     assert 'name="ttl_web_sessions"' in main
     assert "expireAfterSeconds=0" in main
+
+
+def test_web_session_cache_and_legacy_ttl_cleanup_are_type_safe():
+    auth = read("ALU_Gauntlet/web/auth.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "self.sessions[token] = (expiry.timestamp(), user)" in auth
+    assert 'delete_many({"expires_at": {"$type": "number"}})' in main
+    assert "hasattr(self, "sessions")" not in auth
+
+
+def test_security_hardening_contracts_fail_closed():
+    hardening = read("ALU_Gauntlet/core/rsl_hardening.py")
+    ai = read("ALU_Gauntlet/core/rsl_ai_assistant.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    assert 'digest.update(b"\\0")' in hardening
+    assert "MatchState.SETTLED:set()" in hardening
+    assert "return str(action).strip().casefold() in ALLOWED_ACTIONS" in ai
+    assert "default-src 'self'" in core
+    assert "object-src 'none'" in core
+
+
+def test_scheduled_mongo_workflows_do_not_use_production_secret():
+    for path in (
+        ".github/workflows/mongodb-backup.yml",
+        ".github/workflows/mongodb-backup-verify.yml",
+        ".github/workflows/mongodb-restore-test.yml",
+    ):
+        source = read(path)
+        assert "secrets.MONGO_CI_URI" in source
+        assert "secrets.MONGO_URI" not in source
