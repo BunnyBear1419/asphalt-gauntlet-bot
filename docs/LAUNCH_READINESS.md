@@ -4,9 +4,9 @@
 - Production branch: `main`
 - Hosting: Discloud
 - Automated CI/deploy: GitHub Actions
-- Latest verified release: `eed421b2bd159fd1f4656edb2f353068052ac5b9`
-- Latest CI/deploy run: #3222
-- Automated tests: passed (508 passed, 2 skipped, 1 warning)
+- Latest verified release: `e300e7d2e9b0928a379306d4b1679e2675090f9e`
+- Latest CI/deploy run: #3236 — passed
+- Automated tests: passed
 - Production module import smoke gate: passed
 - Compile check: passed
 - Dependency audit: passed
@@ -17,7 +17,7 @@
 - Rollback path: available; not required for the latest successful release
 
 ## Current assurance status
-The automated implementation and regression phase is complete for the current release. Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
+The automated implementation and regression phase is complete for the current verified release. Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
 
 The remaining unchecked acceptance items below are intentionally manual/live acceptance tests. They are not marked complete based solely on automated tests.
 
@@ -33,6 +33,8 @@ The remaining unchecked acceptance items below are intentionally manual/live acc
 - [x] Security, upload validation, settlement idempotency, guild isolation, and concurrency protections are covered by regression tests
 - [x] Cross-cutting assurance layer added without duplicating canonical diagnostics, notifications, economy, season history, or Discord support
 - [x] Privacy export/request, evidence timeline, public status, transparency, readiness, and admin security/performance APIs are covered by regression tests
+- [x] Non-transactional paid-ticket purchase failure cannot permanently consume Coins without a ticket grant
+- [x] OAuth callback errors no longer expose exception type/details to unauthenticated users
 
 ## Final acceptance test matrix
 
