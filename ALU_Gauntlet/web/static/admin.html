@@ -371,7 +371,7 @@ async function loadGuilds(){
  guildId=d.guilds[0].id;
  select.value=guildId;
  await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});
- select.addEventListener("change",async()=>{guildId=select.value;await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});await loadBranding();await loadRslServerSetup();});
+ select.addEventListener("change",async()=>{guildId=select.value;await api("/api/admin/select-guild",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({guild_id:guildId})});await loadBranding();await loadRslServerSetup();await loadReliability();});
  await loadBranding();
  await loadRslServerSetup();
  await loadXpSettings();
