@@ -40,7 +40,9 @@ class DiscordOAuth:
         self.client_secret = os.getenv("DISCORD_CLIENT_SECRET", "").strip()
         self.public_url = os.getenv("WEB_PUBLIC_URL", PRODUCTION_PUBLIC_URL).rstrip("/")
         self.allowed_staff_ids = {value.strip() for value in os.getenv("WEB_STAFF_USER_IDS", "").split(",") if value.strip()}
-        # MongoDB is the durable session store; the in-memory map is retained only\n        # as a fast cache for the current process.\n        self.sessions: dict[str, tuple[float, WebUser]] = {}
+        # MongoDB is the durable session store; the in-memory map is retained only
+        # as a fast cache for the current process.
+        self.sessions: dict[str, tuple[float, WebUser]] = {}
         self.states: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
