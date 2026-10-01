@@ -560,7 +560,6 @@ class AdminRoutesMixin:
 
     async def admin_tickets(self, request: web.Request) -> web.Response:
         _, guild_id, _ = await self.require_admin(request)
-        from bson import ObjectId
         status = str(request.query.get("status") or "").strip().lower()
         query = {"guild_id": str(guild_id)}
         if status:
