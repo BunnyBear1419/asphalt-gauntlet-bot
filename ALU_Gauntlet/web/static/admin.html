@@ -311,7 +311,11 @@
     <div class="admin-actions"><button class="admin-btn primary" id="run-integrity">Run Integrity Check</button><button class="admin-btn" id="load-evidence">Review Evidence Queue</button><span class="admin-status" id="integrity-status"></span></div>
     <div id="integrity-results" class="admin-log" style="margin-top:12px"></div>
   </div>
-  <div class="admin-card"><h2>Season Finalization</h2><p>Preview the current season before finalization. Finalization is transaction-guarded and refuses concurrent processing.</p>
+  <div class="admin-card"><h2>Reliability &amp; Recovery</h2><p>One consolidated view of backups, economy integrity, staff attention queues, retention policy and release readiness. This reuses the existing Operations, Audit, Security and Safe Mode systems.</p>
+    <div class="admin-actions"><button class="admin-btn primary" id="load-reliability">Run Reliability Check</button><button class="admin-btn" id="create-recovery-checkpoint">Create Recovery Checkpoint</button><span class="admin-status" id="reliability-status"></span></div>
+    <div id="reliability-results" class="admin-log" style="margin-top:12px"></div>
+  </div>
+<p>Preview the current season before finalization. Finalization is transaction-guarded and refuses concurrent processing.</p>
     <div class="admin-actions"><button class="admin-btn" id="season-preview">Preview Current Season</button><button class="admin-btn primary" id="season-finalize">Finalize Season</button><label style="display:flex;align-items:center;gap:7px;color:#aebdd2;font-size:11px"><input id="season-start-next" type="checkbox"> Start next season automatically</label><span class="admin-status" id="season-finalize-status"></span></div>
     <div id="season-preview-results" class="admin-status"></div>
   </div>
@@ -607,6 +611,33 @@ $("safe-mode-toggle")?.addEventListener("click",async()=>{
   await loadTicketAnalytics();loadTicketSettings();
 loadOpsStatus();
  }catch(e){setStatus("safe-mode-status",e.message,false)}
+});
+async function loadReliability(){
+ try{
+  const d=await api("/api/admin/operations"+q()+"&action=reliability");
+  const r=d.readiness||{},a=d.attention||{},e=d.economy||{},b=d.backup||{};
+  const rows=[
+   ["Release",d.release_sha||"unknown"],
+   ["Readiness",r.status||"UNKNOWN"],
+   ["Backup evidence",b.available?((b.file_count||0)+" file(s), latest "+(b.age_seconds==null?"unknown":Math.round(b.age_seconds/3600)+"h ago")):"Not available"],
+   ["Economy integrity",e.ok?"PASS":"REVIEW REQUIRED"],
+   ["Staff attention queue",String(a.total||0)+" item(s)"],
+   ["Retention",Object.entries(d.retention_days||{}).map(([k,v])=>k+"="+v+"d").join(" • ")||"defaults"],
+   ["Competition mode",d.safe_mode?"SAFE MODE":"LIVE"]
+  ];
+  $("reliability-results").innerHTML=rows.map(x=>'<div class="admin-check"><span>'+escapeHtml(x[0])+'</span><b class="'+((x[1]==="PASS"||x[1]==="READY"||x[1]==="LIVE")?"ok":"")+'">'+escapeHtml(x[1])+'</b></div>').join("");
+  setStatus("reliability-status",r.status==="READY"?"Reliability check passed.":"Reliability check completed; review any warnings.");
+ }catch(e){setStatus("reliability-status",e.message,false)}
+}
+$("load-reliability")?.addEventListener("click",loadReliability);
+$("create-recovery-checkpoint")?.addEventListener("click",async()=>{
+ if(!confirm("Create a redacted recovery checkpoint for the selected guild? This does not change competition records."))return;
+ try{
+  setStatus("reliability-status","Creating recovery checkpoint…");
+  const d=await api("/api/admin/operations"+q(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"recovery_checkpoint"})});
+  setStatus("reliability-status","Checkpoint "+d.checkpoint.id+" created.");
+  await loadReliability();
+ }catch(e){setStatus("reliability-status",e.message,false)}
 });
 $("run-integrity")?.addEventListener("click",async()=>{
  try{setStatus("integrity-status","Running integrity checks…");const d=await api("/api/admin/diagnostics"+q());$("integrity-results").innerHTML=d.checks.map(x=>'<div class="admin-check"><span>'+escapeHtml(x.name)+'</span><b class="'+(x.ok?"ok":"bad")+'">'+(x.ok?"PASS":"FAIL")+(x.detail?" — "+escapeHtml(x.detail):"")+"</b></div>").join("");setStatus("integrity-status",d.ok?"Integrity check passed.":"Integrity check found items requiring review.",d.ok)}catch(e){setStatus("integrity-status",e.message,false)}
