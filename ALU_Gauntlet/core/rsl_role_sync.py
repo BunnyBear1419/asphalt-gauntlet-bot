@@ -147,9 +147,9 @@ async def reconcile_gauntlet_season_roles(
 async def sync_tournament_season_roles(
     guild: discord.Guild,
     *,
-    tournament_champion: str | int | None,
-    runner_up: str | int | None = None,
-    third_place: str | int | None = None,
+    tournament_champion: str | int | Iterable[str | int] | None,
+    runner_up: str | int | Iterable[str | int] | None = None,
+    third_place: str | int | Iterable[str | int] | None = None,
     finalists: Iterable[str | int] = (),
     role_names: dict[str, str] | None = None,
     role_ids: dict[str, str] | None = None,
