@@ -18,7 +18,7 @@ class TrustRoutesMixin:
     async def privacy_request(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception:
             payload = {}
         request_type = str(payload.get("type") or "account_data").strip().lower()
