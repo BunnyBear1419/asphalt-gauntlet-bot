@@ -216,25 +216,25 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             )
             division_winners[division_number] = winner["user_id"]
 
+        # Persist the desired role state even if the Discord guild object is
+        # temporarily unavailable. This keeps season recognition recoverable
+        # across bot restarts/cache misses.
+        role_snapshot = build_gauntlet_season_roles(
+            division_winners=division_winners,
+            player_stats=player_stats,
+            overall_activity_stats=activity_stats,
+            champion_user_id=str(points_rows[0].get("user_id")) if points_rows else None,
+        )
+        await bot.db.season_state.update_one(
+            {"_id": state_id, "season_number": current_season},
+            {"$set": {"gauntlet_role_snapshot": role_snapshot}},
+        )
         guild = bot.get_guild(int(guild_id)) if guild_id.isdigit() else None
         if guild is not None:
             role_config = await bot.db.settings.find_one(
                 {"_id": guild_id},
                 {"achievement_role_names": 1, "achievement_role_ids": 1},
             ) or {}
-            # Persist the exact desired seasonal role state before making any
-            # Discord API calls. Driver records are reset during rollover, so
-            # this snapshot is the durable source for retrying role delivery.
-            role_snapshot = build_gauntlet_season_roles(
-                division_winners=division_winners,
-                player_stats=player_stats,
-                overall_activity_stats=activity_stats,
-                champion_user_id=str(points_rows[0].get("user_id")) if points_rows else None,
-            )
-            await bot.db.season_state.update_one(
-                {"_id": state_id, "season_number": current_season},
-                {"$set": {"gauntlet_role_snapshot": role_snapshot}},
-            )
             await sync_gauntlet_season_roles(
                 guild,
                 division_winners=division_winners,
@@ -262,6 +262,7 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             "closed_at": now,
             "scheduled_start": previous_start,
             "scheduled_end": previous_end,
+            "gauntlet_role_snapshot": role_snapshot,
         },
         upsert=True,
     )
