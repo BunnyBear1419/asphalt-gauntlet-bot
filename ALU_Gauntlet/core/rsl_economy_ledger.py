@@ -8,6 +8,7 @@ from its ledger record.
 from __future__ import annotations
 
 import time
+import hashlib
 
 
 def _result(existing: dict, transaction_id: str) -> dict:
@@ -66,7 +67,14 @@ async def _apply_without_transaction(
     query = {"_id": f"{guild_id}_{user_id}"}
     if amount < 0:
         query["rsl_coins"] = {"$gte": abs(amount)}
-    result = await db.drivers.update_one(query, {"$inc": {"rsl_coins": amount}})
+    marker = hashlib.sha256(transaction_id.encode("utf-8")).hexdigest()
+    result = await db.drivers.update_one(
+        query,
+        {
+            "$inc": {"rsl_coins": amount},
+            "$set": {f"rsl_coin_ledger_markers.{marker}": now},
+        },
+    )
     if getattr(result, "modified_count", 0) != 1:
         await db.rsl_economy_transactions.delete_one({"_id": transaction_id})
         return {
@@ -95,6 +103,60 @@ async def _apply_without_transaction(
         "balance_after": balance_after,
         "transaction_id": transaction_id,
     }
+
+
+async def reconcile_pending_coin_transactions(db, *, guild_id: str, limit: int = 500) -> dict:
+    """Recover non-transactional pending coin ledger rows safely."""
+    gid = str(guild_id)
+    repaired = skipped = failed = 0
+    cursor = db.rsl_economy_transactions.find(
+        {"guild_id": gid, "status": "pending"}
+    ).sort("created_at", 1).limit(max(1, min(1000, int(limit))))
+    async for row in cursor:
+        transaction_id = str(row.get("_id") or "")
+        user_id = str(row.get("user_id") or "")
+        if not transaction_id or not user_id:
+            failed += 1
+            continue
+        marker = hashlib.sha256(transaction_id.encode("utf-8")).hexdigest()
+        profile = await db.drivers.find_one(
+            {"_id": f"{gid}_{user_id}"},
+            {"rsl_coins": 1, f"rsl_coin_ledger_markers.{marker}": 1},
+        )
+        if not profile:
+            failed += 1
+            continue
+        markers = profile.get("rsl_coin_ledger_markers") or {}
+        if marker not in markers:
+            try:
+                result = await _apply_without_transaction(
+                    db,
+                    transaction_id=transaction_id,
+                    guild_id=gid,
+                    user_id=user_id,
+                    amount=int(row.get("amount", 0) or 0),
+                    transaction_type=str(row.get("type") or "recovery"),
+                    reference_id=str(row.get("reference_id") or ""),
+                    reason=str(row.get("reason") or "Recovered pending RSL coin transaction"),
+                    metadata=row.get("metadata") or {},
+                )
+                if result.get("ok"):
+                    repaired += 1
+                else:
+                    skipped += 1
+            except Exception:
+                failed += 1
+            continue
+        balance_after = int(profile.get("rsl_coins", 0) or 0)
+        result = await db.rsl_economy_transactions.update_one(
+            {"_id": transaction_id, "status": "pending"},
+            {"$set": {"status": "completed", "balance_after": balance_after, "completed_at": time.time()}},
+        )
+        if getattr(result, "modified_count", 0) == 1:
+            repaired += 1
+        else:
+            skipped += 1
+    return {"repaired": repaired, "skipped": skipped, "failed": failed}
 
 
 async def apply_coin_transaction(
