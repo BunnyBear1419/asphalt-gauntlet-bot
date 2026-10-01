@@ -27,22 +27,43 @@ class RSLXPCog(commands.Cog):
         try:
             level = progress_for_xp(int(doc.get("rsl_xp", 0) or 0), settings)["level"]
             await sync_xp_rank_role(member, level, settings.get("achievement_role_names"), settings.get("achievement_role_ids"))
+            role_sync_ok = True
+            managed_role_ids = set()
             for reward in settings.get("role_rewards", []) or []:
                 try:
                     threshold = int(reward.get("level", 0) or 0)
                     role = member.guild.get_role(int(reward.get("role_id", 0) or 0))
                 except (TypeError, ValueError):
                     role, threshold = None, 0
-                if role and level >= threshold and role not in member.roles:
-                    try:
-                        await member.add_roles(role, reason="RSL XP role reward")
-                    except Exception:
-                        import logging
-                        logging.getLogger(__name__).exception(
-                            "Failed to grant RSL XP reward role %s to %s",
-                            getattr(role, "id", "unknown"),
-                            user_id,
-                        )
+                if role:
+                    managed_role_ids.add(role.id)
+                    if level >= threshold and role not in member.roles:
+                        try:
+                            await member.add_roles(role, reason="RSL XP role reward")
+                        except Exception:
+                            role_sync_ok = False
+                            import logging
+                            logging.getLogger(__name__).exception(
+                                "Failed to grant RSL XP reward role %s to %s",
+                                getattr(role, "id", "unknown"),
+                                user_id,
+                            )
+            if level >= 5:
+                rank_role_name = next(
+                    (name for threshold, name in sorted(((int(k), v) for k, v in __import__("ALU_Gauntlet.core.rsl_role_sync", fromlist=["XP_LEVEL_ROLES"]).XP_LEVEL_ROLES.items()))
+                     if level >= threshold),
+                    None,
+                )
+                rank_ids = settings.get("achievement_role_ids") or {}
+                if rank_role_name and rank_role_name in rank_ids:
+                    rank_role = member.guild.get_role(int(rank_ids[rank_role_name]))
+                    if rank_role is not None and rank_role not in member.roles:
+                        role_sync_ok = False
+            if role_sync_ok:
+                await self.bot.db.drivers.update_one(
+                    {"_id": f"{guild_id}_{user_id}"},
+                    {"$set": {"rsl_xp_role_sync_pending": False}},
+                )
             return level
         except Exception:
             import logging
