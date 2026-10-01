@@ -129,16 +129,20 @@ async def _ensure_database_indexes():
     # Defense-in-depth uniqueness guard. Older Mongo deployments can reject
     # the $in partial-filter form, and legacy duplicate rows can prevent index
     # creation. Never make the entire bot fail startup for this optimization.
-    duplicate_cursor = db.active_challenges.aggregate([
-        {"$match": {"status": {"$in": ["active", "processing"]}}},
-        {"$group": {
-            "_id": {"guild_id": "$guild_id", "challenger_id": "$challenger_id"},
-            "count": {"$sum": 1},
-        }},
-        {"$match": {"count": {"$gt": 1}}},
-        {"$limit": 1},
-    ])
-    duplicates = await duplicate_cursor.to_list(length=1)
+    try:
+        duplicate_cursor = db.active_challenges.aggregate([
+            {"$match": {"status": {"$in": ["active", "processing"]}}},
+            {"$group": {
+                "_id": {"guild_id": "$guild_id", "challenger_id": "$challenger_id"},
+                "count": {"$sum": 1},
+            }},
+            {"$match": {"count": {"$gt": 1}}},
+            {"$limit": 1},
+        ])
+        duplicates = await duplicate_cursor.to_list(length=1)
+    except Exception:
+        duplicates = []
+        index_log.exception("Unable to preflight active Gauntlet challenge duplicates; continuing with guarded index creation")
     if duplicates:
         import logging
         logging.getLogger(__name__).error(
