@@ -5,6 +5,7 @@ All features are free and separate from competitive Gauntlet scoring.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pymongo.errors import DuplicateKeyError
 
 XP_CURVES = {
     "linear": lambda level: (level * 100) + 75,
@@ -133,12 +134,7 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
 
     async def _apply(session=None):
         kwargs = {"session": session} if session is not None else {}
-        try:
-            await db.rsl_xp_events.insert_one(event, **kwargs)
-        except Exception as exc:
-            if "duplicate" in str(exc).lower() or "e11000" in str(exc).lower():
-                return {"ok": True, "duplicate": True, "amount": 0}
-            raise
+        await db.rsl_xp_events.insert_one(event, **kwargs)
 
         profile = await db.drivers.find_one({"_id": profile_id}, {"rsl_xp_week": 1, "rsl_xp_month": 1}, **kwargs) or {}
         inc = {
@@ -162,6 +158,13 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
             raise ValueError("xp_profile_missing")
         return {"ok": True, "duplicate": False, "amount": final_amount, "boost": boost}
 
+    # Fast duplicate path avoids entering a Mongo transaction for an event
+    # that is already committed. The insert remains the authoritative race-safe
+    # guard for concurrent first writers.
+    existing_event = await db.rsl_xp_events.find_one({"_id": transaction_id}, {"_id": 1})
+    if existing_event:
+        return {"ok": True, "duplicate": True, "amount": 0}
+
     client = getattr(db, "client", None)
     if client is None:
         try:
@@ -182,6 +185,8 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
                 if result.get("duplicate"):
                     return result
                 return result
+    except DuplicateKeyError:
+        return {"ok": True, "duplicate": True, "amount": 0}
     except Exception as exc:
         if "duplicate" in str(exc).lower() or "e11000" in str(exc).lower():
             return {"ok": True, "duplicate": True, "amount": 0}
