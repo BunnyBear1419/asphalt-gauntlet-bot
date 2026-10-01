@@ -95,6 +95,11 @@ async def _ensure_database_indexes():
         unique=True,
         name="uniq_notification_delivery",
     )
+    await db.web_sessions.create_index(
+        [("expires_at", 1)],
+        expireAfterSeconds=0,
+        name="ttl_web_sessions",
+    )
 
 
     await db.rsl_tickets.create_index([("guild_id", 1), ("status", 1), ("updated_at", -1)], name="idx_rsl_tickets_queue")
