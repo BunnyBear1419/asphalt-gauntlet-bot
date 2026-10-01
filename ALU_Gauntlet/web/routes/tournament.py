@@ -463,6 +463,11 @@ class TournamentRoutesMixin:
             await self._release_tournament_action(str(oid), match_id)
 
         if t.get("status") == "completed":
+            try:
+                from ...core.rsl_tournament_rewards import settle_tournament_rewards
+                await settle_tournament_rewards(self.bot.db, t)
+            except Exception:
+                log.exception("Failed to settle tournament rewards for %s", t.get("_id"))
             await self._sync_completed_tournament_roles(t)
         cfg = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
         channel_id = cfg.get("match_results_channel_id")
