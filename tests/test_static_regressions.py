@@ -172,3 +172,27 @@ def test_active_gauntlet_challenge_has_database_level_concurrency_guard():
     assert '"gauntlet_tickets": {"$gt": 0}' in core
     assert '{"$inc": {"gauntlet_tickets": -1}}' in core
     assert "session=session" in core
+
+
+def test_gauntlet_role_reconciliation_is_durable():
+    sync = read("ALU_Gauntlet/core/rsl_role_sync.py")
+    season = read("ALU_Gauntlet/cogs/season.py")
+    assert "gauntlet_role_snapshot" in sync
+    assert "reconcile_gauntlet_season_roles" in sync
+    assert "gauntlet_role_snapshot" in season
+    assert "role_reconcile_scheduler.start()" in season
+    assert "@tasks.loop(minutes=10)" in season
+
+
+def test_bonus_recovery_requires_persistent_postcondition():
+    source = read("ALU_Gauntlet/core/rsl_recovery.py")
+    assert 'refreshed = await db.matches.find_one(' in source
+    assert 'refreshed.get("rsl_margin_bonus_applied") is True' in source
+    assert '"bonus_failed"' in source
+
+
+def test_nontransactional_coin_recovery_has_atomic_driver_marker():
+    source = read("ALU_Gauntlet/core/rsl_economy_ledger.py")
+    assert "hashlib.sha256(transaction_id.encode" in source
+    assert "rsl_coin_ledger_markers" in source
+    assert "reconcile_pending_coin_transactions" in source
