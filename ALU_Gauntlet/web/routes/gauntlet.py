@@ -102,7 +102,7 @@ class GauntletRoutesMixin:
     async def gauntlet_submit_match(self, request: web.Request) -> web.Response:
         """Submit five attack runs for the signed-in driver's active challenge."""
         user,guild_id,_=await self.require_guild_member(request)
-        payload=await request.json()
+        payload = await self._json_object(request)
         from ..core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge, reconcile_processing_challenges
         uid=str(user.user_id); active=await claim_active_challenge(str(guild_id),uid)
         if not active: raise web.HTTPConflict(text="No active challenge is available to submit.")
@@ -180,7 +180,7 @@ class GauntletRoutesMixin:
     async def gauntlet_report_match(self, request: web.Request) -> web.Response:
         """Report a completed Gauntlet result for staff review."""
         user, guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         match_id = str(payload.get("match_id") or "").strip()
         reason = str(payload.get("reason") or "").strip()[:500]
         if not match_id:
