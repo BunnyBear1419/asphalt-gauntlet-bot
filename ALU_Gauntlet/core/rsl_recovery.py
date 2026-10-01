@@ -92,6 +92,13 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 stats["pending"] += 1
             continue
 
+        # A completed challenge is never reopened. If its deterministic
+        # reservation is missing, preserve the completed state and let the
+        # settlement/audit tools flag the missing reservation for staff review.
+        if str(challenge.get("status") or "") != "processing":
+            stats["skipped"] += 1
+            continue
+
         raw_processing_at = challenge.get("processing_at")
         try:
             processing_at = float(raw_processing_at) if raw_processing_at is not None else now
