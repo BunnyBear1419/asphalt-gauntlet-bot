@@ -1,7 +1,8 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
-SERVER = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+SERVER = web_source()
 NOTIFICATIONS = (ROOT / "ALU_Gauntlet" / "cogs" / "notifications.py").read_text(encoding="utf-8")
 CALENDAR = (ROOT / "ALU_Gauntlet" / "web" / "static" / "calendar.js").read_text(encoding="utf-8")
 
