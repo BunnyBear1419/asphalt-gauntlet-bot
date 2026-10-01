@@ -325,7 +325,7 @@ def test_v1_tournament_media_requires_magic_signatures_and_dimension_bounds():
         'bytes.fromhex("89504e470d0a1a0a")',
         'data[:4] == bytes.fromhex("1a45dfa3")',
         'data[4:8] == b"ftyp"',
-        "image.width > 8192 or image.height > 8192",
+        "image.width > 4096 or image.height > 4096",
         "The uploaded file does not match its declared media type.",
     ):
         assert marker in source
