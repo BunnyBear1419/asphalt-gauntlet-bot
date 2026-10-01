@@ -303,11 +303,8 @@ class ClubsRoutesMixin:
         )
         rows = await self.bot.db.club_invitations.find(
             {"invitee_id": str(user.user_id), "status": "pending"},
-            {"_id": 0},
         ).sort("created_at", -1).to_list(length=50)
-        for row in rows:
-            row["club_id"] = str(row.get("club_id", ""))
-        return web.json_response({"invitations": rows})
+        return web.json_response({"invitations": [{"id": str(row.pop("_id")), **row} for row in rows]})
 
     async def club_join_requests(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
@@ -320,13 +317,9 @@ class ClubsRoutesMixin:
         )
         rows = await self.bot.db.club_join_requests.find(
             {"club_id": {"$in": club_ids}, "status": "pending"},
-            {"_id": 0},
         ).sort("created_at", -1).to_list(length=100)
         names = {str(x["_id"]): str(x.get("name") or "") for x in clubs}
-        for row in rows:
-            row["club_id"] = str(row.get("club_id", ""))
-            row["club_name"] = names.get(row["club_id"], "Club")
-        return web.json_response({"requests": rows})
+        return web.json_response({"requests": [{"id": str(row.pop("_id")), **row, "club_name": names.get(str(row.get("club_id", "")), "Club")} for row in rows]})
 
     async def create_club_invite(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
@@ -346,6 +339,8 @@ class ClubsRoutesMixin:
             raise web.HTTPBadRequest(text="Select a valid Discord member.")
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": target}):
             raise web.HTTPConflict(text="That driver is already in a club in this server.")
+        if await self.bot.db.club_join_requests.find_one({"club_id": str(oid), "user_id": target, "status": "pending"}):
+            raise web.HTTPConflict(text="That driver already has a pending join request for this club.")
         if int(club.get("member_count", 0) or 0) >= 20:
             raise web.HTTPConflict(text="That club is full.")
         guild = self.bot.get_guild(int(club["guild_id"]))
@@ -439,6 +434,8 @@ class ClubsRoutesMixin:
             raise web.HTTPConflict(text="You are already in a club in this server.")
         if int(club.get("member_count", 0) or 0) >= 20:
             raise web.HTTPConflict(text="That club is full.")
+        if await self.bot.db.club_invitations.find_one({"club_id": str(oid), "invitee_id": str(user.user_id), "status": "pending"}):
+            raise web.HTTPConflict(text="You already have a pending invitation from this club.")
         now = datetime.now(timezone.utc)
         doc = {
             "guild_id": str(club["guild_id"]), "club_id": str(oid), "club_name": str(club.get("name") or "Club"),
