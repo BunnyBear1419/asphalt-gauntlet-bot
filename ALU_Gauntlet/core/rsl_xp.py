@@ -139,6 +139,7 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
         profile = await db.drivers.find_one({"_id": profile_id}, {"rsl_xp_week": 1, "rsl_xp_month": 1}, **kwargs) or {}
         inc = {
             "rsl_xp": final_amount,
+            "rsl_xp_role_sync_pending": True,
             "rsl_xp_message_count": 1 if source == "message" else 0,
             "rsl_xp_reaction_count": 1 if source == "reaction" else 0,
             "rsl_xp_voice_seconds": int(metadata.get("voice_seconds", 0)) if metadata else 0,
