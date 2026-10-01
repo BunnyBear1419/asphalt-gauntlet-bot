@@ -53,14 +53,22 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 # request failed after the match was committed, retry it from the
                 # same deterministic reservation instead of silently losing the
                 # bonus forever. The bonus helper is itself idempotent/atomic.
+                bonus_failed = False
                 if not reservation.get("rsl_margin_bonus_applied"):
                     try:
                         bonus = await apply_rsl_performance_bonus(db, reservation)
                         if bonus:
                             stats["bonus_retried"] += 1
                     except Exception:
+                        bonus_failed = True
                         log.exception("Failed to retry RSL performance bonus for settlement %s", reservation.get("_id"))
                         stats["bonus_failed"] += 1
+                # Do not close a processing challenge while an expected
+                # settlement-side adjustment is still missing. Leave it in the
+                # recovery queue so the next pass can retry the same reservation.
+                if bonus_failed and str(challenge.get("status") or "") == "processing":
+                    stats["pending"] += 1
+                    continue
                 result = await db.active_challenges.update_one(
                     {
                         "_id": challenge_id,
