@@ -31,6 +31,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
     now = time.time()
     stats = {"closed": 0, "reopened": 0, "pending": 0, "skipped": 0, "bonus_retried": 0, "bonus_failed": 0}
 
+    challenges = []
     async for challenge in db.active_challenges.find({
         "guild_id": guild_id,
         "$or": [
@@ -38,48 +39,53 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
             {"status": "completed", "rsl_bonus_checked": {"$ne": True}},
         ],
     }):
+        challenges.append(challenge)
+
+    challenge_ids = [str(item.get("_id") or "") for item in challenges if item.get("_id")]
+    reservations = {}
+    if challenge_ids:
+        async for reservation in db.matches.find({
+            "guild_id": guild_id,
+            "_id": {"$in": [f"{challenge_id}:match" for challenge_id in challenge_ids]},
+        }):
+            reservations[str(reservation.get("_id") or "")] = reservation
+
+    for challenge in challenges:
         challenge_id = str(challenge.get("_id") or "")
         if not challenge_id:
             stats["skipped"] += 1
             continue
 
-        reservation = await db.matches.find_one({
-            "_id": f"{challenge_id}:match",
-            "guild_id": guild_id,
-        })
+        reservation = reservations.get(f"{challenge_id}:match")
 
         if reservation:
             settlement_status = str(reservation.get("settlement_status") or "").casefold()
             if settlement_status == "completed":
-                # The base settlement is authoritative, but the RSL margin bonus
-                # is an optional post-settlement adjustment. If the original
-                # request failed after the match was committed, retry it from the
-                # same deterministic reservation instead of silently losing the
-                # bonus forever. The bonus helper is itself idempotent/atomic.
+                # The base settlement is authoritative. The RSL margin marker
+                # is also authoritative for recovery: zero-margin 3-2/2-3
+                # results are explicitly marked as checked by the bonus helper.
                 bonus_failed = False
-                if not reservation.get("rsl_margin_bonus_applied"):
+                if not reservation.get("rsl_bonus_checked"):
                     try:
                         await apply_rsl_performance_bonus(db, reservation)
                         refreshed = await db.matches.find_one(
                             {"_id": reservation["_id"]},
-                            {"rsl_margin_bonus_applied": 1},
+                            {"rsl_margin_bonus_applied": 1, "rsl_bonus_checked": 1},
                         ) or {}
-                        if refreshed.get("rsl_margin_bonus_applied") is True:
+                        if refreshed.get("rsl_bonus_checked") is True:
                             stats["bonus_retried"] += 1
-                        elif refreshed.get("rsl_margin_bonus_applied") is not True:
+                        else:
                             bonus_failed = True
                             stats["bonus_failed"] += 1
                             log.error(
-                                "RSL performance bonus retry returned without a durable applied marker for %s",
+                                "RSL performance bonus retry returned without a durable checked marker for %s",
                                 reservation.get("_id"),
                             )
                     except Exception:
                         bonus_failed = True
                         log.exception("Failed to retry RSL performance bonus for settlement %s", reservation.get("_id"))
                         stats["bonus_failed"] += 1
-                # Do not close a processing challenge while an expected
-                # settlement-side adjustment is still missing. Leave it in the
-                # recovery queue so the next pass can retry the same reservation.
+
                 if bonus_failed and str(challenge.get("status") or "") == "processing":
                     stats["pending"] += 1
                     continue
@@ -109,15 +115,9 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 else:
                     stats["skipped"] += 1
             else:
-                # Pending/unknown reservations are intentionally left locked.
-                # A second worker must never guess whether the settlement is
-                # safe to repeat.
                 stats["pending"] += 1
             continue
 
-        # A completed challenge is never reopened. If its deterministic
-        # reservation is missing, preserve the completed state and let the
-        # settlement/audit tools flag the missing reservation for staff review.
         if str(challenge.get("status") or "") != "processing":
             stats["skipped"] += 1
             continue
@@ -132,9 +132,6 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
             stats["skipped"] += 1
             continue
 
-        # No deterministic settlement reservation exists after the processing
-        # lease. Reopen the challenge for submission, but do not refund the
-        # ticket: it was consumed when the challenge was created.
         result = await db.active_challenges.update_one(
             {
                 "_id": challenge_id,
