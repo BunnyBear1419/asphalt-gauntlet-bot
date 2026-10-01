@@ -53,7 +53,8 @@ async def tournament_role_recipients(db, tournament: dict, entrant_ids: list[str
     team_event = int(tournament.get("team_size", 1) or 1) > 1
     resolved: dict[str, list[str]] = {}
     for index, entrant_id in enumerate(entrant_ids):
-        users = await _entrant_users(db, tournament, str(entrant_id)) if team_event else [str(entrant_id)]
+        entrant_id = str(entrant_id or "")
+        users = await _entrant_users(db, tournament, entrant_id) if team_event else ([entrant_id] if entrant_id else [])
         resolved[str(index)] = list(dict.fromkeys(str(uid) for uid in users if uid))
     return resolved
 
