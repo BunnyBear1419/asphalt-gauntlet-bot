@@ -431,6 +431,9 @@ class TournamentRoutesMixin:
                             t["status"] = "completed"
                             t["champion_id"] = winner_id
                             t["completed_at"] = datetime.now(timezone.utc).isoformat()
+                            loser = next((str(x) for x in (match.get("player_slots") or []) if str(x) != str(winner_id)), None)
+                            t["standings"] = ([{"entrant_id": str(winner_id)}] +
+                                              ([{"entrant_id": loser}] if loser else []))
                         else:
                             reset = bracket.get("grand_final_reset")
                             if isinstance(reset, dict):
@@ -441,6 +444,9 @@ class TournamentRoutesMixin:
                         t["status"] = "completed"
                         t["champion_id"] = winner_id
                         t["completed_at"] = datetime.now(timezone.utc).isoformat()
+                        loser = next((str(x) for x in (match.get("player_slots") or []) if str(x) != str(winner_id)), None)
+                        t["standings"] = ([{"entrant_id": str(winner_id)}] +
+                                          ([{"entrant_id": loser}] if loser else []))
                     elif match.get("bracket") == "winners" and match.get("winner_to") == "GF-M1" and winner_id:
                         # The Winners Final feeds the first Grand Final match, so its
                         # winner is the protected finalist for the double-elimination
