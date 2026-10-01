@@ -9,14 +9,27 @@ function verifiedBadge(m){return m.asphalt_verified?'<em class="verified-badge">
 function leaderName(c){const leader=(c.members||[]).find(m=>String(m.user_id)===String(c.leader_id));return leader?.username||"Club Leader"}
 function clubCard(c){
  const mine=c.mine,leader=c.leader;
- const roster=(c.members||[]).map(m=>'<div class="club-member-row"><span>'+esc(m.username)+'</span>'+verifiedBadge(m)+'<small>'+esc(m.asphalt_game_name||m.role||"Member")+'</small>'+(leader&&m.user_id!==c.leader_id?'<button class="qa qa-blue member-action" data-id="'+c.id+'" data-user="'+esc(m.user_id)+'" data-action="promote">Promote</button><button class="qa qa-blue member-action" data-id="'+c.id+'" data-user="'+esc(m.user_id)+'" data-action="demote">Demote</button><button class="qa qa-blue member-action" data-id="'+c.id+'" data-user="'+esc(m.user_id)+'" data-action="kick">Kick</button>':"")+'</div>').join("");
+ const myMember=(c.members||[]).find(m=>String(m.user_id)===String(c.current_user_id));
+ const officer=mine && myMember?.role==="officer";
+ const manager=leader||officer;
+ const roleLabel=r=>r==="leader"?"Leader":r==="officer"?"Officer":"Member";
+ const roster=(c.members||[]).map(m=>{
+   const targetRole=String(m.role||"member").toLowerCase();
+   const canManage=manager&&String(m.user_id)!==String(c.leader_id);
+   const controls=leader&&canManage
+     ? '<button class="qa qa-blue member-action" data-id="'+c.id+'" data-user="'+esc(m.user_id)+'" data-action="promote">Promote to Officer</button><button class="qa qa-blue member-action" data-id="'+c.id+'" data-user="'+esc(m.user_id)+'" data-action="demote">Demote to Member</button><button class="qa qa-blue member-action" data-id="'+c.id+'" data-user="'+esc(m.user_id)+'" data-action="kick">Kick</button>'
+     : officer&&canManage&&targetRole==="member"
+       ? '<button class="qa qa-blue member-action" data-id="'+c.id+'" data-user="'+esc(m.user_id)+'" data-action="kick">Kick</button>'
+       : "";
+   return '<div class="club-member-row"><span>'+esc(m.username)+'</span>'+verifiedBadge(m)+'<small>'+roleLabel(targetRole)+(m.asphalt_game_name?' · '+esc(m.asphalt_game_name):"")+'</small>'+controls+'</div>';
+ }).join("");
  return '<article class="club-card club-card-large" data-club-profile="'+esc(c.id)+'" tabindex="0" role="button" aria-label="View '+esc(c.name)+' club profile">'+
  (c.image?'<img class="club-cover" src="'+esc(c.image)+'" alt="'+esc(c.name)+' club artwork">':'<div class="club-cover club-cover-empty">🏁</div>')+
  '<div class="club-main"><div class="club-title"><div><span>CLUB</span><h2>'+esc(c.name)+'</h2></div><b>'+c.member_count+'/20</b></div>'+
  '<p>'+esc(c.about||"No club description yet.")+'</p>'+
  '<div class="club-quick-stats"><span>👤 '+c.member_count+' / 20 drivers</span><span>🏆 '+(c.tournament_count||0)+' team tournament'+((c.tournament_count||0)===1?"":"s")+'</span></div>'+
  '<div class="club-card-profile-link">View Club Profile →</div>'+
- '<div class="club-actions">'+(mine?(leader?'<span class="club-badge">LEADER</span>':'<span class="club-badge">MEMBER</span><button class="qa qa-blue leave-club" data-id="'+c.id+'">Leave Club</button>'):'<button class="qa qa-purple request-club" data-id="'+c.id+'">Request to Join</button>')+(leader?'<button class="qa qa-blue edit-club" data-id="'+c.id+'">Edit Profile</button><button class="qa qa-purple manage-club" data-id="'+c.id+'">Manage Membership</button>':"")+'</div></div></article>'
+ '<div class="club-actions">'+(mine?(leader?'<span class="club-badge">LEADER</span>':officer?'<span class="club-badge">OFFICER</span><button class="qa qa-blue leave-club" data-id="'+c.id+'">Leave Club</button>':'<span class="club-badge">MEMBER</span><button class="qa qa-blue leave-club" data-id="'+c.id+'">Leave Club</button>'):'<button class="qa qa-purple request-club" data-id="'+c.id+'">Request to Join</button>')+(leader?'<button class="qa qa-blue edit-club" data-id="'+c.id+'">Edit Profile</button>':"")+(manager?'<button class="qa qa-purple manage-club" data-id="'+c.id+'">Manage Membership</button>':"")+'</div></div></article>'
 }
 function clubRecordStats(c){const w=Number(c.tournament_wins||0),l=Number(c.tournament_losses||0),t=w+l;return {w,l,pct:t?Math.round(w/t*100):0}}
 function publicClubProfile(c){
