@@ -11,6 +11,16 @@ import time
 
 
 def _result(existing: dict, transaction_id: str) -> dict:
+    status = str(existing.get("status") or "").casefold()
+    if status != "completed":
+        return {
+            "ok": False,
+            "duplicate": True,
+            "reason": "transaction_pending",
+            "amount": int(existing.get("amount", 0) or 0),
+            "balance_after": existing.get("balance_after"),
+            "transaction_id": transaction_id,
+        }
     return {
         "ok": True,
         "duplicate": True,
