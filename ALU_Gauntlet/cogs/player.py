@@ -43,6 +43,15 @@ def _club_links(value: str) -> list[str]:
     return links
 
 
+async def _recount_club_members(club_id: str) -> int:
+    count = await bot.db.club_members.count_documents({"club_id": str(club_id)})
+    await bot.db.clubs.update_one(
+        {"_id": ObjectId(str(club_id))},
+        {"$set": {"member_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return count
+
+
 async def _club_for_user(guild_id: str, user_id: str):
     member = await bot.db.club_members.find_one({"guild_id": guild_id, "user_id": user_id})
     if not member:
@@ -268,7 +277,7 @@ class ClubMemberActionView(discord.ui.View):
                 await localize_text(bot, interaction.user.id, "❌ Officers cannot kick another Officer.", interaction.locale)
                 return
             await bot.db.club_members.delete_one({"_id": member["_id"]})
-            await bot.db.clubs.update_one({"_id": self.club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            await _recount_club_members(str(self.club["_id"]))
             message = "✅ Member removed from the club."
         elif action == "promote":
             if self.owner_role != "leader":
@@ -331,7 +340,7 @@ class ClubCenterView(discord.ui.View):
             return
         result = await bot.db.club_members.delete_one({"club_id": str(self.current_club["_id"]), "user_id": self.user_id})
         if result.deleted_count:
-            await bot.db.clubs.update_one({"_id": self.current_club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            await _recount_club_members(str(self.current_club["_id"]))
         await send_club_center(interaction, replace=True)
 
     @discord.ui.button(label="Edit Club", style=discord.ButtonStyle.primary, emoji="✏️")
