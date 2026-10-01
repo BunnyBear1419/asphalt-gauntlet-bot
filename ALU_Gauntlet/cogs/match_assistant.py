@@ -128,7 +128,8 @@ class MatchAssistantCog(commands.Cog):
             "guild_id", {"status": "processing"}
         )
         completed_bonus_guild_ids = await self.bot.db.active_challenges.distinct(
-            "guild_id", {"status": "completed"}
+            "guild_id",
+            {"status": "completed", "rsl_bonus_checked": {"$ne": True}},
         )
         guild_ids = set(processing_guild_ids) | set(completed_bonus_guild_ids)
         for guild_id in guild_ids:
@@ -139,6 +140,10 @@ class MatchAssistantCog(commands.Cog):
                 )
             except Exception:
                 # Recovery must not stop deadline reminders for other guilds.
+                import logging
+                logging.getLogger(__name__).exception(
+                    "RSL recovery scan failed for guild %s", guild_id
+                )
                 continue
         pending_coin_guild_ids = await self.bot.db.rsl_economy_transactions.distinct(
             "guild_id", {"status": "pending"}
@@ -149,6 +154,10 @@ class MatchAssistantCog(commands.Cog):
                     self.bot.db, guild_id=str(guild_id)
                 )
             except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "Pending RSL economy recovery failed for guild %s", guild_id
+                )
                 continue
         async for challenge in self.bot.db.active_challenges.find({"status": {"$in": ["active", "processing"]}}):
             try:
@@ -170,8 +179,9 @@ class MatchAssistantCog(commands.Cog):
         try:
             await self._scan()
         except Exception:
-            pass
-
+            import logging
+            logging.getLogger(__name__).exception("RSL match assistant scan failed")
+    
     @loop.before_loop
     async def before_loop(self):
         await self.bot.wait_until_ready()
