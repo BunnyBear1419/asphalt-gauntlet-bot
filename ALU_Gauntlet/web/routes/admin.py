@@ -751,7 +751,7 @@ class AdminRoutesMixin:
         match_id = str(payload.get("match_id") or "").strip()
         if not match_id:
             raise web.HTTPBadRequest(text="match_id is required.")
-        from ..core.core import revert_match_settlement
+        from ...core.core import revert_match_settlement
         try:
             match = await revert_match_settlement(str(guild_id), match_id, str(user.user_id))
         except RuntimeError as exc:
