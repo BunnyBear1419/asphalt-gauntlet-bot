@@ -115,3 +115,9 @@ def test_fairness_division_lookup_failure_fails_closed():
     source = read("ALU_Gauntlet/core/fairness.py")
     assert "same_division = False" in source
     assert "same_division = True" not in source
+
+def test_rsl_role_sync_does_not_silently_swallow_discord_role_failures():
+    source = read("ALU_Gauntlet/core/rsl_role_sync.py")
+    assert "import logging" in source
+    assert "log.exception(" in source
+    assert "Failed to add seasonal RSL roles" in source
