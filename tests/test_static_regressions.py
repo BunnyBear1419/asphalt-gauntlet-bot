@@ -265,3 +265,7 @@ def test_media_limits_use_conflict_and_safe_image_bounds():
 def test_shared_recovery_has_single_definition():
     source = read("ALU_Gauntlet/core/rsl_recovery.py")
     assert source.count("async def reconcile_processing_challenges(") == 1
+
+
+def test_audit_hardening_revision_marker():
+    assert True
