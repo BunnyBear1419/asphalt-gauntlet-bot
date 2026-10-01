@@ -54,6 +54,16 @@ class CoreRoutesMixin:
                 content_type="text/plain",
             )
 
+    async def _json_object(self, request: web.Request) -> dict[str, Any]:
+        """Parse a request body and require a JSON object for API mutations."""
+        try:
+            payload = await request.json()
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
+        if not isinstance(payload, dict):
+            raise web.HTTPBadRequest(text="JSON body must be an object.")
+        return payload
+
     def _request_origin_allowed(self, request: web.Request) -> bool:
         """Require a same-origin browser signal for cookie-authenticated mutations."""
         origin = str(request.headers.get("Origin") or "").strip().rstrip("/")
@@ -71,8 +81,16 @@ class CoreRoutesMixin:
     def _rate_limit_auth_request(self, request: web.Request, limit: int, window: int) -> bool:
         """Small process-local abuse guard for OAuth entry/callback endpoints."""
         now = time.time()
-        forwarded = str(request.headers.get("X-Forwarded-For") or "").split(",", 1)[0].strip()
-        key = forwarded or request.remote or "unknown"
+        remote = str(request.remote or "").strip()
+        trusted_proxies = {
+            value.strip()
+            for value in str(os.getenv("RSL_TRUSTED_PROXY_IPS", "")).split(",")
+            if value.strip()
+        }
+        forwarded = ""
+        if remote in trusted_proxies:
+            forwarded = str(request.headers.get("X-Forwarded-For") or "").split(",", 1)[0].strip()
+        key = forwarded or remote or "unknown"
         bucket = [ts for ts in self._auth_rate.get(key, []) if ts > now - window]
         if len(bucket) >= limit:
             self._auth_rate[key] = bucket
