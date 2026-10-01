@@ -67,7 +67,7 @@ class CalendarRoutesMixin:
     async def create_reminder(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
         doc = await self._reminder_payload(user, payload)
@@ -88,7 +88,7 @@ class CalendarRoutesMixin:
         if not existing:
             raise web.HTTPNotFound(text="Reminder not found.")
         try:
-            payload = await request.json()
+            payload = await self._json_object(request)
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
         doc = await self._reminder_payload(user, payload, existing)
