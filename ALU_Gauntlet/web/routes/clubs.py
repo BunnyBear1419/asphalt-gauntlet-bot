@@ -499,9 +499,6 @@ class ClubsRoutesMixin:
             raise web.HTTPConflict(text="This club already has the maximum number of pending invitations.")
         if await self.bot.db.club_invitations.count_documents({"invitee_id": target, "status": "pending"}) >= 5:
             raise web.HTTPConflict(text="That driver already has the maximum number of pending club invitations.")
-        await self._ensure_club_indexes()
-        if await self.bot.db.club_join_requests.count_documents({"club_id": str(oid), "status": "pending"}) >= 50:
-            raise web.HTTPConflict(text="This club already has the maximum number of pending join requests.")
         if int(club.get("member_count", 0) or 0) >= 20:
             raise web.HTTPConflict(text="That club is full.")
         guild = self.bot.get_guild(int(club["guild_id"]))
@@ -606,6 +603,9 @@ class ClubsRoutesMixin:
             raise web.HTTPNotFound(text="Club not found.")
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": str(user.user_id)}):
             raise web.HTTPConflict(text="You are already in a club in this server.")
+        await self._ensure_club_indexes()
+        if await self.bot.db.club_join_requests.count_documents({"club_id": str(oid), "status": "pending"}) >= 50:
+            raise web.HTTPConflict(text="This club already has the maximum number of pending join requests.")
         if int(club.get("member_count", 0) or 0) >= 20:
             raise web.HTTPConflict(text="That club is full.")
         if await self.bot.db.club_invitations.find_one({"club_id": str(oid), "invitee_id": str(user.user_id), "status": "pending"}):
@@ -647,10 +647,10 @@ class ClubsRoutesMixin:
         now = datetime.now(timezone.utc)
         expires_at = self._club_datetime(join_request.get("expires_at"))
         if expires_at is not None and expires_at <= now:
-            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now.isoformat()}})
+            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
             raise web.HTTPConflict(text="That join request has expired.")
         if action == "decline":
-            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now.isoformat()}})
+            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
             await self._club_notify_user(str(join_request["user_id"]), "RSL Club Join Request", f"Your request to join **{club.get('name', 'the club')}** was declined.")
             return web.json_response({"ok": True, "message": "Join request declined."})
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": str(join_request["user_id"])}):
