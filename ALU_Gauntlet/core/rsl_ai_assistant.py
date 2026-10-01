@@ -9,6 +9,15 @@ from dataclasses import dataclass
 from typing import Any
 
 READ_ONLY_TOPICS=frozenset({"rules","navigation","tickets","credits","xp","public_stats","diagnostics"})
+ALLOWED_ACTIONS=frozenset({
+    "explain_rules",
+    "navigate",
+    "explain_tickets",
+    "explain_credits",
+    "explain_xp",
+    "show_public_stats",
+    "show_diagnostics",
+})
 FORBIDDEN_ACTIONS=frozenset({"settle_match","verify_result","approve_proof","award_credits","change_ranking","change_bracket","punish_player","edit_competition"})
 
 @dataclass(frozen=True)
@@ -28,4 +37,6 @@ def safe_context(data:dict[str,Any])->dict[str,Any]:
     return {k:data[k] for k in allowed if k in data}
 
 def action_allowed(action:str)->bool:
-    return action not in FORBIDDEN_ACTIONS
+    # Fail closed: adding a new provider action must never silently grant
+    # mutation authority until it is explicitly reviewed and allowlisted.
+    return str(action).strip().casefold() in ALLOWED_ACTIONS
