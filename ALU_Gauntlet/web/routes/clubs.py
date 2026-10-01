@@ -328,6 +328,8 @@ class ClubsRoutesMixin:
         now = datetime.now(timezone.utc).isoformat()
         memberships = await self.bot.db.club_members.find({"user_id": str(user.user_id), "role": {"$in": ["leader", "officer"]}}, {"club_id": 1}).to_list(length=100)
         club_ids = [str(x.get("club_id")) for x in memberships if x.get("club_id")]
+        clubs = await self.bot.db.clubs.find({"_id": {"$in": [ObjectId(x) for x in club_ids if ObjectId.is_valid(x)]}}).to_list(length=100)
+        club_ids = [str(x["_id"]) for x in clubs]
         await self.bot.db.club_join_requests.update_many(
             {"club_id": {"$in": club_ids}, "status": "pending", "expires_at": {"$lte": now}},
             {"$set": {"status": "expired", "updated_at": now}},
@@ -520,7 +522,9 @@ class ClubsRoutesMixin:
         user = await self.require_user(request)
         now = datetime.now(timezone.utc).isoformat()
         await self.bot.db.club_invitations.update_many({"invitee_id": str(user.user_id), "status": "pending", "expires_at": {"$lte": now}}, {"$set": {"status": "expired", "updated_at": now}})
-        clubs = await self.bot.db.clubs.find({"leader_id": str(user.user_id)}).to_list(length=100)
+        memberships = await self.bot.db.club_members.find({"user_id": str(user.user_id), "role": {"$in": ["leader", "officer"]}}, {"club_id": 1}).to_list(length=100)
+        club_ids = [str(x.get("club_id")) for x in memberships if x.get("club_id")]
+        clubs = await self.bot.db.clubs.find({"_id": {"$in": [ObjectId(x) for x in club_ids if ObjectId.is_valid(x)]}}).to_list(length=100)
         club_ids = [str(x["_id"]) for x in clubs]
         await self.bot.db.club_join_requests.update_many({"club_id": {"$in": club_ids}, "status": "pending", "expires_at": {"$lte": now}}, {"$set": {"status": "expired", "updated_at": now}})
         invitations = await self.bot.db.club_invitations.find({"invitee_id": str(user.user_id), "status": "pending"}, {"_id": 1, "club_id": 1, "club_name": 1, "inviter_id": 1, "created_at": 1, "expires_at": 1}).sort("created_at", -1).to_list(length=50)
