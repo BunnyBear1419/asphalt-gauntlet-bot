@@ -1,8 +1,9 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAYER = (ROOT / "ALU_Gauntlet" / "cogs" / "player.py").read_text(encoding="utf-8")
-SERVER = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+SERVER = web_source()
 CLUBS_JS = (ROOT / "ALU_Gauntlet" / "web" / "static" / "clubs.js").read_text(encoding="utf-8")
 CLUB_JS = (ROOT / "ALU_Gauntlet" / "web" / "static" / "club.js").read_text(encoding="utf-8")
 
