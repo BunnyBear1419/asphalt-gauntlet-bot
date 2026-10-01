@@ -1,3 +1,4 @@
+from bson import ObjectId
 """RSL web admin route family."""
 from .._web_context import *
 
