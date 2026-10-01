@@ -40,6 +40,8 @@ from pymongo.server_api import ServerApi
 
 from pymongo.errors import CollectionInvalid, DuplicateKeyError
 from ..release import current_release_revision
+from .fairness import fair_match_snapshot
+from .gauntlet_progression import FREE_DAILY_TICKETS
 
 from PIL import Image
 
