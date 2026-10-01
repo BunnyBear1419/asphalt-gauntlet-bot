@@ -100,7 +100,10 @@ async def _ensure_database_indexes():
         expireAfterSeconds=0,
         name="ttl_web_sessions",
     )
-
+    # Sessions created before the TTL migration stored Unix timestamps. They
+    # cannot participate in a MongoDB date TTL index, so remove them once at
+    # startup rather than leaving stale legacy sessions around indefinitely.
+    await db.web_sessions.delete_many({"expires_at": {"$type": "number"}})
 
     await db.rsl_tickets.create_index([("guild_id", 1), ("status", 1), ("updated_at", -1)], name="idx_rsl_tickets_queue")
     await db.rsl_tickets.create_index([("guild_id", 1), ("user_id", 1), ("status", 1)], name="idx_rsl_tickets_user_status")
