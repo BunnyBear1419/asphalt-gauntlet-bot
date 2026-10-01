@@ -595,6 +595,29 @@ class TournamentRoutesMixin:
         data = bytes(await file_field.read())
         if not data: raise web.HTTPBadRequest(text="The selected file is empty.")
         if len(data) > max_size: raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=len(data))
+
+        # MongoDB stores this media inline for now. Bound both per-user and
+        # per-tournament submissions so repeated 12 MB uploads cannot grow the
+        # database without limit. Rejected media keeps audit metadata while its
+        # binary payload is removed after review.
+        max_user_media = 20
+        max_tournament_media = 100
+        user_media_count = await self.bot.db.tournament_media.count_documents({
+            "tournament_id": tournament_id,
+            "uploaded_by": str(user.user_id),
+        })
+        if user_media_count >= max_user_media:
+            raise web.HTTPTooManyRequests(
+                text="You have reached the tournament media submission limit."
+            )
+        tournament_media_count = await self.bot.db.tournament_media.count_documents({
+            "tournament_id": tournament_id,
+        })
+        if tournament_media_count >= max_tournament_media:
+            raise web.HTTPTooManyRequests(
+                text="This tournament has reached its media submission limit."
+            )
+
         filename = Path(file_field.filename or ("tournament-media." + ("mp4" if media_type == "video" else "png"))).name[:160]
         # Browser MIME types are advisory. Require a matching file signature.
         signatures = {
