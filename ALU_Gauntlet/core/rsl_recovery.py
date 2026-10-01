@@ -63,7 +63,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                         ) or {}
                         if refreshed.get("rsl_margin_bonus_applied") is True:
                             stats["bonus_retried"] += 1
-                        else:
+                        elif refreshed.get("rsl_margin_bonus_applied") is not True:
                             bonus_failed = True
                             stats["bonus_failed"] += 1
                             log.error(
