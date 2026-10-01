@@ -112,23 +112,20 @@ async def _ensure_database_indexes():
     await db.rsl_ticket_notifications.create_index([("event_key", 1)], unique=True, name="uniq_rsl_ticket_notification_event")
     await db.rsl_ticket_notifications.create_index([("guild_id", 1), ("status", 1), ("retry_at", 1)], name="idx_rsl_ticket_notification_retry")
     await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("created_at", -1)], name="idx_rsl_recovery_checkpoint")
-    await db.active_challenges.create_index(
-        [("guild_id", 1), ("status", 1), ("processing_at", 1)],
-        name="idx_active_challenge_status_processing",
-    )
-    await db.active_challenges.create_index(
-        [("guild_id", 1), ("status", 1), ("rsl_bonus_checked", 1)],
-        name="idx_active_challenge_bonus_recovery",
-    )
-    await db.rsl_economy_transactions.create_index(
-        [("guild_id", 1), ("status", 1), ("created_at", 1)],
-        name="idx_rsl_economy_pending_recovery",
-    )
-    await db.drivers.create_index(
-        [("guild_id", 1), ("rsl_xp", 1)],
-        name="idx_rsl_xp_role_reconciliation",
-    )
-
+    # Operational indexes are advisory. A legacy deployment or Mongo
+    # compatibility mismatch must never prevent the application from starting.
+    import logging
+    index_log = logging.getLogger(__name__)
+    for collection, keys, name in (
+        (db.active_challenges, [("guild_id", 1), ("status", 1), ("processing_at", 1)], "idx_active_challenge_status_processing"),
+        (db.active_challenges, [("guild_id", 1), ("status", 1), ("rsl_bonus_checked", 1)], "idx_active_challenge_bonus_recovery"),
+        (db.rsl_economy_transactions, [("guild_id", 1), ("status", 1), ("created_at", 1)], "idx_rsl_economy_pending_recovery"),
+        (db.drivers, [("guild_id", 1), ("rsl_xp", 1)], "idx_rsl_xp_role_reconciliation"),
+    ):
+        try:
+            await collection.create_index(keys, name=name)
+        except Exception:
+            index_log.exception("Unable to create advisory RSL index %s", name)
     # Defense-in-depth uniqueness guard. Older Mongo deployments can reject
     # the $in partial-filter form, and legacy duplicate rows can prevent index
     # creation. Never make the entire bot fail startup for this optimization.
