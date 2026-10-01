@@ -165,6 +165,7 @@ async def on_ready():
     from .core.rsl_economy_ledger import reconcile_pending_coin_transactions
     if not getattr(bot, "_rsl_role_recovery_done", False):
         bot._rsl_role_recovery_done = True
+        bot._rsl_tournament_achievement_recovery_done = True
         for guild in bot.guilds:
             try:
                 settings = await bot.db.settings.find_one({"_id": str(guild.id)}) or {}
