@@ -78,13 +78,13 @@ def test_double_elimination_losers_bracket_structure():
 
 def test_tournament_result_paths_cover_all_bracket_sections():
     discord_source = (ROOT / "ALU_Gauntlet" / "cogs" / "tournament.py").read_text(encoding="utf-8")
-    web_source = web_source()
+    composed_web_source = web_source()
     js_source = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.js").read_text(encoding="utf-8")
-    for source in (discord_source, web_source, js_source):
+    for source in (discord_source, composed_web_source, js_source):
         for marker in ("grand_final", "grand_final_reset", "losers"):
             assert marker in source
-    assert "tournament_admin_role_id" in web_source
-    assert "can_manage_results" in web_source
+    assert "tournament_admin_role_id" in composed_web_source
+    assert "can_manage_results" in composed_web_source
     assert '"standings":t.get("standings")' in discord_source
     assert '/api/tournaments/start' in js_source
     assert 'id="start-tournament"' in js_source
