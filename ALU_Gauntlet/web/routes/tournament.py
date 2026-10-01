@@ -660,7 +660,12 @@ class TournamentRoutesMixin:
         if not media: raise web.HTTPNotFound(text="Media submission not found.")
         if media.get("status") != "pending": raise web.HTTPConflict(text="This media submission has already been reviewed.")
         now = datetime.now(timezone.utc).isoformat()
-        result = await self.bot.db.tournament_media.update_one({"_id": media_id, "guild_id": guild_id, "status": "pending"}, {"$set": {"status": "approved" if action == "approve" else "rejected", "approved_by": str(user.user_id) if action == "approve" else None, "approved_at": now if action == "approve" else None, "reviewed_by": str(user.user_id), "reviewed_at": now}})
+        update = {"$set": {"status": "approved" if action == "approve" else "rejected", "approved_by": str(user.user_id) if action == "approve" else None, "approved_at": now if action == "approve" else None, "reviewed_by": str(user.user_id), "reviewed_at": now}}
+        if action == "reject":
+            # Rejected submissions remain auditable without retaining their
+            # potentially large binary payload in MongoDB.
+            update["$unset"] = {"data": ""}
+        result = await self.bot.db.tournament_media.update_one({"_id": media_id, "guild_id": guild_id, "status": "pending"}, update)
         if not result.modified_count:
             raise web.HTTPConflict(text="This media submission was already reviewed.")
         return web.json_response({"ok": True, "message": "Media approved and published." if action == "approve" else "Media rejected."})
