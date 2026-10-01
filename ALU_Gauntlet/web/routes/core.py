@@ -2443,6 +2443,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/clubs", self.clubs)
         self.app.router.add_post("/api/clubs", self.create_club)
         self.app.router.add_post("/api/clubs/update", self.update_club)
+        self.app.router.add_post("/api/clubs/transfer-leadership", self.transfer_club_leadership)
+        self.app.router.add_post("/api/clubs/delete", self.delete_club)
         self.app.router.add_post("/api/clubs/join", self.join_club)
         self.app.router.add_post("/api/clubs/leave", self.leave_club)
         self.app.router.add_post("/api/clubs/member", self.manage_club_member)
