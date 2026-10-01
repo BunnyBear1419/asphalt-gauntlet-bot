@@ -520,6 +520,9 @@ jobs:
               then
                 rollback_web_ok=true
               fi
+            elif [ "$rollback_web_http" = "404" ]; then
+              echo "Rollback revision does not expose /rsl-healthz; continuing with the authoritative fresh Mongo heartbeat and web-surface checks."
+              rollback_web_ok=true
             fi
 
             if [ "$discloud_http" = "200" ] && [ "$rollback_web_ok" = "true" ] && \
