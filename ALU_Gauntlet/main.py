@@ -128,7 +128,8 @@ async def _ensure_database_indexes():
         duplicates = await duplicate_cursor.to_list(length=1)
     except Exception:
         duplicates = []
-        index_log.exception("Unable to preflight active Gauntlet challenge duplicates; continuing with guarded index creation")
+        import logging
+        logging.getLogger(__name__).exception("Unable to preflight active Gauntlet challenge duplicates; continuing with guarded index creation")
     if duplicates:
         import logging
         logging.getLogger(__name__).error(
