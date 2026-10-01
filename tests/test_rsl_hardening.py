@@ -1,4 +1,3 @@
-from pathlib import Path
 from ALU_Gauntlet.core.rsl_hardening import *
 
 def test_match_state_machine():
