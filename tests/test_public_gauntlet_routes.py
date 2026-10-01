@@ -1,3 +1,4 @@
+from web_source import web_source
 """Regression checks for the public Gauntlet route/SEO contract."""
 from pathlib import Path
 
@@ -6,7 +7,7 @@ SERVER = ROOT / "ALU_Gauntlet" / "web" / "server.py"
 
 
 def test_public_gauntlet_routes_are_registered():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     expected = (
         '/gauntlet/registration',
         '/gauntlet/defense',
@@ -19,7 +20,7 @@ def test_public_gauntlet_routes_are_registered():
 
 
 def test_public_gauntlet_pages_have_search_descriptions():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     expected = (
         '"gauntlet-registration.html":',
         '"gauntlet-defense.html":',
