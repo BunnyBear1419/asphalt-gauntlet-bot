@@ -7,6 +7,7 @@ import os
 import secrets
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from aiohttp import ClientError, ClientSession, web
@@ -183,7 +184,8 @@ class DiscordOAuth:
 
     async def create_session(self, user: WebUser) -> str:
         token = secrets.token_urlsafe(32)
-        expiry = time.time() + SESSION_TTL
+        now_dt = datetime.now(timezone.utc)
+        expiry = now_dt + timedelta(seconds=SESSION_TTL)
         # Defensive lazy initialization keeps authentication recoverable if a
         # long-lived web process was started from an older module instance.
         if not hasattr(self, "sessions"):
@@ -195,7 +197,7 @@ class DiscordOAuth:
             try:
                 await db.web_sessions.update_one(
                     {"_id": self._session_key(token)},
-                    {"$set": {"expires_at": expiry, "user": self._serialize_user(user), "created_at": time.time(), "last_seen": time.time()}},
+                    {"$set": {"expires_at": expiry, "user": self._serialize_user(user), "created_at": now_dt, "last_seen": now_dt}},
                     upsert=True,
                 )
             except Exception:
@@ -225,19 +227,31 @@ class DiscordOAuth:
             return None
         try:
             record = await db.web_sessions.find_one({"_id": self._session_key(token)})
-            if not record or float(record.get("expires_at", 0)) <= now:
+            raw_expiry = record.get("expires_at") if record else None
+            if isinstance(raw_expiry, datetime):
+                expiry_dt = raw_expiry if raw_expiry.tzinfo else raw_expiry.replace(tzinfo=timezone.utc)
+                expired = expiry_dt.timestamp() <= now
+            else:
+                try:
+                    expired = float(raw_expiry or 0) <= now
+                except (TypeError, ValueError):
+                    expired = True
+            if not record or expired:
                 if record:
                     await db.web_sessions.delete_one({"_id": self._session_key(token)})
                 return None
             user = self._deserialize_user(record.get("user") or {})
-            new_expiry = now + SESSION_TTL
-            await db.web_sessions.update_one({"_id": self._session_key(token)}, {"$set": {"expires_at": new_expiry, "last_seen": now}})
+            new_expiry = datetime.now(timezone.utc) + timedelta(seconds=SESSION_TTL)
+            await db.web_sessions.update_one(
+                {"_id": self._session_key(token)},
+                {"$set": {"expires_at": new_expiry, "last_seen": datetime.now(timezone.utc)}},
+            )
         except Exception:
             # A broken/temporarily unavailable durable session must not turn
             # every authenticated page request into HTTP 500.
             return None
         async with self._lock:
-            self.sessions[token] = (new_expiry, user)
+            self.sessions[token] = (new_expiry.timestamp(), user)
         return user
 
     async def destroy_session(self, request: web.Request) -> None:
