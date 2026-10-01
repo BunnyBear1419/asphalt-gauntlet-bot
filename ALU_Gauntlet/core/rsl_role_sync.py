@@ -200,6 +200,81 @@ async def sync_tournament_achievement_roles(
                 )
     return desired
 
+
+async def reconcile_completed_tournament_achievement_roles(
+    db,
+    guild: discord.Guild,
+    *,
+    role_names: dict[str, str] | None = None,
+    role_ids: dict[str, str] | None = None,
+) -> int:
+    """Recover permanent tournament achievements from completed events.
+
+    MongoDB tournament records remain authoritative if Discord role assignment
+    failed during completion. Re-running this reconciliation is idempotent and
+    only adds permanent roles; it never removes them.
+    """
+    reconciled = 0
+    cursor = db.tournaments.find({"guild_id": str(guild.id), "status": "completed"})
+    async for tournament in cursor:
+        tournament_id = str(tournament.get("_id") or "")
+        if not tournament_id:
+            continue
+
+        participants: set[str] = set()
+        team_size = int(tournament.get("team_size", 1) or 1)
+        if team_size > 1:
+            regs = db.tournament_club_registrations.find({
+                "tournament_id": tournament_id,
+                "status": {"$in": ["accepted", "checked_in"]},
+            })
+            async for reg in regs:
+                participants.update(str(uid) for uid in (reg.get("lineup") or []) if uid)
+        else:
+            regs = db.tournament_registrations.find({
+                "tournament_id": tournament_id,
+                "status": {"$in": ["accepted", "checked_in"]},
+            })
+            async for reg in regs:
+                uid = reg.get("user_id")
+                if uid:
+                    participants.add(str(uid))
+
+        achievements: dict[str, set[str]] = {}
+        if participants:
+            achievements["Tournament Participant"] = participants
+
+        standings = tournament.get("standings") or []
+        champion_id = str(tournament.get("champion_id") or "")
+        champion_row = next(
+            (row for row in standings if str(row.get("entrant_id") or "") == champion_id),
+            None,
+        )
+        if champion_row is not None and int(champion_row.get("losses", 0) or 0) == 0:
+            perfect: set[str] = set()
+            if team_size > 1:
+                regs = db.tournament_club_registrations.find({
+                    "tournament_id": tournament_id,
+                    "status": {"$in": ["accepted", "checked_in"]},
+                    "club_id": champion_id,
+                })
+                async for reg in regs:
+                    perfect.update(str(uid) for uid in (reg.get("lineup") or []) if uid)
+            elif champion_id:
+                perfect.add(champion_id)
+            if perfect:
+                achievements["Perfect Tournament Run"] = perfect
+
+        if achievements:
+            await sync_tournament_achievement_roles(
+                guild,
+                achievements=achievements,
+                role_names=role_names,
+                role_ids=role_ids,
+            )
+            reconciled += 1
+    return reconciled
+
 async def clear_gauntlet_season_roles(guild: discord.Guild, role_names: dict[str, str] | None = None, role_ids: dict[str, str] | None = None) -> None:
     """Remove managed Gauntlet seasonal roles when a new season opens."""
     managed = await _ensure_roles(guild, GAUNTLET_SEASONAL_ROLES, role_names, role_ids)
