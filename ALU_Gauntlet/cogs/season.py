@@ -154,7 +154,6 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             await bot.db.drivers.update_one(
                 {
                     "_id": f"{guild_id}_{uid}",
-                    "season_number": current_season,
                     "last_season_reward.reference_id": {"$ne": reward_marker},
                 },
                 {"$inc": {"rsl_badges": int(reward["badges"])},
