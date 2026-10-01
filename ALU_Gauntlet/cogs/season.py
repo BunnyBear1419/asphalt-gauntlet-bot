@@ -12,6 +12,7 @@ from ..core.gauntlet_progression import season_reward_for_rank
 from ..core.rsl_economy_ledger import apply_coin_transaction
 from ..core.rsl_activity import collect_overall_activity_stats, activity_level
 from ..core.rsl_role_sync import sync_gauntlet_season_roles, clear_gauntlet_season_roles, sync_xp_rank_role
+from ..core.rsl_roles import build_gauntlet_season_roles
 
 
 async def announce_season_start(guild_id, season_number, reason="scheduled"):
@@ -221,6 +222,19 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
                 {"_id": guild_id},
                 {"achievement_role_names": 1, "achievement_role_ids": 1},
             ) or {}
+            # Persist the exact desired seasonal role state before making any
+            # Discord API calls. Driver records are reset during rollover, so
+            # this snapshot is the durable source for retrying role delivery.
+            role_snapshot = build_gauntlet_season_roles(
+                division_winners=division_winners,
+                player_stats=player_stats,
+                overall_activity_stats=activity_stats,
+                champion_user_id=str(points_rows[0].get("user_id")) if points_rows else None,
+            )
+            await bot.db.season_state.update_one(
+                {"_id": state_id, "season_number": current_season},
+                {"$set": {"gauntlet_role_snapshot": role_snapshot}},
+            )
             await sync_gauntlet_season_roles(
                 guild,
                 division_winners=division_winners,
@@ -291,6 +305,7 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
                 "awaiting_staff_start": False,
                 "started_at": now,
             }, "$unset": {
+                "gauntlet_role_snapshot": "",
                 "rollover_lock_at": "",
                 "rollover_phase": "",
                 "rollover_season": "",
@@ -344,9 +359,11 @@ class SeasonCog(commands.Cog):
     def __init__(self, bot_instance):
         self.bot = bot_instance
         self.season_scheduler.start()
+        self.role_reconcile_scheduler.start()
 
     def cog_unload(self):
         self.season_scheduler.cancel()
+        self.role_reconcile_scheduler.cancel()
 
     @tasks.loop(seconds=30)
     async def season_scheduler(self):
@@ -410,6 +427,32 @@ class SeasonCog(commands.Cog):
 
     @season_scheduler.before_loop
     async def before_season_scheduler(self):
+        await self.bot.wait_until_ready()
+
+    @tasks.loop(minutes=10)
+    async def role_reconcile_scheduler(self):
+        from ..core.rsl_role_sync import reconcile_gauntlet_season_roles
+        for guild in self.bot.guilds:
+            try:
+                settings = await self.bot.db.settings.find_one(
+                    {"_id": str(guild.id)},
+                    {"achievement_role_names": 1, "achievement_role_ids": 1},
+                ) or {}
+                await reconcile_gauntlet_season_roles(
+                    self.bot.db,
+                    guild,
+                    role_names=settings.get("achievement_role_names"),
+                    role_ids=settings.get("achievement_role_ids"),
+                )
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "Failed to reconcile Gauntlet seasonal roles for guild %s",
+                    guild.id,
+                )
+
+    @role_reconcile_scheduler.before_loop
+    async def before_role_reconcile_scheduler(self):
         await self.bot.wait_until_ready()
 
 
