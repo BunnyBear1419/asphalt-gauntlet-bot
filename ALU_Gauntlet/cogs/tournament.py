@@ -307,6 +307,10 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
             for key in ("result_status","winner_id","submitted_by","submitted_at","proof_url","result_notes"):
                 match.pop(key,None)
             match["status"]="ready"
+            await bot.db.tournaments.update_one(
+                {"_id":t["_id"]},
+                {"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}}
+            )
             message="Result rejected. The match is ready for another submission."
         else:
             winner=str(match.get("winner_id",""))
