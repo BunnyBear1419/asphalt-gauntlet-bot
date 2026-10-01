@@ -98,3 +98,15 @@ def test_restore_workflow_uses_isolated_database_and_cleanup():
     assert "TEST_DB" in workflow
     assert "drop_database" in workflow
     assert "isolated" in workflow.lower()
+
+
+def test_tournament_achievement_recovery_replays_completed_records():
+    role_sync = _source(ROOT / "ALU_Gauntlet" / "core" / "rsl_role_sync.py")
+    main = _source(ROOT / "ALU_Gauntlet" / "main.py")
+    assert "reconcile_completed_tournament_achievement_roles" in role_sync
+    assert '"status": "completed"' in role_sync
+    assert "Tournament Participant" in role_sync
+    assert "Perfect Tournament Run" in role_sync
+    assert "tournament_club_registrations" in role_sync
+    assert "bot._rsl_tournament_achievement_recovery_done" in main
+    assert "achievement_role_names" in main
