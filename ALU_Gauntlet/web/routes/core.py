@@ -108,7 +108,7 @@ class CoreRoutesMixin:
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
-        response.headers.setdefault("Content-Security-Policy", "frame-ancestors 'none'")
+        response.headers.setdefault("Content-Security-Policy", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://discord.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://cdn.discordapp.com https://*.googleusercontent.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://discord.com https://*.google-analytics.com https://*.analytics.google.com; media-src 'self' blob:; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com")
         if request.scheme == "https" or str(self.auth.public_url).startswith("https://"):
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         if request.path.startswith("/api/") or request.path.startswith("/auth/") or request.path in {"/login", "/logout"}:
