@@ -11,9 +11,11 @@ class RSLXPCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.voice_tick.start()
+        self.role_reconcile_tick.start()
 
     def cog_unload(self):
         self.voice_tick.cancel()
+        self.role_reconcile_tick.cancel()
 
     async def _settings(self, guild_id):
         return await get_settings(self.bot.db, str(guild_id))
@@ -155,6 +157,34 @@ class RSLXPCog(commands.Cog):
                 if new_level > old_level:
                     await self._announce_level(reaction.message.guild, member, new_level, reaction.message.channel)
             await self._sync_leader_role(reaction.message.guild, settings)
+
+    @tasks.loop(minutes=10)
+    async def role_reconcile_tick(self):
+        """Durably retry XP role delivery after transient Discord failures."""
+        if getattr(self.bot, "db", None) is None:
+            return
+        for guild in self.bot.guilds:
+            try:
+                settings = await self._settings(guild.id)
+                cursor = self.bot.db.drivers.find(
+                    {"guild_id": str(guild.id), "rsl_xp": {"$exists": True}},
+                    {"user_id": 1, "rsl_xp": 1},
+                )
+                async for driver in cursor:
+                    user_id = str(driver.get("user_id") or "")
+                    if not user_id.isdigit():
+                        continue
+                    member = guild.get_member(int(user_id))
+                    if member is None:
+                        continue
+                    await self._sync_level(guild.id, user_id, member, settings)
+                await self._sync_leader_role(guild, settings)
+            except Exception:
+                continue
+
+    @role_reconcile_tick.before_loop
+    async def before_role_reconcile_tick(self):
+        await self.bot.wait_until_ready()
 
     @tasks.loop(minutes=3)
     async def voice_tick(self):
