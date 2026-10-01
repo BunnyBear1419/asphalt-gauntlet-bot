@@ -55,7 +55,7 @@ def test_club_ui_exposes_both_membership_flows():
 def test_club_membership_safeguards_are_present():
     assert "That club is full." in CLUBS
     assert "You are already in a club in this server." in CLUBS
-    assert "Only the club leader can invite drivers." in CLUBS
+    assert "Only the club leader or an Officer can invite drivers." in CLUBS
     assert "Only the club leader can manage join requests." in CLUBS
     assert "expires_at" in CLUBS
     assert "DuplicateKeyError" in CLUBS
