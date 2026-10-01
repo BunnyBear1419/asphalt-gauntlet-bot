@@ -1,4 +1,5 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "ALU_Gauntlet" / "web" / "server.py"
@@ -9,7 +10,7 @@ CSS = ROOT / "ALU_Gauntlet" / "web" / "static" / "app.css"
 
 
 def test_remaining_operations_extend_existing_surfaces():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     admin = ADMIN.read_text(encoding="utf-8")
     assert "async def admin_operations" in server
     assert '"/api/admin/operations"' in server
@@ -26,7 +27,7 @@ def test_remaining_operations_extend_existing_surfaces():
 
 
 def test_player_activity_is_merged_into_public_profile():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     profile = PROFILE.read_text(encoding="utf-8")
     script = PROFILE_JS.read_text(encoding="utf-8")
     assert '"/api/players/{user_id}/activity"' in server
