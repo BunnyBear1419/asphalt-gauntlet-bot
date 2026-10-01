@@ -162,6 +162,7 @@ async def on_ready():
         reconcile_completed_tournament_achievement_roles,
         reconcile_gauntlet_season_roles,
     )
+    from .core.rsl_economy_ledger import reconcile_pending_coin_transactions
     if not getattr(bot, "_rsl_role_recovery_done", False):
         bot._rsl_role_recovery_done = True
         for guild in bot.guilds:
@@ -178,6 +179,10 @@ async def on_ready():
                     guild,
                     role_names=settings.get("achievement_role_names"),
                     role_ids=settings.get("achievement_role_ids"),
+                )
+                await reconcile_pending_coin_transactions(
+                    bot.db,
+                    guild_id=str(guild.id),
                 )
             except Exception:
                 import logging
