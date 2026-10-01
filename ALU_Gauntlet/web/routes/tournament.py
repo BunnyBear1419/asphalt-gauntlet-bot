@@ -742,14 +742,14 @@ class TournamentRoutesMixin:
             "uploaded_by": str(user.user_id),
         })
         if user_media_count >= max_user_media:
-            raise web.HTTPTooManyRequests(
-                text="You have reached the tournament media submission limit."
+            raise web.HTTPConflict(
+                text="You have reached the tournament media submission limit for this tournament."
             )
         tournament_media_count = await self.bot.db.tournament_media.count_documents({
             "tournament_id": tournament_id,
         })
         if tournament_media_count >= max_tournament_media:
-            raise web.HTTPTooManyRequests(
+            raise web.HTTPConflict(
                 text="This tournament has reached its media submission limit."
             )
 
@@ -770,9 +770,14 @@ class TournamentRoutesMixin:
             try:
                 with Image.open(BytesIO(data)) as image:
                     image.verify()
-                    if image.width > 8192 or image.height > 8192:
+                    if image.width > 4096 or image.height > 4096:
                         raise ValueError("image dimensions are too large")
-            except Exception as exc: raise web.HTTPBadRequest(text="The selected image could not be validated.") from exc
+                    if image.width * image.height > 16_777_216:
+                        raise ValueError("image pixel count is too large")
+            except Image.DecompressionBombError as exc:
+                raise web.HTTPBadRequest(text="The selected image exceeds the safe pixel limit.") from exc
+            except (OSError, ValueError) as exc:
+                raise web.HTTPBadRequest(text="The selected image could not be validated.") from exc
         media_id = hashlib.sha256(f"{tournament_id}:{user.user_id}:{time.time()}".encode() + data).hexdigest()[:32]
         status = "approved" if staff else "pending"; now = datetime.now(timezone.utc).isoformat()
         await self.bot.db.tournament_media.insert_one({"_id": media_id, "tournament_id": tournament_id, "guild_id": str(tournament.get("guild_id")), "type": media_type, "mime_type": content_type, "filename": filename, "title": str(fields.get("title", "")).strip()[:120], "caption": str(fields.get("caption", "")).strip()[:500], "data": data, "status": status, "uploaded_by": str(user.user_id), "created_at": now, "approved_by": str(user.user_id) if staff else None, "approved_at": now if staff else None})
