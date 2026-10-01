@@ -1,5 +1,6 @@
 from pathlib import Path
 import ast
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 PY_FILES = [ROOT / "main.py", ROOT / "ALU_Gauntlet" / "core" / "core.py"] + sorted((ROOT / "ALU_Gauntlet" / "cogs").glob("*.py"))
@@ -77,7 +78,7 @@ def test_double_elimination_losers_bracket_structure():
 
 def test_tournament_result_paths_cover_all_bracket_sections():
     discord_source = (ROOT / "ALU_Gauntlet" / "cogs" / "tournament.py").read_text(encoding="utf-8")
-    web_source = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    web_source = web_source()
     js_source = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.js").read_text(encoding="utf-8")
     for source in (discord_source, web_source, js_source):
         for marker in ("grand_final", "grand_final_reset", "losers"):
@@ -90,7 +91,7 @@ def test_tournament_result_paths_cover_all_bracket_sections():
 
 
 def test_global_web_shell_contract_is_consistent():
-    server = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    server = web_source()
     css = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.css").read_text(encoding="utf-8")
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
     assert '"discord":"https://discord.gg/fmFk8Ejf2H"' in server
@@ -105,7 +106,7 @@ def test_global_web_shell_contract_is_consistent():
 
 
 def test_web_route_and_shell_regressions_are_fixed():
-    server = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    server = web_source()
     calendar = (ROOT / "ALU_Gauntlet" / "web" / "static" / "calendar.html").read_text(encoding="utf-8")
     assert 'self.app.router.add_get("/gauntlet/references/", self.gauntlet_references_page)' in server
     assert 'self.app.router.add_get("/tournaments/matches/", self.tournament_matches_page)' in server
