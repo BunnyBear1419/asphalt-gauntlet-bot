@@ -125,6 +125,13 @@ class FakeCollection:
                 return False
         return True
 
+    def find(self, query):
+        async def _cursor():
+            for doc in list(self.docs.values()):
+                if self._matches(doc, query):
+                    yield dict(doc)
+        return _cursor()
+
     async def find_one(self, query):
         doc = self.docs.get(query.get("_id"))
         if doc is None or not self._matches(doc, query):
@@ -145,6 +152,7 @@ class FakeCollection:
 class FakeDB:
     def __init__(self):
         self.active_challenges = FakeCollection()
+        self.matches = FakeCollection()
 
 
 def test_active_challenge_claim_and_release(monkeypatch):
