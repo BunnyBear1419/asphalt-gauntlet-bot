@@ -36,8 +36,6 @@ class AdminRoutesMixin:
         branding["_guild"] = {"id":guild_id,"name":str(getattr(guild,"name",guild_id))}
         return web.json_response({"branding":branding})
 
-    @staticmethod
-
     async def upload_brand_asset(self, request: web.Request) -> web.Response:
         """Accept common image formats and normalize every stored brand asset to PNG."""
         user, guild_id, _ = await self.require_admin(request)
