@@ -142,3 +142,11 @@ def test_tournament_role_builder_tracks_finalists_and_replacement_roles():
     assert roles["Tournament Runner-Up"] == ["20"]
     assert roles["Tournament 3rd Place"] == ["30"]
     assert roles["Tournament Finalist"] == ["10", "20", "30", "40"]
+
+
+def test_xp_role_reconciliation_task_is_durable():
+    source = __import__("pathlib").Path("ALU_Gauntlet/cogs/rsl_xp.py").read_text(encoding="utf-8")
+    assert "@tasks.loop(minutes=10)" in source
+    assert "role_reconcile_tick.start()" in source
+    assert "rsl_xp" in source
+    assert "await self._sync_level(guild.id, user_id, member, settings)" in source
