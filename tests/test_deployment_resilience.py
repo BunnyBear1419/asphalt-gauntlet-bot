@@ -52,7 +52,9 @@ def test_failed_smoke_test_rolls_back_previous_revision():
     assert "Determine rollback revision" in source
     assert "previous_sha" in source
     assert "Roll back to previous known-good revision" in source
-    assert "ref: ${{ steps.predeploy.outputs.release_sha || steps.revision.outputs.previous_sha }}" in source
+    assert "PREDEPLOY_RELEASE_SHA: ${{ steps.predeploy.outputs.release_sha }}" in source
+    assert "PREVIOUS_SHA: ${{ steps.revision.outputs.previous_sha }}" in source
+    assert "Validated rollback revision" in source
     assert "Deploy rollback to Discloud" in source
     assert "Restart Discloud app after rollback upload" in source
     assert "Install deployment check dependencies" in source
