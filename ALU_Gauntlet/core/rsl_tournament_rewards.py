@@ -48,6 +48,31 @@ async def _entrant_users(db, tournament: dict, entrant_id: str) -> list[str]:
     return [entrant_id]
 
 
+async def _all_participant_users(db, tournament: dict) -> list[str]:
+    """Return every accepted/checked-in tournament participant as individual users."""
+    tournament_id = str(tournament.get("_id"))
+    if int(tournament.get("team_size", 1) or 1) > 1:
+        users = []
+        cursor = db.tournament_club_registrations.find({
+            "tournament_id": tournament_id,
+            "status": {"$in": ["accepted", "checked_in"]},
+        })
+        async for registration in cursor:
+            users.extend(str(uid) for uid in (registration.get("lineup") or []) if uid)
+        return list(dict.fromkeys(users))
+
+    users = []
+    cursor = db.tournament_registrations.find({
+        "tournament_id": tournament_id,
+        "status": {"$in": ["accepted", "checked_in"]},
+    })
+    async for registration in cursor:
+        user_id = registration.get("user_id")
+        if user_id:
+            users.append(str(user_id))
+    return list(dict.fromkeys(users))
+
+
 async def settle_tournament_rewards(db, tournament: dict) -> dict:
     """Settle configured completion rewards exactly once per player/reward type."""
     if str(tournament.get("status")) != "completed":
@@ -55,9 +80,12 @@ async def settle_tournament_rewards(db, tournament: dict) -> dict:
 
     rewards = normalize_tournament_rewards(tournament.get("rewards"))
     standings = list(tournament.get("standings") or [])
-    if not standings:
-        return {"ok": True, "settled": 0, "reason": "no_standings"}
+    participant_users = await _all_participant_users(db, tournament)
+    if not standings and not participant_users:
+        return {"ok": True, "settled": 0, "reason": "no_participants"}
 
+    tournament_id = str(tournament.get("_id"))
+    guild_id = str(tournament.get("guild_id"))
     placements = {}
     for index, row in enumerate(standings[:4]):
         entrant = str(row.get("entrant_id") or "")
@@ -70,42 +98,70 @@ async def settle_tournament_rewards(db, tournament: dict) -> dict:
             )
 
     settled = 0
-    for entrant_id, placement in placements.items():
-        users = await _entrant_users(db, tournament, entrant_id)
-        for user_id in users:
-            coin_amount = rewards.get(f"{placement}_coins", 0)
-            xp_amount = rewards.get(f"{placement}_xp", 0)
-            if coin_amount:
-                result = await apply_coin_transaction(
-                    db,
-                    guild_id=str(tournament.get("guild_id")),
-                    user_id=user_id,
-                    amount=coin_amount,
-                    transaction_type="tournament_reward",
-                    reference_id=f"tournament:{tournament.get('_id')}:{placement}:coins",
-                    reason=f"Tournament {placement.replace('_', ' ').title()} reward",
-                    metadata={"tournament_id": str(tournament.get("_id")), "placement": placement},
-                )
-                if not result.get("ok"):
-                    return {"ok": False, "settled": settled, "reason": result.get("reason", "coin_reward_failed")}
-                if not result.get("duplicate"):
-                    settled += 1
-            if xp_amount:
-                result = await award_xp(
-                    db,
-                    guild_id=str(tournament.get("guild_id")),
-                    user_id=user_id,
-                    amount=xp_amount,
-                    source="tournament_reward",
-                    event_id=f"{tournament.get('_id')}:{placement}",
-                    metadata={"tournament_id": str(tournament.get("_id")), "placement": placement},
-                )
-                if not result.get("ok") and not result.get("restricted"):
-                    return {"ok": False, "settled": settled, "reason": "xp_reward_failed"}
-                if not result.get("duplicate"):
-                    settled += 1
 
-    marker = f"tournament:{tournament.get('_id')}:rewards_settled"
+    async def reward_user(user_id: str, placement: str | None) -> bool:
+        nonlocal settled
+        user_id = str(user_id)
+        if not user_id:
+            return True
+        prefix = f"tournament:{tournament_id}:{user_id}:{placement or 'participation'}"
+        coin_key = f"{placement}_coins" if placement else "participation_coins"
+        xp_key = f"{placement}_xp" if placement else "participation_xp"
+        coin_amount = rewards.get(coin_key, 0)
+        xp_amount = rewards.get(xp_key, 0)
+
+        if coin_amount:
+            result = await apply_coin_transaction(
+                db,
+                guild_id=guild_id,
+                user_id=user_id,
+                amount=coin_amount,
+                transaction_type="tournament_reward",
+                reference_id=f"{prefix}:coins",
+                reason=f"Tournament {(placement or 'participation').replace('_', ' ').title()} reward",
+                metadata={
+                    "tournament_id": tournament_id,
+                    "placement": placement or "participation",
+                    "user_id": user_id,
+                },
+            )
+            if not result.get("ok"):
+                return False
+            if not result.get("duplicate"):
+                settled += 1
+
+        if xp_amount:
+            result = await award_xp(
+                db,
+                guild_id=guild_id,
+                user_id=user_id,
+                amount=xp_amount,
+                source="tournament_reward",
+                event_id=f"{prefix}:xp",
+                metadata={
+                    "tournament_id": tournament_id,
+                    "placement": placement or "participation",
+                    "user_id": user_id,
+                },
+            )
+            if not result.get("ok") and not result.get("restricted"):
+                return False
+            if not result.get("duplicate"):
+                settled += 1
+        return True
+
+    # Participation is additive: every accepted/checked-in player receives it.
+    for user_id in participant_users:
+        if not await reward_user(user_id, None):
+            return {"ok": False, "settled": settled, "reason": "participation_reward_failed"}
+
+    # Placement rewards are derived only from authoritative completed standings.
+    for entrant_id, placement in placements.items():
+        for user_id in await _entrant_users(db, tournament, entrant_id):
+            if not await reward_user(user_id, placement):
+                return {"ok": False, "settled": settled, "reason": f"{placement}_reward_failed"}
+
+    marker = f"tournament:{tournament_id}:rewards_settled"
     await db.tournaments.update_one(
         {"_id": tournament.get("_id")},
         {"$set": {"rewards_settled": True, "rewards_settled_marker": marker}},
