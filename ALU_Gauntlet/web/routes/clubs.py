@@ -261,6 +261,11 @@ class ClubsRoutesMixin:
             return web.json_response({"ok": True, "message": "Member role updated."})
     
     
+    async def club_page(self, request: web.Request) -> web.StreamResponse:
+        await self.require_user(request)
+        return await self._page_response("club.html", request)
+
+
     async def clubs_page(self, request: web.Request) -> web.StreamResponse:
             await self.require_user(request)
             return await self._page_response("clubs.html", request)
