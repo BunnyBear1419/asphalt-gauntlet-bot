@@ -434,32 +434,41 @@ class ClubsRoutesMixin:
 
     async def club_invitations(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
+        await self._ensure_club_indexes()
         await self.bot.db.club_invitations.update_many(
-            {"invitee_id": str(user.user_id), "status": "pending", "expires_at": {"$lte": now}},
+            {"$or": [{"expires_at": {"$lte": now}}, {"expires_at": {"$lte": now.isoformat()}}], "invitee_id": str(user.user_id), "status": "pending"},
             {"$set": {"status": "expired", "updated_at": now}},
         )
         rows = await self.bot.db.club_invitations.find(
             {"invitee_id": str(user.user_id), "status": "pending"},
         ).sort("created_at", -1).to_list(length=50)
-        return web.json_response({"invitations": [{"id": str(row.pop("_id")), **row} for row in rows]})
+        return web.json_response({"invitations": [{
+            "id": str(row.pop("_id")),
+            **{key: self._club_json_datetime(value) if key in {"created_at", "expires_at", "updated_at"} else value for key, value in row.items()}
+        } for row in rows]})
 
     async def club_join_requests(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
+        await self._ensure_club_indexes()
         memberships = await self.bot.db.club_members.find({"user_id": str(user.user_id), "role": {"$in": ["leader", "officer"]}}, {"club_id": 1}).to_list(length=100)
         club_ids = [str(x.get("club_id")) for x in memberships if x.get("club_id")]
         clubs = await self.bot.db.clubs.find({"_id": {"$in": [ObjectId(x) for x in club_ids if ObjectId.is_valid(x)]}}).to_list(length=100)
         club_ids = [str(x["_id"]) for x in clubs]
         await self.bot.db.club_join_requests.update_many(
-            {"club_id": {"$in": club_ids}, "status": "pending", "expires_at": {"$lte": now}},
+            {"club_id": {"$in": club_ids}, "status": "pending", "$or": [{"expires_at": {"$lte": now}}, {"expires_at": {"$lte": now.isoformat()}}]},
             {"$set": {"status": "expired", "updated_at": now}},
         )
         rows = await self.bot.db.club_join_requests.find(
             {"club_id": {"$in": club_ids}, "status": "pending"},
         ).sort("created_at", -1).to_list(length=100)
         names = {str(x["_id"]): str(x.get("name") or "") for x in clubs}
-        return web.json_response({"requests": [{"id": str(row.pop("_id")), **row, "club_name": names.get(str(row.get("club_id", "")), "Club")} for row in rows]})
+        return web.json_response({"requests": [{
+            "id": str(row.pop("_id")),
+            **{key: self._club_json_datetime(value) if key in {"created_at", "expires_at", "updated_at"} else value for key, value in row.items()},
+            "club_name": names.get(str(row.get("club_id", "")), "Club")
+        } for row in rows]})
 
     async def create_club_invite(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
@@ -537,10 +546,10 @@ class ClubsRoutesMixin:
         now = datetime.now(timezone.utc)
         expires_at = self._club_datetime(invite.get("expires_at"))
         if expires_at is not None and expires_at <= now:
-            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now.isoformat()}})
+            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
             raise web.HTTPConflict(text="That invitation has expired.")
         if action == "decline":
-            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now.isoformat()}})
+            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
             return web.json_response({"ok": True, "message": "Club invitation declined."})
         club = await self.bot.db.clubs.find_one({"_id": ObjectId(str(invite["club_id"]))})
         if not club:
@@ -575,8 +584,8 @@ class ClubsRoutesMixin:
             if exc.__class__.__name__ == "DuplicateKeyError":
                 raise web.HTTPConflict(text="You are already in a club in this server.")
             raise
-        await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now.isoformat()}})
-        await self.bot.db.club_join_requests.update_many({"club_id": str(club["_id"]), "user_id": str(user.user_id), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now.isoformat()}})
+        await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now}})
+        await self.bot.db.club_join_requests.update_many({"club_id": str(club["_id"]), "user_id": str(user.user_id), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now}})
         await self._club_notify_user(str(club["leader_id"]), "RSL Club Invitation Accepted", f"{user.global_name or user.username} accepted the invitation to join **{club.get('name', 'your club')}**.")
         return web.json_response({"ok": True, "message": f"You joined {club.get('name', 'the club')}."})
 
@@ -666,18 +675,25 @@ class ClubsRoutesMixin:
 
     async def club_action_status(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        now = datetime.now(timezone.utc).isoformat()
-        await self.bot.db.club_invitations.update_many({"invitee_id": str(user.user_id), "status": "pending", "expires_at": {"$lte": now}}, {"$set": {"status": "expired", "updated_at": now}})
+        now = datetime.now(timezone.utc)
+        await self._ensure_club_indexes()
+        await self.bot.db.club_invitations.update_many({"invitee_id": str(user.user_id), "status": "pending", "$or": [{"expires_at": {"$lte": now}}, {"expires_at": {"$lte": now.isoformat()}}]}, {"$set": {"status": "expired", "updated_at": now}})
         memberships = await self.bot.db.club_members.find({"user_id": str(user.user_id), "role": {"$in": ["leader", "officer"]}}, {"club_id": 1}).to_list(length=100)
         club_ids = [str(x.get("club_id")) for x in memberships if x.get("club_id")]
         clubs = await self.bot.db.clubs.find({"_id": {"$in": [ObjectId(x) for x in club_ids if ObjectId.is_valid(x)]}}).to_list(length=100)
         club_ids = [str(x["_id"]) for x in clubs]
-        await self.bot.db.club_join_requests.update_many({"club_id": {"$in": club_ids}, "status": "pending", "expires_at": {"$lte": now}}, {"$set": {"status": "expired", "updated_at": now}})
+        await self.bot.db.club_join_requests.update_many({"club_id": {"$in": club_ids}, "status": "pending", "$or": [{"expires_at": {"$lte": now}}, {"expires_at": {"$lte": now.isoformat()}}]}, {"$set": {"status": "expired", "updated_at": now}})
         invitations = await self.bot.db.club_invitations.find({"invitee_id": str(user.user_id), "status": "pending"}, {"_id": 1, "club_id": 1, "club_name": 1, "inviter_id": 1, "created_at": 1, "expires_at": 1}).sort("created_at", -1).to_list(length=50)
         requests = await self.bot.db.club_join_requests.find({"club_id": {"$in": club_ids}, "status": "pending"}, {"_id": 1, "club_id": 1, "club_name": 1, "user_id": 1, "username": 1, "message": 1, "created_at": 1, "expires_at": 1}).sort("created_at", -1).to_list(length=100)
+        def serialize_action(row):
+            data = {k: v for k, v in row.items() if k != "_id"}
+            for key in ("created_at", "expires_at", "updated_at"):
+                if key in data:
+                    data[key] = self._club_json_datetime(data[key])
+            return {"id": str(row["_id"]), **data}
         return web.json_response({
-            "invitations": [{"id": str(x["_id"]), **{k: v for k, v in x.items() if k != "_id"}} for x in invitations],
-            "requests": [{"id": str(x["_id"]), **{k: v for k, v in x.items() if k != "_id"}} for x in requests],
+            "invitations": [serialize_action(x) for x in invitations],
+            "requests": [serialize_action(x) for x in requests],
         })
 
     async def club_page(self, request: web.Request) -> web.StreamResponse:
