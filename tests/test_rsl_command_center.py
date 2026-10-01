@@ -1,9 +1,10 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
 def test_rsl_command_center_exists_and_is_wired():
-    server = (ROOT / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    server = web_source()
     page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "rsl-command-center.html").read_text(encoding="utf-8")
     script = (ROOT / "ALU_Gauntlet" / "web" / "static" / "rsl-command-center.js").read_text(encoding="utf-8")
     player = (ROOT / "ALU_Gauntlet" / "cogs" / "player.py").read_text(encoding="utf-8")
