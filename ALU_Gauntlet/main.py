@@ -112,6 +112,16 @@ async def _ensure_database_indexes():
     await db.rsl_ticket_notifications.create_index([("event_key", 1)], unique=True, name="uniq_rsl_ticket_notification_event")
     await db.rsl_ticket_notifications.create_index([("guild_id", 1), ("status", 1), ("retry_at", 1)], name="idx_rsl_ticket_notification_retry")
     await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("created_at", -1)], name="idx_rsl_recovery_checkpoint")
+    # Defense-in-depth: even if a future code path changes the deterministic
+    # challenge _id, a player can never have two concurrently active/processing
+    # Gauntlet challenges in the same guild. Completed/abandoned history remains
+    # reusable, so this does not block a later challenge after settlement.
+    await db.active_challenges.create_index(
+        [("guild_id", 1), ("challenger_id", 1)],
+        unique=True,
+        partialFilterExpression={"status": {"$in": ["active", "processing"]}},
+        name="uniq_active_gauntlet_challenge_per_player",
+    )
 
 
 async def _wait_for_database(timeout=60):
