@@ -1,4 +1,5 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "ALU_Gauntlet" / "web" / "server.py"
@@ -11,7 +12,7 @@ def test_assurance_module_covers_new_cross_cutting_controls():
         assert marker in src
 
 def test_assurance_routes_are_registered_without_duplicate_support_systems():
-    src = SERVER.read_text(encoding="utf-8")
+    src = web_source()
     for marker in (
         'add_get("/status", self.platform_status_page)',
         'add_get("/api/status/public", self.public_status)',
@@ -27,7 +28,7 @@ def test_assurance_routes_are_registered_without_duplicate_support_systems():
         assert marker in src
 
 def test_privacy_requests_keep_support_in_discord():
-    src = SERVER.read_text(encoding="utf-8")
+    src = web_source()
     assert "official RSL Discord ticket workflow" in src or "official Discord ticket workflow" in src
     assert "https://discord.gg/q46RQxu2fm" in src
 
@@ -37,7 +38,7 @@ def test_public_status_page_exists_and_uses_public_status_api():
     assert "/api/status/public" in page
 
 def test_existing_canonical_systems_are_reused():
-    src = SERVER.read_text(encoding="utf-8")
+    src = web_source()
     assert 'add_get("/api/admin/diagnostics", self.admin_diagnostics)' in src
     assert 'add_get("/api/player/economy/history", self.player_economy_history)' in src
     assert 'add_get("/api/notifications", self.notification_preferences)' in src
