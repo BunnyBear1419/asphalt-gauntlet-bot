@@ -148,6 +148,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
                 "rsl_performance_bonus_applied": margin,
                 "rsl_performance_winner_bonus": margin,
                 "rsl_performance_loser_penalty": -margin,
+                "rsl_bonus_checked": True,
             }},
         )
 
