@@ -87,19 +87,32 @@ class RSLXPCog(commands.Cog):
         field = {"all": "rsl_xp", "weekly": "rsl_xp_weekly", "monthly": "rsl_xp_monthly"}[period]
         top = await self.bot.db.drivers.find_one({"guild_id": str(guild.id), "user_id": {"$exists": True}}, sort=[(field, -1)])
         winner_id = str(top.get("user_id")) if top and int(top.get(field, 0) or 0) > 0 else ""
-        for member in guild.members:
+        candidates = {member.id: member for member in getattr(role, "members", [])}
+        if winner_id:
+            winner = guild.get_member(int(winner_id)) if winner_id.isdigit() else None
+            if winner is not None:
+                candidates[winner.id] = winner
+        for member in candidates.values():
             has = role in member.roles
             wants = str(member.id) == winner_id
             if wants and not has:
                 try:
                     await member.add_roles(role, reason="RSL XP leaderboard leader")
                 except Exception:
-                    pass
+                    import logging
+                    logging.getLogger(__name__).exception(
+                        "Failed to grant RSL XP leaderboard role to %s in guild %s",
+                        member.id, guild.id,
+                    )
             elif has and not wants:
                 try:
                     await member.remove_roles(role, reason="RSL XP leaderboard rotation")
                 except Exception:
-                    pass
+                    import logging
+                    logging.getLogger(__name__).exception(
+                        "Failed to remove RSL XP leaderboard role from %s in guild %s",
+                        member.id, guild.id,
+                    )
 
     @commands.Cog.listener()
     async def on_message(self, message):
