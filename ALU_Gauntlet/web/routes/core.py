@@ -2374,6 +2374,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/admin/guilds", self.admin_guilds)
         self.app.router.add_get("/api/admin/branding", self.admin_branding)
         self.app.router.add_get("/api/admin/server-control", self.admin_server_control)
+        self.app.router.add_get("/api/admin/clubs/leadership", self.admin_club_leadership)
+        self.app.router.add_post("/api/admin/clubs/leadership", self.admin_club_leadership_action)
         self.app.router.add_post("/api/admin/server-control/role", self.admin_create_role)
         self.app.router.add_post("/api/admin/server-control/channel", self.admin_create_channel)
         self.app.router.add_post("/api/admin/server-control/bot-identity", self.admin_bot_identity)
