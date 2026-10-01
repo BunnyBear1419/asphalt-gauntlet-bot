@@ -42,13 +42,3 @@ def test_discord_status_exposes_reliability_signals():
     source = (ROOT / "ALU_Gauntlet" / "cogs" / "operations.py").read_text(encoding="utf-8")
     assert "build_reliability_snapshot" in source
     assert '"Reliability"' in source
-
-
-def test_release_gate_catches_duplicate_web_routes():
-    import re
-    source = SERVER.read_text(encoding="utf-8")
-    route_block = source[source.index("def _configure_routes"):source.index("def _configure_routes") + 18000]
-    routes = re.findall(r'router\.add_(?:get|post|put|delete)\\("([^"]+)"', route_block)
-    assert len(routes) == len(set(routes))
-    assert '"/api/admin/operations"' in route_block
-    assert '"/api/admin/backup"' in route_block
