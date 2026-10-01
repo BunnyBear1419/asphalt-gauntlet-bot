@@ -19,11 +19,17 @@ DEFAULT_TOURNAMENT_REWARDS = {key: 0 for key in REWARD_KEYS}
 
 def normalize_tournament_rewards(value: dict | None) -> dict:
     value = value if isinstance(value, dict) else {}
-    return {
-        key: max(0, int(value.get(key, DEFAULT_TOURNAMENT_REWARDS[key]) or 0))
-        for key in REWARD_KEYS
-    }
-
+    limits = {key: (1000000 if key.endswith("_xp") else 100000) for key in REWARD_KEYS}
+    normalized = {}
+    for key in REWARD_KEYS:
+        try:
+            amount = int(value.get(key, DEFAULT_TOURNAMENT_REWARDS[key]) or 0)
+        except (TypeError, ValueError):
+            raise ValueError("Invalid tournament reward: " + key)
+        if amount < 0 or amount > limits[key]:
+            raise ValueError("Tournament reward out of range: " + key)
+        normalized[key] = amount
+    return normalized
 
 async def _entrant_users(db, tournament: dict, entrant_id: str) -> list[str]:
     entrant_id = str(entrant_id or "")
