@@ -122,13 +122,13 @@ async def _ensure_database_indexes():
         partialFilterExpression={"status": {"$in": ["active", "processing"]}},
         name="uniq_active_gauntlet_challenge_per_player",
     )
-    # Settlement IDs are deterministic replay keys. Keep the database as a
-    # second line of defense if another future path writes a different _id.
+    # Keep settlement IDs indexed for staff reconciliation/auditing. The
+    # authoritative replay guard is the deterministic match _id itself, which
+    # MongoDB already enforces as unique without risking startup failure if
+    # legacy data contains duplicate settlement_id metadata.
     await db.matches.create_index(
         [("settlement_id", 1)],
-        unique=True,
-        sparse=True,
-        name="uniq_gauntlet_settlement_id",
+        name="idx_gauntlet_settlement_id",
     )
 
 
