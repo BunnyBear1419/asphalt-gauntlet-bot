@@ -157,12 +157,23 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
         else:
             set_fields["rsl_xp_monthly"] = final_amount
         updates = {"$inc": inc, "$set": set_fields}
-        await db.drivers.update_one({"_id": profile_id}, updates, **kwargs)
+        update_result = await db.drivers.update_one({"_id": profile_id}, updates, **kwargs)
+        if getattr(update_result, "modified_count", 0) != 1:
+            raise ValueError("xp_profile_missing")
         return {"ok": True, "duplicate": False, "amount": final_amount, "boost": boost}
 
     client = getattr(db, "client", None)
     if client is None:
-        return await _apply()
+        try:
+            return await _apply()
+        except Exception:
+            # Without a Mongo transaction, never leave a completed-looking event
+            # behind when the corresponding profile update did not commit.
+            try:
+                await db.rsl_xp_events.delete_one({"_id": transaction_id})
+            except Exception:
+                pass
+            raise
 
     try:
         async with await client.start_session() as session:
