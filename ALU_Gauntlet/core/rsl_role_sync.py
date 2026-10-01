@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from typing import Iterable
+import logging
 
 import discord
+
+log = logging.getLogger(__name__)
 
 from .rsl_roles import (
     GAUNTLET_SEASONAL_ROLES,
@@ -32,12 +35,13 @@ async def _ensure_roles(guild: discord.Guild, names: Iterable[str], role_names: 
             try:
                 role = await guild.create_role(name=display_name, reason="RSL managed progression role")
             except Exception:
+                log.exception("Failed to create managed RSL role %s in guild %s", display_name, guild.id)
                 continue
         elif role.name != display_name:
             try:
                 await role.edit(name=display_name, reason="RSL achievement role name update")
             except Exception:
-                pass
+                log.exception("Failed to rename managed RSL role %s in guild %s", name, guild.id)
         result[name] = role
     return result
 
@@ -91,12 +95,12 @@ async def sync_gauntlet_season_roles(
             try:
                 await member.remove_roles(*removals, reason="RSL season role rotation")
             except Exception:
-                pass
+                log.exception("Failed to remove seasonal RSL roles from member %s in guild %s", member.id, guild.id)
         if additions:
             try:
                 await member.add_roles(*additions, reason="RSL season role assignment")
             except Exception:
-                pass
+                log.exception("Failed to add seasonal RSL roles to member %s in guild %s", member.id, guild.id)
     return desired
 
 
@@ -114,7 +118,7 @@ async def clear_gauntlet_season_roles(guild: discord.Guild, role_names: dict[str
             try:
                 await member.remove_roles(*removals, reason="RSL new-season role reset")
             except Exception:
-                pass
+                log.exception("Failed to reset seasonal RSL roles for member %s in guild %s", member.id, guild.id)
 
 
 async def sync_xp_rank_role(member: discord.Member, level: int, role_names: dict[str, str] | None = None, role_ids: dict[str, str] | None = None) -> str | None:
@@ -137,10 +141,10 @@ async def sync_xp_rank_role(member: discord.Member, level: int, role_names: dict
         try:
             await member.remove_roles(*removals, reason="RSL XP rank progression")
         except Exception:
-            pass
+            log.exception("Failed to remove XP rank roles from member %s in guild %s", member.id, member.guild.id)
     if additions:
         try:
             await member.add_roles(*additions, reason="RSL XP rank progression")
         except Exception:
-            pass
+            log.exception("Failed to add XP rank role to member %s in guild %s", member.id, member.guild.id)
     return current
