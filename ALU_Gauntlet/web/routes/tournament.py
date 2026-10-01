@@ -512,107 +512,23 @@ class TournamentRoutesMixin:
         return web.json_response({"ok": True, "message": message, "bracket": bracket, "champion_id": t.get("champion_id"), "standings": t.get("standings")})
 
     async def _sync_completed_tournament_roles(self, tournament: dict[str, Any]) -> None:
-        """Best-effort Discord recognition after web result completion."""
+        """Best-effort Discord recognition after a tournament becomes completed."""
         guild_id = str(tournament.get("guild_id") or "")
         guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == guild_id), None)
         if guild is None:
             return
-        champion = str(tournament.get("champion_id") or "") or None
-        runner_up = None
-        third_place = None
-        finalists = []
-        standings = tournament.get("standings") or []
-        if standings:
-            ordered = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
-            if champion is None and ordered:
-                champion = ordered[0]
-            if len(ordered) > 1:
-                runner_up = ordered[1]
-            if len(ordered) > 2:
-                third_place = ordered[2]
-            finalists = ordered[:4]
-        else:
-            bracket = tournament.get("bracket") or {}
-            groups = []
-            for key in ("rounds", "winners", "losers"):
-                groups.extend(bracket.get(key) or [])
-            for key in ("grand_final", "grand_final_reset"):
-                if isinstance(bracket.get(key), dict):
-                    groups.append({"matches": [bracket[key]]})
-            matches = [m for group in groups for m in group.get("matches", [])]
-            finals = [m for m in matches if m.get("status") == "completed" and str(m.get("bracket") or "") == "grand_final"]
-            if not finals:
-                finals = [m for m in matches if m.get("status") == "completed" and not m.get("winner_to")]
-            if finals:
-                final_match = finals[-1]
-                slots = [str(x) for x in (final_match.get("player_slots") or []) if x]
-                finalists = slots[:4]
-                winner = str(final_match.get("winner_id") or "")
-                if winner:
-                    champion = champion or winner
-                    runner_up = next((x for x in slots if x != winner), None)
-        if not champion:
-            return
         try:
-            from ...core.rsl_role_sync import sync_tournament_season_roles, sync_tournament_achievement_roles
-            from ...core.rsl_tournament_rewards import tournament_role_recipients
+            from ...core.rsl_tournament_rewards import sync_completed_tournament_roles
             settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
-            recipients = await tournament_role_recipients(
+            await sync_completed_tournament_roles(
                 self.bot.db,
+                guild,
                 tournament,
-                [champion or "", runner_up or "", third_place or ""] + list(finalists),
-            )
-            champion_users = recipients.get("0", [])
-            runner_users = recipients.get("1", [])
-            third_users = recipients.get("2", [])
-            finalist_users = [uid for index in range(3, 3 + len(finalists)) for uid in recipients.get(str(index), [])]
-            await sync_tournament_season_roles(
-                guild,
-                tournament_champion=champion_users,
-                runner_up=runner_users,
-                third_place=third_users,
-                finalists=finalist_users,
-                role_names=settings.get("achievement_role_names"),
-                role_ids=settings.get("achievement_role_ids"),
-            )
-            participant_users = []
-            perfect_users = []
-            if int(tournament.get("team_size", 1)) > 1:
-                club_ids = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
-                if club_ids:
-                    async for registration in self.bot.db.tournament_club_registrations.find({
-                        "tournament_id": str(tournament.get("_id")),
-                        "club_id": {"$in": club_ids},
-                        "status": {"$in": ["accepted", "checked_in"]},
-                    }):
-                        participant_users.extend(str(uid) for uid in (registration.get("lineup") or []) if uid)
-            else:
-                participant_users = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
-            champion_row = next((row for row in standings if str(row.get("entrant_id")) == str(champion)), None)
-            if champion_row is not None and int(champion_row.get("losses", 0) or 0) == 0:
-                if int(tournament.get("team_size", 1)) > 1:
-                    async for registration in self.bot.db.tournament_club_registrations.find({
-                        "tournament_id": str(tournament.get("_id")),
-                        "club_id": str(champion),
-                        "status": {"$in": ["accepted", "checked_in"]},
-                    }):
-                        perfect_users.extend(str(uid) for uid in (registration.get("lineup") or []) if uid)
-                else:
-                    perfect_users = [str(champion)]
-            achievements = {}
-            if participant_users:
-                achievements["Tournament Participant"] = participant_users
-            if perfect_users:
-                achievements["Perfect Tournament Run"] = perfect_users
-            await sync_tournament_achievement_roles(
-                guild,
-                achievements=achievements,
                 role_names=settings.get("achievement_role_names"),
                 role_ids=settings.get("achievement_role_ids"),
             )
         except Exception:
             log.exception("Failed to synchronize tournament roles for completed tournament %s", tournament.get("_id"))
-
     async def _tournament_result_payload(self, tournament: dict[str, Any]) -> dict[str, Any]:
         """Build normalized standings/history from the verified tournament bracket."""
         bracket = tournament.get("bracket") or {}
