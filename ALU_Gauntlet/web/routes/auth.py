@@ -158,9 +158,12 @@ class AuthRoutesMixin:
     async def callback(self, request: web.Request) -> web.StreamResponse:
         if not self.auth.configured:
             raise web.HTTPServiceUnavailable(text="Web authentication is not configured.")
-        state = request.query.get("state", "")
+        state = request.query.get("state", "").strip()
         code = request.query.get("code", "")
-        if not state or not await self.auth.consume_state(state):
+        cookie_state = str(request.cookies.get("rsl_oauth_state") or "").strip()
+        if not state or not cookie_state or state != cookie_state:
+            raise web.HTTPBadRequest(text="Invalid OAuth state.")
+        if not await self.auth.consume_state(state):
             raise web.HTTPBadRequest(text="Invalid or expired OAuth state.")
         if not code:
             raise web.HTTPUnauthorized(text=request.query.get("error", "Authorization was cancelled."))
