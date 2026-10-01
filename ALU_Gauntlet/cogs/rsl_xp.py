@@ -37,9 +37,20 @@ class RSLXPCog(commands.Cog):
                     try:
                         await member.add_roles(role, reason="RSL XP role reward")
                     except Exception:
-                        pass
+                        import logging
+                        logging.getLogger(__name__).exception(
+                            "Failed to grant RSL XP reward role %s to %s",
+                            getattr(role, "id", "unknown"),
+                            user_id,
+                        )
             return level
         except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "Failed to synchronize RSL XP roles for %s/%s",
+                guild_id,
+                user_id,
+            )
             return 0
 
     async def _announce_level(self, guild, member, level, channel):
@@ -180,7 +191,10 @@ class RSLXPCog(commands.Cog):
                     await self._sync_level(guild.id, user_id, member, settings)
                 await self._sync_leader_role(guild, settings)
             except Exception:
-                continue
+                import logging
+                logging.getLogger(__name__).exception(
+                    "RSL XP role reconciliation failed for guild %s", guild.id
+                )
 
     @role_reconcile_tick.before_loop
     async def before_role_reconcile_tick(self):
