@@ -13,6 +13,7 @@ from discord.ext import commands, tasks
 from pymongo.errors import DuplicateKeyError
 
 from .translation import localize_text
+from ..core.rsl_recovery import reconcile_processing_challenges
 
 MATCH_CENTER_URL = "https://asph.discloud.app/gauntlet/matches"
 REMINDER_WINDOWS = (
@@ -119,6 +120,13 @@ class MatchAssistantCog(commands.Cog):
 
     async def _scan(self):
         now = time.time()
+        guild_ids = await self.bot.db.active_challenges.distinct("guild_id", {"status": "processing"})
+        for guild_id in guild_ids:
+            try:
+                await reconcile_processing_challenges(self.bot.db, str(guild_id))
+            except Exception:
+                # Recovery must not stop deadline reminders for other guilds.
+                continue
         async for challenge in self.bot.db.active_challenges.find({"status": {"$in": ["active", "processing"]}}):
             try:
                 expires_at = float(challenge.get("expires_at", 0) or 0)
