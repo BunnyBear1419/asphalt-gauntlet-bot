@@ -135,9 +135,9 @@ def build_gauntlet_season_roles(
 
 def build_tournament_season_roles(
     *,
-    tournament_champion: str | int | None = None,
-    runner_up: str | int | None = None,
-    third_place: str | int | None = None,
+    tournament_champion: str | int | Iterable[str | int] | None = None,
+    runner_up: str | int | Iterable[str | int] | None = None,
+    third_place: str | int | Iterable[str | int] | None = None,
     finalists: Iterable[str | int] = (),
     mvp: str | int | None = None,
     player_stats: Iterable[Mapping[str, Any]] = (),
@@ -152,9 +152,16 @@ def build_tournament_season_roles(
         if values:
             result[role] = values
 
-    put("Tournament Champion", [tournament_champion] if tournament_champion is not None else [])
-    put("Tournament Runner-Up", [runner_up] if runner_up is not None else [])
-    put("Tournament 3rd Place", [third_place] if third_place is not None else [])
+    def users_or_one(value: str | int | Iterable[str | int] | None) -> list[str | int]:
+        if value is None:
+            return []
+        if isinstance(value, (str, int)):
+            return [value]
+        return list(value)
+
+    put("Tournament Champion", users_or_one(tournament_champion))
+    put("Tournament Runner-Up", users_or_one(runner_up))
+    put("Tournament 3rd Place", users_or_one(third_place))
     put("Tournament Finalist", finalists)
     put("Tournament MVP", [mvp] if mvp is not None else [])
     put("Top Tournament Wins", _top_users(player_stats, "tournament_wins"))
