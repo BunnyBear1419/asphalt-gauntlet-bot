@@ -76,7 +76,7 @@ class ClubsRoutesMixin:
 
     async def create_club(self, request: web.Request) -> web.Response:
             user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await request.json()
+            payload = await self._json_object(request)
             guild_id = str(payload.get("guild_id", "")).strip()
             if guild_id not in {str(x) for x in user.guild_ids}:
                 raise web.HTTPForbidden(text="You are not a member of that server.")
@@ -122,7 +122,7 @@ class ClubsRoutesMixin:
     
     async def transfer_club_leadership(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         try:
             club_id = ObjectId(str(payload.get("club_id", "")))
         except Exception:
@@ -160,7 +160,7 @@ class ClubsRoutesMixin:
 
     async def delete_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         try:
             club_id = ObjectId(str(payload.get("club_id", "")))
         except Exception:
@@ -183,7 +183,7 @@ class ClubsRoutesMixin:
 
     async def update_club(self, request: web.Request) -> web.Response:
             user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await request.json()
+            payload = await self._json_object(request)
             from bson import ObjectId
             try:
                 oid = ObjectId(str(payload.get("club_id", "")))
@@ -240,7 +240,7 @@ class ClubsRoutesMixin:
     
     async def join_club(self, request: web.Request) -> web.Response:
             user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await request.json()
+            payload = await self._json_object(request)
             from bson import ObjectId
             try:
                 oid = ObjectId(str(payload.get("club_id", "")))
@@ -273,7 +273,7 @@ class ClubsRoutesMixin:
     
     async def leave_club(self, request: web.Request) -> web.Response:
             user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await request.json()
+            payload = await self._json_object(request)
             from bson import ObjectId
             try:
                 oid = ObjectId(str(payload.get("club_id", "")))
@@ -300,7 +300,7 @@ class ClubsRoutesMixin:
 
     async def manage_club_member(self, request: web.Request) -> web.Response:
             user, _live_guild_id, _ = await self.require_guild_member(request)
-            payload = await request.json()
+            payload = await self._json_object(request)
             from bson import ObjectId
             try:
                 oid = ObjectId(str(payload.get("club_id", "")))
@@ -403,7 +403,7 @@ class ClubsRoutesMixin:
 
     async def create_club_invite(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         from bson import ObjectId
         try:
             oid = ObjectId(str(payload.get("club_id", "")))
@@ -458,7 +458,7 @@ class ClubsRoutesMixin:
 
     async def club_invitation_action(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         action = str(payload.get("action", "")).casefold()
         if action not in {"accept", "decline"}:
             raise web.HTTPBadRequest(text="Unsupported invitation action.")
@@ -502,7 +502,7 @@ class ClubsRoutesMixin:
 
     async def create_club_join_request(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         from bson import ObjectId
         try:
             oid = ObjectId(str(payload.get("club_id", "")))
@@ -535,7 +535,7 @@ class ClubsRoutesMixin:
 
     async def club_join_request_action(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        payload = await request.json()
+        payload = await self._json_object(request)
         action = str(payload.get("action", "")).casefold()
         if action not in {"accept", "decline"}:
             raise web.HTTPBadRequest(text="Unsupported join request action.")
