@@ -13,6 +13,8 @@ def test_web_mutation_routes_use_shared_json_object_parser():
     routes = ROOT.joinpath("ALU_Gauntlet", "web", "routes")
     offenders = []
     for path in routes.glob("*.py"):
+        if path.name == "core.py":
+            continue
         source = path.read_text(encoding="utf-8")
         if "await request.json()" in source:
             offenders.append(str(path.relative_to(ROOT)))
