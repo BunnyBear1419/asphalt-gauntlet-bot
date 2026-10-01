@@ -52,3 +52,12 @@ def test_double_elimination_completion_persists_final_standings_for_rewards():
     rewards = (ROOT / "ALU_Gauntlet" / "core" / "rsl_tournament_rewards.py").read_text(encoding="utf-8")
     assert 'placements = {}' in rewards
     assert 'standings[:4]' in rewards
+
+
+
+def test_double_elimination_standings_include_losers_bracket_third_place():
+    for path in ("ALU_Gauntlet/web/routes/tournament.py", "ALU_Gauntlet/cogs/tournament.py"):
+        source = (ROOT / path).read_text(encoding="utf-8")
+        assert 'if m.get("winner_to") == "GF-M1" and m.get("status") == "completed"' in source
+        assert 'lb_loser = next(' in source
+        assert '([{"entrant_id": lb_loser}] if lb_loser else [])' in source
