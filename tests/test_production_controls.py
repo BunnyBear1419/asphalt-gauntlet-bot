@@ -1,4 +1,5 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTROLS = ROOT / "ALU_Gauntlet" / "core" / "production_controls.py"
@@ -14,7 +15,7 @@ def test_production_controls_define_safe_maintenance_surface():
     assert "set_maintenance_mode" in source
 
 def test_web_control_routes_and_middleware_are_wired():
-    source = SERVER.read_text(encoding="utf-8")
+    source = web_source()
     for marker in (
         "production_controls",
         "maintenance_mode",
