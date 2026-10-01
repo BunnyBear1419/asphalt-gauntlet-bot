@@ -21,7 +21,11 @@ ROUTE_FILES = (
 def web_source(*route_names: str) -> str:
     """Read the real route-family source files; never synthesize server.py."""
     names = route_names or ROUTE_FILES
-    return "\n".join(
+    chunks = []
+    if not route_names:
+        chunks.append((WEB / "_web_context.py").read_text(encoding="utf-8"))
+    chunks.extend(
         (ROUTE_DIR / (name if name.endswith(".py") else f"{name}.py")).read_text(encoding="utf-8")
         for name in names
     )
+    return "\n".join(chunks)
