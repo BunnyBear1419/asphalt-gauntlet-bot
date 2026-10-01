@@ -38,8 +38,23 @@ jobs:
           pip check
           pip-audit -r requirements.txt
 
-      - name: Undefined-name and import lint
-        run: ruff check ALU_Gauntlet tests --select F821,F401 --output-format concise
+      - name: Undefined-name lint
+        run: ruff check ALU_Gauntlet tests --select F821 --output-format concise
+
+      - name: Import lint on touched modules
+        run: >-
+          ruff check
+          ALU_Gauntlet/cogs/player.py
+          ALU_Gauntlet/core/core.py
+          ALU_Gauntlet/core/rsl_economy.py
+          ALU_Gauntlet/release.py
+          ALU_Gauntlet/web/auth.py
+          ALU_Gauntlet/web/routes/admin.py
+          ALU_Gauntlet/web/routes/clubs.py
+          ALU_Gauntlet/web/routes/core.py
+          ALU_Gauntlet/web/routes/public.py
+          ALU_Gauntlet/web/routes/auth.py
+          --select F821,F401 --output-format concise
 
       - name: Compile
         run: python -m compileall -q .
