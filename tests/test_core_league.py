@@ -110,8 +110,10 @@ class FakeCollection:
 
     @staticmethod
     def _matches(doc, query):
+        if "$or" in query and not any(FakeCollection._matches(doc, branch) for branch in query["$or"]):
+            return False
         for key, expected in query.items():
-            if key == "_id":
+            if key in {"_id", "$or"}:
                 continue
             actual = doc.get(key)
             if isinstance(expected, dict):
@@ -132,7 +134,7 @@ class FakeCollection:
                     yield dict(doc)
         return _cursor()
 
-    async def find_one(self, query):
+    async def find_one(self, query, *args, **kwargs):
         doc = self.docs.get(query.get("_id"))
         if doc is None or not self._matches(doc, query):
             return None
@@ -146,6 +148,8 @@ class FakeCollection:
             doc[key] = value
         for key in update.get("$unset", {}):
             doc.pop(key, None)
+        for key, value in update.get("$inc", {}).items():
+            doc[key] = int(doc.get(key, 0) or 0) + value
         return FakeResult(1)
 
 
@@ -153,6 +157,26 @@ class FakeDB:
     def __init__(self):
         self.active_challenges = FakeCollection()
         self.matches = FakeCollection()
+
+
+
+def test_settled_three_two_recovery_closes_processing_without_bonus_failure():
+    async def run():
+        fake_db = FakeDB()
+        fake_db.drivers = FakeCollection()
+        challenge_id = "guild_user"
+        fake_db.active_challenges.docs[challenge_id] = {"_id": challenge_id, "guild_id": "guild", "status": "processing", "challenger_id": "user"}
+        fake_db.matches.docs[f"{challenge_id}:match"] = {"_id": f"{challenge_id}:match", "guild_id": "guild", "challenger_id": "user", "opponent_id": "opponent", "w_id": "user", "courses_beat": 3, "settlement_status": "completed"}
+        fake_db.drivers.docs["guild_user"] = {"_id": "guild_user"}
+        fake_db.drivers.docs["guild_opponent"] = {"_id": "guild_opponent"}
+        from ALU_Gauntlet.core.rsl_recovery import reconcile_processing_challenges
+        stats = await reconcile_processing_challenges(fake_db, "guild")
+        assert stats["closed"] == 1
+        assert stats["bonus_failed"] == 0
+        assert fake_db.active_challenges.docs[challenge_id]["status"] == "completed"
+        assert fake_db.matches.docs[f"{challenge_id}:match"]["rsl_margin_bonus_applied"] is True
+        assert fake_db.matches.docs[f"{challenge_id}:match"]["rsl_bonus_checked"] is True
+    asyncio.run(run())
 
 
 def test_active_challenge_claim_and_release(monkeypatch):
