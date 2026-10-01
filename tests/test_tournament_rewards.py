@@ -41,3 +41,14 @@ def test_tournament_reward_ids_are_unique_per_player_and_participation_is_additi
     assert 'async def _all_participant_users' in source
     assert 'for user_id in participant_users:' in source
     assert 'if not await reward_user(user_id, None):' in source
+
+
+def test_double_elimination_completion_persists_final_standings_for_rewards():
+    cog = (ROOT / "ALU_Gauntlet" / "cogs" / "tournament.py").read_text(encoding="utf-8")
+    server = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "tournament.py").read_text(encoding="utf-8")
+    for source in (cog, server):
+        assert 't["standings"] = ([{"entrant_id": str(' in source
+        assert 'loser = next((str(x) for x in (match.get("player_slots") or [])' in source
+    rewards = (ROOT / "ALU_Gauntlet" / "core" / "rsl_tournament_rewards.py").read_text(encoding="utf-8")
+    assert 'placements = {}' in rewards
+    assert 'standings[:4]' in rewards
