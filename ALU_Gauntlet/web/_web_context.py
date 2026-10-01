@@ -22,6 +22,10 @@ from aiohttp import web
 import discord
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+# Bound Pillow's decompression work before any uploaded image is fully decoded.
+# The route-level dimension check remains in place as an additional guard.
+Image.MAX_IMAGE_PIXELS = 16_777_216
+
 from .auth import DiscordOAuth, SESSION_COOKIE
 from .players import PlayerService
 from ..core.core import ALU_TRACKS, has_5_course_defense, submit_registration_application, get_current_season_number, get_division_for_pi
