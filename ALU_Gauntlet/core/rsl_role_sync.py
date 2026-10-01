@@ -52,10 +52,11 @@ async def _ensure_roles(guild: discord.Guild, names: Iterable[str], role_names: 
 async def sync_gauntlet_season_roles(
     guild: discord.Guild,
     *,
-    division_winners: dict[int | str, str],
-    player_stats: list[dict],
-    overall_activity_stats: list[dict],
-    champion_user_id: str | int | None,
+    division_winners: dict[int | str, str] | None = None,
+    player_stats: list[dict] | None = None,
+    overall_activity_stats: list[dict] | None = None,
+    champion_user_id: str | int | None = None,
+    desired_roles: dict[str, Iterable[str]] | None = None,
     role_names: dict[str, str] | None = None,
     role_ids: dict[str, str] | None = None,
 ) -> dict[str, list[str]]:
@@ -65,11 +66,19 @@ async def sync_gauntlet_season_roles(
     applying the new assignment. Failures are logged by the caller and never
     alter competitive standings or season settlement.
     """
-    desired = build_gauntlet_season_roles(
-        division_winners=division_winners,
-        player_stats=player_stats,
-        champion_user_id=champion_user_id,
-        overall_activity_stats=overall_activity_stats,
+    desired = (
+        {
+            str(role): sorted({str(user_id) for user_id in users if user_id is not None})
+            for role, users in (desired_roles or {}).items()
+            if str(role) in GAUNTLET_SEASONAL_ROLES
+        }
+        if desired_roles is not None
+        else build_gauntlet_season_roles(
+            division_winners=division_winners or {},
+            player_stats=player_stats or [],
+            champion_user_id=champion_user_id,
+            overall_activity_stats=overall_activity_stats or [],
+        )
     )
     managed = await _ensure_roles(guild, GAUNTLET_SEASONAL_ROLES, role_names, role_ids)
     desired_by_user = {
@@ -105,6 +114,34 @@ async def sync_gauntlet_season_roles(
             except Exception:
                 log.exception("Failed to add seasonal RSL roles to member %s in guild %s", member.id, guild.id)
     return desired
+
+
+async def reconcile_gauntlet_season_roles(
+    db,
+    guild: discord.Guild,
+    *,
+    role_names: dict[str, str] | None = None,
+    role_ids: dict[str, str] | None = None,
+) -> int:
+    """Durably re-apply the latest completed-season Gauntlet role snapshot."""
+    state = await db.season_state.find_one({"_id": f"guild_{guild.id}"}) or {}
+    snapshot = state.get("gauntlet_role_snapshot")
+    if not isinstance(snapshot, dict):
+        return 0
+    desired = {
+        str(role): sorted({str(uid) for uid in users if uid is not None})
+        for role, users in snapshot.items()
+        if str(role) in GAUNTLET_SEASONAL_ROLES
+    }
+    if not desired:
+        return 0
+    await sync_gauntlet_season_roles(
+        guild,
+        desired_roles=desired,
+        role_names=role_names,
+        role_ids=role_ids,
+    )
+    return 1
 
 
 async def sync_tournament_season_roles(
