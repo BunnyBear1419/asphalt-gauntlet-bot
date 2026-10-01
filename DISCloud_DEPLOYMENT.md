@@ -22,7 +22,8 @@ The production app ID is fixed to `asph` in the workflows. **No `DISCLOUD_APP_ID
 The workflows require these GitHub Actions secrets:
 - `DISCLOUD_TOKEN`
 - `DISCORD_BOT_TOKEN`
-- `MONGO_URI`
+- `MONGO_URI` — production application/health connection string.
+- `MONGO_CI_URI` — least-privileged MongoDB connection used by scheduled backup/restore workflows; it should have read access to `asphalt_gauntlet` and write/drop access only to the isolated restore-test databases.
 
 After a successful workflow, verify `https://asph.discloud.app/rsl-healthz` and Discord connectivity.
 
