@@ -672,8 +672,8 @@ class ClubsRoutesMixin:
             if exc.__class__.__name__ == "DuplicateKeyError":
                 raise web.HTTPConflict(text="That driver is already in a club in this server.")
             raise
-        await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now.isoformat()}})
-        await self.bot.db.club_invitations.update_many({"club_id": str(club["_id"]), "invitee_id": str(join_request["user_id"]), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now.isoformat()}})
+        await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now}})
+        await self.bot.db.club_invitations.update_many({"club_id": str(club["_id"]), "invitee_id": str(join_request["user_id"]), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now}})
         await self._club_recount_member_count(str(club["_id"]))
         await self._club_notify_user(str(join_request["user_id"]), "RSL Club Join Request", f"Your request to join **{club.get('name', 'the club')}** was accepted.")
         return web.json_response({"ok": True, "message": f"{join_request.get('username', 'Driver')} joined the club."})
