@@ -580,7 +580,7 @@ class TicketEconomyButton(discord.ui.Button):
                 f"**RSL Coins:** {coins:,}\n\n"
                 "Unused tickets expire at the daily reset. Purchasing a ticket is atomic with its Coin debit."
             ),
-            color=ASPH_THEME_COLOR,
+            color=ASPHALT_THEME_COLOR,
         )
         embed.set_footer(text="RSL Economy • Daily ticket cycle")
         await interaction.response.send_message(
