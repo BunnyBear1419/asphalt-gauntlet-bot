@@ -24,7 +24,7 @@ class GauntletRoutesMixin:
         return await self._page_response("gauntlet-career.html", request)
 
     async def xp_me(self, request: web.Request) -> web.Response:
-        from ..core.rsl_xp import get_settings, progress_for_xp
+        from ...core.rsl_xp import get_settings, progress_for_xp
         user, guild_id, _ = await self.require_guild_member(request)
         doc = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
         settings = await get_settings(self.bot.db, guild_id)
@@ -32,12 +32,12 @@ class GauntletRoutesMixin:
         return web.json_response({"user_id": str(user.user_id), "name": str(doc.get("game_id") or doc.get("username") or user.username), "xp": xp, **progress_for_xp(xp, settings), "weekly_xp": int(doc.get("rsl_xp_weekly", 0) or 0), "monthly_xp": int(doc.get("rsl_xp_monthly", 0) or 0), "voice_seconds": int(doc.get("rsl_xp_voice_seconds", 0) or 0), "reactions": int(doc.get("rsl_xp_reaction_count", 0) or 0), "activity": int(doc.get("overall_activity_score", 0) or 0)})
 
     async def xp_history(self, request: web.Request) -> web.Response:
-        from ..core.rsl_xp import xp_history
+        from ...core.rsl_xp import xp_history
         user, guild_id, _ = await self.require_guild_member(request)
         return web.json_response({"rows": await xp_history(self.bot.db, guild_id, str(user.user_id), limit=50)})
 
     async def xp_leaderboard(self, request: web.Request) -> web.Response:
-        from ..core.rsl_xp import leaderboard
+        from ...core.rsl_xp import leaderboard
         user = await self.require_user(request)
         guild_id = str(request.query.get("guild_id") or (user.guild_ids[0] if user.guild_ids else ""))
         if guild_id not in {str(x) for x in user.guild_ids}:
@@ -48,7 +48,7 @@ class GauntletRoutesMixin:
         return web.json_response({"period": period, "rows": await leaderboard(self.bot.db, guild_id, period=period)})
 
     async def xp_settings(self, request: web.Request) -> web.Response:
-        from ..core.rsl_xp import get_settings
+        from ...core.rsl_xp import get_settings
         _, guild_id, _ = await self.require_admin(request)
         return web.json_response(await get_settings(self.bot.db, guild_id))
 
@@ -103,7 +103,7 @@ class GauntletRoutesMixin:
         """Submit five attack runs for the signed-in driver's active challenge."""
         user,guild_id,_=await self.require_guild_member(request)
         payload = await self._json_object(request)
-        from ..core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge, reconcile_processing_challenges
+        from ...core.core import parse_lap_time, process_match_result, claim_active_challenge, release_active_challenge, reconcile_processing_challenges
         uid=str(user.user_id); active=await claim_active_challenge(str(guild_id),uid)
         if not active: raise web.HTTPConflict(text="No active challenge is available to submit.")
         try:
@@ -159,7 +159,7 @@ class GauntletRoutesMixin:
         """Quit the signed-in driver's active Gauntlet challenge through the shared settlement path."""
         user, guild_id, _ = await self.require_guild_member(request)
         uid = str(user.user_id)
-        from ..core.core import abandon_active_challenge
+        from ...core.core import abandon_active_challenge
         active = await self.bot.db.active_challenges.find_one({
             "_id": f"{guild_id}_{uid}",
             "guild_id": str(guild_id),
@@ -278,7 +278,7 @@ class GauntletRoutesMixin:
         rows = list(drivers.values())
 
         def division_for_pi(pi):
-            from ..core.core import get_division_for_pi
+            from ...core.core import get_division_for_pi
             return get_division_for_pi(pi).get("name", "Unranked")
 
         for row in rows:
