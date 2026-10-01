@@ -9,7 +9,7 @@ function verifiedBadge(m){return m.asphalt_verified?'<em class="verified-badge">
 function leaderName(c){const leader=(c.members||[]).find(m=>String(m.user_id)===String(c.leader_id));return leader?.username||"Club Leader"}
 function clubCard(c){
  const mine=c.mine,leader=c.leader;
- const myMember=(c.members||[]).find(m=>String(m.user_id)===String(c.current_user_id));
+ const myMember=(c.members||[]).find(m=>String(m.user_id)===String(window._me?.user_id));
  const officer=mine && myMember?.role==="officer";
  const manager=leader||officer;
  const roleLabel=r=>r==="leader"?"Leader":r==="officer"?"Officer":"Member";
