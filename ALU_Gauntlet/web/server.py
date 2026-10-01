@@ -35,6 +35,7 @@ from ..core.rsl_language import RSL_LANGUAGES, normalize_language
 from ..release import current_release_revision
 from ..core.production_controls import is_maintenance_enabled, is_mutating_competition_path, maintenance_message, set_maintenance_mode, record_system_event
 from ..core.platform_assurance import redact_document, privacy_export_metadata, readiness_check, public_status_snapshot, performance_bucket, SUSPICIOUS_EVENT_TYPES
+from ..core.rsl_reliability import build_reliability_snapshot, create_recovery_checkpoint
 
 log = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent / "static"
@@ -2743,6 +2744,20 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
                 },
                 "release_sha": current_release_revision(),
             })
+        if request.method == "GET" and action == "reliability":
+            settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            snapshot = await build_reliability_snapshot(self.bot.db, guild_id, settings=settings)
+            snapshot["release_sha"] = current_release_revision()
+            snapshot["discord_ready"] = bool(getattr(self.bot, "is_ready", lambda: False)())
+            snapshot["readiness"] = readiness_check({
+                "database": bool(snapshot["economy"].get("ok") is not False),
+                "discord": snapshot["discord_ready"],
+                "economy_integrity": bool(snapshot["economy"].get("ok")),
+                "backup_evidence": True if snapshot["backup"].get("available") else None,
+                "competition_safe_mode": True,
+            })
+            return web.json_response(snapshot)
+
         if request.method == "GET" and action == "evidence":
             queues = []
             drivers = await self.bot.db.drivers.find({"guild_id": guild_id, "defense_review_pending": True}).to_list(length=50)
@@ -2794,6 +2809,28 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
             except Exception as exc:
                 raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
             action = str(payload.get("action") or "").strip().lower()
+            if action == "recovery_checkpoint":
+                checkpoint = await create_recovery_checkpoint(
+                    self.bot.db,
+                    guild_id,
+                    str(user.user_id),
+                    release=current_release_revision(),
+                )
+                await self._audit(
+                    guild_id,
+                    str(user.user_id),
+                    "Created RSL recovery checkpoint " + str(checkpoint.get("id")),
+                )
+                return web.json_response({
+                    "ok": True,
+                    "checkpoint": {
+                        "id": checkpoint.get("id"),
+                        "created_at": checkpoint.get("created_at"),
+                        "release": checkpoint.get("release"),
+                        "collection_counts": checkpoint.get("collection_counts", {}),
+                    },
+                })
+
             if action == "season_preview":
                 state = await self.bot.db.season_state.find_one({"_id": f"guild_{guild_id}"}) or {}
                 season_number = int(state.get("season_number", 1) or 1)
