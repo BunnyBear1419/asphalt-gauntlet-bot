@@ -25,3 +25,12 @@ def test_message_cogs_never_boolean_test_async_database():
     for name in ("rsl_xp.py", "activity_rewards.py", "economy_moderation.py"):
         source = (root / name).read_text(encoding="utf-8")
         assert 'not getattr(self.bot, "db", None)' not in source
+
+
+
+def test_xp_reward_requires_profile_update_and_cleans_fallback_event_on_failure():
+    from pathlib import Path
+    source = (Path(__file__).parents[1] / "ALU_Gauntlet" / "core" / "rsl_xp.py").read_text(encoding="utf-8")
+    assert 'if getattr(update_result, "modified_count", 0) != 1:' in source
+    assert 'raise ValueError("xp_profile_missing")' in source
+    assert 'await db.rsl_xp_events.delete_one({"_id": transaction_id})' in source
