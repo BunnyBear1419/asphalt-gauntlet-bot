@@ -202,3 +202,61 @@ def test_startup_recovers_pending_coin_ledger_rows():
     main = read("ALU_Gauntlet/main.py")
     assert "reconcile_pending_coin_transactions" in main
     assert "await reconcile_pending_coin_transactions(" in main
+
+
+def test_web_gauntlet_failure_path_imports_shared_recovery():
+    source = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    assert "from ...core.rsl_recovery import reconcile_processing_challenges" in source
+
+
+def test_csp_report_only_allows_google_integrations():
+    source = read("ALU_Gauntlet/web/routes/core.py")
+    assert "Content-Security-Policy-Report-Only" in source
+    assert "https://www.googletagmanager.com" in source
+    assert "https://translate.google.com" in source
+    assert "https://translate.googleapis.com" in source
+    assert "https://www.gstatic.com" in source
+
+
+def test_team_tournament_roles_resolve_club_entrants_to_lineup_users():
+    source = read("ALU_Gauntlet/core/rsl_tournament_rewards.py")
+    cog = read("ALU_Gauntlet/cogs/tournament.py")
+    web = read("ALU_Gauntlet/web/routes/tournament.py")
+    assert "async def tournament_role_recipients" in source
+    assert "tournament_role_recipients(" in cog
+    assert "tournament_role_recipients(" in web
+    assert "tournament_champion=champion_users" in cog
+    assert "tournament_champion=champion_users" in web
+
+
+def test_xp_duplicate_is_checked_before_transaction_and_caught_safely():
+    source = read("ALU_Gauntlet/core/rsl_xp.py")
+    assert 'existing_event = await db.rsl_xp_events.find_one' in source
+    assert "from pymongo.errors import DuplicateKeyError" in source
+    assert "except DuplicateKeyError:" in source
+
+
+def test_recovery_only_scans_completed_challenges_missing_bonus_check():
+    source = read("ALU_Gauntlet/core/rsl_recovery.py")
+    assert '"status": "completed", "rsl_bonus_checked": {"$ne": True}' in source
+    assert "rsl_bonus_checked" in source
+
+
+def test_active_challenge_index_creation_is_guarded():
+    source = read("ALU_Gauntlet/main.py")
+    assert "duplicate_cursor = db.active_challenges.aggregate" in source
+    assert "Skipping active Gauntlet uniqueness index" in source
+    assert "Unable to create active Gauntlet uniqueness index" in source
+
+
+def test_diagnostics_are_not_player_allowlisted():
+    source = read("ALU_Gauntlet/core/rsl_ai_assistant.py")
+    assert "show_diagnostics" not in source
+    assert '"diagnostics"' not in source.split("READ_ONLY_TOPICS", 1)[1].split(")", 1)[0]
+
+
+def test_media_limits_use_conflict_and_safe_image_bounds():
+    source = read("ALU_Gauntlet/web/routes/tournament.py")
+    assert 'raise web.HTTPConflict' in source
+    assert "image.width > 4096 or image.height > 4096" in source
+    assert "Image.DecompressionBombError" in source
