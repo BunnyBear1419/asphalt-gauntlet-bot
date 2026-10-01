@@ -1,5 +1,6 @@
 """RSL web gauntlet route family."""
 from .._web_context import *
+from ...core.rsl_recovery import reconcile_processing_challenges
 
 class GauntletRoutesMixin:
     async def rsl_command_center_page(self, request: web.Request) -> web.StreamResponse:
