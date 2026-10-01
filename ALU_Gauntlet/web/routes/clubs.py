@@ -10,7 +10,7 @@ class ClubsRoutesMixin:
         await self.require_user(request)
         return await self._page_response("club.html", request)
 
-async def create_club(self, request: web.Request) -> web.Response:
+    async def create_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         guild_id = str(payload.get("guild_id", "")).strip()
@@ -55,7 +55,7 @@ async def create_club(self, request: web.Request) -> web.Response:
             raise
         return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
 
-async def update_club(self, request: web.Request) -> web.Response:
+    async def update_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
@@ -111,7 +111,7 @@ async def update_club(self, request: web.Request) -> web.Response:
             await self.bot.db.clubs.update_one({"_id": oid}, {"$set": updates})
         return web.json_response({"ok": True, "message": "Club profile updated."})
 
-async def join_club(self, request: web.Request) -> web.Response:
+    async def join_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
@@ -454,7 +454,7 @@ async def join_club(self, request: web.Request) -> web.Response:
         await self.require_user(request)
         return await self._page_response("club.html", request)
 
-async def create_club(self, request: web.Request) -> web.Response:
+    async def create_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         guild_id = str(payload.get("guild_id", "")).strip()
@@ -499,7 +499,7 @@ async def create_club(self, request: web.Request) -> web.Response:
             raise
         return web.json_response({"ok": True, "club_id": str(result.inserted_id), "message": "Club created."})
 
-async def update_club(self, request: web.Request) -> web.Response:
+    async def update_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
@@ -555,7 +555,7 @@ async def update_club(self, request: web.Request) -> web.Response:
             await self.bot.db.clubs.update_one({"_id": oid}, {"$set": updates})
         return web.json_response({"ok": True, "message": "Club profile updated."})
 
-async def join_club(self, request: web.Request) -> web.Response:
+    async def join_club(self, request: web.Request) -> web.Response:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await request.json()
         from bson import ObjectId
