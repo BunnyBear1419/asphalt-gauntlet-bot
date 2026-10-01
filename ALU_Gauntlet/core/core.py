@@ -4357,15 +4357,19 @@ async def get_guild_local_date(guild_id: str) -> str:
 async def claim_active_challenge(guild_id: str, user_id: str):
     """Atomically claim an active challenge; use shared recovery before claiming."""
     active_id = f"{guild_id}_{user_id}"
-    # Reconcile stale processing through the same reservation-aware recovery path
-    # used by Discord/web submission and the Match Assistant. In particular, do
-    # not reopen a challenge after its deterministic settlement reservation has
-    # already completed.
-    from .rsl_recovery import reconcile_processing_challenges
-    await reconcile_processing_challenges(bot.db, str(guild_id))
     active = await bot.db.active_challenges.find_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id)})
     if not active:
         return None
+    # Only invoke the reservation-aware recovery path when this driver's
+    # challenge is actually processing. This avoids a full-guild scan for normal
+    # active claims and ensures a completed deterministic settlement cannot be
+    # reopened by a late Discord/web submission.
+    if active.get("status") == "processing":
+        from .rsl_recovery import reconcile_processing_challenges
+        await reconcile_processing_challenges(bot.db, str(guild_id))
+        active = await bot.db.active_challenges.find_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id)})
+        if not active:
+            return None
     now = time.time()
     if float(active.get("expires_at", now + 1)) <= now:
         await bot.db.active_challenges.update_one({"_id": active_id, "guild_id": str(guild_id), "challenger_id": str(user_id), "status": {"$in": ["active", "processing"]}}, {"$set": {"status": "expired", "expired_at": now, "abandon_reason": "timeout", "ticket_burned": True, "settlement_closed": True}})
