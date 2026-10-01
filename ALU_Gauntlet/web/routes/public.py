@@ -264,7 +264,12 @@ class PublicRoutesMixin:
         if result_submission_mode not in {"admin_only", "player_review"}:
             raise web.HTTPBadRequest(text="Result submission mode must be admin_only or player_review.")
         from ALU_Gauntlet.core.tournament import generate_tournament_bracket
+        from ALU_Gauntlet.core.rsl_tournament_rewards import normalize_tournament_rewards
         bracket = generate_tournament_bracket(fmt, max_players)
+        try:
+            rewards = normalize_tournament_rewards(payload.get("rewards"))
+        except (TypeError, ValueError):
+            raise web.HTTPBadRequest(text="Tournament rewards must contain non-negative integer values.")
         now = datetime.now(timezone.utc).isoformat()
         registration_deadline = str(payload.get("registration_deadline", "")).strip() or None
         start_time = str(payload.get("start_time", "")).strip() or None
@@ -283,6 +288,7 @@ class PublicRoutesMixin:
             "max_players": max_players,
             "team_size": team_size,
             "result_submission_mode": result_submission_mode,
+            "rewards": rewards,
             "bracket": bracket,
             "bracket_version": 1,
             "gauntlet_only": bool(payload.get("gauntlet_only", False)),
