@@ -165,3 +165,19 @@ def test_tournament_completion_syncs_seasonal_discord_roles():
     assert "_sync_completed_tournament_roles(t)" in cog
     assert "_sync_completed_tournament_roles(self, tournament" in server
     assert 'if t.get("status") == "completed":' in server
+    assert "async def sync_tournament_achievement_roles(" in sync
+    assert "PERMANENT_ACHIEVEMENT_ROLES" in sync
+    assert "sync_tournament_achievement_roles" in cog
+    assert "Tournament Participant" in cog
+    assert "Perfect Tournament Run" in cog
+
+
+
+def test_permanent_tournament_achievement_sync_is_additive_and_not_seasonal():
+    sync = (ROOT / "ALU_Gauntlet" / "core" / "rsl_role_sync.py").read_text(encoding="utf-8")
+    roles = (ROOT / "ALU_Gauntlet" / "core" / "rsl_roles.py").read_text(encoding="utf-8")
+    assert "async def sync_tournament_achievement_roles(" in sync
+    assert "if role.id in {existing.id for existing in member.roles}" in sync
+    assert 'await member.add_roles(role, reason="RSL permanent tournament achievement")' in sync
+    assert "PERMANENT_ACHIEVEMENT_ROLES" in roles
+    assert "reconcile_seasonal_roles" in roles
