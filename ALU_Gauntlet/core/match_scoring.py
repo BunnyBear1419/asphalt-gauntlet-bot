@@ -68,6 +68,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
                     {"$set": {
                         **metadata,
                         "rsl_margin_bonus_applied": True,
+                        "rsl_bonus_checked": True,
                         "rsl_performance_bonus_applied": margin,
                         "rsl_performance_winner_bonus": margin,
                         "rsl_performance_loser_penalty": -margin,
@@ -94,7 +95,14 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
         # write fails.
         await db.matches.update_one(
             {"_id": match_data["_id"]},
-            {"$set": metadata},
+            {"$set": {
+                **metadata,
+                "rsl_margin_bonus_applied": True,
+                "rsl_performance_bonus_applied": 0,
+                "rsl_performance_winner_bonus": 0,
+                "rsl_performance_loser_penalty": 0,
+                "rsl_bonus_checked": True,
+            }},
         )
         if margin == 0:
             await record_match_fairness_stats(db, match_data)
