@@ -112,16 +112,55 @@ async def _ensure_database_indexes():
     await db.rsl_ticket_notifications.create_index([("event_key", 1)], unique=True, name="uniq_rsl_ticket_notification_event")
     await db.rsl_ticket_notifications.create_index([("guild_id", 1), ("status", 1), ("retry_at", 1)], name="idx_rsl_ticket_notification_retry")
     await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("created_at", -1)], name="idx_rsl_recovery_checkpoint")
-    # Defense-in-depth: even if a future code path changes the deterministic
-    # challenge _id, a player can never have two concurrently active/processing
-    # Gauntlet challenges in the same guild. Completed/abandoned history remains
-    # reusable, so this does not block a later challenge after settlement.
     await db.active_challenges.create_index(
-        [("guild_id", 1), ("challenger_id", 1)],
-        unique=True,
-        partialFilterExpression={"status": {"$in": ["active", "processing"]}},
-        name="uniq_active_gauntlet_challenge_per_player",
+        [("guild_id", 1), ("status", 1), ("processing_at", 1)],
+        name="idx_active_challenge_status_processing",
     )
+    await db.active_challenges.create_index(
+        [("guild_id", 1), ("status", 1), ("rsl_bonus_checked", 1)],
+        name="idx_active_challenge_bonus_recovery",
+    )
+    await db.rsl_economy_transactions.create_index(
+        [("guild_id", 1), ("status", 1), ("created_at", 1)],
+        name="idx_rsl_economy_pending_recovery",
+    )
+    await db.drivers.create_index(
+        [("guild_id", 1), ("rsl_xp", 1)],
+        name="idx_rsl_xp_role_reconciliation",
+    )
+
+    # Defense-in-depth uniqueness guard. Older Mongo deployments can reject
+    # the $in partial-filter form, and legacy duplicate rows can prevent index
+    # creation. Never make the entire bot fail startup for this optimization.
+    duplicate_cursor = db.active_challenges.aggregate([
+        {"$match": {"status": {"$in": ["active", "processing"]}}},
+        {"$group": {
+            "_id": {"guild_id": "$guild_id", "challenger_id": "$challenger_id"},
+            "count": {"$sum": 1},
+        }},
+        {"$match": {"count": {"$gt": 1}}},
+        {"$limit": 1},
+    ])
+    duplicates = await duplicate_cursor.to_list(length=1)
+    if duplicates:
+        import logging
+        logging.getLogger(__name__).error(
+            "Skipping active Gauntlet uniqueness index because legacy duplicate active challenges exist: %s",
+            duplicates[0],
+        )
+    else:
+        try:
+            await db.active_challenges.create_index(
+                [("guild_id", 1), ("challenger_id", 1)],
+                unique=True,
+                partialFilterExpression={"status": {"$in": ["active", "processing"]}},
+                name="uniq_active_gauntlet_challenge_per_player",
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception(
+                "Unable to create active Gauntlet uniqueness index; runtime atomic claims remain authoritative"
+            )
     # Keep settlement IDs indexed for staff reconciliation/auditing. The
     # authoritative replay guard is the deterministic match _id itself, which
     # MongoDB already enforces as unique without risking startup failure if
