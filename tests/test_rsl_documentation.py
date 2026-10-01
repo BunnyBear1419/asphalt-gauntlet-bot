@@ -1,4 +1,5 @@
 from pathlib import Path
+from web_source import web_source
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "ALU_Gauntlet" / "web" / "static"
@@ -10,7 +11,7 @@ def test_rsl_documentation_sections_exist():
     help_page = (STATIC / "help.html").read_text(encoding="utf-8")
     legal = (STATIC / "legal.html").read_text(encoding="utf-8")
     rules = (STATIC / "rules.html").read_text(encoding="utf-8")
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
 
     assert "ABOUT US" in index
     assert "WHAT RSL PROVIDES" in index
