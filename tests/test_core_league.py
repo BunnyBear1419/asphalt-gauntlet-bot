@@ -193,10 +193,14 @@ def test_stale_processing_challenge_is_recovered(monkeypatch):
             "expires_at": __import__("time").time() + 3600,
         }
 
-        claimed = await core.claim_active_challenge("guild", "user")
-        assert claimed["status"] == "processing"
-        assert "processing_at" in claimed
-        assert fake_db.active_challenges.docs["guild_user"]["status"] == "processing"
+        from ALU_Gauntlet.core.rsl_recovery import reconcile_processing_challenges
+
+        stats = await reconcile_processing_challenges(fake_db, "guild")
+        assert stats["reopened"] == 1
+        assert stats["closed"] == 0
+        assert fake_db.active_challenges.docs["guild_user"]["status"] == "active"
+        assert fake_db.active_challenges.docs["guild_user"]["ticket_burned"] is True
+        assert fake_db.active_challenges.docs["guild_user"]["settlement_closed"] is False
 
     asyncio.run(run())
 
