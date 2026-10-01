@@ -225,10 +225,11 @@ class ClubMemberSelect(discord.ui.Select):
 
 
 class ClubMemberActionView(discord.ui.View):
-    def __init__(self, club, owner_id):
+    def __init__(self, club, owner_id, owner_role="leader"):
         super().__init__(timeout=900)
         self.club = club
         self.owner_id = str(owner_id)
+        self.owner_role = str(owner_role or "member").casefold()
         self.target_user_id = None
 
     def action_embed(self):
@@ -261,16 +262,26 @@ class ClubMemberActionView(discord.ui.View):
                 ephemeral=True
             )
             return
+        target_role = str(member.get("role", "member")).casefold()
         if action == "kick":
+            if target_role == "officer" and self.owner_role != "leader":
+                await localize_text(bot, interaction.user.id, "❌ Officers cannot kick another Officer.", interaction.locale)
+                return
             await bot.db.club_members.delete_one({"_id": member["_id"]})
             await bot.db.clubs.update_one({"_id": self.club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             message = "✅ Member removed from the club."
         elif action == "promote":
+            if self.owner_role != "leader":
+                await localize_text(bot, interaction.user.id, "❌ Only the club leader can promote members to Officer.", interaction.locale)
+                return
             await bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": "officer"}})
-            message = "✅ Member promoted to officer."
+            message = "✅ Member promoted to Officer."
         elif action == "demote":
+            if self.owner_role != "leader":
+                await localize_text(bot, interaction.user.id, "❌ Only the club leader can demote Officers.", interaction.locale)
+                return
             await bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": "member"}})
-            message = "✅ Member demoted to member."
+            message = "✅ Officer demoted to Member."
         else:
             message = "❌ Unsupported member action."
         await interaction.response.send_message(
@@ -335,9 +346,9 @@ class ClubCenterView(discord.ui.View):
 
     @discord.ui.button(label="Manage Members", style=discord.ButtonStyle.primary, emoji="👥")
     async def manage(self, interaction: discord.Interaction, button):
-        if not self.current_club or str(self.current_club.get("leader_id")) != self.user_id:
+        if not self.current_club or str((self.membership or {}).get("role", "")).casefold() not in {"leader", "officer"}:
             await interaction.response.send_message(
-                await localize_text(bot, interaction.user.id, "❌ Only the club leader can manage members.", interaction.locale),
+                await localize_text(bot, interaction.user.id, "❌ Only the club leader or an Officer can manage members.", interaction.locale),
                 ephemeral=True
             )
             return
@@ -349,7 +360,7 @@ class ClubCenterView(discord.ui.View):
                 ephemeral=True
             )
             return
-        view = ClubMemberActionView(self.current_club, self.user_id)
+        view = ClubMemberActionView(self.current_club, self.user_id, (self.membership or {}).get("role", "member"))
         view.add_item(ClubMemberSelect(members))
         class PromoteButton(discord.ui.Button):
             def __init__(self): super().__init__(label="Promote", style=discord.ButtonStyle.success, emoji="⬆️")
@@ -360,8 +371,9 @@ class ClubCenterView(discord.ui.View):
         class KickButton(discord.ui.Button):
             def __init__(self): super().__init__(label="Kick", style=discord.ButtonStyle.danger, emoji="🦵")
             async def callback(btn, inter): await view.apply(inter, "kick")
-        view.add_item(PromoteButton())
-        view.add_item(DemoteButton())
+        if str((self.membership or {}).get("role", "")).casefold() == "leader":
+            view.add_item(PromoteButton())
+            view.add_item(DemoteButton())
         view.add_item(KickButton())
         await interaction.response.send_message(embed=view.action_embed(), view=view, ephemeral=True)
 
