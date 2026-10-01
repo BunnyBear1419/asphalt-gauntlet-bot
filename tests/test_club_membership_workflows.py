@@ -97,7 +97,8 @@ def test_leader_can_transfer_or_delete_club():
     js = Path("ALU_Gauntlet/web/static/clubs.js").read_text(encoding="utf-8")
     assert "async def transfer_club_leadership" in clubs
     assert "Only the current club leader can transfer leadership." in clubs
-    assert '{"$set": {"role": "officer"}}' in clubs
+    assert '"role": "officer"' in clubs
+    assert '"updated_at": now' in clubs
     assert '"role": "leader"' in clubs
     assert "async def delete_club" in clubs
     assert "Only the club leader can delete the club." in clubs
