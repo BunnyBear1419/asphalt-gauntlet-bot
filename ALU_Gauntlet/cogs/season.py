@@ -145,13 +145,23 @@ async def trigger_global_season_end(guild_id, forced_interaction=None, start_nex
             metadata={"season": current_season, "points_rank": points_rank[uid],
                       "season_points": int(row.get("season_points", 0) or 0)},
         )
-        if ledger.get("ok") and not ledger.get("duplicate"):
+        if ledger.get("ok"):
+            # The coin ledger is the exactly-once authority. Badge/profile
+            # materialization must also run on duplicate retries so a crash
+            # after the coin commit cannot permanently lose the non-currency
+            # portion of the same season reward.
+            reward_marker = f"season:{current_season}:rank:{points_rank[uid]}"
             await bot.db.drivers.update_one(
-                {"_id": f"{guild_id}_{uid}", "season_number": current_season},
+                {
+                    "_id": f"{guild_id}_{uid}",
+                    "season_number": current_season,
+                    "last_season_reward.reference_id": {"$ne": reward_marker},
+                },
                 {"$inc": {"rsl_badges": int(reward["badges"])},
                  "$set": {"last_season_reward": {"season": current_season, **reward,
                          "points_rank": points_rank[uid],
-                         "season_points": int(row.get("season_points", 0) or 0)}}},
+                         "season_points": int(row.get("season_points", 0) or 0),
+                         "reference_id": reward_marker}}},
             )
 
     # Apply Discord recognition only after the season snapshot/rewards are built.
