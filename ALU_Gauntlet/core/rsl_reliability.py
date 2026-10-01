@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import Any
 
 from .platform_assurance import anomaly_flags, readiness_check, redact_document
+from .rsl_hardening import ADMIN_CAPABILITIES
 
 
-RELIABILITY_VERSION = "1"
+RELIABILITY_VERSION = "2"
 DEFAULT_RETENTION_DAYS = {
     "system_events": 365,
     "ticket_events": 365,
@@ -143,6 +144,7 @@ async def build_reliability_snapshot(db: Any, guild_id: str, *, settings: dict[s
         "economy": economy,
         "backup": backup,
         "retention_days": retention_policy(settings),
+        "admin_capabilities": sorted(ADMIN_CAPABILITIES),
         "safe_mode": bool(((settings or {}).get("maintenance_mode") or {}).get("enabled")),
     }
 
