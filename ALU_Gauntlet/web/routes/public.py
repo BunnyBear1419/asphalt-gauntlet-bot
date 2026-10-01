@@ -1,6 +1,6 @@
 """RSL web public route family."""
 from .._web_context import *
-from ..core.rsl_roles import XP_LEVEL_ROLES, GAUNTLET_SEASONAL_ROLES, TOURNAMENT_SEASONAL_ROLES, PERMANENT_ACHIEVEMENT_ROLES
+from ...core.rsl_roles import XP_LEVEL_ROLES, GAUNTLET_SEASONAL_ROLES, TOURNAMENT_SEASONAL_ROLES, PERMANENT_ACHIEVEMENT_ROLES
 
 class PublicRoutesMixin:
     @staticmethod
@@ -120,7 +120,7 @@ class PublicRoutesMixin:
         return web.Response(text=body, content_type="application/xml")
 
     async def save_xp_settings(self, request: web.Request) -> web.Response:
-        from ..core.rsl_xp import DEFAULT_XP_SETTINGS
+        from ...core.rsl_xp import DEFAULT_XP_SETTINGS
         _, guild_id, _ = await self.require_admin(request)
         payload = await self._json_object(request)
         clean = {k: payload[k] for k in payload if k in DEFAULT_XP_SETTINGS}
