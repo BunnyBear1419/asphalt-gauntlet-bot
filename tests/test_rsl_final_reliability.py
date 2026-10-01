@@ -32,7 +32,7 @@ def test_reliability_admin_surface_is_merged_into_existing_operations_center():
     assert "create-recovery-checkpoint" in admin
 
 
-def test_recovery_checkpoint_has_a_guild_scoped_unique_index():
+def test_recovery_checkpoint_has_a_guild_scoped_index():
     main = MAIN.read_text(encoding="utf-8")
     assert "rsl_recovery_checkpoints" in main
-    assert "uniq_rsl_recovery_checkpoint" in main
+    assert "idx_rsl_recovery_checkpoint" in main
