@@ -1,3 +1,4 @@
+from web_source import web_source
 """Regression checks for the completed Tournament Center and media archive."""
 from pathlib import Path
 
@@ -9,7 +10,7 @@ PLAYER = ROOT / "ALU_Gauntlet" / "web" / "static" / "player.js"
 COG = ROOT / "ALU_Gauntlet" / "cogs" / "tournament.py"
 
 def test_tournament_completion_apis_are_registered():
-    text = SERVER.read_text(encoding="utf-8")
+    text = web_source()
     assert 'add_get("/api/tournaments/results"' in text
     assert 'add_get("/api/tournaments/{tournament_id}/media"' in text
     assert 'add_post("/api/tournaments/media"' in text
@@ -17,21 +18,21 @@ def test_tournament_completion_apis_are_registered():
     assert 'add_get("/assets/tournament-media/{media_id}"' in text
 
 def test_results_include_standings_history_and_media():
-    text = SERVER.read_text(encoding="utf-8")
+    text = web_source()
     assert "async def _tournament_result_payload" in text
     assert '"standings": rows' in text
     assert '"matches": [{"id"' in text
     assert 'tournament_media.count_documents' in text
 
 def test_tournament_media_requires_approval_for_players():
-    text = SERVER.read_text(encoding="utf-8")
+    text = web_source()
     assert 'status = "approved" if staff else "pending"' in text
     assert "Only tournament participants or tournament staff can upload media." in text
     assert "Tournament Media Pending Approval" in text
 
 
 def test_tournament_media_upload_is_bounded_and_private():
-    text = SERVER.read_text(encoding="utf-8")
+    text = web_source()
     assert "max_size = 12 * 1024 * 1024" in text
     assert "if len(data) > max_size" in text
     assert 'Cache-Control":"private, max-age=3600' in text
@@ -39,7 +40,7 @@ def test_tournament_media_upload_is_bounded_and_private():
 
 
 def test_language_preference_is_account_scoped():
-    text = SERVER.read_text(encoding="utf-8")
+    text = web_source()
     assert 'add_get("/api/language", self.get_language)' in text
     assert 'add_post("/api/language", self.set_language)' in text
     assert 'web_user_preferences.find_one({"_id": str(user.user_id)})' in text
@@ -69,7 +70,7 @@ def test_competitive_profile_links_to_tournament_results():
 
 
 def test_tournament_result_submission_modes_are_configurable_and_enforced():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     cog = COG.read_text(encoding="utf-8")
     tournaments = TOURNAMENTS.read_text(encoding="utf-8")
     page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "tournaments.html").read_text(encoding="utf-8")
@@ -95,7 +96,7 @@ def test_admin_only_result_submission_advances_without_second_manual_review():
 
 
 def test_player_review_result_submission_still_requires_staff_verification():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     cog = COG.read_text(encoding="utf-8")
     assert 'result_status":"pending"' in server
     assert 'result_status":"pending"' in cog
@@ -123,7 +124,7 @@ def test_completed_tournament_archive_exposes_champion_standings_history_and_med
 
 
 def test_media_and_result_permissions_have_server_side_guards():
-    server = SERVER.read_text(encoding="utf-8")
+    server = web_source()
     assert "await self.require_user(request)" in server
     assert "Only tournament participants or tournament staff can upload media." in server
     assert "async def _tournament_media_participant" in server
