@@ -48,6 +48,16 @@ async def _entrant_users(db, tournament: dict, entrant_id: str) -> list[str]:
     return [entrant_id]
 
 
+async def tournament_role_recipients(db, tournament: dict, entrant_ids: list[str]) -> dict[str, list[str]]:
+    """Resolve tournament entrant IDs to Discord user IDs, including club lineups."""
+    team_event = int(tournament.get("team_size", 1) or 1) > 1
+    resolved: dict[str, list[str]] = {}
+    for index, entrant_id in enumerate(entrant_ids):
+        users = await _entrant_users(db, tournament, str(entrant_id)) if team_event else [str(entrant_id)]
+        resolved[str(index)] = list(dict.fromkeys(str(uid) for uid in users if uid))
+    return resolved
+
+
 async def _all_participant_users(db, tournament: dict) -> list[str]:
     """Return every accepted/checked-in tournament participant as individual users."""
     tournament_id = str(tournament.get("_id"))
