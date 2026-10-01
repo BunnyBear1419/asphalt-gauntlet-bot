@@ -120,7 +120,16 @@ class MatchAssistantCog(commands.Cog):
 
     async def _scan(self):
         now = time.time()
-        guild_ids = await self.bot.db.active_challenges.distinct("guild_id", {"status": "processing"})
+        # Recovery also reconciles completed challenges whose deterministic
+        # settlement exists but whose RSL margin bonus is still missing. Do
+        # not let guild discovery depend solely on an active processing row.
+        processing_guild_ids = await self.bot.db.active_challenges.distinct(
+            "guild_id", {"status": "processing"}
+        )
+        completed_bonus_guild_ids = await self.bot.db.active_challenges.distinct(
+            "guild_id", {"status": "completed"}
+        )
+        guild_ids = set(processing_guild_ids) | set(completed_bonus_guild_ids)
         for guild_id in guild_ids:
             try:
                 await reconcile_processing_challenges(self.bot.db, str(guild_id))
