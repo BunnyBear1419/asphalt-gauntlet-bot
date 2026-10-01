@@ -5,6 +5,7 @@ from ..core.core import *
 from ..core.match_scoring import apply_rsl_performance_bonus
 from ..core.fairness import fair_match_snapshot
 from ..core.gauntlet_progression import FREE_DAILY_TICKETS
+from ..core.rsl_recovery import reconcile_processing_challenges
 from .ticket_economy import BuyTicketView
 
 class ChallengesCog(commands.Cog):
@@ -177,7 +178,7 @@ class ChallengesCog(commands.Cog):
             # reservation exists for this challenge.
             reservation = await bot.db.matches.find_one({'_id': f"{active['_id']}:match", 'guild_id': guild_id})
             if reservation:
-                await reconcile_processing_challenges(guild_id)
+                await reconcile_processing_challenges(bot.db, guild_id)
             else:
                 await release_active_challenge(active['_id'])
             await interaction.followup.send(await localize_text(bot, interaction.user.id, '❌ Could not process this match. If a settlement reservation was created, the bot will reconcile it automatically.', interaction.locale), ephemeral=True)
