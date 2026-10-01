@@ -196,3 +196,9 @@ def test_nontransactional_coin_recovery_has_atomic_driver_marker():
     assert "hashlib.sha256(transaction_id.encode" in source
     assert "rsl_coin_ledger_markers" in source
     assert "reconcile_pending_coin_transactions" in source
+
+
+def test_startup_recovers_pending_coin_ledger_rows():
+    main = read("ALU_Gauntlet/main.py")
+    assert "reconcile_pending_coin_transactions" in main
+    assert "await reconcile_pending_coin_transactions(" in main
