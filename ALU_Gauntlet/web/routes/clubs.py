@@ -1,9 +1,44 @@
+import discord
 """RSL web clubs route family."""
 from datetime import timedelta
 from bson import ObjectId
 from .._web_context import *
 
 class ClubsRoutesMixin:
+    async def _ensure_club_indexes(self) -> None:
+        if getattr(self.bot, "_rsl_club_ttl_indexes_ready", False):
+            return
+        try:
+            await self.bot.db.club_invitations.create_index([("expires_at", 1)], name="club_invitation_expires_ttl", expireAfterSeconds=0)
+            await self.bot.db.club_join_requests.create_index([("expires_at", 1)], name="club_join_request_expires_ttl", expireAfterSeconds=0)
+            self.bot._rsl_club_ttl_indexes_ready = True
+        except Exception:
+            log.exception("Unable to ensure RSL club invitation/request TTL indexes")
+
+    @staticmethod
+    def _club_datetime(value: Any) -> datetime | None:
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        text = str(value or "").strip()
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+            return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _club_json_datetime(value: Any) -> Any:
+        parsed = ClubsRoutesMixin._club_datetime(value)
+        return parsed.isoformat() if parsed else value
+
+    async def _club_recount_member_count(self, club_id: str) -> int:
+        count = await self.bot.db.club_members.count_documents({"club_id": str(club_id)})
+        oid = ObjectId(str(club_id)) if ObjectId.is_valid(str(club_id)) else club_id
+        await self.bot.db.clubs.update_one({"_id": oid}, {"$set": {"member_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        return count
+
     async def clubs(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         guild_ids = {str(x) for x in user.guild_ids}
@@ -141,20 +176,28 @@ class ClubsRoutesMixin:
         if not target:
             raise web.HTTPBadRequest(text="The replacement leader must already be a club member.")
         now = datetime.now(timezone.utc).isoformat()
-        updated = await self.bot.db.clubs.update_one(
-            {"_id": club_id, "leader_id": str(user.user_id)},
-            {"$set": {"leader_id": target_id, "updated_at": now}},
-        )
-        if not updated.modified_count:
-            raise web.HTTPConflict(text="Club leadership changed before your transfer completed.")
-        await self.bot.db.club_members.update_one(
-            {"club_id": str(club_id), "user_id": str(user.user_id)},
-            {"$set": {"role": "officer"}},
-        )
-        await self.bot.db.club_members.update_one(
-            {"club_id": str(club_id), "user_id": target_id},
-            {"$set": {"role": "leader"}},
-        )
+        client = getattr(self.bot.db, "client", None)
+        if client is not None:
+            async with await client.start_session() as session:
+                async with session.start_transaction():
+                    updated = await self.bot.db.clubs.update_one({"_id": club_id, "leader_id": str(user.user_id)}, {"$set": {"leader_id": target_id, "updated_at": now}}, session=session)
+                    if not updated.modified_count:
+                        raise web.HTTPConflict(text="Club leadership changed before your transfer completed.")
+                    old_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": str(user.user_id)}, {"$set": {"role": "officer", "updated_at": now}}, session=session)
+                    new_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": target_id}, {"$set": {"role": "leader", "updated_at": now}}, session=session)
+                    if not old_role.modified_count or not new_role.modified_count:
+                        raise web.HTTPConflict(text="Club membership changed before leadership transfer completed.")
+        else:
+            updated = await self.bot.db.clubs.update_one({"_id": club_id, "leader_id": str(user.user_id)}, {"$set": {"leader_id": target_id, "updated_at": now}})
+            if not updated.modified_count:
+                raise web.HTTPConflict(text="Club leadership changed before your transfer completed.")
+            old_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": str(user.user_id)}, {"$set": {"role": "officer", "updated_at": now}})
+            new_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": target_id}, {"$set": {"role": "leader", "updated_at": now}})
+            if not old_role.modified_count or not new_role.modified_count:
+                await self.bot.db.clubs.update_one({"_id": club_id, "leader_id": target_id}, {"$set": {"leader_id": str(user.user_id), "updated_at": now}})
+                await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": str(user.user_id)}, {"$set": {"role": "leader", "updated_at": now}})
+                await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": target_id}, {"$set": {"role": "member", "updated_at": now}})
+                raise web.HTTPConflict(text="Club leadership transfer could not be completed safely.")
         await self._club_notify_user(target_id, "Club leadership transferred", f"You are now the Leader of {club.get('name', 'the club')}.")
         return web.json_response({"ok": True, "message": "Club leadership transferred. You are now an Officer."})
 
@@ -173,12 +216,23 @@ class ClubsRoutesMixin:
         registrations = await self.bot.db.tournament_club_registrations.count_documents({"club_id": str(club_id)})
         if registrations:
             raise web.HTTPConflict(text="This club has tournament history or registrations and cannot be deleted. Contact staff if the club needs to be retired.")
-        await self.bot.db.club_invitations.delete_many({"club_id": str(club_id)})
-        await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id)})
-        await self.bot.db.club_members.delete_many({"club_id": str(club_id)})
-        result = await self.bot.db.clubs.delete_one({"_id": club_id, "leader_id": str(user.user_id)})
-        if not result.deleted_count:
-            raise web.HTTPConflict(text="Club changed before deletion completed.")
+        client = getattr(self.bot.db, "client", None)
+        if client is not None:
+            async with await client.start_session() as session:
+                async with session.start_transaction():
+                    result = await self.bot.db.clubs.delete_one({"_id": club_id, "leader_id": str(user.user_id)}, session=session)
+                    if not result.deleted_count:
+                        raise web.HTTPConflict(text="Club changed before deletion completed.")
+                    await self.bot.db.club_invitations.delete_many({"club_id": str(club_id)}, session=session)
+                    await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id)}, session=session)
+                    await self.bot.db.club_members.delete_many({"club_id": str(club_id)}, session=session)
+        else:
+            result = await self.bot.db.clubs.delete_one({"_id": club_id, "leader_id": str(user.user_id)})
+            if not result.deleted_count:
+                raise web.HTTPConflict(text="Club changed before deletion completed.")
+            await self.bot.db.club_invitations.delete_many({"club_id": str(club_id)})
+            await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id)})
+            await self.bot.db.club_members.delete_many({"club_id": str(club_id)})
         return web.json_response({"ok": True, "message": "Club deleted."})
 
     async def update_club(self, request: web.Request) -> web.Response:
@@ -347,6 +401,10 @@ class ClubsRoutesMixin:
         query = str(request.query.get("q", "")).strip().casefold()
         if guild_id not in {str(x) for x in user.guild_ids}:
             raise web.HTTPForbidden(text="You are not a member of that server.")
+        actor_club_id = str(request.query.get("club_id", "")).strip()
+        actor_role = await self._club_member_role(actor_club_id, str(user.user_id)) if ObjectId.is_valid(actor_club_id) else None
+        if actor_role not in {"leader", "officer"}:
+            raise web.HTTPForbidden(text="Only the club leader or an Officer can search for invitees.")
         guild = self.bot.get_guild(int(guild_id))
         if guild is None:
             raise web.HTTPNotFound(text="Discord server is not available.")
@@ -369,6 +427,8 @@ class ClubsRoutesMixin:
             if target is None:
                 target = await self.bot.fetch_user(int(user_id))
             await target.send(f"**{title}**\n{message}")
+        except discord.Forbidden:
+            log.warning("Unable to deliver club membership notification to %s because DMs are disabled or blocked.", user_id)
         except Exception:
             log.exception("Unable to deliver club membership notification to %s", user_id)
 
