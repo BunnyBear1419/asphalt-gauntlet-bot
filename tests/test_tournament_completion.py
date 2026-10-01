@@ -152,3 +152,16 @@ def test_tournament_admin_documentation_exists():
         assert phrase in guide
     for phrase in ("Discloud-first", "unique active player registration", "Calendar navigation", "CI is green"):
         assert phrase in maintenance
+
+
+def test_tournament_completion_syncs_seasonal_discord_roles():
+    sync = (ROOT / "ALU_Gauntlet" / "core" / "rsl_role_sync.py").read_text(encoding="utf-8")
+    cog = COG.read_text(encoding="utf-8")
+    server = web_source()
+    assert "async def sync_tournament_season_roles(" in sync
+    assert "TOURNAMENT_SEASONAL_ROLES" in sync
+    assert "_sync_completed_tournament_roles" in cog
+    assert 'if t.get("status") == "completed":' in cog
+    assert "_sync_completed_tournament_roles(t)" in cog
+    assert "_sync_completed_tournament_roles(self, tournament" in server
+    assert 'if t.get("status") == "completed":' in server
