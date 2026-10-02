@@ -3,7 +3,7 @@ async function api(url,opts={}){const r=await fetch(url,{credentials:"same-origi
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function allMatches(b){if(!b)return [];const out=[];for(const k of ["rounds","winners","losers"]){for(const r of (b[k]||[]))out.push(...(r.matches||[]).map(m=>({...m,round_name:r.name||("Round "+r.round)})))}for(const k of ["grand_final","grand_final_reset"]){if(b[k])out.push({...b[k],round_name:k==="grand_final"?"Grand Final":"Grand Final Reset"})}return out}
 function entrant(t,id){const sid=String(id||"");if(!sid)return {name:"TBD",id:""};if(Number(t.team_size||1)>1){const c=(t.clubs||[]).find(x=>String(x.id)===sid);if(c)return {name:c.name,id:c.id,detail:(c.lineup||[]).map(String).map(i=>(c.members||[]).find(m=>String(m.user_id)===i)?.username).filter(Boolean).join(" • "),club:true};return {name:sid,id:sid,detail:"Club",club:true}}
-const p=(t.registrations||[]).find(x=>String(x.user_id)===sid);return {name:p?.username||sid,id:sid,detail:p?.asphalt_game_name||"Driver",club:false}
+const p=(t.registrations||[]).find(x=>String(x.user_id)===sid);return {name:p?.username||sid,id:sid,detail:p?.asphalt_game_name||"Driver",club:false}}
 function status(m){if(m.result_status==="pending")return "PENDING REVIEW";if(m.status==="completed")return "VERIFIED";if(m.status==="ready")return "READY";return String(m.status||"WAITING").replaceAll("_"," ").toUpperCase()}
 function matchCard(t,m,me){
  const slots=(m.player_slots||[]).filter(Boolean);const a=entrant(t,slots[0]),b=entrant(t,slots[1]);const mine=me&&slots.map(String).includes(String(me.id));
