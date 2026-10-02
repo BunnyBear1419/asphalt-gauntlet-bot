@@ -129,7 +129,10 @@ async def reconcile_pending_coin_transactions(db, *, guild_id: str, limit: int =
         markers = profile.get("rsl_coin_ledger_markers") or {}
         if marker not in markers:
             amount = int(row.get("amount", 0) or 0)
-            query = {"_id": f"{gid}_{user_id}"}
+            query = {
+                "_id": f"{gid}_{user_id}",
+                f"rsl_coin_ledger_markers.{marker}": {"$exists": False},
+            }
             if amount < 0:
                 query["rsl_coins"] = {"$gte": abs(amount)}
             try:
