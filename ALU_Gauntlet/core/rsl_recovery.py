@@ -103,6 +103,29 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 if bonus_failed and str(challenge.get("status") or "") == "processing":
                     stats["pending"] += 1
                     continue
+                if str(challenge.get("status") or "") == "completed":
+                    # Historical completed challenges may predate the challenge
+                    # marker. Once the deterministic settlement is checked, make
+                    # the challenge itself terminal so it leaves recovery scans.
+                    result = await db.active_challenges.update_one(
+                        {
+                            "_id": challenge_id,
+                            "guild_id": guild_id,
+                            "status": "completed",
+                        },
+                        {
+                            "$set": {
+                                "rsl_bonus_checked": True,
+                                "reconciled_at": now,
+                                "reconciliation_reason": "completed_settlement_backfill",
+                            },
+                        },
+                    )
+                    if getattr(result, "modified_count", 0) == 1:
+                        stats["closed"] += 1
+                    else:
+                        stats["skipped"] += 1
+                    continue
                 result = await db.active_challenges.update_one(
                     {
                         "_id": challenge_id,
