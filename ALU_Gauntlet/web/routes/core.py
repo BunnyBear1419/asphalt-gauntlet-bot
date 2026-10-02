@@ -1114,13 +1114,13 @@ try{
         # template and shared shell so every rendered page follows the account
         # theme without changing layout or artwork.
         theme_audit_css = r'''<style id="rsl-cross-page-theme-audit">
-html[data-theme="dark"]{--rsl-audit-bg:#020b18;--rsl-audit-panel:#071427;--rsl-audit-panel2:#0b1d34;--rsl-audit-line:#173b64;--rsl-audit-text:#dbe8f8;--rsl-audit-muted:var(--rsl-box-muted);--rsl-audit-accent:var(--rsl-box-accent);--rsl-audit-strong:#087cff;--rsl-audit-success:#00e65b;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.38)}
+html[data-theme="dark"]{--rsl-audit-bg:#020b18;--rsl-audit-panel:#071427;--rsl-audit-panel2:#0b1d34;--rsl-audit-line:#173b64;--rsl-audit-text:#dbe8f8;--rsl-audit-muted:#91a5c3;--rsl-audit-accent:#25dfff;--rsl-audit-strong:#087cff;--rsl-audit-success:#00e65b;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.38)}
 html[data-theme="light"]{--rsl-audit-bg:#eef3f8;--rsl-audit-panel:#f1f5f9;--rsl-audit-panel2:#e4ecf4;--rsl-audit-line:#c3d0dd;--rsl-audit-text:#18283b;--rsl-audit-muted:#5d7187;--rsl-audit-accent:#2878c8;--rsl-audit-strong:#1769d1;--rsl-audit-success:#087d5b;--rsl-audit-warn:#b87900;--rsl-audit-shadow:rgba(35,63,92,.10)}
 html[data-theme="ocean"]{--rsl-audit-bg:#03141c;--rsl-audit-panel:#062936;--rsl-audit-panel2:#0d3b4b;--rsl-audit-line:#15566b;--rsl-audit-text:#e0f7ff;--rsl-audit-muted:#8bb8c8;--rsl-audit-accent:#37e6ff;--rsl-audit-strong:#1599d8;--rsl-audit-success:#19d6ad;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.30)}
 html[data-theme="purple"]{--rsl-audit-bg:#0d0719;--rsl-audit-panel:#1a0e2d;--rsl-audit-panel2:#291440;--rsl-audit-line:#563b82;--rsl-audit-text:#f1e8ff;--rsl-audit-muted:#b9a9d1;--rsl-audit-accent:#b86cff;--rsl-audit-strong:#7b5cff;--rsl-audit-success:#50e0bb;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.34)}
 html[data-theme="crimson"]{--rsl-audit-bg:#130608;--rsl-audit-panel:#250d12;--rsl-audit-panel2:#39151c;--rsl-audit-line:#71303a;--rsl-audit-text:#ffe8ec;--rsl-audit-muted:#c49ba2;--rsl-audit-accent:#ff5c7a;--rsl-audit-strong:#e83256;--rsl-audit-success:#47d6a0;--rsl-audit-warn:#ffc857;--rsl-audit-shadow:rgba(0,0,0,.34)}
 html[data-theme="emerald"]{--rsl-audit-bg:#03130f;--rsl-audit-panel:#07251d;--rsl-audit-panel2:#0d3c2e;--rsl-audit-line:#17604c;--rsl-audit-text:#e5fff7;--rsl-audit-muted:#8fb9ab;--rsl-audit-accent:#32f2c2;--rsl-audit-strong:#12b892;--rsl-audit-success:#20e39d;--rsl-audit-warn:#e9d66b;--rsl-audit-shadow:rgba(0,0,0,.30)}
-html[data-theme="sunset"]{--rsl-audit-bg:#170b06;--rsl-audit-panel:#2b160c;--rsl-audit-panel2:#4d2815;--rsl-audit-line:#75411f;--rsl-audit-text:var(--rsl-box-text)0e5;--rsl-audit-muted:#c9aa91;--rsl-audit-accent:#ff9b54;--rsl-audit-strong:#e96b31;--rsl-audit-success:#62d39d;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.34)}
+html[data-theme="sunset"]{--rsl-audit-bg:#170b06;--rsl-audit-panel:#2b160c;--rsl-audit-panel2:#4d2815;--rsl-audit-line:#75411f;--rsl-audit-text:#fff0e5;--rsl-audit-muted:#c9aa91;--rsl-audit-accent:#ff9b54;--rsl-audit-strong:#e96b31;--rsl-audit-success:#62d39d;--rsl-audit-warn:#ffd166;--rsl-audit-shadow:rgba(0,0,0,.34)}
 html[data-theme="graphite"]{--rsl-audit-bg:#111315;--rsl-audit-panel:#1c2024;--rsl-audit-panel2:#30363c;--rsl-audit-line:#414951;--rsl-audit-text:#edf2f5;--rsl-audit-muted:#a6afb8;--rsl-audit-accent:#d7e3ea;--rsl-audit-strong:#7ca3bd;--rsl-audit-success:#72b89d;--rsl-audit-warn:#d8c98a;--rsl-audit-shadow:rgba(0,0,0,.30)}
 
 html[data-theme] body,html[data-theme] body.alu-dashboard{background:var(--rsl-audit-bg)!important;color:var(--rsl-audit-text)!important}
@@ -1643,7 +1643,7 @@ html[data-theme] .tournament-hero .eyebrow{
 /* DEEP THEME AUDIT v2 — final authority for all UI surfaces, settings, boxes and non-brand icons. */
 html[data-theme="dark"]{
   --rsl-final-bg:#020817;--rsl-final-panel:#071427;--rsl-final-panel2:#0d2139;
-  --rsl-final-line:#173b64;--rsl-final-text:#dbe8f8;--rsl-final-muted:var(--rsl-box-muted);--rsl-final-accent:var(--rsl-box-accent);
+  --rsl-final-line:#173b64;--rsl-final-text:#dbe8f8;--rsl-final-muted:#91a5c3;--rsl-final-accent:#25dfff;
 }
 html[data-theme="light"]{
   --rsl-final-bg:#eef3f8;--rsl-final-panel:#f8fafc;--rsl-final-panel2:#e8eef5;
