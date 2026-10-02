@@ -65,3 +65,19 @@ def test_admin_document_closes_inline_script_and_has_navigation_recovery():
     assert "function activate(name)" in page
     assert "data-rsl-nav-recovery" in page
     assert 'activate(hash)' in page
+
+
+def test_brand_asset_replacement_purges_only_previous_references():
+    source = (ROOT / "ALU_Gauntlet/web/routes/public.py").read_text(encoding="utf-8")
+    assert "previous_asset_ids = _tenant_asset_ids(json.dumps(previous_branding))" in source
+    assert "superseded_asset_ids = previous_asset_ids - new_asset_ids" in source
+    assert 'await bucket.delete(ObjectId(str(gridfs_id)))' in source
+
+
+def test_gridfs_asset_serving_streams_in_bounded_chunks():
+    for path in (
+        ROOT / "ALU_Gauntlet/web/routes/admin.py",
+        ROOT / "ALU_Gauntlet/web/routes/public.py",
+    ):
+        source = path.read_text(encoding="utf-8")
+        assert 'await stream.read(64 * 1024)' in source
