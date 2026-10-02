@@ -2485,6 +2485,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/admin/tickets/panel", self.admin_ticket_panel)
         self.app.router.add_post("/api/admin/tickets/transcript", self.admin_ticket_transcript)
         self.app.router.add_get("/api/admin/diagnostics", self.admin_diagnostics)
+        self.app.router.add_get("/api/admin/csp-diagnostics", self.admin_csp_diagnostics)
         self.app.router.add_get("/api/admin/operations", self.admin_operations)
         self.app.router.add_post("/api/admin/operations", self.admin_operations)
         self.app.router.add_get("/api/players/{user_id}/activity", self.admin_activity_timeline)
