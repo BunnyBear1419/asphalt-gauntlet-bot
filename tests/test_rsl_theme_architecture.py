@@ -217,3 +217,12 @@ def test_shohan_companion_navigation_and_box_share_theme_aware_brand_tokens():
         assert f'html[data-theme="{theme}"]' in css
     assert "var(--shohan-surface)" in css
     assert "var(--shohan-accent)" in css
+
+
+def test_discord_server_dropdown_uses_selected_theme_surface():
+    css = CSS.read_text(encoding="utf-8")
+    assert "background:#07172d!important" not in css
+    assert "color:#f2f7ff!important" not in css
+    assert "var(--rsl-final-panel2)!important" in css
+    assert "var(--rsl-final-text)!important" in css
+    assert ".rsl-site-page .server-select select" in css
