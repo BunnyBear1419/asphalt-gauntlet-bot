@@ -102,9 +102,20 @@ def check_responsive(page: Page) -> None:
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(BASE_URL + "/", wait_until="domcontentloaded", timeout=30_000)
     page.wait_for_load_state("networkidle", timeout=15_000)
-    overflow = page.evaluate("document.documentElement.scrollWidth > window.innerWidth + 2")
-    if overflow:
-        raise AssertionError("mobile homepage has horizontal overflow")
+    overflow_info = page.evaluate("""() => ({
+        overflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+        viewport: window.innerWidth,
+        scroll_width: document.documentElement.scrollWidth,
+        offenders: [...document.querySelectorAll("body *")]
+            .filter(el => {
+                const r = el.getBoundingClientRect();
+                return r.right > window.innerWidth + 2 || r.left < -2;
+            })
+            .slice(0, 12)
+            .map(el => ({tag: el.tagName, id: el.id, cls: el.className, right: Math.round(el.getBoundingClientRect().right), left: Math.round(el.getBoundingClientRect().left)}))
+    })""")
+    if overflow_info["overflow"]:
+        raise AssertionError(f"mobile homepage has horizontal overflow: {overflow_info}")
     page.set_viewport_size({"width": 1440, "height": 1000})
 
 
