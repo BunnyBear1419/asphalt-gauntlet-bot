@@ -678,8 +678,6 @@ $("club-leadership-transfer")?.addEventListener("click",async()=>{
 });
 loadClubLeadership();
 loadOpsStatus();
- }catch(e){setStatus("safe-mode-status",e.message,false)}
-});
 async function loadReliability(){
  try{
   const d=await api("/api/admin/operations"+q()+"&action=reliability");
