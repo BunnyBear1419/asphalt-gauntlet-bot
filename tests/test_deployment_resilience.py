@@ -277,3 +277,16 @@ def test_runtime_release_identity_is_exposed_by_health_and_heartbeat():
     assert "current_release_revision" in core
     assert '"release_sha": current_release_revision()' in core
     assert "Path(__file__).resolve().parents[1] / \".rsl-release-sha\"" in release
+    
+def test_live_browser_e2e_is_part_of_every_deployment_recovery_gate():
+    source = _source()
+    recovery_lines = [
+        line.strip()
+        for line in source.splitlines()
+        if "steps.restart.outcome" in line
+        or "steps.smoke.outcome" in line
+        or "steps.deploy_gate.outcome" in line
+    ]
+    assert recovery_lines, "Expected deployment recovery conditions."
+    for line in recovery_lines:
+        assert "steps.live_e2e.outcome" in line, line
