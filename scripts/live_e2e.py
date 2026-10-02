@@ -18,6 +18,7 @@ from playwright.sync_api import Browser, Page, sync_playwright
 
 BASE_URL = os.getenv("RSL_LIVE_URL", "https://asph.discloud.app").rstrip("/")
 AUTH_STATE_JSON = os.getenv("RSL_E2E_AUTH_STATE", "").strip()
+AUTH_STATE_FILE = os.getenv("RSL_E2E_AUTH_STATE_FILE", "").strip()
 PUBLIC_ROUTES = [
     "/",
     "/clubs",
@@ -117,6 +118,36 @@ def check_protected_redirects(page: Page) -> None:
                 raise AssertionError(f"{path}: no visible authentication/staff gate")
 
 
+def load_auth_state() -> dict:
+    raw = AUTH_STATE_JSON
+    source = "RSL_E2E_AUTH_STATE"
+    if not raw and AUTH_STATE_FILE:
+        source = "RSL_E2E_AUTH_STATE_FILE"
+        raw = Path(AUTH_STATE_FILE).read_text(encoding="utf-8")
+    if not raw:
+        raise AssertionError("authenticated suite requested but no auth state was supplied")
+    try:
+        state = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise AssertionError(f"{source} is not valid JSON") from exc
+    if not isinstance(state, dict):
+        raise AssertionError(f"{source} must contain a JSON object")
+    cookies = state.get("cookies", [])
+    origins = state.get("origins", [])
+    if not isinstance(cookies, list) or not isinstance(origins, list):
+        raise AssertionError(f"{source} has an invalid Playwright storage-state shape")
+    import time
+    now = time.time()
+    expiring = [
+        float(cookie.get("expires", 0) or 0)
+        for cookie in cookies
+        if isinstance(cookie, dict) and float(cookie.get("expires", 0) or 0) > 0
+    ]
+    if expiring and max(expiring) <= now:
+        raise AssertionError(f"{source} is expired; create a fresh test-account storage state")
+    return state
+
+
 def check_authenticated_routes(page: Page) -> None:
     routes = ["/player/settings", "/player", "/profile", "/my-tournaments", "/clubs", "/tournaments"]
     for path in routes:
@@ -132,7 +163,7 @@ def run() -> int:
     failures: list[str] = []
     console_errors: list[str] = []
     page_errors: list[str] = []
-    auth_enabled = bool(AUTH_STATE_JSON)
+    auth_enabled = bool(AUTH_STATE_JSON or AUTH_STATE_FILE)
     auth_state_path: str | None = None
 
     with sync_playwright() as pw:
@@ -171,8 +202,9 @@ def run() -> int:
 
             if auth_enabled:
                 try:
+                    state = load_auth_state()
                     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
-                        json.dump(json.loads(AUTH_STATE_JSON), handle)
+                        json.dump(state, handle)
                         auth_state_path = handle.name
                     auth_page = browser.new_page(
                         storage_state=auth_state_path,
