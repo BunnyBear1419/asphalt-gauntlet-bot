@@ -50,3 +50,8 @@ def test_pending_ledger_rows_never_report_success():
     assert 'status = str(existing.get("status") or "").casefold()' in source
     assert 'if status != "completed":' in source
     assert 'transaction_pending' in source
+
+
+def test_pending_recovery_claims_each_transaction_with_an_atomic_marker_guard():
+    source = (ROOT / "core" / "rsl_economy_ledger.py").read_text(encoding="utf-8")
+    assert '"rsl_coin_ledger_markers.{marker}": {"$exists": False}' in source
