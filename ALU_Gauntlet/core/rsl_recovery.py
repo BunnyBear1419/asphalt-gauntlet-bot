@@ -103,11 +103,15 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                             stats["bonus_retried"] += 1
                         else:
                             bonus_failed = True
+                            attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
+                            if attempts >= BONUS_RETRY_MAX_ATTEMPTS:
+                                await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_recovery_status": "needs_staff_review", "rsl_bonus_retry_attempts": attempts, "rsl_bonus_last_error_at": now}})
+                                log.error("RSL performance bonus returned without a durable marker for %s after %s attempts; staff review required", reservation.get("_id"), attempts)
+                            else:
+                                delay = BONUS_RETRY_BASE_SECONDS * (2 ** (attempts - 1))
+                                await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_retry_attempts": attempts, "rsl_bonus_next_retry_at": now + delay, "rsl_bonus_last_error_at": now, "rsl_bonus_recovery_status": "retry_scheduled"}})
+                                log.warning("RSL performance bonus returned without a durable marker for %s; retry %s/%s in %ss", reservation.get("_id"), attempts, BONUS_RETRY_MAX_ATTEMPTS, delay)
                             stats["bonus_failed"] += 1
-                            log.error(
-                                "RSL performance bonus retry returned without a durable checked marker for %s",
-                                reservation.get("_id"),
-                            )
                     except Exception:
                         bonus_failed = True
                         attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
