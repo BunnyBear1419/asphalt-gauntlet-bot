@@ -4197,8 +4197,8 @@ footer.rsl-footer-mark > span{
   padding:0 44px 0 16px!important;
   border:1px solid #28639a!important;
   border-radius:9px!important;
-  background:#07172d!important;
-  color:#f2f7ff!important;
+  background:var(--rsl-final-panel2)!important;
+  color:var(--rsl-final-text)!important;
   font-size:16px!important;
   font-weight:700!important;
   line-height:1.2!important;
