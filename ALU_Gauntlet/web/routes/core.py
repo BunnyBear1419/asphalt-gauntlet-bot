@@ -276,7 +276,7 @@ class CoreRoutesMixin:
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
-        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20261002-rsl-theme2site20', body)
+        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20261002-rsl-theme2', body)
 
         theme_bootstrap = r'''<script>
 (function(){
