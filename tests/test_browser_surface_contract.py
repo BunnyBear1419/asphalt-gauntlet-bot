@@ -115,3 +115,9 @@ def test_player_settings_navigation_targets_are_real_routes():
     assert 'href="/player/settings#profile-links-area"' in page
     assert 'data-rsl-player-mode="{mode}"' in (ROOT/"ALU_Gauntlet"/"web"/"routes"/"core.py").read_text(encoding="utf-8")
     assert '/static/player.js?v=20261002-rsl-player2' in page
+
+
+def test_auth_page_uses_current_theme_cache_key():
+    page=(ROOT/"ALU_Gauntlet"/"web"/"routes"/"auth.py").read_text(encoding="utf-8")
+    assert "rsl-theme2site20" not in page
+    assert "/static/app.css?v=20261002-rsl-theme2" in page
