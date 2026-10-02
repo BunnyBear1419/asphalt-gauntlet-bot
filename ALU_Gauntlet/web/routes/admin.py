@@ -44,6 +44,7 @@ class AdminRoutesMixin:
         """Accept common image formats and normalize every stored brand asset to PNG."""
         user, guild_id, _ = await self.require_admin(request)
         max_size = 8 * 1024 * 1024
+        max_pixels = 4096 * 4096
         if request.content_length and request.content_length > max_size:
             raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=request.content_length)
         try:
@@ -70,6 +71,8 @@ class AdminRoutesMixin:
         # image bytes, then we write a real PNG regardless of the original format.
         try:
             with Image.open(BytesIO(data)) as source:
+                if int(getattr(source, "width", 0) or 0) * int(getattr(source, "height", 0) or 0) > max_pixels:
+                    raise ValueError("image dimensions exceed the 4096×4096 pixel safety limit")
                 source.load()
                 image = ImageOps.exif_transpose(source)
                 if image.mode not in {"RGB", "RGBA"}:
@@ -115,13 +118,29 @@ class AdminRoutesMixin:
             "guild_id": str(guild_id),
             "filename": filename,
             "content_type": "image/png",
-            "data": png_data,
             "created_at": time.time(),
             "created_by": str(user.user_id),
             "source_filename": original_name,
             "source_content_type": content_type,
         }
         try:
+            # Production Mongo stores normalized media in GridFS rather than
+            # embedding binary payloads in ordinary documents. Lightweight test
+            # databases without a Mongo client keep the legacy bytes fallback.
+            client = getattr(self.bot.db, "client", None)
+            if client is not None:
+                from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+                bucket = AsyncIOMotorGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
+                gridfs_id = await bucket.upload_from_stream(
+                    filename,
+                    png_data,
+                    metadata={"guild_id": str(guild_id), "asset_id": asset_id, "content_type": "image/png"},
+                )
+                document["storage"] = "gridfs"
+                document["gridfs_id"] = str(gridfs_id)
+            else:
+                document["storage"] = "inline"
+                document["data"] = png_data
             await self.bot.db.web_brand_assets.insert_one(document)
         except Exception as exc:
             log.exception("Brand asset database save failed for guild %s", guild_id)
@@ -154,7 +173,17 @@ class AdminRoutesMixin:
         asset = await self.bot.db.web_brand_assets.find_one({"_id":asset_id,"guild_id":guild_id})
         if not asset:
             raise web.HTTPNotFound(text="Brand asset not found.")
-        return web.Response(body=asset.get("data") or b"",content_type=str(asset.get("content_type") or "application/octet-stream"),headers={"Cache-Control":"public, max-age=3600"})
+        body = asset.get("data") or b""
+        if asset.get("storage") == "gridfs" and asset.get("gridfs_id"):
+            try:
+                from motor.motor_asyncio import AsyncIOMotorGridFSBucket
+                bucket = AsyncIOMotorGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
+                stream = await bucket.open_download_stream(ObjectId(str(asset["gridfs_id"])))
+                body = await stream.read()
+            except Exception as exc:
+                log.exception("Brand asset GridFS read failed for %s", asset_id)
+                raise web.HTTPServiceUnavailable(text="Brand asset is temporarily unavailable.") from exc
+        return web.Response(body=body,content_type=str(asset.get("content_type") or "application/octet-stream"),headers={"Cache-Control":"public, max-age=3600"})
 
     async def admin_diagnostics(self, request: web.Request) -> web.Response:
         _, guild_id, guild = await self.require_admin(request)
