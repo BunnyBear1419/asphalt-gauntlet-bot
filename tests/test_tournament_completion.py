@@ -167,7 +167,7 @@ def test_tournament_completion_syncs_seasonal_discord_roles():
     assert 'if t.get("status") == "completed":' in server
     assert "async def sync_tournament_achievement_roles(" in sync
     assert "PERMANENT_ACHIEVEMENT_ROLES" in sync
-    assert "sync_tournament_achievement_roles" in cog
+    assert "sync_completed_tournament_roles" in cog
     assert "Tournament Participant" in cog
     assert "Perfect Tournament Run" in cog
 
