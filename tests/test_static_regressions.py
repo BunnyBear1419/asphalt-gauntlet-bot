@@ -187,7 +187,7 @@ def test_gauntlet_role_reconciliation_is_durable():
 def test_bonus_recovery_requires_persistent_postcondition():
     source = read("ALU_Gauntlet/core/rsl_recovery.py")
     assert 'refreshed = await db.matches.find_one(' in source
-    assert 'refreshed.get("rsl_margin_bonus_applied") is True' in source
+    assert 'refreshed.get("rsl_bonus_checked") is True' in source
     assert '"bonus_failed"' in source
 
 
@@ -223,8 +223,9 @@ def test_team_tournament_roles_resolve_club_entrants_to_lineup_users():
     cog = read("ALU_Gauntlet/cogs/tournament.py")
     web = read("ALU_Gauntlet/web/routes/tournament.py")
     assert "async def tournament_role_recipients" in source
-    assert "tournament_role_recipients(" in cog
-    assert "tournament_role_recipients(" in web
+    assert "async def sync_completed_tournament_roles" in source
+    assert "sync_completed_tournament_roles" in cog
+    assert "sync_completed_tournament_roles" in web
     assert "tournament_champion=champion_users" in cog
     assert "tournament_champion=champion_users" in web
 
