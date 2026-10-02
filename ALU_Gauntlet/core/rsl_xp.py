@@ -170,6 +170,10 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
     if client is None:
         try:
             return await _apply()
+        except DuplicateKeyError:
+            # A concurrent writer committed the same deterministic event. Never
+            # delete that writer's committed event from the fallback path.
+            return {"ok": True, "duplicate": True, "amount": 0}
         except Exception:
             # Without a Mongo transaction, never leave a completed-looking event
             # behind when the corresponding profile update did not commit.
