@@ -120,7 +120,12 @@ class CoreRoutesMixin:
         bucket.append(now)
         self._csp_report_rate[remote] = bucket
         try:
-            payload = await request.json()
+            raw_body = await request.content.read(64 * 1024 + 1)
+            if len(raw_body) > 64 * 1024:
+                raise web.HTTPRequestEntityTooLarge(max_size=64 * 1024, actual_size=len(raw_body))
+            payload = json.loads(raw_body.decode("utf-8"))
+        except web.HTTPRequestEntityTooLarge:
+            raise
         except Exception:
             return web.json_response({"ok": False}, status=400)
         entries = payload if isinstance(payload, list) else [payload]
