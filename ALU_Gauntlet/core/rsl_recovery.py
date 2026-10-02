@@ -100,7 +100,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                         log.exception("Failed to retry RSL performance bonus for settlement %s", reservation.get("_id"))
                         stats["bonus_failed"] += 1
 
-                if bonus_failed and str(challenge.get("status") or "") == "processing":
+                if bonus_failed:
                     stats["pending"] += 1
                     continue
                 if str(challenge.get("status") or "") == "completed":
