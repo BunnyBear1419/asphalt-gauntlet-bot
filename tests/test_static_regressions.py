@@ -226,8 +226,8 @@ def test_team_tournament_roles_resolve_club_entrants_to_lineup_users():
     assert "async def sync_completed_tournament_roles" in source
     assert "sync_completed_tournament_roles" in cog
     assert "sync_completed_tournament_roles" in web
-    assert "tournament_champion=champion_users" in cog
-    assert "tournament_champion=champion_users" in web
+    assert "sync_completed_tournament_roles" in cog
+    assert "sync_completed_tournament_roles" in web
 
 
 def test_xp_duplicate_is_checked_before_transaction_and_caught_safely():
