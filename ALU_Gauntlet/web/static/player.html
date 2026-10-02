@@ -194,7 +194,18 @@ body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:last-of-
 .onboarding-actions a,.onboarding-dismiss{border:1px solid #1d557f;background:#061526;color:#dcecff;text-decoration:none;padding:9px 12px;font-size:10px;font-weight:800;cursor:pointer}
 .onboarding-actions a:hover,.onboarding-dismiss:hover{border-color:var(--rsl-box-accent);color:#fff}
 @media(max-width:800px){.onboarding-steps{grid-template-columns:1fr}.driver-onboarding summary{align-items:flex-start}.driver-onboarding-body{padding:14px}}
-</style></head>
+</style>
+<style id="rsl-player-theme-final">
+/* FINAL PLAYER SETTINGS THEME OVERRIDE — keep page-local legacy CSS from overriding selected RSL themes. */
+html[data-theme] #profile-settings input:not([type="checkbox"]):not([type="radio"]),html[data-theme] #profile-settings select,html[data-theme] #profile-settings textarea{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-line)!important}
+html[data-theme] #profile-settings input::placeholder,html[data-theme] #profile-settings textarea::placeholder{color:var(--rsl-box-muted)!important}
+html[data-theme] #profile-settings .settings-live{color:var(--rsl-box-accent)!important;border-color:var(--rsl-box-line)!important;background:var(--rsl-box-alt)!important}
+html[data-theme] #profile-settings .settings-rail-item,html[data-theme] #profile-settings .settings-rail-item b{color:var(--rsl-box-text)!important}
+html[data-theme] #profile-settings .settings-rail-item small,html[data-theme] #profile-settings .settings-rail-title{color:var(--rsl-box-muted)!important}
+html[data-theme] #profile-settings .settings-rail-item:hover,html[data-theme] #profile-settings .settings-rail-item.active{background:color-mix(in srgb,var(--rsl-box-accent) 12%,var(--rsl-box))!important;border-left-color:var(--rsl-box-accent)!important}
+html[data-theme] #profile-settings .settings-workspace,html[data-theme] #profile-settings .settings-content,html[data-theme] #profile-settings .settings-content-section,html[data-theme] #profile-settings .settings-block,html[data-theme] #profile-settings .settings-savebar{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-line)!important}
+</style>
+</head>
 <style>
 /* RSL PLAYER — complete page redesign. This intentionally replaces the legacy card dashboard. */
 .rsl-player-redesign{background:#020711;color:#eaf3ff}
