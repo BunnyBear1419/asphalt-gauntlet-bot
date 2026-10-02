@@ -80,19 +80,18 @@ class CoreRoutesMixin:
         expected = {str(self.auth.public_url).rstrip("/"), f"{request.scheme}://{request.host}".rstrip("/")}
         return candidate in expected
 
+    def _client_ip(self, request: web.Request) -> str:
+        remote = str(request.remote or "").strip()
+        trusted_proxies = {value.strip() for value in str(os.getenv("RSL_TRUSTED_PROXY_IPS", "")).split(",") if value.strip()}
+        if remote in trusted_proxies:
+            forwarded = str(request.headers.get("X-Forwarded-For") or "").split(",", 1)[0].strip()
+            return forwarded or remote or "unknown"
+        return remote or "unknown"
+
     def _rate_limit_auth_request(self, request: web.Request, limit: int, window: int) -> bool:
         """Small process-local abuse guard for OAuth entry/callback endpoints."""
         now = time.time()
-        remote = str(request.remote or "").strip()
-        trusted_proxies = {
-            value.strip()
-            for value in str(os.getenv("RSL_TRUSTED_PROXY_IPS", "")).split(",")
-            if value.strip()
-        }
-        forwarded = ""
-        if remote in trusted_proxies:
-            forwarded = str(request.headers.get("X-Forwarded-For") or "").split(",", 1)[0].strip()
-        key = forwarded or remote or "unknown"
+        key = self._client_ip(request)
         bucket = [ts for ts in self._auth_rate.get(key, []) if ts > now - window]
         if len(bucket) >= limit:
             self._auth_rate[key] = bucket
@@ -106,17 +105,9 @@ class CoreRoutesMixin:
     async def csp_report(self, request: web.Request) -> web.Response:
         """Collect bounded CSP violation reports for policy tuning."""
         now = time.time()
-        remote_peer = str(request.remote or "").strip()
-        trusted_proxies = {
-            value.strip()
-            for value in str(os.getenv("RSL_TRUSTED_PROXY_IPS", "")).split(",")
-            if value.strip()
-        }
-        remote = remote_peer
-        if remote_peer in trusted_proxies:
-            forwarded = str(request.headers.get("X-Forwarded-For") or "").split(",", 1)[0].strip()
-            remote = forwarded or remote_peer
-        remote = remote or "unknown"
+        remote = self._client_ip(request)
+        if request.content_length is not None and request.content_length > 64 * 1024:
+            raise web.HTTPRequestEntityTooLarge(max_size=64 * 1024, actual_size=request.content_length)
         if len(self._csp_report_rate) > 2048:
             self._csp_report_rate = {
                 key: values for key, values in self._csp_report_rate.items()
