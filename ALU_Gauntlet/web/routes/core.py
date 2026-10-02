@@ -980,9 +980,9 @@ html[data-theme="light"] .rsl-footer-theme-control select{background:var(--rsl-b
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20261002-rsl-theme2site20">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20261002-rsl-theme2">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
-                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20261002-rsl-theme2site20"></head>', 1)
+                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20261002-rsl-theme2"></head>', 1)
 
         # GLOBAL RSL PAGE SHELL: every HTML page receives the same Discord card and Help card.
         # Strip older page-specific copies first so the shared shell is always singular.
