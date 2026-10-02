@@ -647,6 +647,8 @@ $("safe-mode-toggle")?.addEventListener("click",async()=>{
   const enabled=!Boolean(current.maintenance?.enabled);
   await api("/api/admin/maintenance"+q(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({enabled,message:enabled?"Competition safe mode enabled by staff.":""})});
   await loadTicketAnalytics();loadTicketSettings();
+  }catch(e){setStatus("safe-mode-status",e.message,false)}
+ });
 async function loadClubLeadership(){
  try{
   const d=await api("/api/admin/clubs/leadership"+q());
