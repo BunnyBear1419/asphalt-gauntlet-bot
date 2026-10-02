@@ -112,3 +112,16 @@ def test_settlement_recovery_has_bounded_bonus_retry_and_staff_review_terminal_s
     assert '"rsl_bonus_next_retry_at"' in source
     assert '"needs_staff_review"' in source
     assert '"rsl_bonus_retry_attempts"' in source
+
+
+def test_tournament_media_uses_gridfs_in_production_and_cleans_orphans():
+    source = (ROOT / "ALU_Gauntlet/web/routes/tournament.py").read_text(encoding="utf-8")
+    assert 'bucket_name="rsl_tournament_media"' in source
+    assert 'await bucket.upload_from_stream' in source
+    assert 'await bucket.delete(gridfs_id)' in source
+
+
+def test_tournament_media_validation_matches_safe_image_limit():
+    source = (ROOT / "ALU_Gauntlet/web/routes/tournament.py").read_text(encoding="utf-8")
+    assert 'image.width > 4096 or image.height > 4096' in source
+    assert 'image.width * image.height > 16_777_216' in source
