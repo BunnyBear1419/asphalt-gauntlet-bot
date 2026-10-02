@@ -276,7 +276,7 @@ class CoreRoutesMixin:
         # One authoritative cache key for the shared stylesheet. Keeping this
         # here and in the final shell replacement prevents stale page-local CSS
         # versions from surviving on older templates.
-        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20260925-site20', body)
+        body = re.sub(r'/static/app\\.css\\?v=[^&"]+', '/static/app.css?v=20261002-rsl-theme2site20', body)
 
         theme_bootstrap = r'''<script>
 (function(){
@@ -503,7 +503,7 @@ class CoreRoutesMixin:
         # Force every rendered page to use the current shared shell stylesheet cache key.
         body = re.sub(
             r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
-            'href="/static/app.css?v=20260925-site20"',
+            'href="/static/app.css?v=20261002-rsl-theme2site20"',
             body,
             flags=re.I
         )
@@ -980,9 +980,9 @@ html[data-theme="light"] .rsl-footer-theme-control select{background:#f1f5f9;col
         if filename.endswith(".html"):
             app_css_tag = re.compile(r'<link\b[^>]*href=["\']/static/app\.css(?:\?[^"\']*)?["\'][^>]*>', re.I)
             if app_css_tag.search(body):
-                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20260925-site20">', body, count=1)
+                body = app_css_tag.sub('<link rel="stylesheet" href="/static/app.css?v=20261002-rsl-theme2site20">', body, count=1)
             elif re.search(r"</head>", body, flags=re.I):
-                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20260925-site20"></head>', 1)
+                body = body.replace("</head>", '<link rel="stylesheet" href="/static/app.css?v=20261002-rsl-theme2site20"></head>', 1)
 
         # GLOBAL RSL PAGE SHELL: every HTML page receives the same Discord card and Help card.
         # Strip older page-specific copies first so the shared shell is always singular.
