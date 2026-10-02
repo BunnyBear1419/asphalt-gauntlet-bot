@@ -105,10 +105,16 @@ class CoreRoutesMixin:
 
     async def csp_report(self, request: web.Request) -> web.Response:
         """Collect bounded CSP violation reports for policy tuning."""
-        remote = str(request.remote or "unknown")
         now = time.time()
+        remote = str(request.remote or "unknown")
+        if len(self._csp_report_rate) > 2048:
+            self._csp_report_rate = {
+                key: values for key, values in self._csp_report_rate.items()
+                if values and values[-1] > now - 60
+            }
         bucket = [ts for ts in self._csp_report_rate.get(remote, []) if ts > now - 60]
         if len(bucket) >= 30:
+            self._csp_report_rate[remote] = bucket
             return web.json_response({"ok": False}, status=429, headers={"Retry-After": "60"})
         bucket.append(now)
         self._csp_report_rate[remote] = bucket
@@ -116,33 +122,37 @@ class CoreRoutesMixin:
             payload = await request.json()
         except Exception:
             return web.json_response({"ok": False}, status=400)
-        if not isinstance(payload, dict):
-            return web.json_response({"ok": False}, status=400)
-        # Keep reports useful without allowing arbitrary large documents or
-        # attacker-controlled fields to become an unbounded Mongo sink.
-        report = payload.get("csp-report") if isinstance(payload.get("csp-report"), dict) else payload.get("body")
-        if not isinstance(report, dict):
-            report = payload
+        entries = payload if isinstance(payload, list) else [payload]
         allowed = {
             "document-uri", "referrer", "blocked-uri", "violated-directive",
             "effective-directive", "original-policy", "disposition",
             "source-file", "status-code", "script-sample", "column-number",
             "line-number",
         }
-        sanitized = {}
-        for key in allowed:
-            value = report.get(key)
-            if value is not None:
-                sanitized[key] = str(value)[:2000]
-        if sanitized:
+        sanitized_reports = []
+        for entry in entries[:20]:
+            if not isinstance(entry, dict):
+                continue
+            report = entry.get("csp-report") if isinstance(entry.get("csp-report"), dict) else entry.get("body")
+            if not isinstance(report, dict):
+                report = entry
+            sanitized = {
+                key: str(report[key])[:2000]
+                for key in allowed
+                if report.get(key) is not None
+            }
+            if sanitized:
+                sanitized_reports.append(sanitized)
+        if sanitized_reports:
             try:
-                await self.bot.db.csp_reports.insert_one({
-                    "created_at": now,
-                    "remote": remote[:128],
-                    "report": sanitized,
-                })
+                from datetime import datetime, timezone
+                created_at = datetime.now(timezone.utc)
+                await self.bot.db.csp_reports.insert_many([
+                    {"created_at": created_at, "remote": remote[:128], "report": report}
+                    for report in sanitized_reports
+                ])
             except Exception:
-                log.exception("Unable to persist CSP violation report")
+                log.exception("Unable to persist CSP violation reports")
         return web.Response(status=204)
 
     def _apply_security_headers(self, request: web.Request, response: web.StreamResponse) -> web.StreamResponse:
