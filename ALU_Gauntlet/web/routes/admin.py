@@ -197,6 +197,75 @@ class AdminRoutesMixin:
                 raise web.HTTPServiceUnavailable(text="Brand asset is temporarily unavailable.") from exc
         return web.Response(body=body,content_type=str(asset.get("content_type") or "application/octet-stream"),headers={"Cache-Control":"public, max-age=3600"})
 
+    async def admin_csp_diagnostics(self, request: web.Request) -> web.Response:
+        """Return a privacy-safe aggregate of recent CSP reports for authorized staff."""
+        _, guild_id, _guild = await self.require_admin(request)
+        try:
+            limit = max(1, min(500, int(request.query.get("limit", "250") or 250)))
+            days = max(1, min(14, int(request.query.get("days", "14") or 14)))
+        except (TypeError, ValueError):
+            raise web.HTTPBadRequest(text="limit and days must be integers.")
+
+        from datetime import datetime, timedelta, timezone
+        from urllib.parse import urlsplit
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        rows = await self.bot.db.csp_reports.find(
+            {"created_at": {"$gte": cutoff}},
+            {"_id": 0, "created_at": 1, "report": 1},
+        ).sort("created_at", -1).limit(limit).to_list(length=limit)
+
+        def host_or_kind(value: Any) -> str:
+            raw = str(value or "").strip()
+            if not raw:
+                return ""
+            if raw in {"inline", "eval", "wasm-eval", "data", "blob", "self"}:
+                return raw
+            try:
+                parsed = urlsplit(raw)
+                host = str(parsed.hostname or "").lower()
+                return host[:253] if host else raw[:80]
+            except Exception:
+                return raw[:80]
+
+        def add_count(bucket: dict[str, int], value: str) -> None:
+            if value:
+                bucket[value] = bucket.get(value, 0) + 1
+
+        blocked: dict[str, int] = {}
+        sources: dict[str, int] = {}
+        directives: dict[str, int] = {}
+        documents: dict[str, int] = {}
+        dispositions: dict[str, int] = {}
+        for row in rows:
+            report = row.get("report") if isinstance(row.get("report"), dict) else {}
+            add_count(blocked, host_or_kind(report.get("blocked-uri")))
+            add_count(sources, host_or_kind(report.get("source-file")))
+            add_count(directives, str(report.get("effective-directive") or report.get("violated-directive") or "").strip()[:120])
+            add_count(documents, host_or_kind(report.get("document-uri")))
+            add_count(dispositions, str(report.get("disposition") or "").strip()[:40])
+
+        def ranked(bucket: dict[str, int], count: int = 50) -> list[dict[str, Any]]:
+            return [
+                {"value": key, "count": value}
+                for key, value in sorted(bucket.items(), key=lambda item: (-item[1], item[0]))[:count]
+            ]
+
+        # Reports are intentionally aggregated: no client IPs, full URLs, script
+        # samples, or raw CSP payloads are exposed through this staff endpoint.
+        return web.json_response({
+            "ok": True,
+            "guild_id": str(guild_id),
+            "window_days": days,
+            "reports_examined": len(rows),
+            "truncated": len(rows) >= limit,
+            "blocked_hosts": ranked(blocked),
+            "source_hosts": ranked(sources),
+            "document_hosts": ranked(documents),
+            "directives": ranked(directives),
+            "dispositions": ranked(dispositions),
+        })
+
     async def admin_diagnostics(self, request: web.Request) -> web.Response:
         _, guild_id, guild = await self.require_admin(request)
         checks=[{"name":"Discord connection","ok":guild is not None},{"name":"MongoDB","ok":False}]
