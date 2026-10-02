@@ -269,3 +269,35 @@ def test_shared_recovery_has_single_definition():
 
 def test_audit_hardening_revision_marker():
     assert True
+
+
+def test_web_gauntlet_failure_path_imports_shared_recovery_helper():
+    source = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    assert "from ...core.rsl_recovery import reconcile_processing_challenges" in source
+    assert "reconcile_processing_challenges(self.bot.db, str(guild_id))" in source
+
+
+def test_tournament_completion_role_sync_is_shared():
+    rewards = read("ALU_Gauntlet/core/rsl_tournament_rewards.py")
+    cog = read("ALU_Gauntlet/cogs/tournament.py")
+    web = read("ALU_Gauntlet/web/routes/tournament.py")
+    assert "async def sync_completed_tournament_roles" in rewards
+    assert "from ..core.rsl_tournament_rewards import sync_completed_tournament_roles" in cog
+    assert "from ...core.rsl_tournament_rewards import sync_completed_tournament_roles" in web
+    assert "tournament_role_recipients" in rewards
+
+
+def test_recovery_batches_deterministic_match_reservations():
+    source = read("ALU_Gauntlet/core/rsl_recovery.py")
+    assert '"_id": {"$in": [f"{challenge_id}:match"' in source
+    assert "reservations = {}" in source
+
+
+def test_xp_role_reconciliation_is_pending_only():
+    cog = read("ALU_Gauntlet/cogs/rsl_xp.py")
+    xp = read("ALU_Gauntlet/core/rsl_xp.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "rsl_xp_role_sync_pending" in cog
+    assert "rsl_xp_role_sync_pending" in xp
+    assert '"rsl_xp_role_sync_pending": {"$ne": False}' in cog
+    assert "rsl_xp_role_sync_pending" in main
