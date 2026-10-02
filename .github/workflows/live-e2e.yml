@@ -24,6 +24,9 @@ jobs:
     timeout-minutes: 15
     env:
       RSL_LIVE_URL: ${{ inputs.base_url || 'https://asph.discloud.app' }}
+      # Optional repository secret containing a dedicated test account's Playwright
+      # storageState JSON. Leave unset to keep this workflow read-only/unauthenticated.
+      RSL_E2E_AUTH_STATE: ${{ secrets.RSL_E2E_AUTH_STATE }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
