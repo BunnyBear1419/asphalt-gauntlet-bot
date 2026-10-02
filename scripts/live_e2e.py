@@ -9,13 +9,15 @@ public shell and previously fragile navigation/control surfaces are functional.
 
 from __future__ import annotations
 
+import json
 import os
-import sys
+import tempfile
 from pathlib import Path
 
 from playwright.sync_api import Browser, Page, sync_playwright
 
 BASE_URL = os.getenv("RSL_LIVE_URL", "https://asph.discloud.app").rstrip("/")
+AUTH_STATE_JSON = os.getenv("RSL_E2E_AUTH_STATE", "").strip()
 PUBLIC_ROUTES = [
     "/",
     "/clubs",
@@ -115,10 +117,23 @@ def check_protected_redirects(page: Page) -> None:
                 raise AssertionError(f"{path}: no visible authentication/staff gate")
 
 
+def check_authenticated_routes(page: Page) -> None:
+    routes = ["/player/settings", "/player", "/profile", "/my-tournaments", "/clubs", "/tournaments"]
+    for path in routes:
+        check_page(page, path)
+        if "/login" in page.url:
+            raise AssertionError(f"{path}: authenticated state was rejected and redirected to login")
+        body = page.locator("body").inner_text().lower()
+        if "temporarily unavailable" in body or "service unavailable" in body:
+            raise AssertionError(f"{path}: authenticated page shows an unavailable state")
+
+
 def run() -> int:
     failures: list[str] = []
     console_errors: list[str] = []
     page_errors: list[str] = []
+    auth_enabled = bool(AUTH_STATE_JSON)
+    auth_state_path: str | None = None
 
     with sync_playwright() as pw:
         browser: Browser = pw.chromium.launch(headless=True)
@@ -153,8 +168,25 @@ def run() -> int:
                 check_protected_redirects(page)
             except Exception as exc:
                 failures.append(str(exc))
+
+            if auth_enabled:
+                try:
+                    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+                        json.dump(json.loads(AUTH_STATE_JSON), handle)
+                        auth_state_path = handle.name
+                    auth_page = browser.new_page(
+                        storage_state=auth_state_path,
+                        viewport={"width": 1440, "height": 1000},
+                    )
+                    auth_page.on("pageerror", lambda exc: page_errors.append(f"auth: {exc}"))
+                    check_authenticated_routes(auth_page)
+                    auth_page.close()
+                except Exception as exc:
+                    failures.append(f"authenticated: {exc}")
         finally:
             browser.close()
+            if auth_state_path:
+                Path(auth_state_path).unlink(missing_ok=True)
 
     # Only browser/runtime JavaScript errors are fatal. Third-party console noise
     # is intentionally not promoted to a failure because public pages can load
@@ -165,6 +197,8 @@ def run() -> int:
     print(f"RSL live browser base URL: {BASE_URL}")
     print(f"Public routes checked: {len(PUBLIC_ROUTES)}")
     print(f"Protected routes checked: {len(PROTECTED_ROUTES)}")
+    print(f"Authenticated routes checked: {6 if auth_enabled else 0}")
+    print("Authenticated suite enabled:", "yes" if auth_enabled else "no")
     print(f"Console error messages observed: {len(console_errors)}")
     print(f"Browser page errors observed: {len(page_errors)}")
 
