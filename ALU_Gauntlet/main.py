@@ -193,6 +193,22 @@ async def _cleanup_legacy_active_challenge_duplicates():
             }).sort([("updated_at", -1), ("created_at", -1), ("_id", -1)]).to_list(length=100)
             if len(rows) < 2:
                 continue
+            challenge_ids = [str(row.get("_id") or "") for row in rows]
+            reservations = {}
+            async for reservation in db.matches.find(
+                {"_id": {"$in": [f"{challenge_id}:match" for challenge_id in challenge_ids]}},
+                {"_id": 1, "settlement_status": 1},
+            ):
+                reservations[str(reservation.get("_id") or "")] = str(reservation.get("settlement_status") or "").casefold()
+            rows.sort(
+                key=lambda row: (
+                    reservations.get(f"{row.get('_id')}:match") == "completed",
+                    row.get("updated_at") or "",
+                    row.get("created_at") or "",
+                    str(row.get("_id") or ""),
+                ),
+                reverse=True,
+            )
             keep = rows[0]
             for duplicate in rows[1:]:
                 await db.active_challenges.update_one(
