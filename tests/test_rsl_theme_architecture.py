@@ -226,3 +226,12 @@ def test_discord_server_dropdown_uses_selected_theme_surface():
     assert "var(--rsl-final-panel2)!important" in css
     assert "var(--rsl-final-text)!important" in css
     assert ".rsl-site-page .server-select select" in css
+
+
+def test_search_control_and_header_do_not_reintroduce_legacy_blue():
+    css = CSS.read_text(encoding="utf-8")
+    assert "border:1px solid rgba(40,215,255,.75)!important" not in css
+    assert "background:#0a1a2d!important" not in css
+    assert "border-bottom:1px solid #25dfff" not in css
+    assert ".rsl-search-trigger img" in css
+    assert "filter:grayscale(1) brightness(1.8)!important" in css
