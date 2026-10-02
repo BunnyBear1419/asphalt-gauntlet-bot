@@ -178,7 +178,7 @@ def run() -> int:
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
 
         page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
-        page.on("pageerror", lambda exc: page_errors.append(f"{exc}\n{getattr(exc, \"stack\", \"\")}"))
+        page.on("pageerror", lambda exc: page_errors.append(f"{exc}\n{getattr(exc, 'stack', '')}"))
 
         try:
             for path in PUBLIC_ROUTES:
@@ -212,7 +212,7 @@ def run() -> int:
                         storage_state=auth_state_path,
                         viewport={"width": 1440, "height": 1000},
                     )
-                    auth_page.on("pageerror", lambda exc: page_errors.append(f"auth: {exc}\n{getattr(exc, \"stack\", \"\")}"))
+                    auth_page.on("pageerror", lambda exc: page_errors.append(f"auth: {exc}\n{getattr(exc, 'stack', '')}"))
                     check_authenticated_routes(auth_page)
                     auth_page.close()
                 except Exception as exc:
