@@ -210,3 +210,14 @@ def test_bonus_failure_closes_processing_challenge_without_waiting_for_backoff()
     source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
     assert '"reconciliation_reason": "completed_settlement_bonus_retry"' in source
     assert '"$unset": {"processing_at": ""}' in source
+
+
+def test_media_quota_excludes_rejected_submissions():
+    source = (ROOT / "ALU_Gauntlet/web/routes/tournament.py").read_text(encoding="utf-8")
+    assert '"status": {"$ne": "rejected"}' in source
+
+
+def test_csp_report_body_is_hard_capped_even_without_content_length():
+    source = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
+    assert "request.content.read(64 * 1024 + 1)" in source
+    assert "len(raw_body) > 64 * 1024" in source
