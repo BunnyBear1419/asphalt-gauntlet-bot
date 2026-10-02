@@ -106,6 +106,7 @@ async def _ensure_database_indexes():
         expireAfterSeconds=14 * 24 * 60 * 60,
         name="ttl_csp_reports",
     )
+    await db.csp_reports.delete_many({"created_at": {"$type": "number"}})
     # Sessions created before the TTL migration stored Unix timestamps. They
     # cannot participate in a MongoDB date TTL index, so remove them once at
     # startup rather than leaving stale legacy sessions around indefinitely.
