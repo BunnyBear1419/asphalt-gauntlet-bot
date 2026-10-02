@@ -1,4 +1,5 @@
 from bson import ObjectId
+from gridfs.asynchronous import AsyncGridFSBucket
 import ipaddress
 import socket
 from urllib.parse import urlsplit
@@ -129,8 +130,7 @@ class AdminRoutesMixin:
             # databases without a Mongo client keep the legacy bytes fallback.
             client = getattr(self.bot.db, "client", None)
             if client is not None:
-                from motor.motor_asyncio import AsyncIOMotorGridFSBucket
-                bucket = AsyncIOMotorGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
+                bucket = AsyncGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
                 gridfs_id = await bucket.upload_from_stream(
                     filename,
                     png_data,
@@ -176,8 +176,7 @@ class AdminRoutesMixin:
         body = asset.get("data") or b""
         if asset.get("storage") == "gridfs" and asset.get("gridfs_id"):
             try:
-                from motor.motor_asyncio import AsyncIOMotorGridFSBucket
-                bucket = AsyncIOMotorGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
+                bucket = AsyncGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
                 stream = await bucket.open_download_stream(ObjectId(str(asset["gridfs_id"])))
                 body = await stream.read()
             except Exception as exc:
