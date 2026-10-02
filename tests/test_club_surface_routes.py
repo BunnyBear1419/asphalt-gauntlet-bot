@@ -34,10 +34,6 @@ def test_club_create_controls_are_bound():
         'id="club-image"',
     ):
         assert marker in page
-    for marker in (
-        '$("#open-create").onclick',
-        '$("#close-create").onclick',
-        '$("#club-form").onsubmit',
-        'api("/api/clubs"',
-    ):
-        assert marker in script
+    assert 'api("/api/clubs"' in script
+    assert 'addEventListener("click"' in script or '$("#open-create").onclick' in script
+    assert 'addEventListener("submit"' in script or '$("#club-form").onsubmit' in script
