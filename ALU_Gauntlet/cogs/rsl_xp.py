@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 from discord.ext import commands, tasks
 from .translation import localize_text
-from ..core.rsl_role_sync import sync_xp_rank_role
+from ..core.rsl_role_sync import XP_LEVEL_ROLES, sync_xp_rank_role
 from ..core.rsl_xp import award_xp, get_settings, progress_for_xp, xp_is_allowed
 
 class RSLXPCog(commands.Cog):
@@ -50,7 +50,7 @@ class RSLXPCog(commands.Cog):
                             )
             if level >= 5:
                 rank_role_name = next(
-                    (name for threshold, name in sorted(((int(k), v) for k, v in __import__("ALU_Gauntlet.core.rsl_role_sync", fromlist=["XP_LEVEL_ROLES"]).XP_LEVEL_ROLES.items()))
+                    (name for threshold, name in sorted(XP_LEVEL_ROLES.items())
                      if level >= threshold),
                     None,
                 )
