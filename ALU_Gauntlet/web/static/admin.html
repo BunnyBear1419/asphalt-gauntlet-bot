@@ -213,7 +213,7 @@
 <section class="admin-section" id="section-settings">
   <div class="admin-card"><h2>Site Settings</h2><p>Existing server configuration remains available here so branding and operational setup stay together.</p>
     <div class="admin-tools-grid">
-      <a class="admin-tool" id="setup-link" href="/admin#section-settings" data-route="/admin#section-settings" onclick="window.location.assign(this.dataset.route); return false;"><strong>Server Setup</strong><span>Channels, roles and timezone pickers.</span></a>
+      <a class="admin-tool" id="setup-link" href="/admin#section-settings"><strong>Server Setup</strong><span>Channels, roles and timezone pickers.</span></a>
       <a class="admin-tool" id="news-link" href="/news-admin"><strong>News &amp; Announcements</strong><span>Create and manage community news.</span></a>
       <a class="admin-tool" href="/calendar"><strong>Calendar</strong><span>Review the live event calendar.</span></a>
     </div>
@@ -335,7 +335,7 @@
   <div class="admin-card"><h2>Audit Log</h2><p>Search the existing guild audit trail by action, event type, source, or staff member.</p><div class="admin-grid two"><div class="admin-field"><label for="audit-search">Search</label><input id="audit-search" placeholder="Search audit events…"></div><div class="admin-field"><label for="audit-source">Source</label><select id="audit-source"><option value="">All sources</option></select></div></div><div class="admin-log" id="audit-log"><div class="admin-log-row">Loading audit events…</div></div></div>
   <div class="admin-card"><h2>Maintenance &amp; Tests</h2><div class="admin-tools-grid">
     <a class="admin-tool" href="/rsl-healthz" target="_blank"><strong>Health Check</strong><span>Open the live production health endpoint.</span></a>
-    <a class="admin-tool" id="system-setup-link" href="/admin#section-settings" data-route="/admin#section-settings" onclick="window.location.assign(this.dataset.route); return false;"><strong>Server Setup</strong><span>Manage channels, roles and timezone configuration.</span></a>
+    <a class="admin-tool" id="system-setup-link" href="/admin#section-settings"><strong>Server Setup</strong><span>Manage channels, roles and timezone configuration.</span></a>
     <a class="admin-tool" href="/help"><strong>Help Center</strong><span>Verify the public player-facing experience.</span></a>
   </div></div>
 </section>
@@ -404,7 +404,7 @@ function fillForm(){
  $("preview-hero").style.backgroundImage="url('"+(m.hero_url||"")+"')";
  $("overview-title").textContent=(i.name||"Community")+" Administration";
  $("preview-link").href="/?guild_id="+encodeURIComponent(guildId);
- $("setup-link").href="/admin?guild_id="+encodeURIComponent(guildId)+"#settings";
+ $("setup-link").href="/admin?guild_id="+encodeURIComponent(guildId)+"#settings";const systemSetupLink=$("system-setup-link");if(systemSetupLink)systemSetupLink.href="/admin?guild_id="+encodeURIComponent(guildId)+"#settings";
  $("news-link").href="/news-admin?guild_id="+encodeURIComponent(guildId);
  $("backup-link").href="/api/admin/backup?guild_id="+encodeURIComponent(guildId);document.querySelectorAll(".admin-guild-link").forEach(a=>a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId)+(a.dataset.section?"#"+encodeURIComponent(a.dataset.section):""));
 }
