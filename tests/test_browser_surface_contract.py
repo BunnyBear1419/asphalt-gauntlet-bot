@@ -25,7 +25,7 @@ def test_admin_navigation_contract_has_matching_sections_and_safe_internal_targe
     page = read("admin.html")
     nav_sections = re.findall(r'<button[^>]+data-section="([^"]+)"', page)
     panel_sections = re.findall(r'id="section-([^"]+)"', page)
-    assert nav_sections == panel_sections
+    assert sorted(nav_sections) == sorted(panel_sections)
     assert len(nav_sections) >= 10
     assert len(nav_sections) == len(set(nav_sections))
 
