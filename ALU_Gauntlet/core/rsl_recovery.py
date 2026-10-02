@@ -20,6 +20,8 @@ from .match_scoring import apply_rsl_performance_bonus
 log = logging.getLogger(__name__)
 
 PROCESSING_LEASE_SECONDS = 15 * 60
+BONUS_RETRY_MAX_ATTEMPTS = 5
+BONUS_RETRY_BASE_SECONDS = 5 * 60
 
 
 async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
@@ -36,7 +38,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
         "guild_id": guild_id,
         "$or": [
             {"status": "processing"},
-            {"status": "completed", "rsl_bonus_checked": {"$ne": True}},
+            {"status": "completed", "rsl_bonus_checked": {"$ne": True}, "rsl_bonus_recovery_status": {"$ne": "needs_staff_review"}},
         ],
     }):
         challenges.append(challenge)
