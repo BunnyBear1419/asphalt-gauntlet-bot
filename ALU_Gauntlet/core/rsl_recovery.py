@@ -65,14 +65,28 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 # is also authoritative for recovery: zero-margin 3-2/2-3
                 # results are explicitly marked as checked by the bonus helper.
                 bonus_failed = False
-                if not reservation.get("rsl_bonus_checked"):
+                # Pre-marker settlements are valid historical records. If the
+                # one-time margin claim is already durable, backfill the newer
+                # checked marker without opening another bonus transaction.
+                if reservation.get("rsl_bonus_checked") is True or reservation.get("rsl_margin_bonus_applied") is True:
+                    if reservation.get("rsl_bonus_checked") is not True:
+                        await db.matches.update_one(
+                            {"_id": reservation["_id"], "rsl_margin_bonus_applied": True},
+                            {"$set": {"rsl_bonus_checked": True}},
+                        )
+                else:
                     try:
                         await apply_rsl_performance_bonus(db, reservation)
                         refreshed = await db.matches.find_one(
                             {"_id": reservation["_id"]},
                             {"rsl_margin_bonus_applied": 1, "rsl_bonus_checked": 1},
                         ) or {}
-                        if refreshed.get("rsl_bonus_checked") is True:
+                        if refreshed.get("rsl_bonus_checked") is True or refreshed.get("rsl_margin_bonus_applied") is True:
+                            if refreshed.get("rsl_bonus_checked") is not True:
+                                await db.matches.update_one(
+                                    {"_id": reservation["_id"], "rsl_margin_bonus_applied": True},
+                                    {"$set": {"rsl_bonus_checked": True}},
+                                )
                             stats["bonus_retried"] += 1
                         else:
                             bonus_failed = True
