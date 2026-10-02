@@ -14,6 +14,7 @@ class CoreRoutesMixin:
         self.site: web.TCPSite | None = None
         self._auth_rate: dict[str, list[float]] = {}
         self._ticket_transcript_rate: dict[str, float] = {}
+        self._csp_report_rate: dict[str, list[float]] = {}
         self._configure_routes()
 
     @web.middleware
@@ -102,6 +103,48 @@ class CoreRoutesMixin:
             self._auth_rate = {k: v for k, v in self._auth_rate.items() if v and v[-1] > now - window}
         return True
 
+    async def csp_report(self, request: web.Request) -> web.Response:
+        """Collect bounded CSP violation reports for policy tuning."""
+        remote = str(request.remote or "unknown")
+        now = time.time()
+        bucket = [ts for ts in self._csp_report_rate.get(remote, []) if ts > now - 60]
+        if len(bucket) >= 30:
+            return web.json_response({"ok": False}, status=429, headers={"Retry-After": "60"})
+        bucket.append(now)
+        self._csp_report_rate[remote] = bucket
+        try:
+            payload = await request.json()
+        except Exception:
+            return web.json_response({"ok": False}, status=400)
+        if not isinstance(payload, dict):
+            return web.json_response({"ok": False}, status=400)
+        # Keep reports useful without allowing arbitrary large documents or
+        # attacker-controlled fields to become an unbounded Mongo sink.
+        report = payload.get("csp-report") if isinstance(payload.get("csp-report"), dict) else payload.get("body")
+        if not isinstance(report, dict):
+            report = payload
+        allowed = {
+            "document-uri", "referrer", "blocked-uri", "violated-directive",
+            "effective-directive", "original-policy", "disposition",
+            "source-file", "status-code", "script-sample", "column-number",
+            "line-number",
+        }
+        sanitized = {}
+        for key in allowed:
+            value = report.get(key)
+            if value is not None:
+                sanitized[key] = str(value)[:2000]
+        if sanitized:
+            try:
+                await self.bot.db.csp_reports.insert_one({
+                    "created_at": now,
+                    "remote": remote[:128],
+                    "report": sanitized,
+                })
+            except Exception:
+                log.exception("Unable to persist CSP violation report")
+        return web.Response(status=204)
+
     def _apply_security_headers(self, request: web.Request, response: web.StreamResponse) -> web.StreamResponse:
         """Apply browser hardening without constraining the existing page/script architecture."""
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
@@ -121,7 +164,8 @@ class CoreRoutesMixin:
         )
         # Report first so existing Google Analytics/Translate integrations can be
         # observed in production without breaking pages while the policy settles.
-        response.headers.setdefault("Content-Security-Policy-Report-Only", csp)
+        response.headers.setdefault("Content-Security-Policy-Report-Only", csp + "; report-uri /api/csp-report; report-to rsl-csp")
+        response.headers.setdefault("Reporting-Endpoints", 'rsl-csp="/api/csp-report"')
         if request.scheme == "https" or str(self.auth.public_url).startswith("https://"):
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         if request.path.startswith("/api/") or request.path.startswith("/auth/") or request.path in {"/login", "/logout"}:
@@ -139,7 +183,7 @@ class CoreRoutesMixin:
             limit, window = ((30, 60) if request.path == "/login" else (20, 300))
             if not self._rate_limit_auth_request(request, limit, window):
                 raise web.HTTPTooManyRequests(text="Too many sign-in attempts. Please wait and try again.")
-        if request.path == "/logout" or request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.path not in {"/api/csp-report"} and (request.path == "/logout" or request.method in {"POST", "PUT", "PATCH", "DELETE"}):
             if request.cookies.get(SESSION_COOKIE) and not self._request_origin_allowed(request):
                 raise web.HTTPForbidden(text="Cross-site mutation blocked.")
         return await handler(request)
@@ -2367,6 +2411,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
     def _configure_routes(self) -> None:
         self.app.router.add_get("/", self.index)
         self.app.router.add_get("/robots.txt", self.robots_txt)
+        self.app.router.add_post("/api/csp-report", self.csp_report)
         self.app.router.add_get("/sitemap.xml", self.sitemap_xml)
         self.app.router.add_get("/help", self.help_page)
         self.app.router.add_get("/rules", self.rules_page)
