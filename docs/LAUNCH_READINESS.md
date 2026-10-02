@@ -4,8 +4,8 @@
 - Production branch: `main`
 - Hosting: Discloud
 - Automated CI/deploy: GitHub Actions
-- Latest verified release: `2209e3c915d82c00aa275a9345f9ca3a4b14c196`
-- Latest CI/deploy run: #3488 — passed
+- Latest verified release: `b1604be9062e453f0341e2307d6f65224585449d`
+- Latest CI/deploy run: #3626 — passed
 - Automated tests: passed
 - Production module import smoke gate: passed
 - Compile check: passed
@@ -17,7 +17,7 @@
 - Rollback path: available; not required for the latest successful release
 
 ## Current assurance status
-The automated implementation and regression phase is complete for the current verified release. Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
+The automated implementation and regression phase is complete for the current verified release (`b1604be9062e453f0341e2307d6f65224585449d`). Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
 
 A read-only Chromium live browser suite is now part of the deployment gate and is also available as a scheduled/manual workflow. It checks the deployed public shell, navigation, Clubs controls, protected routes, and a mobile viewport without submitting forms or changing competition data.
 
