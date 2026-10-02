@@ -190,7 +190,7 @@ class ChallengesCog(commands.Cog):
             match_data['rsl_performance_bonus'] = await apply_rsl_performance_bonus(bot.db, match_data)
         except Exception:
             logging.exception('Failed to apply RSL performance margin bonus for match %s', match_data.get('_id'))
-        result = await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id'], 'ticket_burned': True, 'settlement_closed': True}, '$unset': {'processing_at': ''}})
+        result = await bot.db.active_challenges.update_one({'_id': active['_id'], 'guild_id': guild_id, 'challenger_id': user_id, 'status': 'processing'}, {'$set': {'status': 'completed', 'completed_at': time.time(), 'match_id': match_data['_id'], 'ticket_burned': True, 'settlement_closed': True, 'rsl_bonus_checked': True}, '$unset': {'processing_at': ''}})
         if getattr(result, 'modified_count', 0) != 1:
             logging.warning('Match %s settled but challenge %s could not be finalized immediately; scheduler will reconcile it.', match_data['_id'], active['_id'])
         season = current_season
