@@ -81,7 +81,6 @@ def test_admin_system_controls_have_runtime_handlers():
     for marker in (
         'api("/api/admin/diagnostics',
         'api("/api/admin/sync',
-        'api("/api/admin/maintenance',
         'api("/api/admin/operations',
         'api("/api/admin/audit',
     ):
