@@ -81,3 +81,15 @@ def test_gridfs_asset_serving_streams_in_bounded_chunks():
     ):
         source = path.read_text(encoding="utf-8")
         assert 'await stream.read(64 * 1024)' in source
+
+
+def test_csp_diagnostics_is_admin_only_and_aggregated():
+    source = (ROOT / "ALU_Gauntlet/web/routes/admin.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
+    assert 'async def admin_csp_diagnostics' in source
+    assert '_, guild_id, _guild = await self.require_admin(request)' in source
+    assert 'csp_reports.find(' in source
+    assert '"report": 1' in source
+    assert 'script-sample' not in source.split('async def admin_csp_diagnostics', 1)[1].split('async def admin_diagnostics', 1)[0]
+    assert '"/api/admin/csp-diagnostics", self.admin_csp_diagnostics' in core
+    assert '"remote"' not in source.split('async def admin_csp_diagnostics', 1)[1].split('async def admin_diagnostics', 1)[0]
