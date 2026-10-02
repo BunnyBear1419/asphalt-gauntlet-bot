@@ -587,7 +587,7 @@ class TournamentMediaModerationView(discord.ui.View):
             )
             return
         now = discord.utils.utcnow().isoformat()
-        await bot.db.tournament_media.update_one(
+        review_result = await bot.db.tournament_media.update_one(
             {"_id": self.media_id, "status": "pending"},
             {"$set": {
                 "status": "approved" if action == "approve" else "rejected",
@@ -597,6 +597,13 @@ class TournamentMediaModerationView(discord.ui.View):
                 "reviewed_at": now,
             }},
         )
+        if action == "reject" and getattr(review_result, "modified_count", 0) == 1:
+            # Rejected media keeps audit metadata only; drop the stored payload.
+            try:
+                from ..core.rsl_media_cleanup import purge_media_payload
+                await purge_media_payload(bot.db, media)
+            except Exception:
+                log.exception("Unable to purge rejected tournament media payload for %s", self.media_id)
         for child in self.children:
             child.disabled = True
         label = "published" if action == "approve" else "rejected"
