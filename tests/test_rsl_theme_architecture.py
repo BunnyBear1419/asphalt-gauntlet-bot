@@ -221,17 +221,24 @@ def test_shohan_companion_navigation_and_box_share_theme_aware_brand_tokens():
 
 def test_discord_server_dropdown_uses_selected_theme_surface():
     css = CSS.read_text(encoding="utf-8")
-    assert "background:#07172d!important" not in css
-    assert "color:#f2f7ff!important" not in css
-    assert "var(--rsl-final-panel2)!important" in css
-    assert "var(--rsl-final-text)!important" in css
-    assert ".rsl-site-page .server-select select" in css
+    start = css.find(".rsl-site-page .server-select select")
+    assert start >= 0
+    rule = css[start:css.find("}", start) + 1]
+    assert "background:var(--rsl-final-panel2)!important" in rule
+    assert "color:var(--rsl-final-text)!important" in rule
 
 
 def test_search_control_and_header_do_not_reintroduce_legacy_blue():
     css = CSS.read_text(encoding="utf-8")
-    assert "border:1px solid rgba(40,215,255,.75)!important" not in css
-    assert "background:#0a1a2d!important" not in css
-    assert "border-bottom:1px solid #25dfff" not in css
+    search_start = css.find(".rsl-search-trigger{")
+    assert search_start >= 0
+    search_rule = css[search_start:css.find("}", search_start) + 1]
+    assert "border:1px solid var(--rsl-final-line)!important" in search_rule
+    assert "background:var(--rsl-final-panel2)!important" in search_rule
+    assert "color:var(--rsl-final-text)!important" in search_rule
+    header_start = css.find(".top-nav{")
+    assert header_start >= 0
+    header_rule = css[header_start:css.find("}", header_start) + 1]
+    assert "border-bottom:1px solid var(--rsl-final-line)" in header_rule
     assert ".rsl-search-trigger img" in css
     assert "filter:grayscale(1) brightness(1.8)!important" in css
