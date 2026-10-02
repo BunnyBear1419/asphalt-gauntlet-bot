@@ -179,6 +179,37 @@ def test_settled_three_two_recovery_closes_processing_without_bonus_failure():
     asyncio.run(run())
 
 
+
+def test_non_transactional_rsl_performance_bonus_applies_once_and_is_zero_sum():
+    async def run():
+        from ALU_Gauntlet.core.match_scoring import apply_rsl_performance_bonus
+
+        fake_db = FakeDB()
+        fake_db.matches.docs["match-1"] = {
+            "_id": "match-1",
+            "guild_id": "guild",
+            "challenger_id": "user",
+            "opponent_id": "opponent",
+            "w_id": "user",
+            "courses_beat": 5,
+        }
+        fake_db.drivers.docs["guild_user"] = {"_id": "guild_user", "elo": 1000}
+        fake_db.drivers.docs["guild_opponent"] = {"_id": "guild_opponent", "elo": 1000}
+
+        first = await apply_rsl_performance_bonus(fake_db, fake_db.matches.docs["match-1"])
+        assert first == 15
+        assert fake_db.drivers.docs["guild_user"]["elo"] == 1015
+        assert fake_db.drivers.docs["guild_opponent"]["elo"] == 985
+        assert fake_db.matches.docs["match-1"]["rsl_margin_bonus_applied"] is True
+        assert fake_db.matches.docs["match-1"]["rsl_performance_bonus_applied"] == 15
+
+        second = await apply_rsl_performance_bonus(fake_db, fake_db.matches.docs["match-1"])
+        assert second == 0
+        assert fake_db.drivers.docs["guild_user"]["elo"] == 1015
+        assert fake_db.drivers.docs["guild_opponent"]["elo"] == 985
+
+    asyncio.run(run())
+
 def test_active_challenge_claim_and_release(monkeypatch):
     async def run():
         fake_db = FakeDB()
