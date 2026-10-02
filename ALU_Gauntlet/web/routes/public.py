@@ -424,7 +424,18 @@ class PublicRoutesMixin:
         media = await self.bot.db.tournament_media.find_one({"_id": media_id})
         if not media or media.get("status") != "approved": raise web.HTTPNotFound(text="Tournament media not found.")
         if str(media.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPForbidden(text="You are not a member of this server.")
-        return web.Response(body=media.get("data") or b"", content_type=str(media.get("mime_type") or "application/octet-stream"), headers={"Cache-Control":"private, max-age=3600", "X-Content-Type-Options":"nosniff"})
+        body = media.get("data") or b""
+        if media.get("storage") == "gridfs" and media.get("gridfs_id"):
+            try:
+                from bson import ObjectId
+                from gridfs.asynchronous import AsyncGridFSBucket
+                bucket = AsyncGridFSBucket(self.bot.db, bucket_name="rsl_tournament_media")
+                stream = await bucket.open_download_stream(ObjectId(str(media["gridfs_id"])))
+                body = await stream.read()
+            except Exception as exc:
+                log.exception("Tournament media GridFS read failed for %s", media_id)
+                raise web.HTTPServiceUnavailable(text="Tournament media is temporarily unavailable.") from exc
+        return web.Response(body=body, content_type=str(media.get("mime_type") or "application/octet-stream"), headers={"Cache-Control":"private, max-age=3600", "X-Content-Type-Options":"nosniff"})
 
     async def index(self, request: web.Request) -> web.StreamResponse:
         # The homepage is public. Discord authentication is only required when
