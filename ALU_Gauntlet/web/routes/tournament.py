@@ -657,10 +657,9 @@ class TournamentRoutesMixin:
         if not data: raise web.HTTPBadRequest(text="The selected file is empty.")
         if len(data) > max_size: raise web.HTTPRequestEntityTooLarge(max_size=max_size, actual_size=len(data))
 
-        # MongoDB stores this media inline for now. Bound both per-user and
-        # per-tournament submissions so repeated 12 MB uploads cannot grow the
-        # database without limit. Rejected media keeps audit metadata while its
-        # binary payload is removed after review.
+        # Bound both per-user and per-tournament submissions so repeated uploads
+        # cannot grow storage without limit. Production Mongo stores binary media in GridFS;
+        # lightweight test databases may retain the inline fallback.
         max_user_media = 20
         max_tournament_media = 100
         user_media_count = await self.bot.db.tournament_media.count_documents({
@@ -706,7 +705,25 @@ class TournamentRoutesMixin:
                 raise web.HTTPBadRequest(text="The selected image could not be validated.") from exc
         media_id = hashlib.sha256(f"{tournament_id}:{user.user_id}:{time.time()}".encode() + data).hexdigest()[:32]
         status = "approved" if staff else "pending"; now = datetime.now(timezone.utc).isoformat()
-        await self.bot.db.tournament_media.insert_one({"_id": media_id, "tournament_id": tournament_id, "guild_id": str(tournament.get("guild_id")), "type": media_type, "mime_type": content_type, "filename": filename, "title": str(fields.get("title", "")).strip()[:120], "caption": str(fields.get("caption", "")).strip()[:500], "data": data, "status": status, "uploaded_by": str(user.user_id), "created_at": now, "approved_by": str(user.user_id) if staff else None, "approved_at": now if staff else None})
+        document = {"_id": media_id, "tournament_id": tournament_id, "guild_id": str(tournament.get("guild_id")), "type": media_type, "mime_type": content_type, "filename": filename, "title": str(fields.get("title", "")).strip()[:120], "caption": str(fields.get("caption", "")).strip()[:500], "status": status, "uploaded_by": str(user.user_id), "created_at": now, "approved_by": str(user.user_id) if staff else None, "approved_at": now if staff else None}
+        client = getattr(self.bot.db, "client", None)
+        gridfs_id = None
+        if client is not None:
+            from gridfs.asynchronous import AsyncGridFSBucket
+            bucket = AsyncGridFSBucket(self.bot.db, bucket_name="rsl_tournament_media")
+            gridfs_id = await bucket.upload_from_stream(filename, data, metadata={"tournament_id": tournament_id, "media_id": media_id, "guild_id": str(tournament.get("guild_id")), "content_type": content_type})
+            document.update({"storage": "gridfs", "gridfs_id": str(gridfs_id)})
+        else:
+            document.update({"storage": "inline", "data": data})
+        try:
+            await self.bot.db.tournament_media.insert_one(document)
+        except Exception:
+            if gridfs_id is not None:
+                try:
+                    await bucket.delete(gridfs_id)
+                except Exception:
+                    log.exception("Failed to clean up orphaned tournament media GridFS file %s", gridfs_id)
+            raise
         if not staff:
             cfg = await self.bot.db.settings.find_one({"_id": str(tournament.get("guild_id"))}) or {}
             channel_id = cfg.get("review_channel_id") or cfg.get("match_results_channel_id")
