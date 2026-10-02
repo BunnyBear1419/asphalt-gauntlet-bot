@@ -445,16 +445,27 @@ jobs:
           echo "Post-deployment smoke test failed after 12 startup attempts."
           exit 1
 
+
+      - name: Live browser E2E acceptance
+        id: live_e2e
+        if: steps.smoke.outcome == 'success'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet playwright
+          python -m playwright install --with-deps chromium
+          RSL_LIVE_URL="https://asph.discloud.app" python scripts/live_e2e.py
+
       - name: Roll back to previous known-good revision
         id: rollback
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.rollback_revision.outputs.rollback_sha }}
           fetch-depth: 0
 
       - name: Clean failed-release workspace before rollback upload
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         env:
           ROLLBACK_SHA: ${{ steps.rollback_revision.outputs.rollback_sha }}
         run: |
@@ -476,7 +487,7 @@ jobs:
 
       - name: Capture pre-rollback heartbeat
         id: rollback_predeploy
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
@@ -490,7 +501,7 @@ jobs:
 
       - name: Deploy rollback to Discloud
         id: rollback_deploy
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -522,7 +533,7 @@ jobs:
 
       - name: Restart Discloud app after rollback upload
         id: rollback_restart
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
