@@ -75,6 +75,25 @@ def test_form_controls_are_theme_normalized_including_native_options():
     for token in required:
         assert token in server
 
+def test_legacy_form_surfaces_use_theme_tokens():
+    root = Path(__file__).resolve().parents[1]
+    files = [
+        root / "ALU_Gauntlet/web/static/player.html",
+        root / "ALU_Gauntlet/web/static/admin.html",
+        root / "ALU_Gauntlet/web/static/app.css",
+        root / "ALU_Gauntlet/web/static/gauntlet-matches.html",
+        root / "ALU_Gauntlet/web/static/gauntlet-defense.html",
+        root / "ALU_Gauntlet/web/static/gauntlet-references.html",
+        root / "ALU_Gauntlet/web/static/tournaments.html",
+    ]
+    for path in files:
+        source = path.read_text(encoding="utf-8")
+        assert "background:#020b1b" not in source
+        assert "background:#061326" not in source
+        assert "background:#061427" not in source
+        assert "background:#071225" not in source
+
+
 def test_discord_brand_exception_remains_explicit():
     server = web_source()
     css = CSS.read_text(encoding="utf-8")
