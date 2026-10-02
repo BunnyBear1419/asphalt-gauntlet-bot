@@ -3829,6 +3829,24 @@ html[data-theme] textarea:disabled{
 
 
 
+/* FINAL MOBILE NAV CONTAINMENT — applied after the desktop action-bar overrides. */
+@media(max-width:430px){
+  .top-nav{overflow:hidden!important;}
+  .top-nav>nav{
+    left:145px!important;
+    right:145px!important;
+    width:auto!important;
+    max-width:none!important;
+    min-width:0!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    contain:layout paint!important;
+    overscroll-behavior-x:contain!important;
+    scrollbar-width:none!important;
+  }
+  .top-nav>nav::-webkit-scrollbar{display:none!important;}
+}
+
 /* FINAL FOOTER SOCIAL ICON SIZE — prominent */
 .rsl-footer-socials .rsl-footer-social{
   width:60px!important;
