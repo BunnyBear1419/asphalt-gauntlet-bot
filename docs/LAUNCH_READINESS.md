@@ -19,6 +19,8 @@
 ## Current assurance status
 The automated implementation and regression phase is complete for the current verified release. Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
 
+A read-only Chromium live browser suite is now part of the deployment gate and is also available as a scheduled/manual workflow. It checks the deployed public shell, navigation, Clubs controls, protected routes, and a mobile viewport without submitting forms or changing competition data.
+
 The remaining unchecked acceptance items below are intentionally manual/live acceptance tests. They are not marked complete based solely on automated tests.
 
 ## Final product checks
@@ -39,6 +41,10 @@ The remaining unchecked acceptance items below are intentionally manual/live acc
 ## Final acceptance test matrix
 
 ### Website
+- [x] Automated live browser smoke checks the deployed homepage and public routes
+- [x] Automated live browser smoke exercises the Clubs Create Club panel without submitting it
+- [x] Automated live browser smoke checks protected Player/Admin route gates
+- [x] Automated live browser smoke checks a mobile viewport
 - [ ] Open homepage while signed out
 - [ ] Verify navigation and profile menu
 - [ ] Sign in with Discord
