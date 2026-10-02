@@ -674,7 +674,7 @@ class CoreRoutesMixin:
       }
     });
     document.addEventListener("pointerenter",e=>{
-      if(!e.target.closest(".top-nav details.top-nav-dropdown")){
+      if(!(e.target instanceof Element) || !e.target.closest(".top-nav details.top-nav-dropdown")){
         document.querySelectorAll(".top-nav details.top-nav-dropdown[open]").forEach(d=>d.open=false);
       }
     },true);
