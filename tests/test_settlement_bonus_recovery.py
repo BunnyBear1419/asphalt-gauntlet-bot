@@ -100,3 +100,12 @@ def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
     assert stats["bonus_failed"] == 1
     challenge_updates = db.active_challenges.updates
     assert challenge_updates == []
+
+
+def test_settlement_recovery_has_bounded_bonus_retry_and_staff_review_terminal_state():
+    source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
+    assert "BONUS_RETRY_MAX_ATTEMPTS = 5" in source
+    assert "BONUS_RETRY_BASE_SECONDS = 5 * 60" in source
+    assert '"rsl_bonus_next_retry_at"' in source
+    assert '"needs_staff_review"' in source
+    assert '"rsl_bonus_retry_attempts"' in source
