@@ -751,6 +751,14 @@ class TournamentRoutesMixin:
         result = await self.bot.db.tournament_media.update_one({"_id": media_id, "guild_id": guild_id, "status": "pending"}, update)
         if not result.modified_count:
             raise web.HTTPConflict(text="This media submission was already reviewed.")
+        if action == "reject":
+            # Remove the GridFS (or legacy inline) payload; metadata stays for audit.
+            # A failed purge never fails the review: the startup sweep retries it.
+            try:
+                from ...core.rsl_media_cleanup import purge_media_payload
+                await purge_media_payload(self.bot.db, media)
+            except Exception:
+                log.exception("Unable to purge rejected tournament media payload for %s", media_id)
         return web.json_response({"ok": True, "message": "Media approved and published." if action == "approve" else "Media rejected."})
 
     async def tournament_checkin(self, request: web.Request) -> web.Response:
