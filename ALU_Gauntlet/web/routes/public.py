@@ -89,9 +89,17 @@ class PublicRoutesMixin:
                         try:
                             from gridfs.asynchronous import AsyncGridFSBucket
                             bucket = AsyncGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
-                            await bucket.delete(ObjectId(str(gridfs_id)))
+                            try:
+                                await bucket.delete(ObjectId(str(gridfs_id)))
+                            except Exception as exc:
+                                # NoFile means the blob is already gone, which is the goal.
+                                if type(exc).__name__ != "NoFile":
+                                    raise
                         except Exception:
+                            # Keep the metadata row (and its gridfs_id pointer) so the
+                            # blob is not orphaned with no record of where it lives.
                             log.exception("Unable to purge superseded brand asset GridFS file %s", gridfs_id)
+                            continue
                     await self.bot.db.web_brand_assets.delete_one({"_id": asset.get("_id"), "guild_id": str(guild_id)})
             except Exception:
                 log.exception("Unable to purge superseded brand assets for guild %s", guild_id)
