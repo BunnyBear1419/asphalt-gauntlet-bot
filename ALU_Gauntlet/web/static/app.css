@@ -2,7 +2,7 @@
 
 :root{font-family:Rajdhani,Arial,sans-serif;color:#f5f7ff;background:var(--rsl-box);--bg:var(--rsl-box);--panel:var(--rsl-box);--line:#123b68;--muted:#91a5c3;--cyan:#23dfff;--blue:#1878ff;--purple:#1878ff;--pink:#25dfff;--gold:#ffd22d;--green:#16dca0}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;background:radial-gradient(circle at 65% 30%,#071a3b 0,var(--rsl-box) 42%,#01050d 100%);color:var(--text);overflow-x:hidden}a{color:inherit}button,input,select{font:inherit}
-.top-nav{height:80px;position:fixed;z-index:100;left:0;right:0;top:0;display:flex;align-items:stretch;background:linear-gradient(180deg,#07122d 0%,#040b20 100%);border-bottom:1px solid #25dfff;box-shadow:0 8px 28px #0008}
+.top-nav{height:80px;position:fixed;z-index:100;left:0;right:0;top:0;display:flex;align-items:stretch;background:linear-gradient(180deg,var(--rsl-box-alt),var(--rsl-box));border-bottom:1px solid var(--rsl-final-line);box-shadow:0 8px 28px #0008}
 .top-brand{width:196px;height:80px;flex:none;display:flex;flex-direction:column;justify-content:center;padding-left:44px;text-decoration:none;line-height:.72;font-style:italic;background:linear-gradient(120deg,#06112c,#09072a);clip-path:polygon(0 0,100% 0,90% 100%,0 100%)}
 .top-brand span{font-size:20px;font-weight:700;letter-spacing:.02em}.top-brand b{font-size:8px;letter-spacing:.29em;margin-left:22px}.top-brand strong{font-size:47px;letter-spacing:-.08em;color:#25dfff;text-shadow:0 0 20px #25dfff55}
 .top-nav nav{display:flex;align-items:stretch;flex:1;min-width:0}.top-nav nav a{height:80px;min-width:132px;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;color:#e1e9fa;border-right:1px solid #10234b;font-size:14px;font-weight:600;position:relative}.top-nav nav a i{font-style:normal;font-size:23px;color:#d9e4fa}.top-nav nav a.active{color:#fff;background:linear-gradient(180deg,#26075b,#111438)}.top-nav nav a.active:after{content:"";position:absolute;height:4px;left:18px;right:18px;bottom:0;background:#25dfff;box-shadow:0 0 16px #25dfff}
@@ -1182,10 +1182,10 @@ body{top:0!important}
 
 
 /* Global site search */
-.rsl-search-trigger{position:absolute!important;right:220px!important;top:50%!important;transform:translateY(-50%)!important;width:42px!important;height:42px!important;box-sizing:border-box!important;border:1px solid rgba(40,215,255,.75)!important;border-radius:10px!important;background:#0a1a2d!important;color:#fff!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0!important;cursor:pointer!important;z-index:99999!important;pointer-events:auto!important}
-.rsl-search-trigger img{width:20px;height:20px;display:block}
+.rsl-search-trigger{position:absolute!important;right:220px!important;top:50%!important;transform:translateY(-50%)!important;width:42px!important;height:42px!important;box-sizing:border-box!important;border:1px solid var(--rsl-final-line)!important;border-radius:10px!important;background:var(--rsl-final-panel2)!important;color:var(--rsl-final-text)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;padding:0!important;cursor:pointer!important;z-index:99999!important;pointer-events:auto!important}
+.rsl-search-trigger img{width:20px;height:20px;display:block;filter:grayscale(1) brightness(1.8)!important}
 .rsl-search-trigger span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.rsl-search-trigger:hover{border-color:#28d7ff;box-shadow:0 0 16px rgba(40,215,255,.22)}
+.rsl-search-trigger:hover{border-color:var(--rsl-final-accent)!important;box-shadow:0 0 16px color-mix(in srgb,var(--rsl-final-accent) 22%,transparent)!important}
 .rsl-search-overlay{position:fixed;inset:0;background:rgba(1,6,16,.78);backdrop-filter:blur(8px);z-index:5000;display:flex;align-items:flex-start;justify-content:center;padding:12vh 20px 30px}
 .rsl-search-overlay[hidden]{display:none}
 .rsl-search-dialog{width:min(720px,100%);background:linear-gradient(145deg,#071a35,var(--rsl-box-alt));border:1px solid rgba(40,215,255,.65);border-radius:16px;box-shadow:0 20px 70px rgba(0,0,0,.55),0 0 35px rgba(40,215,255,.12);overflow:hidden}
