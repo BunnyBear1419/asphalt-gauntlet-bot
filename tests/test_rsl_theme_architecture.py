@@ -63,6 +63,18 @@ def test_no_universal_theme_selector_can_reset_every_theme_to_midnight_blue():
     assert 'html[data-theme]{--rsl-audit-bg:#071427' not in server
 
 
+def test_form_controls_are_theme_normalized_including_native_options():
+    server = web_source()
+    required = (
+        "html[data-theme] input,html[data-theme] textarea,html[data-theme] select",
+        'html[data-theme] select{color-scheme:dark}',
+        'html[data-theme="light"] select{color-scheme:light}',
+        "html[data-theme] select option,html[data-theme] select optgroup",
+        "accent-color:var(--rsl-audit-accent)!important",
+    )
+    for token in required:
+        assert token in server
+
 def test_discord_brand_exception_remains_explicit():
     server = web_source()
     css = CSS.read_text(encoding="utf-8")
