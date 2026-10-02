@@ -112,7 +112,8 @@ async def _ensure_database_indexes():
     await db.rsl_ticket_notifications.create_index([("event_key", 1)], unique=True, name="uniq_rsl_ticket_notification_event")
     await db.rsl_ticket_notifications.create_index([("guild_id", 1), ("status", 1), ("retry_at", 1)], name="idx_rsl_ticket_notification_retry")
     await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("created_at", -1)], name="idx_rsl_recovery_checkpoint")
-    # Defense-in-depth uniqueness guard. Older Mongo deployments can reject
+    await _cleanup_legacy_active_challenge_duplicates()
+        # Defense-in-depth uniqueness guard. Older Mongo deployments can reject
     # the $in partial-filter form, and legacy duplicate rows can prevent index
     # creation. Never make the entire bot fail startup for this optimization.
     try:
@@ -158,6 +159,50 @@ async def _ensure_database_indexes():
         name="idx_gauntlet_settlement_id",
     )
 
+
+async def _cleanup_legacy_active_challenge_duplicates():
+    """Archive legacy duplicate active/processing challenges before uniqueness indexing."""
+    db = getattr(bot, "db", None)
+    if db is None:
+        return
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        cursor = db.active_challenges.aggregate([
+            {"$match": {"status": {"$in": ["active", "processing"]}}},
+            {"$group": {
+                "_id": {"guild_id": "$guild_id", "challenger_id": "$challenger_id"},
+                "count": {"$sum": 1},
+            }},
+            {"$match": {"count": {"$gt": 1}}},
+        ])
+        groups = await cursor.to_list(length=500)
+        for group in groups:
+            key = group.get("_id") or {}
+            rows = await db.active_challenges.find({
+                "guild_id": str(key.get("guild_id") or ""),
+                "challenger_id": str(key.get("challenger_id") or ""),
+                "status": {"$in": ["active", "processing"]},
+            }).sort([("updated_at", -1), ("created_at", -1), ("_id", -1)]).to_list(length=100)
+            if len(rows) < 2:
+                continue
+            keep = rows[0]
+            for duplicate in rows[1:]:
+                await db.active_challenges.update_one(
+                    {"_id": duplicate["_id"], "status": {"$in": ["active", "processing"]}},
+                    {"$set": {
+                        "status": "superseded",
+                        "superseded_by": str(keep.get("_id")),
+                        "superseded_at": time.time(),
+                        "recovery_reason": "legacy_duplicate_cleanup",
+                    }},
+                )
+                logger.warning(
+                    "Archived legacy duplicate Gauntlet challenge %s for %s/%s; kept %s",
+                    duplicate.get("_id"), key.get("guild_id"), key.get("challenger_id"), keep.get("_id"),
+                )
+    except Exception:
+        logger.exception("Legacy duplicate Gauntlet challenge cleanup failed")
 
 async def _ensure_advisory_rsl_indexes():
     db = getattr(bot, "db", None)
