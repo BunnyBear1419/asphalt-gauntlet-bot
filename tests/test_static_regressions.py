@@ -302,3 +302,35 @@ def test_xp_role_reconciliation_is_pending_only():
     assert "rsl_xp_role_sync_pending" in xp
     assert '"rsl_xp_role_sync_pending": {"$ne": False}' in cog
     assert "rsl_xp_role_sync_pending" in main
+
+
+def test_gauntlet_settlement_is_atomic_and_deterministic_across_discord_and_web():
+    source = read("ALU_Gauntlet/core/core.py")
+    cog = read("ALU_Gauntlet/cogs/challenges.py")
+    web = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    assert 'match_id = settlement_id or f"{guild_id}_{challenger_id}_{opponent_id}_{int(time.time())}"' in source
+    assert '"settlement_status": "pending"' in source
+    assert 'async with bot.mongo_client.start_session() as session:' in source
+    assert 'async with session.start_transaction():' in source
+    assert 'settlement_status": "completed"' in source
+    assert '"season_points_challenger": courses_beat + (3 if challenger_won else 0)' in source
+    assert '"season_points_defender": (5 - courses_beat) + (3 if not challenger_won else 0)' in source
+    assert 'settlement_id=f"{active[\'_id\']}:match"' in cog
+    assert 'settlement_id=f"{active[\'_id\']}:match"' in web
+
+
+def test_gauntlet_settlement_retry_refuses_uncertain_driver_state():
+    source = read("ALU_Gauntlet/core/core.py")
+    assert 'existing_match.get("settlement_status") in (None, "completed")' in source
+    assert 'logging.warning("Found incomplete match settlement %s with uncertain DB state; refusing duplicate scoring.", match_id)' in source
+    assert 'p1_now.get("elo") == existing_match.get("challenger_elo_after")' in source
+    assert 'p2_now.get("elo") == existing_match.get("defender_elo_after")' in source
+
+
+def test_gauntlet_xp_and_coin_rewards_are_separate_from_match_settlement():
+    source = read("ALU_Gauntlet/core/core.py")
+    start = source.index("async def process_match_result(")
+    end = source.index("class MatchResultPostView", start)
+    settlement = source[start:end]
+    assert "apply_coin_transaction(" not in settlement
+    assert "award_xp(" not in settlement
