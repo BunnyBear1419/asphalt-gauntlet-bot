@@ -18,3 +18,26 @@ def test_navigation_and_support_targets():
     page=read("clubs.html")+read("player.html")+read("admin.html")
     assert 'href="/clubs"' in page and 'href="/rules"' in page
     assert "https://discord.gg/q46RQxu2fm" in page or "https://discord.gg/fmFk8Ejf2H" in page
+
+def test_admin_navigation_contract_has_matching_sections_and_safe_internal_targets():
+    import re
+
+    page = read("admin.html")
+    nav_sections = set(re.findall(r'data-section="([^"]+)"', page))
+    panel_sections = set(re.findall(r'id="section-([^"]+)"', page))
+    assert nav_sections == panel_sections
+    assert len(nav_sections) >= 10
+
+    for href in re.findall(r'<a[^>]+href="([^"]+)"', page):
+        if href.startswith("/"):
+            assert "javascript:" not in href.lower()
+
+    assert 'id="setup-link" href="/admin#section-settings"' in page
+    assert 'id="news-link" href="/news-admin"' in page
+
+
+def test_admin_section_switcher_supports_hash_navigation():
+    page = read("admin.html")
+    assert 'location.hash' in page
+    assert 'replace(/^section-/,"")' in page
+    assert 'classList.toggle("active"' in page
