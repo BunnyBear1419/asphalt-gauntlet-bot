@@ -21,6 +21,9 @@ def test_remaining_operations_extend_existing_surfaces():
     assert "Match settlement invariants" in server
     assert "Evidence/review queues" in server
     assert "safe-mode-toggle" in admin
+    assert "/api/admin/operations" in admin
+    assert 'action:"maintenance"' in admin
+    assert 'action == "maintenance"' in server
     assert "season-finalize" in admin
     assert "load-evidence" in admin
     assert "load-releases" in admin
