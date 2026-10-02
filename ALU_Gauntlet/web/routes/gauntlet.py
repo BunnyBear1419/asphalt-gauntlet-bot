@@ -140,7 +140,7 @@ class GauntletRoutesMixin:
                 result["rsl_performance_bonus"] = await apply_rsl_performance_bonus(self.bot.db, result)
             except Exception:
                 log.exception("Failed to apply RSL performance margin bonus for match %s", result.get("_id"))
-            await self.bot.db.active_challenges.update_one({"_id":active["_id"],"guild_id":str(guild_id),"challenger_id":uid,"status":"processing"},{"$set":{"status":"completed","completed_at":time.time(),"match_id":result["_id"],"ticket_burned":True,"settlement_closed":True},"$unset":{"processing_at":""}})
+            await self.bot.db.active_challenges.update_one({"_id":active["_id"],"guild_id":str(guild_id),"challenger_id":uid,"status":"processing"},{"$set":{"status":"completed","completed_at":time.time(),"match_id":result["_id"],"ticket_burned":True,"settlement_closed":True,"rsl_bonus_checked":True},"$unset":{"processing_at":""}})
             return web.json_response({"ok":True,"match_id":str(result["_id"]),"result":result.get("outcome_desc","Match submitted."),"courses_beat":int(result.get("courses_beat",0) or 0),"rsl_performance_bonus":int(result.get("rsl_performance_bonus",0) or 0)})
         except Exception:
             # Mirror the Discord recovery path: never release a challenge blindly
