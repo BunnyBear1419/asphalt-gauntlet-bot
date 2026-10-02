@@ -100,4 +100,4 @@ window.addEventListener("hashchange",syncPrimaryNav);
 function openPlayerProfile(userId){
  if(userId) window.location.href="/profile?user_id="+encodeURIComponent(userId);
 }
-document.addEventListener("DOMContentLoaded",()=>{const rows=$("#rows");if(!rows)return;rows.addEventListener("click",e=>{const r=e.target instanceof Element?e.target.closest(".player-directory-row"):null;if(r)openPlayerProfile(r.dataset.playerId)});rows.addEventListener("keydown",e=>{const r=e.target.closest(".player-directory-row");if(r&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openPlayerProfile(r.dataset.playerId)}})});
+document.addEventListener("DOMContentLoaded",()=>{const rows=$("#rows");if(!rows)return;rows.addEventListener("click",e=>{const r=e.target instanceof Element?e.target.closest(".player-directory-row"):null;if(r)openPlayerProfile(r.dataset.playerId)});rows.addEventListener("keydown",e=>{const r=e.target instanceof Element?e.target.closest(".player-directory-row"):null;if(r&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openPlayerProfile(r.dataset.playerId)}})});
