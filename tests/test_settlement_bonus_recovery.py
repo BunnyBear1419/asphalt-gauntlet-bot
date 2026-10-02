@@ -132,3 +132,75 @@ def test_duplicate_cleanup_prefers_completed_settlement_reservation():
     assert 'settlement_status' in source
     assert '== "completed"' in source
     assert 'rows.sort(' in source
+
+
+def _db_with(challenge_status, match_extra=None):
+    db = _FakeDB()
+    db.active_challenges.rows[0]["status"] = challenge_status
+    db.matches.rows[0].update(match_extra or {})
+    return db
+
+
+def test_exhausted_bonus_retries_close_processing_challenge_and_flag_staff_review(monkeypatch):
+    import asyncio
+    import ALU_Gauntlet.core.rsl_recovery as recovery
+
+    async def fail_bonus(db, reservation):
+        raise RuntimeError("permanent failure")
+
+    monkeypatch.setattr(recovery, "apply_rsl_performance_bonus", fail_bonus)
+    # Four earlier attempts: this failure is the fifth, so retries are exhausted.
+    db = _db_with("processing", {"rsl_bonus_retry_attempts": recovery.BONUS_RETRY_MAX_ATTEMPTS - 1})
+
+    stats = asyncio.run(recovery.reconcile_processing_challenges(db, "guild-1"))
+
+    assert stats["bonus_failed"] == 1
+    assert stats["closed"] == 1
+    assert stats["staff_review"] == 1
+    # The match is flagged for the Admin System attention queue...
+    match_set = db.matches.updates[0][1]["$set"]
+    assert match_set["rsl_bonus_recovery_status"] == "needs_staff_review"
+    # ...and the player is released instead of staying locked in "processing".
+    (query, update), = db.active_challenges.updates
+    assert query["status"] == "processing"
+    assert update["$set"]["status"] == "completed"
+    assert update["$set"]["rsl_bonus_skipped"] is True
+    assert update["$set"]["rsl_bonus_recovery_status"] == "needs_staff_review"
+    assert update["$unset"] == {"processing_at": ""}
+
+
+def test_previously_flagged_processing_challenge_is_released_without_retrying(monkeypatch):
+    import asyncio
+    import ALU_Gauntlet.core.rsl_recovery as recovery
+
+    async def must_not_run(db, reservation):
+        raise AssertionError("an exhausted bonus must not be retried")
+
+    monkeypatch.setattr(recovery, "apply_rsl_performance_bonus", must_not_run)
+    db = _db_with("processing", {"rsl_bonus_recovery_status": "needs_staff_review"})
+
+    stats = asyncio.run(recovery.reconcile_processing_challenges(db, "guild-1"))
+
+    assert stats["closed"] == 1
+    assert stats["bonus_failed"] == 0
+    assert db.active_challenges.updates[0][1]["$set"]["status"] == "completed"
+
+
+def test_flagged_completed_challenge_leaves_the_recovery_scan(monkeypatch):
+    import asyncio
+    import ALU_Gauntlet.core.rsl_recovery as recovery
+
+    async def must_not_run(db, reservation):
+        raise AssertionError("an exhausted bonus must not be retried")
+
+    monkeypatch.setattr(recovery, "apply_rsl_performance_bonus", must_not_run)
+    db = _db_with("completed", {"rsl_bonus_recovery_status": "needs_staff_review"})
+
+    stats = asyncio.run(recovery.reconcile_processing_challenges(db, "guild-1"))
+
+    assert stats["staff_review"] == 1
+    (query, update), = db.active_challenges.updates
+    assert query["status"] == "completed"
+    assert update["$set"]["rsl_bonus_recovery_status"] == "needs_staff_review"
+    assert "status" not in update["$set"]
+
