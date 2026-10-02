@@ -259,3 +259,19 @@ def test_navigation_surfaces_use_final_theme_tokens():
         assert token in block
     assert "background:#0a1a2d" not in block
     assert "background:#071533" not in block
+
+
+def test_shared_card_and_account_surfaces_use_final_theme_tokens():
+    css = CSS.read_text(encoding="utf-8")
+    start = css.find("/* FINAL SHARED SURFACE THEME OVERRIDES")
+    assert start >= 0
+    block = css[start:]
+    for token in (
+        "background:var(--rsl-final-panel)!important",
+        "border-color:var(--rsl-final-line)!important",
+        "color:var(--rsl-final-text)!important",
+        "background:color-mix(in srgb,var(--rsl-final-accent) 12%,var(--rsl-final-panel))!important",
+    ):
+        assert token in block
+    assert "background:#0a1a2d!important" not in block
+    assert "background:#09192c" not in block
