@@ -450,6 +450,8 @@ jobs:
         id: live_e2e
         if: steps.smoke.outcome == 'success'
         continue-on-error: true
+        env:
+          RSL_E2E_AUTH_STATE: ${{ secrets.RSL_E2E_AUTH_STATE }}
         run: |
           set -euo pipefail
           python -m pip install --quiet playwright
