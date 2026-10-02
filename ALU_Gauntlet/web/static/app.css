@@ -4873,3 +4873,29 @@ html[data-theme] .partner-banner:hover .partner-banner-action{
     background:var(--shohan-surface)!important;
   }
 }
+
+
+/* FINAL MOBILE NAV OVERFLOW CONTAINMENT — keep the horizontal menu
+   scrollable without allowing its off-screen flex children to expand
+   the document's layout viewport. */
+@media(max-width:430px){
+  html,body{width:100%!important;max-width:100%!important;overflow-x:hidden!important;}
+  .top-nav{width:100%!important;max-width:100%!important;overflow-x:hidden!important;overflow-y:visible!important;}
+  .top-nav>nav{
+    position:absolute!important;
+    left:145px!important;
+    right:105px!important;
+    width:140px!important;
+    max-width:140px!important;
+    min-width:0!important;
+    flex:0 0 140px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    contain:strict!important;
+    isolation:isolate!important;
+    overscroll-behavior-x:contain!important;
+    scrollbar-width:none!important;
+  }
+  .top-nav>nav::-webkit-scrollbar{display:none!important;}
+  .top-nav>nav>a,.top-nav>nav>.top-nav-dropdown{flex:0 0 auto!important;}
+}
