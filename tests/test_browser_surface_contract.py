@@ -95,3 +95,24 @@ def test_admin_system_recovery_controls_have_unique_navigation_targets():
     assert nav_sections.count("settings") == 1
     for target in ("system", "server-control", "settings", "tickets", "fairness"):
         assert nav_sections.count(target) == 1
+
+
+def test_player_markup_has_balanced_style_blocks():
+    page=read("player.html")
+    assert page.count("<style>") == page.count("</style>")
+    assert "</style><style>" in page
+    assert "</style></style>" not in page
+
+
+def test_club_create_control_is_explicit_and_server_bound():
+    page,script=read("clubs.html"),read("clubs.js")
+    assert 'type="button" class="primary-action" id="open-create"' in page
+    assert 'aria-controls="create-panel"' in page
+    assert 'addEventListener("click"' in script
+    assert 'data.guild_id=data.guild_id||$("#club-guild")?.value||""' in script
+
+
+def test_safe_mode_control_refreshes_after_toggle():
+    page=read("admin.html")
+    assert 'await loadOpsStatus();' in page
+    assert 'setStatus("safe-mode-status",enabled?"Competition safe mode enabled.":"Competition mutations are live.",true);' in page
