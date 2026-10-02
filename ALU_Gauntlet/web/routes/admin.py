@@ -441,6 +441,12 @@ class AdminRoutesMixin:
             except Exception as exc:
                 raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
             action = str(payload.get("action") or "").strip().lower()
+            if action == "maintenance":
+                enabled = bool(payload.get("enabled"))
+                message = str(payload.get("message") or "").strip()[:500]
+                mode = await set_maintenance_mode(self.bot.db, guild_id, enabled, message, user.user_id)
+                return web.json_response({"ok": True, "guild_id": str(guild_id), "maintenance": mode})
+
             if action == "recovery_checkpoint":
                 checkpoint = await create_recovery_checkpoint(
                     self.bot.db,
