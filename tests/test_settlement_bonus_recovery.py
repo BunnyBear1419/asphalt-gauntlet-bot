@@ -85,7 +85,8 @@ class _FakeDB:
         self.matches.name = "matches"
 
 
-async def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
+def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
+    import asyncio
     import ALU_Gauntlet.core.rsl_recovery as recovery
 
     async def fail_bonus(db, reservation):
@@ -94,7 +95,7 @@ async def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
     monkeypatch.setattr(recovery, "apply_rsl_performance_bonus", fail_bonus)
     db = _FakeDB()
 
-    stats = await recovery.reconcile_processing_challenges(db, "guild-1")
+    stats = asyncio.run(recovery.reconcile_processing_challenges(db, "guild-1"))
 
     assert stats["bonus_failed"] == 1
     challenge_updates = db.active_challenges.updates
