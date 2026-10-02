@@ -5012,3 +5012,36 @@ html[data-theme] .top-user-area{
   border-color:var(--rsl-final-line)!important;
   color:var(--rsl-final-text)!important;
 }
+
+
+/* FINAL SHARED SURFACE THEME OVERRIDES — eliminate remaining legacy card/header palettes without changing page structure. */
+html[data-theme] .match-card,
+html[data-theme] .ref-card,
+html[data-theme] .leaderboard-grid .career-card{
+  background:var(--rsl-final-panel)!important;
+  background-image:none!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .top-brand,
+html[data-theme] .top-profile,
+html[data-theme] .player-menu-trigger{
+  background:var(--rsl-final-panel)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .rsl-profile-menu,
+html[data-theme] .rsl-search-panel{
+  background:var(--rsl-final-panel)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .rsl-profile-menu a,
+html[data-theme] .rsl-search-result{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .rsl-profile-menu a:hover,
+html[data-theme] .rsl-search-result:hover{
+  background:color-mix(in srgb,var(--rsl-final-accent) 12%,var(--rsl-final-panel))!important;
+  color:var(--rsl-final-accent)!important;
+}
