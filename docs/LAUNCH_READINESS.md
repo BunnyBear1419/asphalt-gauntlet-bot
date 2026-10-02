@@ -5,7 +5,7 @@
 - Hosting: Discloud
 - Automated CI/deploy: GitHub Actions
 - Latest verified release: `ccb986d785325ce9da9e6b72f5f4620986912487`
-- Latest CI/deploy run: #3236 — passed
+- Latest CI/deploy run: #3473 — passed
 - Automated tests: passed
 - Production module import smoke gate: passed
 - Compile check: passed
