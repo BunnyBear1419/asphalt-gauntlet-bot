@@ -20,7 +20,7 @@ def test_tournament_completion_wires_reward_settlement_and_recovery():
     cog = (ROOT / "ALU_Gauntlet" / "cogs" / "tournament.py").read_text(encoding="utf-8")
     web = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "tournament.py").read_text(encoding="utf-8")
     recovery = (ROOT / "ALU_Gauntlet" / "core" / "rsl_role_sync.py").read_text(encoding="utf-8")
-    assert "settle_tournament_rewards" in cog
+    assert "sync_completed_tournament_roles" in cog
     assert "settle_tournament_rewards" in web
     assert "settle_tournament_rewards" in recovery
     assert 'transaction_type="tournament_reward"' in (ROOT / "ALU_Gauntlet" / "core" / "rsl_tournament_rewards.py").read_text(encoding="utf-8")
