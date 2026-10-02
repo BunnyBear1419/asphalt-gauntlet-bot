@@ -50,7 +50,7 @@ class RSLXPCog(commands.Cog):
                             )
             if level >= 5:
                 rank_role_name = next(
-                    (name for threshold, name in sorted(XP_LEVEL_ROLES.items())
+                    (name for threshold, name in sorted(XP_LEVEL_ROLES.items(), reverse=True)
                      if level >= threshold),
                     None,
                 )
