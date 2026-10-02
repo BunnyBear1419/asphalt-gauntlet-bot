@@ -154,7 +154,7 @@ def test_restart_failure_enters_rollback_path():
 
 def test_rollback_retry_conditions_preserve_failure_precedence():
     source = _source()
-    assert "if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
+    assert "if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
 
 
 def test_recovery_success_requires_rollback_restart_and_verification():
@@ -277,7 +277,7 @@ def test_runtime_release_identity_is_exposed_by_health_and_heartbeat():
     assert "current_release_revision" in core
     assert '"release_sha": current_release_revision()' in core
     assert "Path(__file__).resolve().parents[1] / \".rsl-release-sha\"" in release
-    
+
 def test_live_browser_e2e_is_part_of_every_deployment_recovery_gate():
     source = _source()
     recovery_lines = [
