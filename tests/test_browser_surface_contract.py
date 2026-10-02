@@ -121,3 +121,9 @@ def test_auth_page_uses_current_theme_cache_key():
     page=(ROOT/"ALU_Gauntlet"/"web"/"routes"/"auth.py").read_text(encoding="utf-8")
     assert "rsl-theme2site20" not in page
     assert "/static/app.css?v=20261002-rsl-theme2" in page
+
+
+def test_tournaments_page_uses_current_theme_cache_key():
+    page=read("tournaments.html")
+    assert "/static/app.css?v=20261002-rsl-theme2" in page
+    assert "rsl-theme2s-home-boxes" not in page
