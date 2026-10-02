@@ -149,7 +149,7 @@ def test_restart_failure_enters_rollback_path():
     assert "if: steps.restart.outcome == 'success'" in source
     assert "if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'" in source
     assert "Both rollback uploads failed" in source
-    assert "(steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
+    assert "(steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
 
 
 def test_rollback_retry_conditions_preserve_failure_precedence():
@@ -283,9 +283,9 @@ def test_live_browser_e2e_is_part_of_every_deployment_recovery_gate():
     recovery_lines = [
         line.strip()
         for line in source.splitlines()
-        if "steps.restart.outcome" in line
-        or "steps.smoke.outcome" in line
-        or "steps.deploy_gate.outcome" in line
+        if "steps.restart.outcome == 'failure'" in line
+        or "steps.smoke.outcome == 'failure'" in line
+        or "steps.deploy_gate.outcome == 'failure'" in line
     ]
     assert recovery_lines, "Expected deployment recovery conditions."
     for line in recovery_lines:
