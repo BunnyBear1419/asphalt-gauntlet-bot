@@ -93,3 +93,22 @@ def test_csp_diagnostics_is_admin_only_and_aggregated():
     assert 'script-sample' not in source.split('async def admin_csp_diagnostics', 1)[1].split('async def admin_diagnostics', 1)[0]
     assert '"/api/admin/csp-diagnostics", self.admin_csp_diagnostics' in core
     assert '"remote"' not in source.split('async def admin_csp_diagnostics', 1)[1].split('async def admin_diagnostics', 1)[0]
+
+
+def test_csp_report_collector_supports_legacy_and_reporting_api_payloads():
+    core = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
+    collector = core.split("async def csp_report", 1)[1].split("def _apply_security_headers", 1)[0]
+    assert 'payload if isinstance(payload, list) else [payload]' in collector
+    assert 'entry.get("csp-report")' in collector
+    assert 'entry.get("body")' in collector
+    assert 'await self.bot.db.csp_reports.insert_many' in collector
+    assert 'datetime.now(timezone.utc)' in collector
+
+
+def test_csp_report_headers_advertise_both_reporting_formats():
+    core = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
+    assert 'Content-Security-Policy-Report-Only' in core
+    assert 'report-uri /api/csp-report' in core
+    assert 'report-to rsl-csp' in core
+    assert 'Reporting-Endpoints' in core
+    assert 'rsl-csp="/api/csp-report"' in core
