@@ -125,3 +125,10 @@ def test_tournament_media_validation_matches_safe_image_limit():
     source = (ROOT / "ALU_Gauntlet/web/routes/tournament.py").read_text(encoding="utf-8")
     assert 'image.width > 4096 or image.height > 4096' in source
     assert 'image.width * image.height > 16_777_216' in source
+
+
+def test_duplicate_cleanup_prefers_completed_settlement_reservation():
+    source = (ROOT / "ALU_Gauntlet/main.py").read_text(encoding="utf-8")
+    assert 'settlement_status' in source
+    assert '== "completed"' in source
+    assert 'rows.sort(' in source
