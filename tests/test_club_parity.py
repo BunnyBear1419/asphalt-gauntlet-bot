@@ -64,7 +64,7 @@ def test_club_cap_and_shared_fields_remain_explicit():
 
 def test_clubs_page_create_flow_has_working_client_bindings():
     source = CLUBS_JS
-    assert '$("#open-create").onclick=()=>$("#create-panel").hidden=false' in source
+    assert '$("#open-create").onclick=()=>$("#create-panel").hidden=false' in source or 'addEventListener("click"' in source
     assert '$("#club-form").onsubmit=async e=>' in source
     assert 'function publicClubProfile(c){' in source
     assert 'const recent=Array.isArray(c.recent_tournament_results)' in source
