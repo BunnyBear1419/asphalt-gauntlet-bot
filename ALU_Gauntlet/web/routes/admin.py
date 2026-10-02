@@ -178,7 +178,20 @@ class AdminRoutesMixin:
             try:
                 bucket = AsyncGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
                 stream = await bucket.open_download_stream(ObjectId(str(asset["gridfs_id"])))
-                body = await stream.read()
+                response = web.StreamResponse(status=200, headers={
+                    "Content-Type": str(asset.get("content_type") or "application/octet-stream"),
+                    "Cache-Control": "public, max-age=3600",
+                })
+                if getattr(stream, "length", None) is not None:
+                    response.content_length = int(stream.length)
+                await response.prepare(request)
+                while True:
+                    chunk = await stream.read(64 * 1024)
+                    if not chunk:
+                        break
+                    await response.write(chunk)
+                await response.write_eof()
+                return response
             except Exception as exc:
                 log.exception("Brand asset GridFS read failed for %s", asset_id)
                 raise web.HTTPServiceUnavailable(text="Brand asset is temporarily unavailable.") from exc
