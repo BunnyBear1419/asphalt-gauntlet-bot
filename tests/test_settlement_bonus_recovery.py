@@ -99,7 +99,7 @@ def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
 
     assert stats["bonus_failed"] == 1
     (query, update), = db.active_challenges.updates
-    assert query["status"] == "completed"
+    assert query["status"] == "processing"
     assert update["$set"]["status"] == "completed"
     assert update["$set"]["settlement_closed"] is True
     assert update["$set"]["rsl_bonus_checked"] is False
