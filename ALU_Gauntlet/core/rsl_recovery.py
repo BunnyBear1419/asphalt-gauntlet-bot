@@ -61,6 +61,17 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
         reservation = reservations.get(f"{challenge_id}:match")
 
         if reservation:
+            retry_status = str(reservation.get("rsl_bonus_recovery_status") or "").casefold()
+            if retry_status == "needs_staff_review":
+                stats["skipped"] += 1
+                continue
+            next_retry_at = reservation.get("rsl_bonus_next_retry_at")
+            try:
+                if next_retry_at is not None and float(next_retry_at) > now:
+                    stats["pending"] += 1
+                    continue
+            except (TypeError, ValueError):
+                pass
             settlement_status = str(reservation.get("settlement_status") or "").casefold()
             if settlement_status == "completed":
                 # The base settlement is authoritative. The RSL margin marker
@@ -99,7 +110,14 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                             )
                     except Exception:
                         bonus_failed = True
-                        log.exception("Failed to retry RSL performance bonus for settlement %s", reservation.get("_id"))
+                        attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
+                        if attempts >= BONUS_RETRY_MAX_ATTEMPTS:
+                            await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_recovery_status": "needs_staff_review", "rsl_bonus_retry_attempts": attempts, "rsl_bonus_last_error_at": now}})
+                            log.error("RSL performance bonus recovery exhausted for settlement %s after %s attempts; staff review required", reservation.get("_id"), attempts, exc_info=True)
+                        else:
+                            delay = BONUS_RETRY_BASE_SECONDS * (2 ** (attempts - 1))
+                            await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_retry_attempts": attempts, "rsl_bonus_next_retry_at": now + delay, "rsl_bonus_last_error_at": now, "rsl_bonus_recovery_status": "retry_scheduled"}})
+                            log.warning("RSL performance bonus retry %s/%s scheduled for settlement %s in %ss", attempts, BONUS_RETRY_MAX_ATTEMPTS, reservation.get("_id"), delay, exc_info=True)
                         stats["bonus_failed"] += 1
 
                 if bonus_failed:
