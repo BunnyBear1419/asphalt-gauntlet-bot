@@ -157,6 +157,7 @@ class FakeDB:
     def __init__(self):
         self.active_challenges = FakeCollection()
         self.matches = FakeCollection()
+        self.drivers = FakeCollection()
 
 
 
