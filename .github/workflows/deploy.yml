@@ -77,7 +77,7 @@ jobs:
           PY
 
       - name: Test
-        run: pytest -q
+        run: python -m pytest -q
 
   deploy:
     name: deploy
