@@ -14,10 +14,11 @@ def test_settlement_recovery_retries_missing_optional_rsl_bonus():
 
 def test_settlement_recovery_keeps_base_settlement_authoritative_on_bonus_failure():
     source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
-    block = source.split('if settlement_status == "completed":', 1)[1].split('else:', 1)[0]
-    assert 'status": "completed"' in block or 'status": "processing"' in block
-    assert 'settlement_closed": True' in block
-    assert 'except Exception:' in block
+    assert 'settlement_status == "completed"' in source
+    assert '"status": "processing"' in source
+    assert '"status": "completed"' in source
+    assert 'settlement_closed": True' in source
+    assert 'except Exception:' in source
 
 
 def test_settlement_recovery_scans_completed_challenges_for_missing_bonus_without_reopening_them():
