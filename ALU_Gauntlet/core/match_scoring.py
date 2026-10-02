@@ -90,27 +90,32 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
                 if getattr(winner_result, "modified_count", 0) != 1 or getattr(loser_result, "modified_count", 0) != 1:
                     raise RuntimeError("RSL performance bonus could not update both drivers")
     else:
-        # Lightweight/test DBs may not expose transactions. Preserve the
-        # idempotent claim and compensate the first ELO write if the second
-        # write fails.
-        await db.matches.update_one(
-            {"_id": match_data["_id"]},
-            {"$set": {
-                **metadata,
-                "rsl_margin_bonus_applied": True,
-                "rsl_performance_bonus_applied": 0,
-                "rsl_performance_winner_bonus": 0,
-                "rsl_performance_loser_penalty": 0,
-                "rsl_bonus_checked": True,
-            }},
-        )
+        # Lightweight/test DBs may not expose transactions. Claim the bonus
+        # atomically before changing either driver's ELO. The previous
+        # implementation marked the claim first and then attempted a second
+        # "$ne": True update, which meant the second update always modified
+        # zero documents and the non-transactional bonus path never applied.
         if margin == 0:
+            await db.matches.update_one(
+                {"_id": match_data["_id"]},
+                {"$set": {
+                    **metadata,
+                    "rsl_margin_bonus_applied": True,
+                    "rsl_performance_bonus_applied": 0,
+                    "rsl_performance_winner_bonus": 0,
+                    "rsl_performance_loser_penalty": 0,
+                    "rsl_bonus_checked": True,
+                }},
+            )
             await record_match_fairness_stats(db, match_data)
             return 0
 
         claim = await db.matches.update_one(
             {"_id": match_data["_id"], "rsl_margin_bonus_applied": {"$ne": True}},
-            {"$set": {"rsl_margin_bonus_applied": True}},
+            {"$set": {
+                **metadata,
+                "rsl_margin_bonus_applied": True,
+            }},
         )
         if getattr(claim, "modified_count", 0) != 1:
             return 0
