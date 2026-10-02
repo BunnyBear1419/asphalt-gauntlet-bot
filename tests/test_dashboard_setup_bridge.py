@@ -29,7 +29,7 @@ def test_bridge_loads_after_existing_cogs():
 def test_legacy_setup_command_is_not_defined_in_administration_cog():
     source = (ROOT / "ALU_Gauntlet" / "cogs" / "administration.py").read_text(encoding="utf-8")
     assert "@app_commands.command(name='setup'" not in source
-    assert "@app_commands.command(name=\"setup\"" not in source
+    assert '@app_commands.command(name="setup"' not in source
 
 
 def test_web_setup_route_is_removed_and_admin_settings_is_canonical():
@@ -42,5 +42,5 @@ def test_web_setup_route_is_removed_and_admin_settings_is_canonical():
 def test_admin_server_setup_button_opens_canonical_admin_settings():
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
     assert 'id="setup-link" href="/admin#section-settings"' in admin
-    assert 'data-route="/admin#section-settings"' in admin
-    assert "window.location.assign(this.dataset.route)" in admin
+    assert 'data-route="/admin#section-settings"' not in admin
+    assert "window.location.assign(this.dataset.route)" not in admin
