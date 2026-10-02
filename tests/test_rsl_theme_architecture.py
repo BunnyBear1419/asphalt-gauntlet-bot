@@ -242,3 +242,20 @@ def test_search_control_and_header_do_not_reintroduce_legacy_blue():
     assert "border-bottom:1px solid var(--rsl-final-line)" in header_rule
     assert ".rsl-search-trigger img" in css
     assert "filter:grayscale(1) brightness(1.8)!important" in css
+
+
+def test_navigation_surfaces_use_final_theme_tokens():
+    css = CSS.read_text(encoding="utf-8")
+    start = css.find("/* FINAL THEME NAVIGATION SURFACE OVERRIDES")
+    assert start >= 0
+    block = css[start:]
+    for token in (
+        "border-right-color:var(--rsl-final-line)!important",
+        "background:color-mix(in srgb,var(--rsl-final-accent) 10%,var(--rsl-final-panel))!important",
+        "background:var(--rsl-final-panel)!important",
+        "border-color:var(--rsl-final-line)!important",
+        "color:var(--rsl-final-text)!important",
+    ):
+        assert token in block
+    assert "background:#0a1a2d" not in block
+    assert "background:#071533" not in block
