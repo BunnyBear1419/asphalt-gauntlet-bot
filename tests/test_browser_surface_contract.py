@@ -23,10 +23,11 @@ def test_admin_navigation_contract_has_matching_sections_and_safe_internal_targe
     import re
 
     page = read("admin.html")
-    nav_sections = set(re.findall(r'data-section="([^"]+)"', page))
-    panel_sections = set(re.findall(r'id="section-([^"]+)"', page))
+    nav_sections = re.findall(r'<button[^>]+data-section="([^"]+)"', page)
+    panel_sections = re.findall(r'id="section-([^"]+)"', page)
     assert nav_sections == panel_sections
     assert len(nav_sections) >= 10
+    assert len(nav_sections) == len(set(nav_sections))
 
     for href in re.findall(r'<a[^>]+href="([^"]+)"', page):
         if href.startswith("/"):
@@ -85,3 +86,13 @@ def test_admin_system_controls_have_runtime_handlers():
         'api("/api/admin/audit',
     ):
         assert marker in page
+
+    
+def test_admin_system_recovery_controls_have_unique_navigation_targets():
+    import re
+
+    page = read("admin.html")
+    nav_sections = re.findall(r'<button[^>]+data-section="([^"]+)"', page)
+    assert nav_sections.count("settings") == 1
+    for target in ("system", "server-control", "settings", "tickets", "fairness"):
+        assert nav_sections.count(target) == 1
