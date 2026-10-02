@@ -503,7 +503,7 @@ class CoreRoutesMixin:
         # Force every rendered page to use the current shared shell stylesheet cache key.
         body = re.sub(
             r'href=["\']/static/app\\.css(?:\\?v=[^"\']+)?["\']',
-            'href="/static/app.css?v=20261002-rsl-theme2site20"',
+            'href="/static/app.css?v=20261002-rsl-theme2"',
             body,
             flags=re.I
         )
