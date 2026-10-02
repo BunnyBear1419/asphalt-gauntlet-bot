@@ -4972,3 +4972,43 @@ html[data-theme] .settings-rail,html[data-theme] .settings-menu{background:var(-
 html[data-theme] .settings-rail-item:hover,html[data-theme] .settings-rail-item.active,html[data-theme] .settings-menu a:hover,html[data-theme] .settings-menu a.active{background:color-mix(in srgb,var(--rsl-box-accent) 12%,var(--rsl-box))!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-accent)!important}
 html[data-theme] .settings-rail-item b,html[data-theme] .settings-rail-item strong,html[data-theme] .settings-menu a,html[data-theme] .settings-block h3,html[data-theme] .settings-section-heading h3{color:var(--rsl-box-text)!important}
 html[data-theme] .settings-rail-item small,html[data-theme] .settings-rail-title,html[data-theme] .settings-block p,html[data-theme] .settings-section-heading p{color:var(--rsl-box-muted)!important}
+/* FINAL THEME NAVIGATION SURFACE OVERRIDES — remove legacy fixed nav/dropdown palettes. */
+html[data-theme] .top-nav nav>a,
+html[data-theme] .top-nav .top-nav-dropdown-trigger{
+  color:var(--rsl-final-text)!important;
+  border-right-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .top-nav nav>a i,
+html[data-theme] .top-nav .nav-icon-glyph{
+  color:var(--rsl-final-text)!important;
+}
+html[data-theme] .top-nav nav>a.active,
+html[data-theme] .top-nav nav>a:hover,
+html[data-theme] .top-nav .top-nav-dropdown-trigger:hover{
+  background:color-mix(in srgb,var(--rsl-final-accent) 10%,var(--rsl-final-panel))!important;
+  color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .top-nav nav>a.active:after{
+  background:var(--rsl-final-accent)!important;
+  box-shadow:0 0 16px color-mix(in srgb,var(--rsl-final-accent) 55%,transparent)!important;
+}
+html[data-theme] .top-nav-dropdown-menu,
+html[data-theme] .player-menu-dropdown{
+  background:var(--rsl-final-panel)!important;
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .top-nav-dropdown-menu>a{
+  color:var(--rsl-final-text)!important;
+  border-color:var(--rsl-final-line)!important;
+}
+html[data-theme] .top-nav-dropdown-menu>a:hover{
+  background:color-mix(in srgb,var(--rsl-final-accent) 12%,var(--rsl-final-panel))!important;
+  color:var(--rsl-final-accent)!important;
+}
+html[data-theme] .top-profile,
+html[data-theme] .top-user-area{
+  background:var(--rsl-final-panel)!important;
+  border-color:var(--rsl-final-line)!important;
+  color:var(--rsl-final-text)!important;
+}
