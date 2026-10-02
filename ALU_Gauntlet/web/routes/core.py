@@ -106,7 +106,17 @@ class CoreRoutesMixin:
     async def csp_report(self, request: web.Request) -> web.Response:
         """Collect bounded CSP violation reports for policy tuning."""
         now = time.time()
-        remote = str(request.remote or "unknown")
+        remote_peer = str(request.remote or "").strip()
+        trusted_proxies = {
+            value.strip()
+            for value in str(os.getenv("RSL_TRUSTED_PROXY_IPS", "")).split(",")
+            if value.strip()
+        }
+        remote = remote_peer
+        if remote_peer in trusted_proxies:
+            forwarded = str(request.headers.get("X-Forwarded-For") or "").split(",", 1)[0].strip()
+            remote = forwarded or remote_peer
+        remote = remote or "unknown"
         if len(self._csp_report_rate) > 2048:
             self._csp_report_rate = {
                 key: values for key, values in self._csp_report_rate.items()
