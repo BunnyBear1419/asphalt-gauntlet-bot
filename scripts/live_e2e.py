@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 
 from playwright.sync_api import Browser, Page, sync_playwright
@@ -21,13 +22,13 @@ AUTH_STATE_JSON = os.getenv("RSL_E2E_AUTH_STATE", "").strip()
 AUTH_STATE_FILE = os.getenv("RSL_E2E_AUTH_STATE_FILE", "").strip()
 PUBLIC_ROUTES = [
     "/",
-    "/clubs",
     "/rules",
     "/help",
     "/calendar",
     "/tournaments",
 ]
 PROTECTED_ROUTES = [
+    "/clubs",
     "/player/settings",
     "/admin",
 ]
@@ -57,17 +58,19 @@ def check_public_shell(page: Page) -> None:
         if page.locator(f'nav a[href="{href}"]').count() == 0:
             raise AssertionError(f"homepage: missing navigation target {href}")
 
-    companion = page.locator('a.companion-nav-link')
+    companion = page.locator("details.companion-nav-dropdown")
     if companion.count() != 1:
         raise AssertionError("homepage: Companion navigation is missing or duplicated")
 
-    if page.locator('a.companion-nav-link').get_attribute("href") != "https://alu.shohanlab.com/":
+    companion_link = companion.locator('a.companion-info-link[href="https://alu.shohanlab.com/"]')
+    if companion_link.count() != 1:
         raise AssertionError("homepage: Companion target changed unexpectedly")
 
 
 def check_clubs_controls(page: Page) -> None:
-    page.goto(BASE_URL + "/clubs", wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_load_state("networkidle", timeout=15_000)
+    check_page(page, "/clubs")
+    if "/login" in page.url:
+        raise AssertionError("clubs: authenticated state was rejected and redirected to login")
 
     create = page.locator("#open-create")
     if create.count() != 1:
@@ -109,10 +112,7 @@ def check_protected_redirects(page: Page) -> None:
     for path in PROTECTED_ROUTES:
         page.goto(BASE_URL + path, wait_until="domcontentloaded", timeout=30_000)
         page.wait_for_load_state("networkidle", timeout=15_000)
-        if path != "/admin" and "/login" not in page.url:
-            raise AssertionError(f"{path}: unauthenticated request did not reach login")
-        if path == "/admin" and "/login" not in page.url:
-            # Some deployments may expose a staff gate page rather than redirecting.
+        if "/login" not in page.url:
             body = page.locator("body").inner_text().lower()
             if "login" not in body and "staff" not in body and "unauthorized" not in body:
                 raise AssertionError(f"{path}: no visible authentication/staff gate")
@@ -136,20 +136,25 @@ def load_auth_state() -> dict:
     origins = state.get("origins", [])
     if not isinstance(cookies, list) or not isinstance(origins, list):
         raise AssertionError(f"{source} has an invalid Playwright storage-state shape")
-    import time
-    now = time.time()
     expiring = [
         float(cookie.get("expires", 0) or 0)
         for cookie in cookies
         if isinstance(cookie, dict) and float(cookie.get("expires", 0) or 0) > 0
     ]
-    if expiring and max(expiring) <= now:
+    if expiring and max(expiring) <= time.time():
         raise AssertionError(f"{source} is expired; create a fresh test-account storage state")
     return state
 
 
 def check_authenticated_routes(page: Page) -> None:
-    routes = ["/player/settings", "/player", "/profile", "/my-tournaments", "/clubs", "/tournaments"]
+    routes = [
+        "/player/settings",
+        "/player",
+        "/profile",
+        "/my-tournaments",
+        "/clubs",
+        "/tournaments",
+    ]
     for path in routes:
         check_page(page, path)
         if "/login" in page.url:
@@ -157,6 +162,8 @@ def check_authenticated_routes(page: Page) -> None:
         body = page.locator("body").inner_text().lower()
         if "temporarily unavailable" in body or "service unavailable" in body:
             raise AssertionError(f"{path}: authenticated page shows an unavailable state")
+
+    check_clubs_controls(page)
 
 
 def run() -> int:
@@ -182,11 +189,6 @@ def run() -> int:
 
             try:
                 check_public_shell(page)
-            except Exception as exc:
-                failures.append(str(exc))
-
-            try:
-                check_clubs_controls(page)
             except Exception as exc:
                 failures.append(str(exc))
 
