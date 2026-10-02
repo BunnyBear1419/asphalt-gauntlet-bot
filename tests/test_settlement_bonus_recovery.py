@@ -100,6 +100,9 @@ def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
     assert stats["bonus_failed"] == 1
     challenge_updates = db.active_challenges.updates
     assert challenge_updates == []
+    assert len(db.matches.updates) == 1
+    assert db.matches.updates[0][1]["$set"]["rsl_bonus_retry_attempts"] == 1
+    assert db.matches.updates[0][1]["$set"]["rsl_bonus_recovery_status"] == "retry_scheduled"
 
 
 def test_settlement_recovery_has_bounded_bonus_retry_and_staff_review_terminal_state():
