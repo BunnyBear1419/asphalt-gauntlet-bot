@@ -206,7 +206,33 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                     await _park_for_staff_review(db, challenge, reservation, guild_id, now, stats)
                     continue
                 if bonus_failed:
-                    stats["pending"] += 1
+                    # Base settlement is authoritative; do not leave the player
+                    # locked in processing while the optional bonus retries.
+                    result = await db.active_challenges.update_one(
+                        {
+                            "_id": challenge_id,
+                            "guild_id": guild_id,
+                            "challenger_id": str(challenge.get("challenger_id") or ""),
+                            "status": "processing",
+                        },
+                        {
+                            "$set": {
+                                "status": "completed",
+                                "completed_at": now,
+                                "match_id": reservation["_id"],
+                                "ticket_burned": True,
+                                "settlement_closed": True,
+                                "rsl_bonus_checked": False,
+                                "reconciled_at": now,
+                                "reconciliation_reason": "completed_settlement_bonus_retry",
+                            },
+                            "$unset": {"processing_at": ""},
+                        },
+                    )
+                    if getattr(result, "modified_count", 0) == 1:
+                        stats["closed"] += 1
+                    else:
+                        stats["skipped"] += 1
                     continue
                 if str(challenge.get("status") or "") == "completed":
                     # Historical completed challenges may predate the challenge
