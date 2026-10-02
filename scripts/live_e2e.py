@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+"""Read-only live browser acceptance checks for the deployed RSL site.
+
+This suite deliberately avoids authenticated mutations, submissions, purchases,
+club creation, match settlement, tournament changes, and Discord writes.
+It exercises the real deployed website with Chromium and verifies that the
+public shell and previously fragile navigation/control surfaces are functional.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+from playwright.sync_api import Browser, Page, sync_playwright
+
+BASE_URL = os.getenv("RSL_LIVE_URL", "https://asph.discloud.app").rstrip("/")
+PUBLIC_ROUTES = [
+    "/",
+    "/clubs",
+    "/rules",
+    "/help",
+    "/calendar",
+    "/tournaments",
+]
+PROTECTED_ROUTES = [
+    "/player/settings",
+    "/admin",
+]
+
+
+def check_page(page: Page, path: str) -> None:
+    url = f"{BASE_URL}{path}"
+    response = page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+    if response is None:
+        raise AssertionError(f"{path}: navigation returned no response")
+    if response.status >= 500:
+        raise AssertionError(f"{path}: HTTP {response.status}")
+    if not page.title():
+        raise AssertionError(f"{path}: missing document title")
+    page.wait_for_load_state("networkidle", timeout=15_000)
+
+
+def check_public_shell(page: Page) -> None:
+    page.goto(BASE_URL + "/", wait_until="domcontentloaded", timeout=30_000)
+    page.wait_for_load_state("networkidle", timeout=15_000)
+
+    nav = page.locator('nav[aria-label="Primary navigation"]')
+    if nav.count() != 1:
+        raise AssertionError("homepage: primary navigation missing")
+
+    for href in ("/", "/clubs", "/rules"):
+        if page.locator(f'nav a[href="{href}"]').count() == 0:
+            raise AssertionError(f"homepage: missing navigation target {href}")
+
+    companion = page.locator('a.companion-nav-link')
+    if companion.count() != 1:
+        raise AssertionError("homepage: Companion navigation is missing or duplicated")
+
+    if page.locator('a.companion-nav-link').get_attribute("href") != "https://alu.shohanlab.com/":
+        raise AssertionError("homepage: Companion target changed unexpectedly")
+
+
+def check_clubs_controls(page: Page) -> None:
+    page.goto(BASE_URL + "/clubs", wait_until="domcontentloaded", timeout=30_000)
+    page.wait_for_load_state("networkidle", timeout=15_000)
+
+    create = page.locator("#open-create")
+    if create.count() != 1:
+        raise AssertionError("clubs: Create Club control missing")
+
+    create.click()
+    panel = page.locator("#create-panel")
+    if panel.count() != 1 or not panel.is_visible():
+        raise AssertionError("clubs: Create Club control did not open its panel")
+
+    add_link = page.locator("#add-create-club-link")
+    if add_link.count() != 1:
+        raise AssertionError("clubs: Add Link control missing")
+    before = page.locator("#create-club-links").locator("input").count()
+    add_link.click()
+    after = page.locator("#create-club-links").locator("input").count()
+    if after <= before:
+        raise AssertionError("clubs: Add Link control did not update the form")
+
+    close = page.locator("#close-create")
+    if close.count() != 1:
+        raise AssertionError("clubs: Close control missing")
+    close.click()
+    if panel.is_visible():
+        raise AssertionError("clubs: Close control did not close the panel")
+
+
+def check_responsive(page: Page) -> None:
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto(BASE_URL + "/", wait_until="domcontentloaded", timeout=30_000)
+    page.wait_for_load_state("networkidle", timeout=15_000)
+    overflow = page.evaluate("document.documentElement.scrollWidth > window.innerWidth + 2")
+    if overflow:
+        raise AssertionError("mobile homepage has horizontal overflow")
+    page.set_viewport_size({"width": 1440, "height": 1000})
+
+
+def check_protected_redirects(page: Page) -> None:
+    for path in PROTECTED_ROUTES:
+        page.goto(BASE_URL + path, wait_until="domcontentloaded", timeout=30_000)
+        page.wait_for_load_state("networkidle", timeout=15_000)
+        if path != "/admin" and "/login" not in page.url:
+            raise AssertionError(f"{path}: unauthenticated request did not reach login")
+        if path == "/admin" and "/login" not in page.url:
+            # Some deployments may expose a staff gate page rather than redirecting.
+            body = page.locator("body").inner_text().lower()
+            if "login" not in body and "staff" not in body and "unauthorized" not in body:
+                raise AssertionError(f"{path}: no visible authentication/staff gate")
+
+
+def run() -> int:
+    failures: list[str] = []
+    console_errors: list[str] = []
+    page_errors: list[str] = []
+
+    with sync_playwright() as pw:
+        browser: Browser = pw.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": 1440, "height": 1000})
+
+        page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
+        page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+
+        try:
+            for path in PUBLIC_ROUTES:
+                try:
+                    check_page(page, path)
+                except Exception as exc:
+                    failures.append(str(exc))
+
+            try:
+                check_public_shell(page)
+            except Exception as exc:
+                failures.append(str(exc))
+
+            try:
+                check_clubs_controls(page)
+            except Exception as exc:
+                failures.append(str(exc))
+
+            try:
+                check_responsive(page)
+            except Exception as exc:
+                failures.append(str(exc))
+
+            try:
+                check_protected_redirects(page)
+            except Exception as exc:
+                failures.append(str(exc))
+        finally:
+            browser.close()
+
+    # Only browser/runtime JavaScript errors are fatal. Third-party console noise
+    # is intentionally not promoted to a failure because public pages can load
+    # optional external integrations without affecting RSL functionality.
+    if page_errors:
+        failures.extend(f"pageerror: {item}" for item in page_errors[:10])
+
+    print(f"RSL live browser base URL: {BASE_URL}")
+    print(f"Public routes checked: {len(PUBLIC_ROUTES)}")
+    print(f"Protected routes checked: {len(PROTECTED_ROUTES)}")
+    print(f"Console error messages observed: {len(console_errors)}")
+    print(f"Browser page errors observed: {len(page_errors)}")
+
+    if failures:
+        print("LIVE E2E FAILED")
+        for failure in failures:
+            print(f" - {failure}")
+        return 1
+
+    print("LIVE E2E PASSED")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())
