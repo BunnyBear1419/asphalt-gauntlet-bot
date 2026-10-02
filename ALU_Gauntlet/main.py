@@ -200,11 +200,20 @@ async def _cleanup_legacy_active_challenge_duplicates():
                 {"_id": 1, "settlement_status": 1},
             ):
                 reservations[str(reservation.get("_id") or "")] = str(reservation.get("settlement_status") or "").casefold()
+            def _as_number(value):
+                # Challenge timestamps are floats today, but legacy rows may be
+                # missing them or hold strings; never let a mixed-type compare
+                # abort the whole cleanup (and with it the unique index).
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    return 0.0
+
             rows.sort(
                 key=lambda row: (
                     reservations.get(f"{row.get('_id')}:match") == "completed",
-                    row.get("updated_at") or "",
-                    row.get("created_at") or "",
+                    _as_number(row.get("updated_at")),
+                    _as_number(row.get("created_at")),
                     str(row.get("_id") or ""),
                 ),
                 reverse=True,
@@ -237,6 +246,7 @@ async def _ensure_advisory_rsl_indexes():
         (db.active_challenges, [("guild_id", 1), ("status", 1), ("processing_at", 1)], "idx_active_challenge_status_processing"),
         (db.active_challenges, [("guild_id", 1), ("status", 1), ("rsl_bonus_checked", 1)], "idx_active_challenge_bonus_recovery"),
         (db.rsl_economy_transactions, [("guild_id", 1), ("status", 1), ("created_at", 1)], "idx_rsl_economy_pending_recovery"),
+        (db.matches, [("guild_id", 1), ("rsl_bonus_recovery_status", 1)], "idx_match_bonus_recovery_status"),
         (db.drivers, [("guild_id", 1), ("rsl_xp_role_sync_pending", 1)], "idx_rsl_xp_role_reconciliation"),
     ):
         try:
@@ -276,6 +286,17 @@ async def on_ready():
     except Exception:
         import logging
         logging.getLogger(__name__).exception("Advisory RSL index reconciliation failed during ready")
+    if not getattr(bot, "_rsl_media_purge_done", False):
+        bot._rsl_media_purge_done = True
+        try:
+            from .core.rsl_media_cleanup import purge_rejected_tournament_media
+            purged = await purge_rejected_tournament_media(bot.db)
+            if purged:
+                import logging
+                logging.getLogger(__name__).info("Purged %s rejected tournament media payload(s)", purged)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Rejected tournament media purge failed during ready")
     from .core.rsl_role_sync import (
         reconcile_completed_tournament_achievement_roles,
         reconcile_gauntlet_season_roles,
