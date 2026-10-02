@@ -4962,3 +4962,13 @@ html[data-theme] .top-nav-dropdown-menu a:hover{
   background:var(--rsl-box-alt)!important;
   color:var(--rsl-box-accent)!important;
 }
+
+/* FINAL THEME CONTROL OVERRIDES — page-local CSS must not reintroduce legacy palettes. */
+html[data-theme] input:not([type="checkbox"]):not([type="radio"]),html[data-theme] select,html[data-theme] textarea{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-line)!important;color-scheme:normal}
+html[data-theme] input::placeholder,html[data-theme] textarea::placeholder{color:var(--rsl-box-muted)!important;opacity:1}
+html[data-theme] option,html[data-theme] optgroup{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important}
+html[data-theme] .settings-workspace,html[data-theme] .settings-content,html[data-theme] .settings-content-section,html[data-theme] .settings-block,html[data-theme] .settings-panel,html[data-theme] .settings-rail,html[data-theme] .settings-savebar,html[data-theme] .admin-card,html[data-theme] .admin-field,html[data-theme] .glass-panel{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-line)!important}
+html[data-theme] .settings-rail,html[data-theme] .settings-menu{background:var(--rsl-box-alt)!important}
+html[data-theme] .settings-rail-item:hover,html[data-theme] .settings-rail-item.active,html[data-theme] .settings-menu a:hover,html[data-theme] .settings-menu a.active{background:color-mix(in srgb,var(--rsl-box-accent) 12%,var(--rsl-box))!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-accent)!important}
+html[data-theme] .settings-rail-item b,html[data-theme] .settings-rail-item strong,html[data-theme] .settings-menu a,html[data-theme] .settings-block h3,html[data-theme] .settings-section-heading h3{color:var(--rsl-box-text)!important}
+html[data-theme] .settings-rail-item small,html[data-theme] .settings-rail-title,html[data-theme] .settings-block p,html[data-theme] .settings-section-heading p{color:var(--rsl-box-muted)!important}
