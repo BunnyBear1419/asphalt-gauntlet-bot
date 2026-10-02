@@ -107,3 +107,11 @@ def test_admin_setup_links_preserve_selected_guild_context():
     assert 'data-route="/admin#section-settings"' not in page
     assert 'onclick="window.location.assign(this.dataset.route); return false;"' not in page
     assert 'systemSetupLink.href="/admin?guild_id="+encodeURIComponent(guildId)+"#settings"' in page
+
+def test_player_settings_navigation_targets_are_real_routes():
+    page=read("player.html")
+    assert 'href="/profile"' in page
+    assert 'href="/player/settings"' in page
+    assert 'href="/player/settings#profile-links-area"' in page
+    assert 'data-rsl-player-mode="{mode}"' in (ROOT/"ALU_Gauntlet"/"web"/"routes"/"core.py").read_text(encoding="utf-8")
+    assert '/static/player.js?v=20261002-rsl-player2' in page
