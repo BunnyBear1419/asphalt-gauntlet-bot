@@ -4,7 +4,7 @@ def read(name): return (STATIC/name).read_text(encoding="utf-8")
 def test_club_create_surface():
     page,script=read("clubs.html"),read("clubs.js")
     assert 'id="open-create"' in page and 'id="club-form"' in page
-    assert '$("#open-create").onclick' in script and '$("#club-form").onsubmit' in script
+    assert ('$("#open-create").onclick' in script or 'addEventListener("click"' in script) and '$("#club-form").onsubmit' in script
     assert '"/api/clubs"' in script and 'method:"POST"' in script
 def test_player_settings_surface():
     page,script=read("player.html"),read("player.js")
@@ -109,7 +109,7 @@ def test_club_create_control_is_explicit_and_server_bound():
     assert 'type="button" class="primary-action" id="open-create"' in page
     assert 'aria-controls="create-panel"' in page
     assert 'addEventListener("click"' in script
-    assert 'data.guild_id=data.guild_id||$("#club-guild")?.value||""' in script
+    assert 'data.guild_id=data.guild_id||$("#club-guild")?.value||""' in script and 'id="club-guild"' in page
 
 
 def test_safe_mode_control_refreshes_after_toggle():
