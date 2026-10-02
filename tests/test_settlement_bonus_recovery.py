@@ -98,8 +98,12 @@ def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
     stats = asyncio.run(recovery.reconcile_processing_challenges(db, "guild-1"))
 
     assert stats["bonus_failed"] == 1
-    challenge_updates = db.active_challenges.updates
-    assert challenge_updates == []
+    (query, update), = db.active_challenges.updates
+    assert query["status"] == "completed"
+    assert update["$set"]["status"] == "completed"
+    assert update["$set"]["settlement_closed"] is True
+    assert update["$set"]["rsl_bonus_checked"] is False
+    assert update["$unset"] == {"processing_at": ""}
     assert len(db.matches.updates) == 1
     assert db.matches.updates[0][1]["$set"]["rsl_bonus_retry_attempts"] == 1
     assert db.matches.updates[0][1]["$set"]["rsl_bonus_recovery_status"] == "retry_scheduled"
