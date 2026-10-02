@@ -65,30 +65,36 @@ class PublicRoutesMixin:
             enabled = item.get("enabled") is not False
             clean_custom.append({"name":name,"url":url,"icon":icon,"enabled":enabled})
         clean["links"]["custom"] = clean_custom
+        # Capture only assets referenced by the previous durable branding. This
+        # avoids deleting newly uploaded-but-not-yet-assigned assets.
+        previous_settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+        previous_branding = self._merge_branding(previous_settings.get("web_branding"))
+        def _tenant_asset_ids(value: Any) -> set[str]:
+            matches = re.findall(r"/assets/tenant/[^/]+/([A-Za-z0-9_-]+)", str(value or ""))
+            return set(matches)
+        previous_asset_ids = _tenant_asset_ids(json.dumps(previous_branding))
+        new_asset_ids = _tenant_asset_ids(json.dumps(clean))
+        superseded_asset_ids = previous_asset_ids - new_asset_ids
+
         # Persist the new branding pointer before deleting superseded assets.
         await self.bot.db.settings.update_one({"_id":guild_id},{"$set":{"web_branding":clean}},upsert=True)
-        referenced_asset_ids = set()
-        for section in ("identity", "images"):
-            for value in (clean.get(section) or {}).values():
-                match = re.search(r"/assets/tenant/[^/]+/([A-Za-z0-9_-]+)", str(value or ""))
-                if match:
-                    referenced_asset_ids.add(match.group(1))
-        try:
-            async for asset in self.bot.db.web_brand_assets.find({"guild_id": str(guild_id)}):
-                asset_id = str(asset.get("_id") or "")
-                if not asset_id or asset_id in referenced_asset_ids:
-                    continue
-                gridfs_id = asset.get("gridfs_id")
-                if asset.get("storage") == "gridfs" and gridfs_id:
-                    try:
-                        from gridfs.asynchronous import AsyncGridFSBucket
-                        bucket = AsyncGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
-                        await bucket.delete(ObjectId(str(gridfs_id)))
-                    except Exception:
-                        log.exception("Unable to purge superseded brand asset GridFS file %s", gridfs_id)
-                await self.bot.db.web_brand_assets.delete_one({"_id": asset.get("_id"), "guild_id": str(guild_id)})
-        except Exception:
-            log.exception("Unable to purge superseded brand assets for guild %s", guild_id)
+        if superseded_asset_ids:
+            try:
+                async for asset in self.bot.db.web_brand_assets.find({
+                    "guild_id": str(guild_id),
+                    "_id": {"$in": list(superseded_asset_ids)},
+                }):
+                    gridfs_id = asset.get("gridfs_id")
+                    if asset.get("storage") == "gridfs" and gridfs_id:
+                        try:
+                            from gridfs.asynchronous import AsyncGridFSBucket
+                            bucket = AsyncGridFSBucket(self.bot.db, bucket_name="web_brand_assets")
+                            await bucket.delete(ObjectId(str(gridfs_id)))
+                        except Exception:
+                            log.exception("Unable to purge superseded brand asset GridFS file %s", gridfs_id)
+                    await self.bot.db.web_brand_assets.delete_one({"_id": asset.get("_id"), "guild_id": str(guild_id)})
+            except Exception:
+                log.exception("Unable to purge superseded brand assets for guild %s", guild_id)
         await self._audit(guild_id,user.user_id,"Web white-label branding updated")
         return web.json_response({"ok":True,"branding":clean,"guild_id":guild_id})
 
