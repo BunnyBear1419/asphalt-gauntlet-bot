@@ -665,6 +665,7 @@ class TournamentRoutesMixin:
         user_media_count = await self.bot.db.tournament_media.count_documents({
             "tournament_id": tournament_id,
             "uploaded_by": str(user.user_id),
+            "status": {"$ne": "rejected"},
         })
         if user_media_count >= max_user_media:
             raise web.HTTPConflict(
