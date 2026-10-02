@@ -35,10 +35,7 @@ def _node_check(code: str) -> str:
     if result.returncode == 0:
         return ""
     lines = [line for line in result.stderr.splitlines() if line.strip()]
-    return next(
-        (line for line in lines if line.startswith("SyntaxError")),
-        lines[-1] if lines else "unknown error",
-    )
+    return "\\n".join(lines[-6:]) if lines else "unknown error"
 
 
 def _require_node():
