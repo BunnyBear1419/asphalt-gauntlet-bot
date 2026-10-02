@@ -454,7 +454,21 @@ class PublicRoutesMixin:
                 from gridfs.asynchronous import AsyncGridFSBucket
                 bucket = AsyncGridFSBucket(self.bot.db, bucket_name="rsl_tournament_media")
                 stream = await bucket.open_download_stream(ObjectId(str(media["gridfs_id"])))
-                body = await stream.read()
+                response = web.StreamResponse(status=200, headers={
+                    "Content-Type": str(media.get("mime_type") or "application/octet-stream"),
+                    "Cache-Control": "private, max-age=3600",
+                    "X-Content-Type-Options": "nosniff",
+                })
+                if getattr(stream, "length", None) is not None:
+                    response.content_length = int(stream.length)
+                await response.prepare(request)
+                while True:
+                    chunk = await stream.read(64 * 1024)
+                    if not chunk:
+                        break
+                    await response.write(chunk)
+                await response.write_eof()
+                return response
             except Exception as exc:
                 log.exception("Tournament media GridFS read failed for %s", media_id)
                 raise web.HTTPServiceUnavailable(text="Tournament media is temporarily unavailable.") from exc
