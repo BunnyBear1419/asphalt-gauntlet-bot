@@ -116,3 +116,23 @@ def test_safe_mode_control_refreshes_after_toggle():
     page=read("admin.html")
     assert 'await loadOpsStatus();' in page
     assert 'setStatus("safe-mode-status",enabled?"Competition safe mode enabled.":"Competition mutations are live.",true);' in page
+
+
+def test_shared_shell_uses_one_current_theme_cache_key():
+    core=(ROOT/"ALU_Gauntlet"/"web"/"routes"/"core.py").read_text(encoding="utf-8")
+    assert "rsl-theme2site20" not in core
+    assert core.count("rsl-theme2") >= 2
+
+
+def test_admin_system_buttons_have_client_handlers():
+    page=read("admin.html")
+    for token in ("run-diagnostics", "force-sync", "create-server-role", "create-server-channel", "save-bot-identity", "safe-mode-toggle", "run-integrity", "load-evidence", "load-reliability", "create-recovery-checkpoint", "season-preview", "season-finalize", "load-releases"):
+        assert token in page
+    assert 'addEventListener("click"' in page
+
+
+def test_player_settings_has_final_theme_override():
+    page=read("player.html")
+    assert 'id="rsl-player-theme-final"' in page
+    assert "var(--rsl-box)" in page
+    assert "#profile-settings input" in page
