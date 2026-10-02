@@ -136,3 +136,12 @@ def test_player_settings_has_final_theme_override():
     assert "FINAL PLAYER SETTINGS THEME OVERRIDE" in page
     assert "var(--rsl-box)" in page
     assert "#profile-settings input" in page
+
+
+def test_admin_setup_links_preserve_selected_guild_context():
+    page=read("admin.html")
+    assert 'id="setup-link" href="/admin#section-settings"' in page
+    assert 'id="system-setup-link" href="/admin#section-settings"' in page
+    assert 'data-route="/admin#section-settings"' not in page
+    assert 'onclick="window.location.assign(this.dataset.route); return false;"' not in page
+    assert 'systemSetupLink.href="/admin?guild_id="+encodeURIComponent(guildId)+"#settings"' in page
