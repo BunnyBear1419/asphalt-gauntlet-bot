@@ -133,6 +133,6 @@ def test_admin_system_buttons_have_client_handlers():
 
 def test_player_settings_has_final_theme_override():
     page=read("player.html")
-    assert 'id="rsl-player-theme-final"' in page
+    assert "FINAL PLAYER SETTINGS THEME OVERRIDE" in page
     assert "var(--rsl-box)" in page
     assert "#profile-settings input" in page
