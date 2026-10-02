@@ -104,7 +104,8 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
         "pending_references": ("reference_pending", {"guild_id": gid, "status": "pending"}),
         "pending_defense": ("drivers", {"guild_id": gid, "defense_review_pending": True}),
         "stale_matches": ("active_challenges", {"guild_id": gid, "status": "processing", "processing_at": {"$lt": now - 900}}),
-        "completed_bonus_recovery": ("active_challenges", {"guild_id": gid, "status": "completed", "rsl_bonus_checked": {"$ne": True}}),
+        "completed_bonus_recovery": ("active_challenges", {"guild_id": gid, "status": "completed", "rsl_bonus_checked": {"$ne": True}, "rsl_bonus_recovery_status": {"$ne": "needs_staff_review"}}),
+        "bonus_staff_review": ("matches", {"guild_id": gid, "rsl_bonus_recovery_status": "needs_staff_review"}),
         "security_events": ("system_events", {"guild_id": gid, "event_type": {"$in": [
             "AUTH_FAILURE", "RATE_LIMIT", "UPLOAD_REJECTED", "PERMISSION_DENIED",
             "ECONOMY_ANOMALY", "XP_ANOMALY", "MATCH_ANOMALY",
@@ -115,7 +116,6 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
             counts[key] = int(await db[collection].count_documents(query))
         except Exception:
             counts[key] = 0
-    counts["total"] = sum(counts.values())
     try:
         counts["pending_coin_transactions"] = int(
             await db.rsl_economy_transactions.count_documents(
@@ -129,7 +129,9 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
         counts["season_role_recovery"] = 1 if (state or {}).get("gauntlet_role_snapshot") else 0
     except Exception:
         counts["season_role_recovery"] = 0
-    counts["total"] = sum(counts.values())
+    # Computed once, after every queue is counted (it used to be summed twice,
+    # which also counted the first total inside the second).
+    counts["total"] = sum(value for key, value in counts.items() if key != "total")
     return counts
 
 

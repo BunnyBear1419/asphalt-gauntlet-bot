@@ -8,6 +8,9 @@ Recovery is deliberately conservative:
   15-minute processing lease has expired.
 - Ticket state is never restored by recovery; the challenge already consumed
   its ticket when it was created.
+- The RSL margin bonus is optional. If its retries are exhausted the challenge
+  is closed (so the player is never locked out) and the match is flagged
+  ``needs_staff_review`` for the Admin System attention queue.
 """
 
 from __future__ import annotations
@@ -24,6 +27,92 @@ BONUS_RETRY_MAX_ATTEMPTS = 5
 BONUS_RETRY_BASE_SECONDS = 5 * 60
 
 
+async def _record_bonus_failure(db, reservation: dict, now: float, *, error: BaseException | None = None) -> bool:
+    """Schedule the next bonus retry, or mark the match for staff review.
+
+    Returns True when retries are exhausted. A failed bookkeeping write is logged
+    and treated as "not exhausted" so one bad write cannot abort the whole pass.
+    """
+    attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
+    base = {"rsl_bonus_retry_attempts": attempts, "rsl_bonus_last_error_at": now}
+    exhausted = attempts >= BONUS_RETRY_MAX_ATTEMPTS
+    try:
+        if exhausted:
+            await db.matches.update_one(
+                {"_id": reservation["_id"], "settlement_status": "completed"},
+                {"$set": {**base, "rsl_bonus_recovery_status": "needs_staff_review"}},
+            )
+            log.error(
+                "RSL performance bonus recovery exhausted for settlement %s after %s attempts; staff review required",
+                reservation.get("_id"), attempts, exc_info=error is not None,
+            )
+        else:
+            delay = BONUS_RETRY_BASE_SECONDS * (2 ** (attempts - 1))
+            await db.matches.update_one(
+                {"_id": reservation["_id"], "settlement_status": "completed"},
+                {"$set": {**base, "rsl_bonus_next_retry_at": now + delay, "rsl_bonus_recovery_status": "retry_scheduled"}},
+            )
+            log.warning(
+                "RSL performance bonus retry %s/%s scheduled for settlement %s in %ss",
+                attempts, BONUS_RETRY_MAX_ATTEMPTS, reservation.get("_id"), delay, exc_info=error is not None,
+            )
+    except Exception:
+        log.exception("Unable to record bonus retry state for settlement %s", reservation.get("_id"))
+        return False
+    return exhausted
+
+
+async def _park_for_staff_review(db, challenge: dict, reservation: dict, guild_id: str, now: float, stats: dict) -> None:
+    """Take an exhausted-bonus challenge out of the recovery queue.
+
+    The base settlement is authoritative and the bonus is optional, so a
+    ``processing`` challenge is closed instead of leaving the player locked. The
+    flag is also written on the challenge so it drops out of the completed-bonus
+    scan (the match carries the same flag for the staff attention count).
+    """
+    challenge_id = str(challenge.get("_id") or "")
+    status = str(challenge.get("status") or "")
+    if status == "processing":
+        result = await db.active_challenges.update_one(
+            {
+                "_id": challenge_id,
+                "guild_id": guild_id,
+                "challenger_id": str(challenge.get("challenger_id") or ""),
+                "status": "processing",
+            },
+            {
+                "$set": {
+                    "status": "completed",
+                    "completed_at": now,
+                    "match_id": reservation["_id"],
+                    "ticket_burned": True,
+                    "settlement_closed": True,
+                    "rsl_bonus_skipped": True,
+                    "rsl_bonus_recovery_status": "needs_staff_review",
+                    "reconciled_at": now,
+                    "reconciliation_reason": "bonus_retry_exhausted",
+                },
+                "$unset": {"processing_at": ""},
+            },
+        )
+        if getattr(result, "modified_count", 0) == 1:
+            stats["closed"] += 1
+            stats["staff_review"] += 1
+        else:
+            stats["skipped"] += 1
+    elif status == "completed":
+        result = await db.active_challenges.update_one(
+            {"_id": challenge_id, "guild_id": guild_id, "status": "completed"},
+            {"$set": {"rsl_bonus_skipped": True, "rsl_bonus_recovery_status": "needs_staff_review", "reconciled_at": now}},
+        )
+        if getattr(result, "modified_count", 0) == 1:
+            stats["staff_review"] += 1
+        else:
+            stats["skipped"] += 1
+    else:
+        stats["skipped"] += 1
+
+
 async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
     """Reconcile processing Gauntlet challenges for one guild.
 
@@ -31,7 +120,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
     """
     guild_id = str(guild_id)
     now = time.time()
-    stats = {"closed": 0, "reopened": 0, "pending": 0, "skipped": 0, "bonus_retried": 0, "bonus_failed": 0}
+    stats = {"closed": 0, "reopened": 0, "pending": 0, "skipped": 0, "bonus_retried": 0, "bonus_failed": 0, "staff_review": 0}
 
     challenges = []
     async for challenge in db.active_challenges.find({
@@ -63,7 +152,9 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
         if reservation:
             retry_status = str(reservation.get("rsl_bonus_recovery_status") or "").casefold()
             if retry_status == "needs_staff_review":
-                stats["skipped"] += 1
+                # Retries were exhausted on an earlier pass (or by an older build
+                # that left the challenge locked in processing).
+                await _park_for_staff_review(db, challenge, reservation, guild_id, now, stats)
                 continue
             next_retry_at = reservation.get("rsl_bonus_next_retry_at")
             try:
@@ -78,6 +169,7 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                 # is also authoritative for recovery: zero-margin 3-2/2-3
                 # results are explicitly marked as checked by the bonus helper.
                 bonus_failed = False
+                exhausted = False
                 # Pre-marker settlements are valid historical records. If the
                 # one-time margin claim is already durable, backfill the newer
                 # checked marker without opening another bonus transaction.
@@ -103,27 +195,16 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                             stats["bonus_retried"] += 1
                         else:
                             bonus_failed = True
-                            attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
-                            if attempts >= BONUS_RETRY_MAX_ATTEMPTS:
-                                await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_recovery_status": "needs_staff_review", "rsl_bonus_retry_attempts": attempts, "rsl_bonus_last_error_at": now}})
-                                log.error("RSL performance bonus returned without a durable marker for %s after %s attempts; staff review required", reservation.get("_id"), attempts)
-                            else:
-                                delay = BONUS_RETRY_BASE_SECONDS * (2 ** (attempts - 1))
-                                await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_retry_attempts": attempts, "rsl_bonus_next_retry_at": now + delay, "rsl_bonus_last_error_at": now, "rsl_bonus_recovery_status": "retry_scheduled"}})
-                                log.warning("RSL performance bonus returned without a durable marker for %s; retry %s/%s in %ss", reservation.get("_id"), attempts, BONUS_RETRY_MAX_ATTEMPTS, delay)
                             stats["bonus_failed"] += 1
-                    except Exception:
+                            exhausted = await _record_bonus_failure(db, reservation, now)
+                    except Exception as exc:
                         bonus_failed = True
-                        attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
-                        if attempts >= BONUS_RETRY_MAX_ATTEMPTS:
-                            await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_recovery_status": "needs_staff_review", "rsl_bonus_retry_attempts": attempts, "rsl_bonus_last_error_at": now}})
-                            log.error("RSL performance bonus recovery exhausted for settlement %s after %s attempts; staff review required", reservation.get("_id"), attempts, exc_info=True)
-                        else:
-                            delay = BONUS_RETRY_BASE_SECONDS * (2 ** (attempts - 1))
-                            await db.matches.update_one({"_id": reservation["_id"], "settlement_status": "completed"}, {"$set": {"rsl_bonus_retry_attempts": attempts, "rsl_bonus_next_retry_at": now + delay, "rsl_bonus_last_error_at": now, "rsl_bonus_recovery_status": "retry_scheduled"}})
-                            log.warning("RSL performance bonus retry %s/%s scheduled for settlement %s in %ss", attempts, BONUS_RETRY_MAX_ATTEMPTS, reservation.get("_id"), delay, exc_info=True)
                         stats["bonus_failed"] += 1
+                        exhausted = await _record_bonus_failure(db, reservation, now, error=exc)
 
+                if exhausted:
+                    await _park_for_staff_review(db, challenge, reservation, guild_id, now, stats)
+                    continue
                 if bonus_failed:
                     stats["pending"] += 1
                     continue
