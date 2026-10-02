@@ -64,7 +64,7 @@
   window.RSLTheme={apply,save,load,THEMES};
 
   document.addEventListener("change",e=>{
-    const select=e.target.closest?.(selectors);
+    const select=e.target instanceof Element?e.target.closest(selectors):null;
     if(select) save(select.value);
   });
 
