@@ -204,3 +204,9 @@ def test_flagged_completed_challenge_leaves_the_recovery_scan(monkeypatch):
     assert update["$set"]["rsl_bonus_recovery_status"] == "needs_staff_review"
     assert "status" not in update["$set"]
 
+
+
+def test_bonus_failure_closes_processing_challenge_without_waiting_for_backoff():
+    source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
+    assert '"reconciliation_reason": "completed_settlement_bonus_retry"' in source
+    assert '"$unset": {"processing_at": ""}' in source
