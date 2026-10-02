@@ -41,3 +41,47 @@ def test_admin_section_switcher_supports_hash_navigation():
     assert 'location.hash' in page
     assert 'replace(/^section-/,"")' in page
     assert 'classList.toggle("active"' in page
+
+def test_admin_and_player_route_contracts():
+    server = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    for marker in (
+        'add_get("/admin", self.admin_page)',
+        'add_get("/players", self.players_page)',
+        'add_get("/news-admin", self.news_admin_page)',
+        'add_get("/rsl-center", self.rsl_command_center_page)',
+        'add_get("/player", self.player_page)',
+        'add_get("/player/profile", self.player_profile_page)',
+        'add_get("/player/settings", self.player_settings_page)',
+        'add_get("/profile", self.profile_page)',
+        'add_get("/my-tournaments", self.my_tournaments_page)',
+    ):
+        assert marker in server
+
+
+def test_admin_system_controls_have_runtime_handlers():
+    page = read("admin.html")
+    required = (
+        'id="run-diagnostics"',
+        'id="force-sync"',
+        'id="backup-link"',
+        'id="safe-mode-toggle"',
+        'id="load-reliability"',
+        'id="create-recovery-checkpoint"',
+        'id="run-integrity"',
+        'id="load-evidence"',
+        'id="season-preview"',
+        'id="season-finalize"',
+        'id="load-releases"',
+        'id="audit-search"',
+        'id="audit-source"',
+    )
+    for marker in required:
+        assert marker in page
+    for marker in (
+        'api("/api/admin/diagnostics',
+        'api("/api/admin/sync',
+        'api("/api/admin/maintenance',
+        'api("/api/admin/operations',
+        'api("/api/admin/audit',
+    ):
+        assert marker in page
