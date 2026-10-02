@@ -3780,6 +3780,12 @@ html[data-theme] textarea:disabled{
   }
 }
 
+@media(max-width:430px){
+  .top-nav{overflow:hidden!important}
+  .top-nav>nav{overflow-x:auto!important;overflow-y:hidden!important;contain:layout paint!important;overscroll-behavior-x:contain!important;max-width:calc(100vw - 195px)!important}
+  .top-nav-dropdown-menu{max-width:calc(100vw - 16px)!important}
+}
+
 
 /* FINAL NAVIGATION ACTION BAR — Search is always immediately left of Profile. */
 .top-nav>.rsl-search-trigger{right:270px!important;}
