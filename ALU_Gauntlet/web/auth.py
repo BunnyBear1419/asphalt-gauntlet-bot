@@ -250,7 +250,7 @@ class DiscordOAuth:
                 except Exception:
                     # Logout must still clear the browser cookie if Mongo is
                     # temporarily unavailable.
-                    pass
+                    logger.debug("Unable to remove durable web session during logout", exc_info=True)
 
     def set_session_cookie(self, response: web.StreamResponse, token: str) -> None:
         response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_TTL, httponly=True, secure=self.public_url.startswith("https://"), samesite="Lax", path="/")
