@@ -204,6 +204,46 @@ html[data-theme] #profile-settings .settings-rail-item,html[data-theme] #profile
 html[data-theme] #profile-settings .settings-rail-item small,html[data-theme] #profile-settings .settings-rail-title{color:var(--rsl-box-muted)!important}
 html[data-theme] #profile-settings .settings-rail-item:hover,html[data-theme] #profile-settings .settings-rail-item.active{background:color-mix(in srgb,var(--rsl-box-accent) 12%,var(--rsl-box))!important;border-left-color:var(--rsl-box-accent)!important}
 html[data-theme] #profile-settings .settings-workspace,html[data-theme] #profile-settings .settings-content,html[data-theme] #profile-settings .settings-content-section,html[data-theme] #profile-settings .settings-block,html[data-theme] #profile-settings .settings-savebar{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-line)!important}
+<style>
+/* FINAL PLAYER THEME SURFACE AUDIT — page-local legacy colors must follow the active RSL palette. */
+html[data-theme] .rsl-player-redesign,
+html[data-theme] .rsl-player-shell{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important}
+html[data-theme] .rsl-player-shell{background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important}
+html[data-theme] .rsl-player-redesign a{color:var(--rsl-box-text)!important}
+html[data-theme] .rsl-player-redesign .player-commandbar,
+html[data-theme] .rsl-player-redesign .player-identity-strip,
+html[data-theme] .rsl-player-redesign .player-section-nav,
+html[data-theme] .rsl-player-redesign .player-overview{border-color:var(--rsl-box-line)!important}
+html[data-theme] .rsl-player-redesign .player-command-title p,
+html[data-theme] .rsl-player-redesign .player-label,
+html[data-theme] .rsl-player-redesign .player-identity p,
+html[data-theme] .rsl-player-redesign .server-control label,
+html[data-theme] .rsl-player-redesign .player-section-nav a,
+html[data-theme] .rsl-player-redesign .section-description,
+html[data-theme] .rsl-player-redesign .empty-state,
+html[data-theme] .rsl-player-redesign small{color:var(--rsl-box-muted)!important}
+html[data-theme] .rsl-player-redesign .player-command-actions a,
+html[data-theme] .rsl-player-redesign .server-control select,
+html[data-theme] .rsl-player-redesign .player-avatar,
+html[data-theme] .rsl-player-redesign .player-section,
+html[data-theme] .rsl-player-redesign .workspace-rail,
+html[data-theme] .rsl-player-redesign .career-line,
+html[data-theme] .rsl-player-redesign .club-redesign,
+html[data-theme] .rsl-player-redesign .notification-section,
+html[data-theme] .rsl-player-redesign .profile-settings-redesign{background:var(--rsl-box-alt)!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-line)!important}
+html[data-theme] .rsl-player-redesign input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme] .rsl-player-redesign textarea,
+html[data-theme] .rsl-player-redesign select{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important;border-color:var(--rsl-box-line)!important;color-scheme:dark}
+html[data-theme="light"] .rsl-player-redesign input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="light"] .rsl-player-redesign textarea,
+html[data-theme="light"] .rsl-player-redesign select{color-scheme:light}
+html[data-theme] .rsl-player-redesign select option,
+html[data-theme] .rsl-player-redesign select optgroup{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important}
+html[data-theme] .rsl-player-redesign input::placeholder,
+html[data-theme] .rsl-player-redesign textarea::placeholder{color:var(--rsl-box-muted)!important;opacity:1}
+html[data-theme] .rsl-player-redesign .player-command-actions a:hover,
+html[data-theme] .rsl-player-redesign .qa:hover{border-color:var(--rsl-box-accent)!important}
+</style>
 </style>
 </head>
 <style>
