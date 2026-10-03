@@ -289,6 +289,10 @@ class CoreRoutesMixin:
 (function(){
   try {
     var saved=localStorage.getItem("rsl_theme");
+    if(!saved){
+      var themeCookie=document.cookie.match(/(?:^|; )rsl_theme=([^;]+)/);
+      saved=themeCookie ? decodeURIComponent(themeCookie[1]) : "";
+    }
     document.documentElement.setAttribute("data-theme",
       ["dark","light","ocean","purple","crimson","emerald","sunset","graphite"].includes(saved) ? saved : "dark");
   } catch(e) {
