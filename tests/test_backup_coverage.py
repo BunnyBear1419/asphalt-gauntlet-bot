@@ -63,3 +63,14 @@ def test_manual_restore_verification_covers_operational_contract():
     assert '"lap_time_history": {"match_id_1"}' in workflow
     assert '"system_events": {"guild_id_1_timestamp_-1"}' in workflow
     assert "Required collections and operational indexes verified." in workflow
+
+
+def test_manual_restore_verification_covers_operational_contract():
+    workflow = (REPO_ROOT / ".github" / "workflows" / "mongodb-restore-test.yml").read_text(encoding="utf-8")
+    for collection in sorted(EXPECTED_OPERATIONAL_COLLECTIONS):
+        assert f'"{collection}"' in workflow, (
+            f"Manual restore verification must require operational collection: {collection}"
+        )
+    assert '"lap_time_history": {"match_id_1"}' in workflow
+    assert '"system_events": {"guild_id_1_timestamp_-1"}' in workflow
+    assert "Required collections and operational indexes verified." in workflow
