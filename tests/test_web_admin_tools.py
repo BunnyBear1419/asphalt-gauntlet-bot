@@ -135,4 +135,4 @@ def test_guild_ownership_audit_renders_details_without_overwriting_results():
     assert 'id="guild-ownership-audit-status"' in page
     assert 'setStatus("guild-ownership-audit-status"' in page
     assert 'id="diagnostic-results" class="admin-log"' in page
-    assert 'setStatus("diagnostic-results","Scanning guild-scoped collections' not in page\n
+    assert 'setStatus("diagnostic-results","Scanning guild-scoped collections' not in page
