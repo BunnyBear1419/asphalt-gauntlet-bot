@@ -120,7 +120,7 @@ def test_guild_ownership_audit_is_read_only_and_registered():
     core = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
     page = (ROOT / "ALU_Gauntlet/web/static/admin.html").read_text(encoding="utf-8")
     assert "async def admin_guild_ownership_audit" in source
-    audit = source.split("async def admin_guild_ownership_audit", 1)[1].split("async def admin_diagnostics", 1)[0]
+    audit = source.split("async def admin_guild_ownership_audit", 1)[1].split("\n    async def ", 1)[0]
     assert "count_documents" in audit
     assert "update_one" not in audit
     assert "delete_one" not in audit
