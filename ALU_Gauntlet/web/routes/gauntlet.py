@@ -1,3 +1,4 @@
+import hashlib
 """RSL web gauntlet route family."""
 from .._web_context import *
 from ...core.rsl_recovery import reconcile_processing_challenges
@@ -80,6 +81,136 @@ class GauntletRoutesMixin:
             refs.append({"id":str(item.get("_id")),"course":course,"title":str(item.get("title","")),"driver":str(item.get("driver","")),"time":str(item.get("time","")),"car":str(item.get("car","")),"car_rank":safe_int(item.get("car_rank",item.get("car_performance",0))),"video_url":str(item.get("video_url","")),"description":str(item.get("description","")),"official":bool(item.get("official",False)),"my_best_time":str(my_time or ""),"my_car":str(my_car or ""),"my_car_rank":safe_int(my_rank)})
         member=self.bot.get_guild(int(guild_id)).get_member(int(user.user_id)) if self.bot.get_guild(int(guild_id)) else None
         return web.json_response({"courses":list(ALU_TRACKS),"references":refs,"is_staff":bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))})
+
+    async def gauntlet_reference_submit(self, request: web.Request) -> web.Response:
+        """Submit a player reference video to the guild-scoped moderation queue."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        course = str(payload.get("course", "")).strip()
+        title = str(payload.get("title", "")).strip()[:120]
+        video_url = str(payload.get("video_url", "")).strip()[:500]
+        if course not in ALU_TRACKS or not title or not video_url:
+            raise web.HTTPBadRequest(text="Course, title and video URL are required.")
+        if not (video_url.startswith("https://") or video_url.startswith("http://")):
+            raise web.HTTPBadRequest(text="Video URL must be an http(s) URL.")
+        try:
+            car_rank = max(0, int(payload.get("car_rank", 0) or 0))
+        except (TypeError, ValueError):
+            car_rank = 0
+        profile = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        driver_name = str(profile.get("game_id") or profile.get("username") or getattr(user, "display_name", "") or user.user_id)[:100]
+        fingerprint = hashlib.sha256(f"{guild_id}:{user.user_id}:{course.casefold()}:{video_url.casefold()}".encode()).hexdigest()
+        submission_id = f"web_{guild_id}_{user.user_id}_{fingerprint[:24]}"
+        existing = await self.bot.db.reference_pending.find_one({"_id": submission_id, "guild_id": str(guild_id)})
+        if existing:
+            if existing.get("status") == "pending":
+                raise web.HTTPConflict(text="This reference is already pending staff review.")
+            if existing.get("status") == "approved":
+                raise web.HTTPConflict(text="This reference has already been approved.")
+        now = time.time()
+        doc = {
+            "_id": submission_id, "guild_id": str(guild_id), "user_id": str(user.user_id),
+            "driver": driver_name, "course": course, "track": course, "title": title,
+            "time": str(payload.get("time", "")).strip()[:30], "lap_time": str(payload.get("time", "")).strip()[:30],
+            "car": str(payload.get("car", "")).strip()[:100], "car_rank": car_rank,
+            "video_url": video_url, "video_reference": video_url,
+            "description": str(payload.get("description", "")).strip()[:1000],
+            "status": "pending", "delivery_status": "web_pending", "fingerprint": fingerprint,
+            "submitted_at": now, "created_at": now,
+        }
+        try:
+            await self.bot.db.reference_pending.insert_one(doc)
+        except Exception as exc:
+            if type(exc).__name__ == "DuplicateKeyError":
+                raise web.HTTPConflict(text="This reference submission already exists.") from exc
+            raise
+        await self._audit(str(guild_id), str(user.user_id), "Gauntlet reference submitted for review")
+        return web.json_response({"ok": True, "id": submission_id, "status": "pending"})
+
+    async def gauntlet_reference_notes(self, request: web.Request) -> web.Response:
+        """Read public notes plus the signed-in player's private notes for a reference."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        reference_id = str(request.match_info.get("reference_id", "")).strip()
+        public_notes, own_notes = [], []
+        cursor = self.bot.db.gauntlet_reference_notes.find({
+            "guild_id": str(guild_id), "reference_id": reference_id,
+            "$or": [{"visibility": "public"}, {"user_id": str(user.user_id)}],
+        }).sort("created_at", 1).limit(100)
+        async for row in cursor:
+            item = {"id": str(row.get("_id", "")), "user_id": str(row.get("user_id", "")),
+                    "note": str(row.get("note", "")), "seconds": float(row.get("seconds", 0) or 0),
+                    "visibility": str(row.get("visibility", "public")), "created_at": row.get("created_at") or 0}
+            if item["visibility"] == "public":
+                public_notes.append(item)
+            if item["user_id"] == str(user.user_id):
+                own_notes.append(item)
+        return web.json_response({"public": public_notes, "mine": own_notes})
+
+    async def gauntlet_reference_note_action(self, request: web.Request) -> web.Response:
+        """Create or delete a note owned by the signed-in player."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        reference_id = str(request.match_info.get("reference_id", "")).strip()
+        from bson import ObjectId
+        try:
+            oid = ObjectId(reference_id)
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid reference id.") from exc
+        reference = await self.bot.db.gauntlet_references.find_one({"_id": oid, "guild_id": str(guild_id)})
+        if not reference:
+            raise web.HTTPNotFound(text="Reference not found.")
+        if request.method == "DELETE":
+            note_id = str(request.query.get("note_id", "")).strip()
+            if not note_id:
+                raise web.HTTPBadRequest(text="Note id is required.")
+            result = await self.bot.db.gauntlet_reference_notes.delete_one({
+                "_id": note_id, "guild_id": str(guild_id), "reference_id": reference_id, "user_id": str(user.user_id),
+            })
+            if result.deleted_count != 1:
+                raise web.HTTPNotFound(text="Note not found.")
+            return web.json_response({"ok": True})
+        payload = await self._json_object(request)
+        note = str(payload.get("note", "")).strip()[:500]
+        if not note:
+            raise web.HTTPBadRequest(text="Note text is required.")
+        try:
+            seconds = max(0.0, min(7200.0, float(payload.get("seconds", 0) or 0)))
+        except (TypeError, ValueError):
+            seconds = 0.0
+        visibility = str(payload.get("visibility", "private")).strip().lower()
+        if visibility not in {"private", "public"}:
+            visibility = "private"
+        note_id = hashlib.sha256(f"{guild_id}:{user.user_id}:{reference_id}:{seconds}:{note}".encode()).hexdigest()[:32]
+        doc = {"_id": note_id, "guild_id": str(guild_id), "reference_id": reference_id, "user_id": str(user.user_id),
+               "note": note, "seconds": seconds, "visibility": visibility, "created_at": time.time()}
+        try:
+            await self.bot.db.gauntlet_reference_notes.insert_one(doc)
+        except Exception as exc:
+            if type(exc).__name__ != "DuplicateKeyError":
+                raise
+        return web.json_response({"ok": True, "id": note_id, "visibility": visibility, "seconds": seconds})
+
+    async def gauntlet_reference_leaderboard(self, request: web.Request) -> web.Response:
+        """Return guild-scoped reference contribution standings."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        stats = {}
+        async for row in self.bot.db.gauntlet_references.find({"guild_id": str(guild_id)}):
+            uid = str(row.get("created_by") or row.get("submitted_by") or "")
+            if not uid:
+                continue
+            item = stats.setdefault(uid, {"user_id": uid, "references": 0, "tracks": set(), "cars": set()})
+            item["references"] += 1
+            if row.get("course"):
+                item["tracks"].add(str(row["course"]))
+            if row.get("car"):
+                item["cars"].add(str(row["car"]))
+        rows = []
+        for item in stats.values():
+            driver = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{item['user_id']}"}) or {}
+            rows.append({"user_id": item["user_id"],
+                         "driver": str(driver.get("game_id") or driver.get("username") or item["user_id"]),
+                         "references": item["references"], "tracks": len(item["tracks"]), "cars": len(item["cars"])})
+        rows.sort(key=lambda x: (-x["references"], -x["tracks"], -x["cars"], x["driver"].casefold()))
+        return web.json_response({"rows": rows[:50]})
 
     async def gauntlet_matches(self, request: web.Request) -> web.Response:
         user,guild_id,_=await self.require_guild_member(request); uid=str(user.user_id); active=[]; recent=[]
