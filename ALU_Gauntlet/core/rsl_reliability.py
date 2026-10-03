@@ -115,6 +115,7 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
         try:
             counts[key] = int(await db[collection].count_documents(query))
         except Exception:
+            log.exception("Unable to read reliability counter for %s", collection)
             counts[key] = 0
     try:
         counts["pending_coin_transactions"] = int(
