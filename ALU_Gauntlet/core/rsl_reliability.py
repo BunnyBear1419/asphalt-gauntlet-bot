@@ -140,6 +140,33 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
     return counts
 
 
+async def recovery_run_snapshot(db: Any, guild_id: str, *, now: float | None = None) -> dict[str, Any]:
+    """Expose the latest durable recovery run without treating an unfinished run as success."""
+    now = float(now or time.time())
+    try:
+        row = await db.rsl_recovery_checkpoints.find_one(
+            {"guild_id": str(guild_id), "kind": "recovery_run"},
+            {"status": 1, "started_at": 1, "updated_at": 1, "completed_at": 1, "stats": 1, "error": 1},
+            sort=[("started_at", -1)],
+        )
+    except Exception as exc:
+        return {"status": "unavailable", "error": str(exc)[:160]}
+    if not row:
+        return {"status": "none"}
+    status = str(row.get("status") or "unknown")
+    updated_at = float(row.get("updated_at") or row.get("started_at") or 0)
+    if status == "running" and updated_at and now - updated_at > 30 * 60:
+        status = "stale"
+    return {
+        "status": status,
+        "started_at": row.get("started_at"),
+        "updated_at": row.get("updated_at"),
+        "completed_at": row.get("completed_at"),
+        "stats": row.get("stats") or {},
+        "error": str(row.get("error") or "")[:500] if row.get("error") else None,
+    }
+
+
 async def build_reliability_snapshot(db: Any, guild_id: str, *, settings: dict[str, Any] | None = None) -> dict[str, Any]:
     """Build one compact snapshot for the existing Admin System/Operations surface."""
     now = time.time()
@@ -151,6 +178,7 @@ async def build_reliability_snapshot(db: Any, guild_id: str, *, settings: dict[s
     except Exception:
         database_ok = False
     backup = backup_directory_snapshot(now=now)
+    recovery = await recovery_run_snapshot(db, str(guild_id), now=now)
     readiness = release_gate({
         "database": database_ok,
         "backup_evidence": backup["available"] if os.getenv("BACKUP_DIR") else None,
@@ -165,6 +193,7 @@ async def build_reliability_snapshot(db: Any, guild_id: str, *, settings: dict[s
         "attention": attention,
         "economy": economy,
         "backup": backup,
+        "recovery": recovery,
         "retention_days": retention_policy(settings),
         "admin_capabilities": sorted(ADMIN_CAPABILITIES),
         "safe_mode": bool(((settings or {}).get("maintenance_mode") or {}).get("enabled")),
