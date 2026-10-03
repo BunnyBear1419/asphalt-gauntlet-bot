@@ -436,3 +436,17 @@ def test_reference_hub_exposes_player_notes_submission_and_leaderboard():
     assert "async def gauntlet_reference_leaderboard" in gauntlet
     assert "async def admin_reference_review" in admin
     assert "gauntlet_reference_notes" in main
+
+
+def test_reference_hub_timestamp_notes_seek_and_staff_queue():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    admin = read("ALU_Gauntlet/web/routes/admin.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    assert "enablejsapi=1" in page
+    assert "function seekVideo(" in page
+    assert "data-seek-ref" in page
+    assert "seekTo" in page
+    assert '"/api/admin/gauntlet/references/review"' in core
+    assert "async def admin_reference_review_queue" in admin
+    assert 'status": {"$in": ["pending", "approving"]}' in admin
+    assert 'gauntlet_references.delete_one' in admin
