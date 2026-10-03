@@ -462,9 +462,10 @@ class PublicRoutesMixin:
 
     async def serve_tournament_media(self, request: web.Request) -> web.Response:
         user = await self.require_user(request); media_id = str(request.match_info.get("media_id", ""))
-        media = await self.bot.db.tournament_media.find_one({"_id": media_id})
+        live_guild_ids = await self._live_guild_ids_for_user(user)
+        media = await self.bot.db.tournament_media.find_one({"_id": media_id, "guild_id": {"$in": list(live_guild_ids)}})
         if not media or media.get("status") != "approved": raise web.HTTPNotFound(text="Tournament media not found.")
-        if str(media.get("guild_id")) not in await self._live_guild_ids_for_user(user): raise web.HTTPForbidden(text="You are not a member of this server.")
+        if str(media.get("guild_id")) not in live_guild_ids: raise web.HTTPForbidden(text="You are not a member of this server.")
         body = media.get("data") or b""
         if media.get("storage") == "gridfs" and media.get("gridfs_id"):
             try:
