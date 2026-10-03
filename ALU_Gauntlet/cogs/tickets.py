@@ -529,7 +529,7 @@ class TicketCog(commands.Cog):
                 try:
                     await ch.edit(category=cat,reason="RSL ticket closed")
                 except Exception:
-                    log.debug("Unable to move closed ticket channel to archive category: ticket=%s", tid, exc_info=True)
+                    log.debug("Unable to move closed ticket channel to archive category: ticket=%s", ticket_id, exc_info=True)
             try:
                 await self.reconcile_ticket_permissions(ch.guild,row,closed=True,locked=False)
             except Exception: pass
