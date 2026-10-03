@@ -79,8 +79,11 @@ class GauntletRoutesMixin:
             if isinstance(mine,dict): my_time=mine.get("lap_time") or mine.get("lap_time_str") or mine.get("time"); my_rank=mine.get("car_rank"); my_car=mine.get("car")
             else: my_time,my_rank,my_car=(mine if mine else None),None,None
             refs.append({"id":str(item.get("_id")),"course":course,"title":str(item.get("title","")),"driver":str(item.get("driver","")),"time":str(item.get("time","")),"car":str(item.get("car","")),"car_rank":safe_int(item.get("car_rank",item.get("car_performance",0))),"video_url":str(item.get("video_url","")),"description":str(item.get("description","")),"official":bool(item.get("official",False)),"created_by":str(item.get("created_by") or item.get("submitted_by") or ""),"my_best_time":str(my_time or ""),"my_car":str(my_car or ""),"my_car_rank":safe_int(my_rank)})
+        submissions=[]
+        async for item in self.bot.db.reference_pending.find({"guild_id":guild_id,"user_id":str(user.user_id)}).sort("created_at",-1).limit(50):
+            submissions.append({"id":str(item.get("_id")),"course":str(item.get("course") or item.get("track") or ""), "title":str(item.get("title") or ""), "driver":str(item.get("driver") or ""), "time":str(item.get("time") or item.get("lap_time") or ""), "car":str(item.get("car") or ""), "video_url":str(item.get("video_url") or item.get("video_reference") or ""), "description":str(item.get("description") or ""), "status":str(item.get("status") or "pending")})
         member=self.bot.get_guild(int(guild_id)).get_member(int(user.user_id)) if self.bot.get_guild(int(guild_id)) else None
-        return web.json_response({"courses":list(ALU_TRACKS),"references":refs,"viewer_id":str(user.user_id),"is_staff":bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))})
+        return web.json_response({"courses":list(ALU_TRACKS),"references":refs,"submissions":submissions,"viewer_id":str(user.user_id),"is_staff":bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))})
 
     async def gauntlet_reference_submit(self, request: web.Request) -> web.Response:
         """Submit a player reference video to the guild-scoped moderation queue."""
