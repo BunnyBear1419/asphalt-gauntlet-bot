@@ -45,3 +45,16 @@ def test_maintenance_path_policy_is_read_only_friendly():
 def test_maintenance_defaults_are_safe():
     assert not is_maintenance_enabled({})
     assert "temporarily paused" in maintenance_message({})
+
+def test_maintenance_guard_fails_closed_when_state_cannot_be_verified():
+    source = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    assert "Fail closed for competitive mutations" in source
+    assert '"maintenance": True' in source
+    assert 'status=503' in source
+    # A maintenance-state/database failure must never fall through to the
+    # competition mutation handler.
+    block = source[source.index("async def _maintenance_middleware"):source.index("async def _page_response", source.index("async def _maintenance_middleware"))]
+    failure = block.index('except Exception:')
+    tail = block[failure:]
+    assert "return await handler(request)" not in tail
+
