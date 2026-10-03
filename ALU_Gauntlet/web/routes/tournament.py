@@ -35,7 +35,7 @@ class TournamentRoutesMixin:
                 )
             else:
                 count = await self.bot.db.tournament_registrations.count_documents(
-                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                    {"tournament_id": item["id"], "guild_id": str(item.get("guild_id")), "status": {"$in": ["pending", "accepted", "checked_in"]}}
                 )
             item["registration_count"] = count
             item["format_label"] = {"single_elimination": "Single Elimination", "round_robin": "Round Robin"}.get(
@@ -189,7 +189,7 @@ class TournamentRoutesMixin:
             return web.json_response({"ok": True, "status": "accepted", "message": "Registration approved."})
 
         result = await collection.update_one(
-            {"_id": registration["_id"], "status": "pending"},
+            {"_id": registration["_id"], "tournament_id": tournament_id, "guild_id": guild_id, "status": "pending"},
             {"$set": {
                 "status": "rejected",
                 "rejected_by": str(user.user_id),
