@@ -31,7 +31,7 @@ class TournamentRoutesMixin:
             item.pop("_id", None)
             if int(item.get("team_size", 1)) > 1:
                 count = await self.bot.db.tournament_club_registrations.count_documents(
-                    {"tournament_id": item["id"], "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                    {"tournament_id": item["id"], "guild_id": str(item.get("guild_id")), "status": {"$in": ["pending", "accepted", "checked_in"]}}
                 )
             else:
                 count = await self.bot.db.tournament_registrations.count_documents(
@@ -73,7 +73,7 @@ class TournamentRoutesMixin:
         item.pop("_id", None)
         registrations = []
         async for row in self.bot.db.tournament_registrations.find(
-            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            {"tournament_id": tournament_id, "guild_id": str(item.get("guild_id")) if "item" in locals() else None, "status": {"$in": ["pending", "accepted", "checked_in"]}}
         ).sort("registered_at", 1):
             row["registration_id"] = str(row.get("_id", ""))
             row.pop("_id", None)
@@ -88,7 +88,7 @@ class TournamentRoutesMixin:
         if int(item.get("team_size", 1)) > 1:
             clubs = []
             async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tournament_id}).sort("registered_at", 1):
-                club = await self.bot.db.clubs.find_one({"_id": ObjectId(reg["club_id"])})
+                club = await self.bot.db.clubs.find_one({"_id": ObjectId(reg["club_id"]), "guild_id": str(item.get("guild_id"))})
                 if not club:
                     continue
                 members = []
@@ -225,7 +225,7 @@ class TournamentRoutesMixin:
             raise web.HTTPForbidden(text="Only the club leader can set the tournament lineup.")
         if tournament.get("status") not in {"registration_open", "open"}:
             raise web.HTTPConflict(text="Tournament lineups are locked once the tournament starts.")
-        reg = await self.bot.db.tournament_club_registrations.find_one({"tournament_id": tournament_id, "club_id": club_id})
+        reg = await self.bot.db.tournament_club_registrations.find_one({"tournament_id": tournament_id, "guild_id": str(tournament.get("guild_id")), "club_id": club_id})
         if not reg:
             raise web.HTTPNotFound(text="This club is not registered for the tournament.")
         size = int(tournament.get("team_size", 1))
@@ -275,7 +275,7 @@ class TournamentRoutesMixin:
         participant_ok = False
         if team_size > 1:
             reg = await self.bot.db.tournament_club_registrations.find_one(
-                {"tournament_id": str(oid), "club_id": {"$in": slots}, "lineup": str(user.user_id), "status": {"$in": ["accepted", "checked_in"]}}
+                {"tournament_id": str(oid), "guild_id": str(t.get("guild_id")), "club_id": {"$in": slots}, "lineup": str(user.user_id), "status": {"$in": ["accepted", "checked_in"]}}
             )
             participant_ok = bool(reg)
         else:
@@ -618,7 +618,7 @@ class TournamentRoutesMixin:
         staff = bool(guild and await self._is_live_tournament_staff(user, str(tournament.get("guild_id")), guild))
         statuses = ["approved", "pending"] if staff and request.query.get("include_pending") == "1" else ["approved"]
         rows = []
-        async for item in self.bot.db.tournament_media.find({"tournament_id": tournament_id, "status": {"$in": statuses}}).sort("created_at", -1).limit(100):
+        async for item in self.bot.db.tournament_media.find({"tournament_id": tournament_id, "guild_id": str(tournament.get("guild_id")), "status": {"$in": statuses}}).sort("created_at", -1).limit(100):
             rows.append({"id": str(item["_id"]), "type": item.get("type", "image"), "mime_type": item.get("mime_type", ""), "filename": item.get("filename", "Tournament Media"), "title": item.get("title", ""), "caption": item.get("caption", ""), "status": item.get("status", "approved"), "uploaded_by": item.get("uploaded_by", ""), "created_at": item.get("created_at", ""), "url": f"/assets/tournament-media/{item['_id']}"})
         return web.json_response({"tournament_id": tournament_id, "media": rows, "can_manage_media": staff})
 
@@ -781,7 +781,7 @@ class TournamentRoutesMixin:
         if int(t.get("team_size", 1)) > 1:
             checkin_payload = await self._json_object(request)
             requested_club_id = str(checkin_payload.get("club_id", "")).strip()
-            reg_query = {"tournament_id": tid, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            reg_query = {"tournament_id": tid, "guild_id": str(tournament.get("guild_id")), "status": {"$in": ["pending", "accepted", "checked_in"]}}
             if requested_club_id:
                 if not ObjectId.is_valid(requested_club_id):
                     raise web.HTTPBadRequest(text="Invalid club ID.")
@@ -807,7 +807,7 @@ class TournamentRoutesMixin:
             )
         else:
             result = await self.bot.db.tournament_registrations.update_one(
-                {"tournament_id": tid, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}},
+                {"tournament_id": tid, "guild_id": str(t.get("guild_id")), "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}},
                 {"$set": {"status": "checked_in", "checked_in_at": datetime.now(timezone.utc).isoformat()}},
             )
             if not result.modified_count:
