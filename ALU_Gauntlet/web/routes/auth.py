@@ -51,6 +51,11 @@ class AuthRoutesMixin:
         try:
             return await guild.fetch_member(int(user_id))
         except Exception:
+            log.exception(
+                "Unable to resolve live member %s in guild %s",
+                user_id,
+                getattr(guild, "id", "unknown"),
+            )
             return None
 
     async def _connected_guilds_for_user(self, user: Any) -> dict[str, Any]:
@@ -101,6 +106,11 @@ class AuthRoutesMixin:
             try:
                 member = await guild.fetch_member(int(user.user_id))
             except Exception:
+                log.exception(
+                    "Unable to resolve tournament staff member %s in guild %s",
+                    user.user_id,
+                    guild_id,
+                )
                 member = None
         if member is None:
             return False
