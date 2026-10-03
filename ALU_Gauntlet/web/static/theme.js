@@ -13,7 +13,7 @@
   function apply(theme){
     const t=valid(theme)?theme:"dark";
     document.documentElement.setAttribute("data-theme",t);
-    try{localStorage.setItem(KEY,t)}catch(e){}
+    try{localStorage.setItem(KEY,t);document.cookie="rsl_theme="+encodeURIComponent(t)+";path=/;max-age=31536000;SameSite=Lax"}catch(e){}
     syncControls(t);
     try{window.dispatchEvent(new CustomEvent("rsl-theme-changed",{detail:{theme:t}}))}catch(e){}
     return t;
@@ -28,6 +28,9 @@
   async function load(){
     let cached="";
     try{cached=localStorage.getItem(KEY)||""}catch(_e){}
+    if(!valid(cached)){
+      try{const m=document.cookie.match(/(?:^|; )rsl_theme=([^;]+)/);const cookieTheme=m?decodeURIComponent(m[1]):"";if(valid(cookieTheme)) cached=cookieTheme}catch(_e){}
+    }
     if(valid(cached)) apply(cached);
     try{
       const d=await api("/api/theme");
