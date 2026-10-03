@@ -359,7 +359,7 @@ def test_public_driver_career_uses_selected_live_guild_for_tournament_history():
 def test_recovery_runs_have_bounded_retention():
     recovery = read("ALU_Gauntlet/core/rsl_recovery.py")
     main = read("ALU_Gauntlet/main.py")
-    assert '"expires_at": now + (7 * 24 * 60 * 60)' in recovery
+    assert '"expires_at": datetime.now(timezone.utc) + timedelta(days=7)' in recovery
     assert 'name="ttl_rsl_recovery_runs"' in main
     assert 'partialFilterExpression={"kind": "recovery_run"}' in main
 
