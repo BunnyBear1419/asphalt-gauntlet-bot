@@ -1,5 +1,6 @@
 """Discord DM notifications for scheduled RSL calendar events."""
 
+import logging
 import time
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -9,6 +10,8 @@ from discord.ext import commands, tasks
 from .translation import localize_text
 
 from ..core.core import bot
+
+log = logging.getLogger(__name__)
 
 
 def _iso_timestamp(value):
@@ -169,6 +172,7 @@ class NotificationCog(commands.Cog):
             except Exception:
                 # Treat unexpected delivery failures as retryable as well, while
                 # keeping the background scheduler alive.
+                log.exception("Calendar notification delivery failed: user=%s event=%s", user_id, event.get("id"))
                 await self.bot.db.notification_deliveries.delete_one(delivery_filter)
 
     async def _notify_custom_reminders(self, now):
@@ -216,8 +220,10 @@ class NotificationCog(commands.Cog):
                     except (discord.Forbidden, discord.HTTPException):
                         await self.bot.db.notification_deliveries.delete_one(delivery_filter)
                     except Exception:
+                        log.exception("Personal reminder delivery failed: user=%s reminder=%s", user_id, reminder.get("_id"))
                         await self.bot.db.notification_deliveries.delete_one(delivery_filter)
             except Exception:
+                log.exception("Personal reminder processing failed: reminder=%s", reminder.get("_id"))
                 continue
 
     async def _notify_digest(self, now):
@@ -283,6 +289,7 @@ class NotificationCog(commands.Cog):
             except (discord.Forbidden, discord.HTTPException):
                 await self.bot.db.notification_deliveries.delete_one(delivery_filter)
             except Exception:
+                log.exception("Digest delivery failed: user=%s frequency=%s", user_id, frequency)
                 await self.bot.db.notification_deliveries.delete_one(delivery_filter)
 
     @tasks.loop(seconds=60)
@@ -303,8 +310,9 @@ class NotificationCog(commands.Cog):
                         await self._notify_event(event, 0, now)
         except Exception:
             # Keep the background scheduler alive if one malformed event or
-            # transient database/Discord failure occurs.
-            pass
+            # transient database/Discord failure occurs, but never hide the
+            # failure from operators.
+            log.exception("RSL notification scheduler iteration failed")
 
     @notification_loop.before_loop
     async def before_notification_loop(self):
