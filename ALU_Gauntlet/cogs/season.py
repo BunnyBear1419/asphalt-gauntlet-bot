@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -13,6 +14,8 @@ from ..core.rsl_economy_ledger import apply_coin_transaction
 from ..core.rsl_activity import collect_overall_activity_stats, activity_level
 from ..core.rsl_role_sync import sync_gauntlet_season_roles, clear_gauntlet_season_roles, sync_xp_rank_role
 from ..core.rsl_roles import build_gauntlet_season_roles
+
+log = logging.getLogger(__name__)
 
 
 async def announce_season_start(guild_id, season_number, reason="scheduled"):
@@ -31,7 +34,7 @@ async def announce_season_start(guild_id, season_number, reason="scheduled"):
             color=ASPHALT_VICTORY_COLOR,
         )
     except Exception:
-        pass
+        log.exception("Failed to announce Season %s start for guild %s", season_number, guild_id)
 
 
 async def trigger_global_season_end(guild_id, forced_interaction=None, start_next_season=False):
