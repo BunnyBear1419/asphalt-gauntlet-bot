@@ -72,7 +72,7 @@ function editor(c){
  bindLinkRows(x);
  const file=x.querySelector('input[type="file"]'),preview=x.querySelector(".club-image-preview");file.onchange=()=>{const f=file.files?.[0];if(!f)return;const u=URL.createObjectURL(f);preview.innerHTML='<img src="'+u+'" alt="New club picture preview">'};
  x.querySelector("form").onsubmit=async e=>{e.preventDefault();const status=x.querySelector(".club-editor-status");try{const f=new FormData(e.target);const image=await imageData(file.files?.[0]);const links=[...x.querySelectorAll('input[name="link"]')].map(i=>i.value.trim()).filter(Boolean);const r=await api("/api/clubs/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({club_id:c.id,name:f.get("name"),about:f.get("about"),discord:f.get("discord"),links,image:image||c.image||""})});toast(r.message);x.remove();load()}catch(err){status.textContent=err.message;status.dataset.bad="1"}}}
-async async function loadPageDiscordStats(){
+async function loadPageDiscordStats(){
  try{
   const r=await fetch("/api/discord-stats",{credentials:"same-origin",cache:"no-store"});
   if(!r.ok)return;
