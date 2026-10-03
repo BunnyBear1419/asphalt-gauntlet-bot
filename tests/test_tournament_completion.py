@@ -182,3 +182,16 @@ def test_permanent_tournament_achievement_sync_is_additive_and_not_seasonal():
     assert 'await member.add_roles(role, reason="RSL permanent tournament achievement")' in sync
     assert "PERMANENT_ACHIEVEMENT_ROLES" in roles
     assert "reconcile_seasonal_roles" in roles
+
+def test_tournament_action_locks_are_owner_scoped_and_released_by_token():
+    cog = COG.read_text(encoding="utf-8")
+    public = (ROOT / "ALU_Gauntlet/web/routes/public.py").read_text(encoding="utf-8")
+    for source in (cog, public):
+        assert '"lock_token"' in source
+        assert "token_urlsafe" in source
+        assert '"expires_at": {"$lt": now}' in source or '"expires_at": {"$lt": now}' in source
+        assert '"lock_token": str(lock_token)' in source
+    assert "async def _release_action(tournament_id, match_id, action, lock_token)" in cog
+    assert 'async def _release_tournament_action(self, tournament_id, match_id, action, lock_token)' in public
+    assert '"lock_token": str(lock_token)' in public
+
