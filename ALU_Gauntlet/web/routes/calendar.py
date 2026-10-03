@@ -115,7 +115,7 @@ class CalendarRoutesMixin:
     async def calendar(self, request: web.Request) -> web.Response:
         """Return live Gauntlet season and tournament dates for the calendar UI."""
         user = await self.require_user(request)
-        guild_ids = [str(x) for x in user.guild_ids]
+        guild_ids = sorted(await self._live_guild_ids_for_user(user))
         events = []
         seasons = []
         for guild_id in guild_ids:
