@@ -79,6 +79,8 @@ async def _ensure_database_indexes():
         name="uniq_active_tournament_club_registration",
     )
     await db.gauntlet_reference_notes.create_index([("guild_id", 1), ("reference_id", 1), ("created_at", 1)], name="idx_gauntlet_reference_notes")
+    await db.reference_intel.create_index([("guild_id", 1), ("course", 1), ("created_at", -1)], name="idx_reference_intel")
+    await db.reference_intel_votes.create_index([("guild_id", 1), ("intel_id", 1), ("user_id", 1)], unique=True, name="uniq_reference_intel_vote")
     await db.gauntlet_reference_notes.create_index([("guild_id", 1), ("user_id", 1), ("reference_id", 1)], name="idx_gauntlet_reference_notes_owner")
     await db.reference_pending.create_index([("guild_id", 1), ("status", 1), ("created_at", -1)], name="idx_reference_pending_review")
     await db.tournament_media.create_index(
