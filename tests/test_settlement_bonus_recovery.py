@@ -245,4 +245,19 @@ def test_bonus_retry_counter_is_atomic_for_concurrent_recovery_workers():
     assert 'await db.matches.find_one(' in helper
     assert 'rsl_bonus_recovery_status": {"$ne": "needs_staff_review"}' in helper
 
-\n\ndef test_recovery_run_has_durable_running_and_terminal_states():\n    source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")\n    assert '"kind": "recovery_run"' in source\n    assert '"status": "running"' in source\n    assert '"status": "completed"' in source\n    assert '"status": "failed"' in source\n    assert 'await _finish_recovery_run(db, guild_id, run_id, "failed", stats, error=exc)' in source\n\n\ndef test_recovery_diagnostics_treat_stale_running_run_as_stale_not_success():\n    source = (ROOT / "ALU_Gauntlet/core/rsl_reliability.py").read_text(encoding="utf-8")\n    assert 'async def recovery_run_snapshot' in source\n    assert 'status == "running" and updated_at and now - updated_at > 30 * 60' in source\n    assert 'status": "stale"' in source\n
+
+
+def test_recovery_run_has_durable_running_and_terminal_states():
+    source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
+    assert '"kind": "recovery_run"' in source
+    assert '"status": "running"' in source
+    assert '"status": "completed"' in source
+    assert '"status": "failed"' in source
+    assert 'await _finish_recovery_run(db, guild_id, run_id, "failed", stats, error=exc)' in source
+
+
+def test_recovery_diagnostics_treat_stale_running_run_as_stale_not_success():
+    source = (ROOT / "ALU_Gauntlet/core/rsl_reliability.py").read_text(encoding="utf-8")
+    assert 'async def recovery_run_snapshot' in source
+    assert 'status == "running" and updated_at and now - updated_at > 30 * 60' in source
+    assert 'status": "stale"' in source
