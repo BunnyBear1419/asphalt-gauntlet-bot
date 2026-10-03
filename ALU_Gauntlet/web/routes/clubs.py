@@ -399,7 +399,7 @@ class ClubsRoutesMixin:
                 raise web.HTTPForbidden(text="Officers cannot kick another Officer.")
             removed = await self.bot.db.club_members.delete_one({"_id": member["_id"], "club_id": str(oid), "guild_id": str(club.get("guild_id"))})
             if removed.deleted_count:
-                await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+                await self.bot.db.clubs.update_one({"_id": oid, "guild_id": str(club.get("guild_id")), "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             await self._club_recount_member_count(str(oid))
         return web.json_response({"ok": True, "message": "Member removed from the club."})
         raise web.HTTPBadRequest(text="Unsupported member action.")
@@ -556,7 +556,7 @@ class ClubsRoutesMixin:
             await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "guild_id": str(invite.get("guild_id", club.get("guild_id") if "club" in locals() else "")), "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
             raise web.HTTPConflict(text="That invitation has expired.")
         if action == "decline":
-            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
+            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "guild_id": str(invite.get("guild_id")), "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
             return web.json_response({"ok": True, "message": "Club invitation declined."})
         club = await self.bot.db.clubs.find_one({"_id": ObjectId(str(invite["club_id"]))})
         if not club:
@@ -587,11 +587,11 @@ class ClubsRoutesMixin:
                 "role": "member", "joined_at": now.isoformat(),
             })
         except Exception as exc:
-            await self.bot.db.clubs.update_one({"_id": club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            await self.bot.db.clubs.update_one({"_id": club["_id"], "guild_id": str(club.get("guild_id")), "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             if exc.__class__.__name__ == "DuplicateKeyError":
                 raise web.HTTPConflict(text="You are already in a club in this server.")
             raise
-        await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now}})
+        await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "guild_id": str(invite.get("guild_id")), "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now}})
         await self.bot.db.club_join_requests.update_many({"club_id": str(club["_id"]), "user_id": str(user.user_id), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now}})
         await self._club_recount_member_count(str(club["_id"]))
         await self._club_notify_user(str(club["leader_id"]), "RSL Club Invitation Accepted", f"{user.global_name or user.username} accepted the invitation to join **{club.get('name', 'your club')}**.")
@@ -657,13 +657,13 @@ class ClubsRoutesMixin:
             await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "guild_id": str(join_request.get("guild_id", club.get("guild_id") if "club" in locals() else "")), "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
             raise web.HTTPConflict(text="That join request has expired.")
         if action == "decline":
-            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
+            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "guild_id": str(join_request.get("guild_id")), "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
             await self._club_notify_user(str(join_request["user_id"]), "RSL Club Join Request", f"Your request to join **{club.get('name', 'the club')}** was declined.")
             return web.json_response({"ok": True, "message": "Join request declined."})
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": str(join_request["user_id"])}):
             raise web.HTTPConflict(text="That driver is already in a club in this server.")
         reservation = await self.bot.db.clubs.update_one(
-            {"_id": club["_id"], "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
+            {"_id": club["_id"], "guild_id": str(club.get("guild_id")), "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
             {"$inc": {"member_count": 1}},
         )
         if not reservation.modified_count:
@@ -675,11 +675,11 @@ class ClubsRoutesMixin:
                 "role": "member", "joined_at": now.isoformat(),
             })
         except Exception as exc:
-            await self.bot.db.clubs.update_one({"_id": club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            await self.bot.db.clubs.update_one({"_id": club["_id"], "guild_id": str(club.get("guild_id")), "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             if exc.__class__.__name__ == "DuplicateKeyError":
                 raise web.HTTPConflict(text="That driver is already in a club in this server.")
             raise
-        await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now}})
+        await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "guild_id": str(join_request.get("guild_id")), "status": "pending"}, {"$set": {"status": "accepted", "updated_at": now}})
         await self.bot.db.club_invitations.update_many({"club_id": str(club["_id"]), "invitee_id": str(join_request["user_id"]), "status": "pending"}, {"$set": {"status": "withdrawn", "updated_at": now}})
         await self._club_recount_member_count(str(club["_id"]))
         await self._club_notify_user(str(join_request["user_id"]), "RSL Club Join Request", f"Your request to join **{club.get('name', 'the club')}** was accepted.")
