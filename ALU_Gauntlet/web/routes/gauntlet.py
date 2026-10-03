@@ -447,7 +447,7 @@ class GauntletRoutesMixin:
         driver = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
         await self.bot.db.reference_intel.insert_one({
             "_id": fingerprint, "guild_id": str(guild_id), "course": course, "kind": kind,
-            "title": title, "body": body, "seconds": seconds, "driver": str(driver.get("game_id") or driver.get("username") or user.username),
+            "title": title, "body": body, "car": car, "video_url": video_url, "seconds": seconds, "driver": str(driver.get("game_id") or driver.get("username") or user.username),
             "user_id": str(user.user_id), "helpful": 0, "created_at": time.time(),
         })
         await self._audit(str(guild_id), str(user.user_id), "Community reference intel submitted")
