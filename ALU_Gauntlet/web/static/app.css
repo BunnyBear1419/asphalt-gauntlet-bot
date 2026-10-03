@@ -2769,48 +2769,36 @@ html[data-theme="light"] .calendar-controls{color:#162338!important}
   border-radius:10px!important;
   background:rgba(6,18,38,.55)!important;
 }
-.rsl-profile-theme-title{
+html[data-theme] .rsl-profile-theme-title{
   grid-column:1 / -1!important;
   display:block!important;
   font-size:10px!important;
   font-weight:800!important;
   letter-spacing:.08em!important;
   text-transform:uppercase!important;
-  color:#91a5c3!important;
+  color:var(--rsl-box-muted)!important;
 }
-.rsl-theme-choice{
+html[data-theme] .rsl-theme-choice{
   appearance:none!important;
-  border:1px solid #173b64!important;
+  border:1px solid var(--rsl-box-line)!important;
   border-radius:8px!important;
   padding:7px 8px!important;
-  background:#071427!important;
-  color:#dbe8f8!important;
+  background:var(--rsl-box)!important;
+  color:var(--rsl-box-text)!important;
   font:inherit!important;
   font-size:11px!important;
   font-weight:700!important;
   cursor:pointer!important;
 }
-.rsl-theme-choice:hover,
-.rsl-theme-choice.is-active{
-  border-color:#25dfff!important;
-  background:rgba(37,223,255,.12)!important;
-  color:#25dfff!important;
+html[data-theme] .rsl-theme-choice:hover,
+html[data-theme] .rsl-theme-choice.is-active{
+  border-color:var(--rsl-box-accent)!important;
+  background:var(--rsl-box-alt)!important;
+  color:var(--rsl-box-accent)!important;
 }
-html[data-theme="light"] .rsl-profile-theme-toggle{
-  background:#eef4fa!important;
-  border-color:#c8d4e2!important;
-}
-html[data-theme="light"] .rsl-profile-theme-title{color:#60738b!important}
-html[data-theme="light"] .rsl-theme-choice{
-  background:#fff!important;
-  color:#30465f!important;
-  border-color:#b9c9da!important;
-}
-html[data-theme="light"] .rsl-theme-choice:hover,
-html[data-theme="light"] .rsl-theme-choice.is-active{
-  background:#eaf6ff!important;
-  color:#0877e7!important;
-  border-color:#0877e7!important;
+html[data-theme] .rsl-profile-theme-toggle{
+  background:var(--rsl-box)!important;
+  border-color:var(--rsl-box-line)!important;
 }
 
 
@@ -2996,18 +2984,18 @@ html[data-theme] .garage-meta small{
 html[data-theme="light"] .glass-panel,
 html[data-theme="light"] .welcome-panel,
 html[data-theme="light"] .season-panel,
-html[data-theme="light"] .feature,
-html[data-theme="light"] .card,
-html[data-theme="light"] .table-wrap,
-html[data-theme="light"] .profile-card,
-html[data-theme="light"] .quick-actions,
-html[data-theme="light"] .activity-card,
-html[data-theme="light"] .matches-card,
-html[data-theme="light"] .leaderboard-card,
-html[data-theme="light"] .garage-card{
-  background:linear-gradient(145deg,#f1f5f9,#e4ecf4)!important;
-  border-color:#c3d0dd!important;
-  color:#18283b!important;
+html[data-theme] .feature,
+html[data-theme] .card,
+html[data-theme] .table-wrap,
+html[data-theme] .profile-card,
+html[data-theme] .quick-actions,
+html[data-theme] .activity-card,
+html[data-theme] .matches-card,
+html[data-theme] .leaderboard-card,
+html[data-theme] .garage-card{
+  background:var(--rsl-box)!important;
+  border-color:var(--rsl-box-line)!important;
+  color:var(--rsl-box-text)!important;
 }
 
 
