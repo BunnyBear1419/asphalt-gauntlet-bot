@@ -2544,6 +2544,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/admin/csp-diagnostics", self.admin_csp_diagnostics)
         self.app.router.add_get("/api/admin/operations", self.admin_operations)
         self.app.router.add_post("/api/admin/operations", self.admin_operations)
+        self.app.router.add_get("/api/admin/competition-safe-mode", self.admin_competition_safe_mode)
+        self.app.router.add_post("/api/admin/competition-safe-mode", self.admin_competition_safe_mode)
         self.app.router.add_get("/api/players/{user_id}/activity", self.admin_activity_timeline)
         self.app.router.add_get("/api/admin/audit", self.admin_audit)
         self.app.router.add_get("/api/admin/fairness", self.admin_fairness)
