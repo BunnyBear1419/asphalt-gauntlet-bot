@@ -5045,3 +5045,42 @@ html[data-theme] .rsl-search-result:hover{
   background:color-mix(in srgb,var(--rsl-final-accent) 12%,var(--rsl-final-panel))!important;
   color:var(--rsl-final-accent)!important;
 }
+
+
+/* FINAL THEME CONTROL SURFACE AUDIT */
+html[data-theme] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme] textarea,
+html[data-theme] select,
+html[data-theme] [contenteditable="true"]{
+  background:var(--rsl-box)!important;
+  color:var(--rsl-box-text)!important;
+  border-color:var(--rsl-box-line)!important;
+  accent-color:var(--rsl-box-accent)!important;
+  color-scheme:dark;
+}
+html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="light"] textarea,
+html[data-theme="light"] select,
+html[data-theme="light"] [contenteditable="true"]{color-scheme:light}
+html[data-theme] select option,
+html[data-theme] select optgroup{
+  background:var(--rsl-box)!important;
+  color:var(--rsl-box-text)!important;
+}
+html[data-theme] input::placeholder,
+html[data-theme] textarea::placeholder{color:var(--rsl-box-muted)!important;opacity:1}
+html[data-theme] input[type="file"]::file-selector-button{
+  background:var(--rsl-box-alt)!important;
+  color:var(--rsl-box-text)!important;
+  border:1px solid var(--rsl-box-line)!important;
+  font:inherit;
+}
+html[data-theme] input[type="range"]{accent-color:var(--rsl-box-accent)!important}
+html[data-theme] input:focus,
+html[data-theme] textarea:focus,
+html[data-theme] select:focus,
+html[data-theme] [contenteditable="true"]:focus{
+  outline:2px solid color-mix(in srgb,var(--rsl-box-accent) 45%,transparent)!important;
+  outline-offset:1px;
+  border-color:var(--rsl-box-accent)!important;
+}
