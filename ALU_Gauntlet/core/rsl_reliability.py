@@ -93,6 +93,7 @@ async def economy_integrity_snapshot(db: Any, guild_id: str) -> dict[str, Any]:
             if not str(row.get("user_id") or "").isdigit():
                 issues.append({"type": "invalid_user", "id": str(row.get("_id", ""))})
     except Exception as exc:
+        log.exception("Unable to read economy ledger for guild %s", gid)
         return {"ok": False, "checked": checked, "issues": [{"type": "ledger_unavailable", "detail": str(exc)[:160]}]}
     return {"ok": not issues, "checked": checked, "issues": issues[:100]}
 
@@ -128,11 +129,13 @@ async def attention_queue_snapshot(db: Any, guild_id: str, *, now: float | None 
             )
         )
     except Exception:
+        log.exception("Unable to read pending coin transaction counter for guild %s", gid)
         counts["pending_coin_transactions"] = 0
     try:
         state = await db.season_state.find_one({"_id": f"guild_{gid}"}, {"gauntlet_role_snapshot": 1})
         counts["season_role_recovery"] = 1 if (state or {}).get("gauntlet_role_snapshot") else 0
     except Exception:
+        log.exception("Unable to read season role recovery state for guild %s", gid)
         counts["season_role_recovery"] = 0
     # Computed once, after every queue is counted (it used to be summed twice,
     # which also counted the first total inside the second).
@@ -176,6 +179,7 @@ async def build_reliability_snapshot(db: Any, guild_id: str, *, settings: dict[s
         await db.command("ping")
         database_ok = True
     except Exception:
+        log.exception("Reliability database ping failed")
         database_ok = False
     backup = backup_directory_snapshot(now=now)
     recovery = await recovery_run_snapshot(db, str(guild_id), now=now)
@@ -219,6 +223,7 @@ async def create_recovery_checkpoint(db: Any, guild_id: str, actor_id: str, *, r
         try:
             checkpoint["collection_counts"][collection] = int(await db[collection].count_documents({"guild_id": gid}))
         except Exception:
+            log.exception("Unable to count recovery checkpoint collection %s for guild %s", collection, gid)
             checkpoint["collection_counts"][collection] = 0
     result = await db.rsl_recovery_checkpoints.insert_one(checkpoint)
     checkpoint["id"] = str(result.inserted_id)
