@@ -241,8 +241,15 @@ class CoreRoutesMixin:
         except web.HTTPException:
             raise
         except Exception:
+            # Fail closed for competitive mutations. If the maintenance state
+            # cannot be read (for example during a Mongo outage), allowing the
+            # request through would silently bypass Safe Mode at exactly the
+            # time staff enabled it to protect competition state.
             log.exception("Maintenance-mode guard failed for %s %s", request.method, request.path_qs)
-            return await handler(request)
+            message = "RSL competitive actions are temporarily unavailable while the maintenance state is being verified."
+            if request.path.startswith("/api/"):
+                return web.json_response({"ok": False, "maintenance": True, "error": message}, status=503)
+            raise web.HTTPServiceUnavailable(text=message)
 
     async def _page_response(self, filename: str, request: web.Request | None = None) -> web.Response:
         path = WEB_DIR / filename
