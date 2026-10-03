@@ -166,7 +166,7 @@ class ClubsRoutesMixin:
         if not target_id:
             raise web.HTTPBadRequest(text="A replacement leader is required.")
         club = await self.bot.db.clubs.find_one({"_id": club_id})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         if str(club.get("leader_id")) != str(user.user_id):
             raise web.HTTPForbidden(text="Only the current club leader can transfer leadership.")
@@ -209,7 +209,7 @@ class ClubsRoutesMixin:
         except Exception:
             raise web.HTTPBadRequest(text="Invalid club ID.")
         club = await self.bot.db.clubs.find_one({"_id": club_id})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         if str(club.get("leader_id")) != str(user.user_id):
             raise web.HTTPForbidden(text="Only the club leader can delete the club.")
@@ -244,7 +244,7 @@ class ClubsRoutesMixin:
         except Exception:
             raise web.HTTPBadRequest(text="Invalid club ID.")
         club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         if str(club.get("leader_id")) != str(user.user_id):
             raise web.HTTPForbidden(text="Only the club leader can edit the club.")
@@ -301,7 +301,7 @@ class ClubsRoutesMixin:
         except Exception:
             raise web.HTTPBadRequest(text="Invalid club ID.")
         club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         member_filter = {"guild_id": club["guild_id"], "user_id": str(user.user_id)}
         if await self.bot.db.club_members.find_one(member_filter):
@@ -335,7 +335,7 @@ class ClubsRoutesMixin:
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid club ID.") from exc
         club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         if str(club.get("leader_id")) == str(user.user_id):
             raise web.HTTPConflict(text="Club leaders must transfer leadership before leaving.")
@@ -363,7 +363,7 @@ class ClubsRoutesMixin:
         except Exception:
             raise web.HTTPBadRequest(text="Invalid club ID.")
         club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         actor_role = await self._club_member_role(str(oid), str(user.user_id))
         if actor_role not in {"leader", "officer"}:
@@ -482,7 +482,7 @@ class ClubsRoutesMixin:
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid club ID.") from exc
         club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         actor_role = await self._club_member_role(str(oid), str(user.user_id))
         if actor_role not in {"leader", "officer"}:
@@ -599,7 +599,7 @@ class ClubsRoutesMixin:
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid club ID.") from exc
         club = await self.bot.db.clubs.find_one({"_id": oid})
-        if not club or str(club.get("guild_id")) not in {str(x) for x in user.guild_ids}:
+        if not club or str(club.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Club not found.")
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": str(user.user_id)}):
             raise web.HTTPConflict(text="You are already in a club in this server.")
