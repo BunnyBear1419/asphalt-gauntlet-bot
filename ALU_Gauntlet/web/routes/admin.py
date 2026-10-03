@@ -275,6 +275,59 @@ class AdminRoutesMixin:
             "dispositions": ranked(dispositions),
         })
 
+
+    async def admin_guild_ownership_audit(self, request: web.Request) -> web.Response:
+        """Run a read-only production scan for legacy guild-scoped documents missing guild_id."""
+        _, guild_id, _guild = await self.require_admin(request)
+        collections = (
+            "drivers", "matches", "active_challenges", "pending", "system_events",
+            "clubs", "club_members", "club_invitations", "club_join_requests",
+            "tournament_registrations", "tournament_club_registrations", "tournament_media",
+            "rsl_tickets", "rsl_ticket_events", "rsl_recovery_checkpoints",
+            "rsl_economy_transactions", "rsl_xp_events", "rsl_activity_events",
+            "web_brand_assets", "news", "reference_pending",
+        )
+        results = []
+        total_missing = 0
+        scanned = 0
+        existing = set(await self.bot.db.list_collection_names())
+        for name in collections:
+            if name not in existing:
+                results.append({
+                    "collection": name,
+                    "exists": False,
+                    "total": 0,
+                    "missing_guild_id": 0,
+                })
+                continue
+            try:
+                total = await self.bot.db[name].count_documents({})
+                missing = await self.bot.db[name].count_documents({"guild_id": {"$exists": False}})
+                scanned += total
+                total_missing += missing
+                results.append({
+                    "collection": name,
+                    "exists": True,
+                    "total": int(total),
+                    "missing_guild_id": int(missing),
+                })
+            except Exception as exc:
+                results.append({
+                    "collection": name,
+                    "exists": True,
+                    "error": str(exc)[:180],
+                })
+        ok = total_missing == 0 and not any("error" in row for row in results)
+        return web.json_response({
+            "ok": ok,
+            "guild_id": str(guild_id),
+            "read_only": True,
+            "collections_checked": len(collections),
+            "documents_scanned": scanned,
+            "documents_missing_guild_id": total_missing,
+            "results": results,
+        })
+
     async def admin_diagnostics(self, request: web.Request) -> web.Response:
         _, guild_id, guild = await self.require_admin(request)
         checks=[{"name":"Discord connection","ok":guild is not None},{"name":"MongoDB","ok":False}]
