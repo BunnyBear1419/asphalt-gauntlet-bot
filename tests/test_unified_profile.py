@@ -116,8 +116,17 @@ def test_unified_public_profile_contains_competitive_and_tournament_records():
 
 def test_player_section_navigation_is_independent_of_registration_state():
     page=(ROOT/"ALU_Gauntlet"/"web"/"static"/"player.html").read_text(encoding="utf-8")
-    for target in ("overview","gauntlet","defense","registration","profile-settings","career"):
-        assert f'href="#{target}"' in page
+    expected = {
+        "overview": 'href="/player#overview"',
+        "gauntlet": 'href="/player#gauntlet"',
+        "defense": 'href="/player#defense"',
+        "registration": 'href="/player#registration"',
+        "profile-settings": 'href="/player/settings"',
+        "career": 'href="/player#career"',
+    }
+    for marker in expected.values():
+        assert marker in page
+    assert 'href="#profile-settings"' in page
     assert "function scrollToPlayerSection(id, updateHash)" in page
     assert "function bindPlayerSectionNavigation()" in page
     assert 'history.replaceState(null,"","#"+id)' in page
