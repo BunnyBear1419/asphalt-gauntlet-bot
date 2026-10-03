@@ -122,6 +122,7 @@ async def _ensure_database_indexes():
     await db.rsl_ticket_notifications.create_index([("event_key", 1)], unique=True, name="uniq_rsl_ticket_notification_event")
     await db.rsl_ticket_notifications.create_index([("guild_id", 1), ("status", 1), ("retry_at", 1)], name="idx_rsl_ticket_notification_retry")
     await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("created_at", -1)], name="idx_rsl_recovery_checkpoint")
+    await db.rsl_recovery_checkpoints.create_index([("guild_id", 1), ("kind", 1), ("started_at", -1)], name="idx_rsl_recovery_run_started")
     await _cleanup_legacy_active_challenge_duplicates()
     # Defense-in-depth uniqueness guard. Older Mongo deployments can reject
     # the $in partial-filter form, and legacy duplicate rows can prevent index
