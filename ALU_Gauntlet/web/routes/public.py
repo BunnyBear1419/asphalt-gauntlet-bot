@@ -918,7 +918,7 @@ class PublicRoutesMixin:
             tid = str(reg.get("tournament_id", ""))
             try:
                 from bson import ObjectId
-                tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tid), "guild_id": {"$in": list(await self._live_guild_ids_for_user(user))}})
+                tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tid), "guild_id": str(guild_id)})
             except Exception:
                 tournament = None
             if not tournament: continue
