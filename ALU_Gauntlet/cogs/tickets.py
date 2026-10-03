@@ -655,7 +655,7 @@ class TicketCog(commands.Cog):
                 continue
             if status=="recovering":
                 result=await self.bot.db.rsl_tickets.update_one(
-                    {"_id":row["_id"],"status":"recovering"},
+                    {"_id":row["_id"],"guild_id":str(row.get("guild_id") or ""), "status":"recovering"},
                     {"$set":{"status":"failed","active":False,"recovery_status":"stale_recovery","updated_at":now}}
                 )
                 if result.modified_count:
@@ -664,7 +664,7 @@ class TicketCog(commands.Cog):
             if not bool(row.get("active")):
                 continue
             result=await self.bot.db.rsl_tickets.update_one(
-                {"_id":row["_id"],"status":"provisioning","active":True},
+                {"_id":row["_id"],"guild_id":str(row.get("guild_id") or ""), "status":"provisioning","active":True},
                 {"$set":{"status":"failed","active":False,"recovery_status":"stale_provisioning","updated_at":now}}
             )
             if result.modified_count:
