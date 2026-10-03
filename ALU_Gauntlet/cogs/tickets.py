@@ -390,7 +390,7 @@ class TicketCog(commands.Cog):
             await self.bot.db.rsl_ticket_notifications.create_index("event_key", unique=True, name="uniq_rsl_ticket_notification_event")
             await self.bot.db.rsl_ticket_notifications.create_index([("guild_id",1),("status",1),("retry_at",1)], name="idx_rsl_ticket_notification_retry")
         except Exception:
-            pass
+            logging.getLogger(__name__).exception("Unable to ensure RSL ticket notification indexes")
         await self.reconcile_provisioning()
         await self.reconcile_missing_channels()
         await self.restore_views()
@@ -482,8 +482,14 @@ class TicketCog(commands.Cog):
         # Remove explicit user overwrites for ticket members no longer authorized.
         for target in list(ch.overwrites.keys()):
             if isinstance(target,discord.Member) and str(target.id) not in member_ids and target != owner and not target.bot:
-                try: await ch.set_permissions(target,overwrite=None,reason="RSL ticket permission reconciliation")
-                except Exception: pass
+                try:
+                    await ch.set_permissions(target, overwrite=None, reason="RSL ticket permission reconciliation")
+                except Exception:
+                    logging.getLogger(__name__).warning(
+                        "Unable to remove stale ticket permission overwrite in channel %s for target %s",
+                        getattr(ch, "id", "unknown"), getattr(target, "id", "unknown"),
+                        exc_info=True,
+                    )
         if owner:
             await ch.set_permissions(owner,view_channel=True,send_messages=not closed and not locked,read_message_history=True,attach_files=not closed and not locked,reason="RSL ticket permission reconciliation")
         for uid in member_ids:
