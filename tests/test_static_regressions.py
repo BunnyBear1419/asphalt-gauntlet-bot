@@ -537,4 +537,15 @@ def test_reference_hub_has_car_comparison():
     assert "async def gauntlet_reference_car_comparison(" in route
     assert 'add_get("/api/gauntlet/references/car-comparison", self.gauntlet_reference_car_comparison)' in core
     assert '"guild_id": str(guild_id)' in route[route.index("async def gauntlet_reference_car_comparison("):]
-\n\ndef test_reference_hub_track_intel_expansion():\n    html = read(\"ALU_Gauntlet/web/static/gauntlet-references.html\")\n    route = read(\"ALU_Gauntlet/web/routes/gauntlet.py\")\n    assert 'id=\"intel-car\"' in html\n    assert 'id=\"intel-f-car\"' in html\n    assert 'id=\"intel-f-video\"' in html\n    assert 'query.get(\"car\"' in route\n    assert '\"video_url\": str(item.get(\"video_url\") or \"\")' in route\n    assert 'video_url = str(payload.get(\"video_url\") or \"\")' in route\n
+
+
+
+def test_reference_hub_track_intel_expansion():
+    html = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    route = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    assert 'id="intel-car"' in html
+    assert 'id="intel-f-car"' in html
+    assert 'id="intel-f-video"' in html
+    assert 'query.get("car"' in route
+    assert '"video_url": str(item.get("video_url") or "")' in route
+    assert 'video_url = str(payload.get("video_url") or "")' in route
