@@ -302,7 +302,14 @@ class AdminRoutesMixin:
                 continue
             try:
                 total = await self.bot.db[name].count_documents({})
-                missing = await self.bot.db[name].count_documents({"guild_id": {"$exists": False}})
+                missing_filter = {"guild_id": {"$exists": False}}
+                exempted = 0
+                if name == "system_events":
+                    # The production heartbeat is intentionally global: health checks
+                    # consume this singleton and it is not owned by a Discord guild.
+                    exempted = await self.bot.db[name].count_documents({"_id": "production_heartbeat", "guild_id": {"$exists": False}})
+                    missing_filter = {"guild_id": {"$exists": False}, "_id": {"$ne": "production_heartbeat"}}
+                missing = await self.bot.db[name].count_documents(missing_filter)
                 scanned += total
                 total_missing += missing
                 results.append({
@@ -310,6 +317,7 @@ class AdminRoutesMixin:
                     "exists": True,
                     "total": int(total),
                     "missing_guild_id": int(missing),
+                    "exempted_global": int(exempted),
                 })
             except Exception as exc:
                 results.append({
