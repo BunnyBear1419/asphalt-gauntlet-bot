@@ -69,6 +69,15 @@ def test_branding_cleanup_imports_object_id_inside_cleanup_block():
     )
 
 
+def test_all_themes_force_shared_form_controls_to_theme_tokens():
+    source = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.css").read_text(encoding="utf-8")
+    assert "html[data-theme] input:not([type=\"checkbox\"]):not([type=\"radio\"])" in source
+    assert "html[data-theme] select" in source
+    assert "html[data-theme] textarea" in source
+    assert "background:var(--rsl-box)!important" in source
+    assert "color:var(--rsl-box-text)!important" in source
+    assert "border-color:var(--rsl-box-line)!important" in source
+
 def test_light_theme_action_buttons_use_high_contrast_text():
     source = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
     assert 'html[data-theme="light"] .qa-blue' in source
