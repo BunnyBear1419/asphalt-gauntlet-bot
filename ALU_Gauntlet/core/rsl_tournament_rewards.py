@@ -250,6 +250,7 @@ async def sync_completed_tournament_roles(db, guild, tournament: dict, *, role_n
         club_ids = [str(row.get("entrant_id")) for row in standings if row.get("entrant_id") is not None]
         async for registration in db.tournament_club_registrations.find({
             "tournament_id": str(tournament.get("_id")),
+            "guild_id": str(tournament.get("guild_id")),
             "club_id": {"$in": club_ids},
             "status": {"$in": ["accepted", "checked_in"]},
         }):
@@ -262,6 +263,7 @@ async def sync_completed_tournament_roles(db, guild, tournament: dict, *, role_n
         if team_event:
             async for registration in db.tournament_club_registrations.find({
                 "tournament_id": str(tournament.get("_id")),
+                "guild_id": str(tournament.get("guild_id")),
                 "club_id": str(champion),
                 "status": {"$in": ["accepted", "checked_in"]},
             }):
