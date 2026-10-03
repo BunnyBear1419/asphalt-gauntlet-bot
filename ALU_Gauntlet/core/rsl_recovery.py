@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from pymongo import ReturnDocument
 
@@ -42,7 +43,7 @@ async def _start_recovery_run(db, guild_id: str) -> str | None:
             "status": "running",
             "started_at": now,
             "updated_at": now,
-            "expires_at": now + (7 * 24 * 60 * 60),
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
             "stats": {},
         })
         return run_id
