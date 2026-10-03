@@ -1185,6 +1185,7 @@ html[data-theme] .discord-stat-icon{background:var(--rsl-audit-panel2)!important
 html[data-theme] .discord-stat-icon svg{stroke:var(--rsl-audit-accent)!important}
 html[data-theme] .discord-cta-icon svg{fill:var(--rsl-audit-accent)!important;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--rsl-audit-accent) 35%,transparent))!important}
 html[data-theme] .discord-cta-button{background:linear-gradient(90deg,var(--rsl-audit-strong),var(--rsl-audit-accent))!important;color:var(--rsl-box-text)!important}
+html[data-theme="light"] .qa-blue,html[data-theme="light"] .qa-purple,html[data-theme="light"] .qa-gold,html[data-theme="light"] .qa-green,html[data-theme="light"] .wide-action,html[data-theme="light"] .ref-form button,html[data-theme="light"] .rsl-cookie-btn.primary,html[data-theme="light"] .discord-cta-button{color:#fff!important}
 html[data-theme] .home-upcoming-panel{background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
 html[data-theme] .home-upcoming-panel h2,html[data-theme] .home-upcoming-panel h3,html[data-theme] .home-upcoming-panel strong{color:var(--rsl-audit-text)!important}
 html[data-theme] .home-upcoming-panel p,html[data-theme] .home-upcoming-panel small,.home-upcoming-empty{color:var(--rsl-audit-muted)!important}
