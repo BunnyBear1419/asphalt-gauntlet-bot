@@ -370,7 +370,9 @@ class AdminRoutesMixin:
         decision = str(payload.get("decision", "")).strip().lower()
         if not submission_id or decision not in {"approve", "reject"}:
             raise web.HTTPBadRequest(text="A submission id and approve/reject decision are required.")
-        row = await self.bot.db.reference_pending.find_one({"_id": submission_id, "guild_id": str(guild_id), "status": "pending"})
+        row = await self.bot.db.reference_pending.find_one({
+            "_id": submission_id, "guild_id": str(guild_id), "status": "pending",
+        })
         if not row:
             raise web.HTTPNotFound(text="Pending reference not found.")
         if decision == "reject":
@@ -382,6 +384,12 @@ class AdminRoutesMixin:
                 raise web.HTTPConflict(text="Reference review was already completed.")
             await self._audit(str(guild_id), str(user.user_id), f"Rejected Gauntlet reference {submission_id}")
             return web.json_response({"ok": True, "status": "rejected"})
+        claim = await self.bot.db.reference_pending.update_one(
+            {"_id": submission_id, "guild_id": str(guild_id), "status": "pending"},
+            {"$set": {"status": "approving", "review_started_by": str(user.user_id), "review_started_at": time.time()}},
+        )
+        if claim.modified_count != 1:
+            raise web.HTTPConflict(text="Reference review is already being processed.")
         from bson import ObjectId
         reference = {
             "_id": ObjectId(), "guild_id": str(guild_id),
@@ -400,16 +408,27 @@ class AdminRoutesMixin:
             "approved_at": time.time(), "approved_by": str(user.user_id),
         }
         if not reference["course"] or not reference["video_url"]:
+            await self.bot.db.reference_pending.update_one(
+                {"_id": submission_id, "guild_id": str(guild_id), "status": "approving"},
+                {"$set": {"status": "pending"}, "$unset": {"review_started_by": "", "review_started_at": ""}},
+            )
             raise web.HTTPBadRequest(text="Pending reference is missing required metadata.")
-        await self.bot.db.gauntlet_references.insert_one(reference)
-        result = await self.bot.db.reference_pending.update_one(
-            {"_id": submission_id, "guild_id": str(guild_id), "status": "pending"},
-            {"$set": {"status": "approved", "reference_id": str(reference["_id"]), "reviewed_by": str(user.user_id), "reviewed_at": time.time()}},
-        )
-        if result.modified_count != 1:
-            raise web.HTTPConflict(text="Reference review was already completed.")
+        try:
+            await self.bot.db.gauntlet_references.insert_one(reference)
+            result = await self.bot.db.reference_pending.update_one(
+                {"_id": submission_id, "guild_id": str(guild_id), "status": "approving"},
+                {"$set": {"status": "approved", "reference_id": str(reference["_id"]), "reviewed_by": str(user.user_id), "reviewed_at": time.time()}},
+            )
+            if result.modified_count != 1:
+                raise web.HTTPConflict(text="Reference review state changed unexpectedly.")
+        except Exception:
+            await self.bot.db.reference_pending.update_one(
+                {"_id": submission_id, "guild_id": str(guild_id), "status": "approving"},
+                {"$set": {"status": "pending"}, "$unset": {"review_started_by": "", "review_started_at": ""}},
+            )
+            raise
         await self._audit(str(guild_id), str(user.user_id), f"Approved Gauntlet reference {submission_id}")
-        return web.json_response({"ok": True, "status": "approved", "reference_id": str(reference["_id"]))
+        return web.json_response({"ok": True, "status": "approved", "reference_id": str(reference["_id"])})
 
     async def admin_diagnostics(self, request: web.Request) -> web.Response:
         _, guild_id, guild = await self.require_admin(request)
