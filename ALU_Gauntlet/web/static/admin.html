@@ -683,13 +683,15 @@ loadOpsStatus();
 async function loadReliability(){
  try{
   const d=await api("/api/admin/operations"+q()+"&action=reliability");
-  const r=d.readiness||{},a=d.attention||{},e=d.economy||{},b=d.backup||{};
+  const r=d.readiness||{},a=d.attention||{},e=d.economy||{},b=d.backup||{},rec=d.recovery||{};
+  const recoveryStatus=rec.status||"NONE";
   const rows=[
    ["Release",d.release_sha||"unknown"],
    ["Readiness",r.status||"UNKNOWN"],
    ["Backup evidence",b.available?((b.file_count||0)+" file(s), latest "+(b.age_seconds==null?"unknown":Math.round(b.age_seconds/3600)+"h ago")):"Not available"],
    ["Economy integrity",e.ok?"PASS":"REVIEW REQUIRED"],
    ["Staff attention queue",String(a.total||0)+" item(s)"],
+   ["Recovery run",recoveryStatus+(rec.error?" • ERROR":"" )],
    ["Retention",Object.entries(d.retention_days||{}).map(([k,v])=>k+"="+v+"d").join(" • ")||"defaults"],
    ["Competition mode",d.safe_mode?"SAFE MODE":"LIVE"]
   ];
