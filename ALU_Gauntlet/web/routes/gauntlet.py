@@ -388,9 +388,12 @@ class GauntletRoutesMixin:
         """Return community track intel for the selected guild."""
         _, guild_id, _ = await self.require_guild_member(request)
         course = str(request.query.get("course", "")).strip()
+        car = str(request.query.get("car", "")).strip()[:100]
         query = {"guild_id": str(guild_id)}
         if course:
             query["course"] = course
+        if car:
+            query["car"] = {"$regex": "^" + re.escape(car) + "$", "$options": "i"}
         rows = []
         async for item in self.bot.db.reference_intel.find(query).sort("created_at", -1).limit(200):
             rows.append({
@@ -403,6 +406,8 @@ class GauntletRoutesMixin:
                 "driver": str(item.get("driver") or ""),
                 "user_id": str(item.get("user_id") or ""),
                 "helpful": int(item.get("helpful") or 0),
+                "car": str(item.get("car") or ""),
+                "video_url": str(item.get("video_url") or ""),
                 "created_at": item.get("created_at"),
             })
         return web.json_response({"rows": rows})
@@ -431,6 +436,10 @@ class GauntletRoutesMixin:
             await self.bot.db.reference_intel.update_one({"_id": iid, "guild_id": str(guild_id)}, {"$set": {"helpful": int(votes)}})
             return web.json_response({"ok": True, "helpful": int(votes)})
         course = str(payload.get("course") or "").strip()
+        car = str(payload.get("car") or "").strip()[:100]
+        video_url = str(payload.get("video_url") or "").strip()[:500]
+        if video_url and not re.match(r"^https?://", video_url, re.I):
+            raise web.HTTPBadRequest(text="Evidence URL must use http:// or https://.")
         title = str(payload.get("title") or "").strip()[:120]
         body = str(payload.get("body") or "").strip()[:1000]
         kind = str(payload.get("kind") or "tip").strip().lower()
