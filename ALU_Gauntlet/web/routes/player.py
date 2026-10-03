@@ -5,7 +5,7 @@ class PlayerRoutesMixin:
     async def profile_tournaments(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
         uid = str(user.user_id)
-        guild_ids = set(str(x) for x in user.guild_ids)
+        guild_ids = await self._live_guild_ids_for_user(user)
         rows = []
         total_matches = total_wins = total_losses = 0
         async for t in self.bot.db.tournaments.find({"guild_id": {"$in": list(guild_ids)}}).sort("start_time", -1):
