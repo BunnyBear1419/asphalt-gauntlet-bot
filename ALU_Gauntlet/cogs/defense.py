@@ -73,8 +73,14 @@ class DefenseView(discord.ui.View):
         if not profile:
             await interaction.followup.send(await localize_text(bot, interaction.user.id, 'ℹ️ This defense review is already completed or no longer pending.', interaction.locale), ephemeral=True)
             for child in self.children: child.disabled = True
-            try: await interaction.message.edit(view=self)
-            except Exception: pass
+            try:
+                await interaction.message.edit(view=self)
+            except Exception:
+                logging.getLogger(__name__).debug(
+                    "Unable to disable completed defense review controls for message %s",
+                    getattr(interaction.message, "id", "unknown"),
+                    exc_info=True,
+                )
             return
         payload = profile.get('defense_review_payload') or {}
         submitted_courses = payload.get('courses') or self.courses
