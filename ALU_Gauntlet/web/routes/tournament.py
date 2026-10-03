@@ -219,7 +219,7 @@ class TournamentRoutesMixin:
             raise web.HTTPBadRequest(text="Invalid tournament or club ID.")
         tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tournament_id)})
         club = await self.bot.db.clubs.find_one({"_id": ObjectId(club_id)})
-        if not tournament or not club or str(tournament.get("guild_id")) not in {str(x) for x in user.guild_ids} or str(club.get("guild_id")) != str(tournament.get("guild_id")):
+        if not tournament or not club or str(tournament.get("guild_id")) not in await self._live_guild_ids_for_user(user) or str(club.get("guild_id")) != str(tournament.get("guild_id")):
             raise web.HTTPNotFound(text="Tournament or club not found.")
         if str(club.get("leader_id")) != str(user.user_id):
             raise web.HTTPForbidden(text="Only the club leader can set the tournament lineup.")
@@ -613,7 +613,7 @@ class TournamentRoutesMixin:
         from bson import ObjectId
         if not ObjectId.is_valid(tournament_id): raise web.HTTPBadRequest(text="Invalid tournament ID.")
         tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tournament_id)})
-        if not tournament or str(tournament.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPNotFound(text="Tournament not found.")
+        if not tournament or str(tournament.get("guild_id")) not in await self._live_guild_ids_for_user(user): raise web.HTTPNotFound(text="Tournament not found.")
         guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(tournament.get("guild_id"))), None)
         staff = bool(guild and await self._is_live_tournament_staff(user, str(tournament.get("guild_id")), guild))
         statuses = ["approved", "pending"] if staff and request.query.get("include_pending") == "1" else ["approved"]
@@ -644,7 +644,7 @@ class TournamentRoutesMixin:
         from bson import ObjectId
         if not ObjectId.is_valid(tournament_id): raise web.HTTPBadRequest(text="Invalid tournament ID.")
         tournament = await self.bot.db.tournaments.find_one({"_id": ObjectId(tournament_id)})
-        if not tournament or str(tournament.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPNotFound(text="Tournament not found.")
+        if not tournament or str(tournament.get("guild_id")) not in await self._live_guild_ids_for_user(user): raise web.HTTPNotFound(text="Tournament not found.")
         guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(tournament.get("guild_id"))), None)
         staff = bool(guild and await self._is_live_tournament_staff(user, str(tournament.get("guild_id")), guild))
         if not staff and not await self._tournament_media_participant(user, tournament): raise web.HTTPForbidden(text="Only tournament participants or tournament staff can upload media.")
