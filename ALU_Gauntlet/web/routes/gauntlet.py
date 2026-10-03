@@ -193,10 +193,48 @@ class GauntletRoutesMixin:
         return web.json_response({"ok": True, "id": note_id, "visibility": visibility, "seconds": seconds})
 
     async def gauntlet_reference_leaderboard(self, request: web.Request) -> web.Response:
-        """Return guild-scoped reference contribution standings."""
+        """Return guild-scoped contributor or video-reference standings."""
         _, guild_id, _ = await self.require_guild_member(request)
+        guild = str(guild_id)
+        mode = str(request.query.get("mode", "contributors")).lower()
+
+        if mode == "videos":
+            def parse_reference_time(value):
+                text = str(value or "").strip().replace(",", ".")
+                if not text:
+                    return None
+                try:
+                    if ":" in text:
+                        parts = text.split(":")
+                        if len(parts) == 2:
+                            return float(parts[0]) * 60.0 + float(parts[1])
+                        return None
+                    return float(text)
+                except (TypeError, ValueError):
+                    return None
+
+            rows = []
+            async for row in self.bot.db.gauntlet_references.find({"guild_id": guild}):
+                seconds = parse_reference_time(row.get("time") or row.get("lap_time"))
+                if seconds is None or seconds <= 0:
+                    continue
+                uid = str(row.get("created_by") or row.get("submitted_by") or "")
+                driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{uid}"}) if uid else None
+                rows.append({
+                    "id": str(row.get("_id", "")),
+                    "course": str(row.get("course") or row.get("track") or ""),
+                    "title": str(row.get("title") or "Reference Video"),
+                    "driver": str((driver or {}).get("game_id") or (driver or {}).get("username") or uid or "Reference Driver"),
+                    "car": str(row.get("car") or ""),
+                    "time": str(row.get("time") or row.get("lap_time") or ""),
+                    "seconds": seconds,
+                    "video_url": str(row.get("video_url") or row.get("video_reference") or ""),
+                })
+            rows.sort(key=lambda x: (x["seconds"], x["course"].casefold(), x["title"].casefold()))
+            return web.json_response({"mode": "videos", "rows": rows[:50]})
+
         stats = {}
-        async for row in self.bot.db.gauntlet_references.find({"guild_id": str(guild_id)}):
+        async for row in self.bot.db.gauntlet_references.find({"guild_id": guild}):
             uid = str(row.get("created_by") or row.get("submitted_by") or "")
             if not uid:
                 continue
@@ -208,12 +246,12 @@ class GauntletRoutesMixin:
                 item["cars"].add(str(row["car"]))
         rows = []
         for item in stats.values():
-            driver = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{item['user_id']}"}) or {}
+            driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{item['user_id']}"}) or {}
             rows.append({"user_id": item["user_id"],
                          "driver": str(driver.get("game_id") or driver.get("username") or item["user_id"]),
                          "references": item["references"], "tracks": len(item["tracks"]), "cars": len(item["cars"])})
         rows.sort(key=lambda x: (-x["references"], -x["tracks"], -x["cars"], x["driver"].casefold()))
-        return web.json_response({"rows": rows[:50]})
+        return web.json_response({"mode": "contributors", "rows": rows[:50]})
 
     async def gauntlet_matches(self, request: web.Request) -> web.Response:
         user,guild_id,_=await self.require_guild_member(request); uid=str(user.user_id); active=[]; recent=[]
