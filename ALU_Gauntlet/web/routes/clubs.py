@@ -34,7 +34,7 @@ class ClubsRoutesMixin:
         return parsed.isoformat() if parsed else value
 
     async def _club_recount_member_count(self, club_id: str) -> int:
-        count = await self.bot.db.club_members.count_documents({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))})
+        count = await self.bot.db.club_members.count_documents({"club_id": str(club_id)})
         oid = ObjectId(str(club_id)) if ObjectId.is_valid(str(club_id)) else club_id
         await self.bot.db.clubs.update_one({"_id": oid}, {"$set": {"member_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}})
         return count
@@ -58,9 +58,9 @@ class ClubsRoutesMixin:
             club["member_count"] = len(members)
             club["mine"] = any(str(m.get("user_id")) == str(user.user_id) for m in members)
             club["leader"] = str(club.get("leader_id")) == str(user.user_id)
-            club["tournament_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"]})
-            club["tournament_pending_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": "pending"})
-            club["tournament_accepted_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "status": {"$in": ["accepted", "checked_in"]}})
+            club["tournament_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "guild_id": club["guild_id"]})
+            club["tournament_pending_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "guild_id": club["guild_id"], "status": "pending"})
+            club["tournament_accepted_count"] = await self.bot.db.tournament_club_registrations.count_documents({"club_id": club["id"], "guild_id": club["guild_id"], "status": {"$in": ["accepted", "checked_in"]}})
 
             # Build the club's tournament W/L from verified, completed team matches.
             # Byes are intentionally excluded so they do not inflate a club's record.
@@ -184,14 +184,14 @@ class ClubsRoutesMixin:
                     if not updated.modified_count:
                         raise web.HTTPConflict(text="Club leadership changed before your transfer completed.")
                     old_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "guild_id": str(club.get("guild_id")), "user_id": str(user.user_id)}, {"$set": {"role": "officer", "updated_at": now}}, session=session)
-                    new_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": target_id}, {"$set": {"role": "leader", "updated_at": now}}, session=session)
+                    new_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "guild_id": str(club.get("guild_id")), "user_id": target_id}, {"$set": {"role": "leader", "updated_at": now}}, session=session)
                     if not old_role.modified_count or not new_role.modified_count:
                         raise web.HTTPConflict(text="Club membership changed before leadership transfer completed.")
         else:
-            updated = await self.bot.db.clubs.update_one({"_id": club_id, "leader_id": str(user.user_id)}, {"$set": {"leader_id": target_id, "updated_at": now}})
+            updated = await self.bot.db.clubs.update_one({"_id": club_id, "guild_id": str(club.get("guild_id")), "leader_id": str(user.user_id)}, {"$set": {"leader_id": target_id, "updated_at": now}})
             if not updated.modified_count:
                 raise web.HTTPConflict(text="Club leadership changed before your transfer completed.")
-            old_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": str(user.user_id)}, {"$set": {"role": "officer", "updated_at": now}})
+            old_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "guild_id": str(club.get("guild_id")), "user_id": str(user.user_id)}, {"$set": {"role": "officer", "updated_at": now}})
             new_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": target_id}, {"$set": {"role": "leader", "updated_at": now}})
             if not old_role.modified_count or not new_role.modified_count:
                 await self.bot.db.clubs.update_one({"_id": club_id, "leader_id": target_id}, {"$set": {"leader_id": str(user.user_id), "updated_at": now}})
@@ -604,7 +604,7 @@ class ClubsRoutesMixin:
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": str(user.user_id)}):
             raise web.HTTPConflict(text="You are already in a club in this server.")
         await self._ensure_club_indexes()
-        if await self.bot.db.club_join_requests.count_documents({"club_id": str(oid), "status": "pending"}) >= 50:
+        if await self.bot.db.club_join_requests.count_documents({"club_id": str(oid), "guild_id": str(club.get("guild_id")), "status": "pending"}) >= 50:
             raise web.HTTPConflict(text="This club already has the maximum number of pending join requests.")
         if int(club.get("member_count", 0) or 0) >= 20:
             raise web.HTTPConflict(text="That club is full.")
