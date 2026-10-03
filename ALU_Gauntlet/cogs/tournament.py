@@ -34,19 +34,22 @@ async def _entrant_name(tournament, entrant_id):
     return str(getattr(member, "display_name", None) or getattr(member, "name", None) or sid)
 
 async def _claim_action(tournament_id, match_id, action):
-    """Claim a short-lived match action so Discord and web actions cannot double-process it."""
+    """Claim a short-lived match action and return its owner token."""
     from datetime import datetime, timezone, timedelta
+    from secrets import token_urlsafe
     now = datetime.now(timezone.utc)
+    token = token_urlsafe(24)
     doc = {
         "tournament_id": str(tournament_id),
         "match_id": str(match_id),
         "action": str(action),
         "claimed_at": now,
         "expires_at": now + timedelta(seconds=60),
+        "lock_token": token,
     }
     try:
         await bot.db.tournament_action_locks.insert_one(doc)
-        return True
+        return token
     except Exception as exc:
         if exc.__class__.__name__ != "DuplicateKeyError":
             raise
@@ -54,14 +57,12 @@ async def _claim_action(tournament_id, match_id, action):
             {"tournament_id": str(tournament_id), "match_id": str(match_id), "expires_at": {"$lt": now}},
             doc,
         )
-        return replaced is not None
+        return replaced.get("lock_token") == token if replaced else False
 
 
-async def _release_action(tournament_id, match_id, action):
-    # Release only the lock owned by this action. If a long-running action
-    # outlives the 60-second lease, a later action may replace the expired lock.
+async def _release_action(tournament_id, match_id, action, lock_token):
     await bot.db.tournament_action_locks.delete_one(
-        {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action)}
+        {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action), "lock_token": str(lock_token)}
     )
 
 
@@ -167,7 +168,8 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
                 ephemeral=True
             )
             return
-        if not await _claim_action(self.tournament_id, self.match_id, "submit"):
+        lock_token = await _claim_action(self.tournament_id, self.match_id, "submit")
+        if not lock_token:
             await interaction.response.send_message(
                 await localize_text(bot, interaction.user.id, "❌ Another result submission is already being processed for this match.", interaction.locale),
                 ephemeral=True
@@ -184,7 +186,7 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
             match.update({"result_status":"pending","submitted_by":str(interaction.user.id),"submitted_at":discord.utils.utcnow().isoformat(),"winner_id":self.winner_id,"proof_url":proof,"result_notes":str(self.notes.value).strip()})
             await bot.db.tournaments.update_one({"_id":tournament["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
         finally:
-            await _release_action(self.tournament_id, self.match_id, "submit")
+            await _release_action(self.tournament_id, self.match_id, "submit", lock_token)
         if result_mode == "admin_only":
             ok, message = await verify_match_on_discord(self.tournament_id, self.match_id, "approve", interaction.user.id)
             await interaction.response.send_message(
@@ -328,7 +330,8 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
         return False, "Tournament is not live."
     if match.get("result_status")!="pending":
         return False, "This match has no pending result."
-    if not await _claim_action(tournament_id, str(match_id), "verify"):
+    lock_token = await _claim_action(tournament_id, str(match_id), "verify")
+    if not lock_token:
         return False, "Another staff action is already processing this match."
     try:
         if action=="reject":
@@ -489,7 +492,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
             await _sync_completed_tournament_roles(t)
         return True, message
     finally:
-        await _release_action(tournament_id, str(match_id), "verify")
+        await _release_action(tournament_id, str(match_id), "verify", lock_token)
 
 
 async def build_tournament_view(tournament_id,user):
