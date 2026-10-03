@@ -455,6 +455,18 @@ def test_reference_hub_timestamp_notes_seek_and_staff_queue():
     assert '"$set": {"status": "pending", "recovered_at": now}' in admin
     assert '"$unset": {"review_started_by": "", "review_started_at": ""}' in admin
 
+def test_reference_hub_has_practice_planner():
+    html = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-references.html").read_text(encoding="utf-8")
+    route = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "gauntlet.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    assert 'data-tab="practice"' in html
+    assert 'My Practice Planner' in html
+    assert 'async function loadPractice()' in html
+    assert '/api/gauntlet/references/practice-plan' in html
+    assert 'async def gauntlet_reference_practice_plan(' in route
+    assert 'add_get("/api/gauntlet/references/practice-plan"' in core
+
+
 def test_reference_hub_has_community_requests():
     html = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-references.html").read_text(encoding="utf-8")
     route = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "gauntlet.py").read_text(encoding="utf-8")
