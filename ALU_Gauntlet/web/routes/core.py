@@ -282,7 +282,7 @@ class CoreRoutesMixin:
 (function(){
   try {
     var saved=localStorage.getItem("rsl_theme");
-    if(["dark","light","ocean","purple","crimson","emerald","sunset","graphite"].includes(saved)) document.documentElement.setAttribute("data-theme",saved);
+    if(["dark","light","ocean","purple","crimson","emerald","sunset","graphite"].includes(saved)) document.documentElement.setAttribute("data-theme",saved || "dark");
   } catch(e) {}
 })();
 </script>
@@ -1667,7 +1667,7 @@ html[data-theme="emerald"]{
 }
 html[data-theme="sunset"]{
   --rsl-final-bg:#170b06;--rsl-final-panel:#2b160c;--rsl-final-panel2:#4d2815;
-  --rsl-final-line:#7d4724;--rsl-final-text:var(--rsl-box-text)0e5;--rsl-final-muted:#c9aa91;--rsl-final-accent:#ff9b54;
+  --rsl-final-line:#7d4724;--rsl-final-text:#fff0e5;--rsl-final-muted:#c9aa91;--rsl-final-accent:#ff9b54;
 }
 html[data-theme="graphite"]{
   --rsl-final-bg:#111417;--rsl-final-panel:#1c2024;--rsl-final-panel2:#30363c;
