@@ -19,6 +19,8 @@ import logging
 import time
 import uuid
 
+from pymongo import ReturnDocument
+
 from .match_scoring import apply_rsl_performance_bonus
 
 log = logging.getLogger(__name__)
@@ -82,7 +84,7 @@ async def _record_bonus_failure(db, reservation: dict, now: float, *, error: Bas
     exhausted = False
     attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
     try:
-        result = await db.matches.update_one(
+        current = await db.matches.find_one_and_update(
             {
                 "_id": reservation["_id"],
                 "settlement_status": "completed",
@@ -92,21 +94,16 @@ async def _record_bonus_failure(db, reservation: dict, now: float, *, error: Bas
                 "$inc": {"rsl_bonus_retry_attempts": 1},
                 "$set": {"rsl_bonus_last_error_at": now},
             },
+            projection={"rsl_bonus_retry_attempts": 1, "rsl_bonus_recovery_status": 1},
+            return_document=ReturnDocument.AFTER,
         )
-        if getattr(result, "modified_count", 0) != 1:
+        if current is None:
             current = await db.matches.find_one(
                 {"_id": reservation["_id"]},
                 {"rsl_bonus_retry_attempts": 1, "rsl_bonus_recovery_status": 1},
             ) or {}
-            attempts = int(current.get("rsl_bonus_retry_attempts", attempts) or attempts)
-            exhausted = str(current.get("rsl_bonus_recovery_status") or "").casefold() == "needs_staff_review"
-        else:
-            current = await db.matches.find_one(
-                {"_id": reservation["_id"]},
-                {"rsl_bonus_retry_attempts": 1},
-            ) or {}
-            attempts = int(current.get("rsl_bonus_retry_attempts", attempts) or attempts)
-            exhausted = attempts >= BONUS_RETRY_MAX_ATTEMPTS
+        attempts = int(current.get("rsl_bonus_retry_attempts", attempts) or attempts)
+        exhausted = str(current.get("rsl_bonus_recovery_status") or "").casefold() == "needs_staff_review" or attempts >= BONUS_RETRY_MAX_ATTEMPTS
 
         if exhausted:
             await db.matches.update_one(
