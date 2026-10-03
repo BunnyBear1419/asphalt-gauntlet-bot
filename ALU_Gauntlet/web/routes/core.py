@@ -2544,6 +2544,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/admin/csp-diagnostics", self.admin_csp_diagnostics)
         self.app.router.add_get("/api/admin/operations", self.admin_operations)
         self.app.router.add_post("/api/admin/operations", self.admin_operations)
+        self.app.router.add_get("/api/admin/gauntlet/references/review", self.admin_reference_review_queue)
         self.app.router.add_post("/api/admin/gauntlet/references/review", self.admin_reference_review)
         self.app.router.add_get("/api/admin/competition-safe-mode", self.admin_competition_safe_mode)
         self.app.router.add_post("/api/admin/competition-safe-mode", self.admin_competition_safe_mode)
