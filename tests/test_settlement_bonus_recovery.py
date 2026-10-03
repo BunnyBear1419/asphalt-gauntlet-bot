@@ -225,3 +225,13 @@ def test_csp_report_body_is_hard_capped_even_without_content_length():
     source = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
     assert "request.content.read(64 * 1024 + 1)" in source
     assert "len(raw_body) > 64 * 1024" in source
+
+def test_discord_and_web_bonus_failures_leave_recovery_marker_unchecked():
+    challenges = (ROOT / "ALU_Gauntlet/cogs/challenges.py").read_text(encoding="utf-8")
+    gauntlet = (ROOT / "ALU_Gauntlet/web/routes/gauntlet.py").read_text(encoding="utf-8")
+    assert "bonus_checked = False" in challenges
+    assert "bonus_checked = True" in challenges
+    assert "'rsl_bonus_checked': bonus_checked" in challenges
+    assert "bonus_checked = False" in gauntlet
+    assert "bonus_checked = True" in gauntlet
+    assert '"rsl_bonus_checked":bonus_checked' in gauntlet
