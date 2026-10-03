@@ -163,7 +163,7 @@ def test_exhausted_bonus_retries_close_processing_challenge_and_flag_staff_revie
     assert stats["closed"] == 1
     assert stats["staff_review"] == 1
     # The match is flagged for the Admin System attention queue...
-    match_set = db.matches.updates[0][1]["$set"]
+    match_set = db.matches.updates[1][1]["$set"]
     assert match_set["rsl_bonus_recovery_status"] == "needs_staff_review"
     # ...and the player is released instead of staying locked in "processing".
     (query, update), = db.active_challenges.updates
