@@ -371,7 +371,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id, guil
                 match.pop(key,None)
             match["status"]="ready"
             await bot.db.tournaments.update_one(
-                {"_id":t["_id"]},
+                {"_id":t["_id"],"guild_id":str(t.get("guild_id") or "")},
                 {"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}}
             )
             message="Result rejected. The match is ready for another submission."
@@ -517,7 +517,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id, guil
 
             message="Result approved and winner advanced."
         await bot.db.tournaments.update_one(
-            {"_id":t["_id"]},
+            {"_id":t["_id"],"guild_id":str(t.get("guild_id") or "")},
             {"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"standings":t.get("standings"),"updated_at":discord.utils.utcnow().isoformat()}}
         )
         if t.get("status") == "completed":
