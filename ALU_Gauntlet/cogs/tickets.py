@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import ipaddress
 import socket
 import time
@@ -12,6 +13,8 @@ import aiohttp
 from pymongo.errors import DuplicateKeyError
 from discord.ext import commands, tasks
 from ..core.core import bot
+
+log = logging.getLogger(__name__)
 
 DEFAULT_TYPES = [
  {"key":"general","label":"General Support","emoji":"💬","description":"General RSL help.","priority":"normal","category_id":"","staff_role_ids":[],"questions":["What do you need help with?"]},
@@ -126,6 +129,7 @@ async def notify_ticket(self,ticket_id,row,event,message=None,staff=False,player
                         async with session.post(webhook,json=payload,allow_redirects=False) as response:
                             delivered=200 <= int(response.status) < 300
         except Exception:
+            log.exception("Ticket notification delivery failed: ticket=%s event=%s destination=%s", ticket_id, event, destination)
             delivered=False
         await self.bot.db.rsl_ticket_notifications.update_one({"event_key":key,"guild_id":guild_id},{"$set":{"status":"delivered" if delivered else "failed","delivered_at":time.time() if delivered else None}})
         delivered_any=delivered_any or delivered
