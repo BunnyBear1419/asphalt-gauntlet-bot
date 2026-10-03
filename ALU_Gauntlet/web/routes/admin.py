@@ -454,6 +454,25 @@ class AdminRoutesMixin:
 
         return web.json_response({"ok":all(x["ok"] for x in checks),"checks":checks,"guild":{"id":guild_id,"name":guild.name,"members":getattr(guild,"member_count",0)}})
 
+    async def admin_competition_safe_mode(self, request: web.Request) -> web.Response:
+        """Dedicated Competition Safe Mode endpoint used by the Admin UI."""
+        user, guild_id, _guild = await self.require_admin(request)
+        if request.method == "GET":
+            settings = await self.bot.db.settings.find_one({"_id": guild_id}) or {}
+            return web.json_response({
+                "ok": True,
+                "guild_id": str(guild_id),
+                "maintenance": settings.get("maintenance_mode") or {},
+            })
+        try:
+            payload = await self._json_object(request)
+        except Exception as exc:
+            raise web.HTTPBadRequest(text="Invalid JSON body.") from exc
+        enabled = bool(payload.get("enabled"))
+        message = str(payload.get("message") or "").strip()[:500]
+        mode = await set_maintenance_mode(self.bot.db, guild_id, enabled, message, user.user_id)
+        return web.json_response({"ok": True, "guild_id": str(guild_id), "maintenance": mode})
+
     async def admin_operations(self, request: web.Request) -> web.Response:
         """Unified staff operations surface for safe mode, integrity, season finalization and release history."""
         user, guild_id, _guild = await self.require_admin(request)
