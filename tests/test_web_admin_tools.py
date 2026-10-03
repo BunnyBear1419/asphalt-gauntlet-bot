@@ -136,7 +136,9 @@ def test_guild_ownership_audit_renders_details_without_overwriting_results():
     assert 'setStatus("guild-ownership-audit-status"' in page
     assert 'id="diagnostic-results" class="admin-log"' in page
     assert 'setStatus("diagnostic-results"' in page
-\n\ndef test_guild_ownership_audit_exempts_only_global_production_heartbeat():
+
+
+def test_guild_ownership_audit_exempts_only_global_production_heartbeat():
     source = (ROOT / "ALU_Gauntlet/web/routes/admin.py").read_text(encoding="utf-8")
     audit = source.split("async def admin_guild_ownership_audit", 1)[1].split("async def admin_diagnostics", 1)[0]
     assert 'name == "system_events"' in audit
