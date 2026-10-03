@@ -74,6 +74,14 @@ class AuthRoutesMixin:
                 connected[gid] = guild
         return connected
 
+    async def _live_guild_ids_for_user(self, user: Any) -> set[str]:
+        """Return only currently connected Discord guilds where the user is a live member.
+
+        Do not use the OAuth guild snapshot for authorization: a 30-day web session
+        can outlive a user's Discord membership in a server.
+        """
+        return set((await self._connected_guilds_for_user(user)).keys())
+
     async def require_guild_member(self, request: web.Request) -> tuple[Any, str, Any]:
         """Resolve the active Discord server using live bot membership.
 
