@@ -2644,6 +2644,8 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/gauntlet/references", self.create_gauntlet_reference)
         self.app.router.add_post("/api/gauntlet/references/submit", self.gauntlet_reference_submit)
         self.app.router.add_get("/api/gauntlet/references/leaderboard", self.gauntlet_reference_leaderboard)
+        self.app.router.add_get("/api/gauntlet/references/intel", self.gauntlet_reference_intel)
+        self.app.router.add_post("/api/gauntlet/references/intel", self.gauntlet_reference_intel_action)
         self.app.router.add_get("/api/gauntlet/references/{reference_id}/notes", self.gauntlet_reference_notes)
         self.app.router.add_post("/api/gauntlet/references/{reference_id}/notes", self.gauntlet_reference_note_action)
         self.app.router.add_delete("/api/gauntlet/references/{reference_id}/notes", self.gauntlet_reference_note_action)
