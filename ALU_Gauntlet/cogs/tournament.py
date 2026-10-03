@@ -24,7 +24,11 @@ async def _entrant_name(tournament, entrant_id):
     sid = str(entrant_id)
     if int(tournament.get("team_size", 1)) > 1:
         from bson import ObjectId
-        club = await bot.db.clubs.find_one({"_id": ObjectId(sid)}) if ObjectId.is_valid(sid) else None
+        guild_id = str(tournament.get("guild_id") or "")
+        club_query = {"_id": ObjectId(sid)} if ObjectId.is_valid(sid) else None
+        if club_query is not None and guild_id:
+            club_query["guild_id"] = guild_id
+        club = await bot.db.clubs.find_one(club_query) if club_query else None
         return str(club.get("name", sid)) if club else sid
     member = None
     try:
@@ -70,14 +74,16 @@ async def _is_participant(tournament, match, user_id):
     uid = str(user_id)
     slots = [str(x) for x in (match.get("player_slots") or []) if x]
     if int(tournament.get("team_size", 1)) > 1:
-        return bool(await bot.db.tournament_club_registrations.find_one(
-            {
-                "tournament_id": str(tournament["_id"]),
-                "club_id": {"$in": slots},
-                "lineup": uid,
-                "status": {"$in": ["accepted", "checked_in"]},
-            }
-        ))
+        query = {
+            "tournament_id": str(tournament["_id"]),
+            "club_id": {"$in": slots},
+            "lineup": uid,
+            "status": {"$in": ["accepted", "checked_in"]},
+        }
+        guild_id = str(tournament.get("guild_id") or "")
+        if guild_id:
+            query["guild_id"] = guild_id
+        return bool(await bot.db.tournament_club_registrations.find_one(query))
     return uid in slots
 
 async def _is_tournament_staff(interaction):
@@ -121,7 +127,10 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
 
     async def on_submit(self, interaction):
         from bson import ObjectId
-        tournament = await bot.db.tournaments.find_one({"_id": ObjectId(self.tournament_id)}) if ObjectId.is_valid(self.tournament_id) else None
+        tournament_query = {"_id": ObjectId(self.tournament_id)} if ObjectId.is_valid(self.tournament_id) else None
+        if tournament_query and interaction.guild:
+            tournament_query["guild_id"] = str(interaction.guild.id)
+        tournament = await bot.db.tournaments.find_one(tournament_query) if tournament_query else None
         if not tournament or tournament.get("status") != "live":
             await interaction.response.send_message(
                 await localize_text(bot, interaction.user.id, "❌ This tournament is not live.", interaction.locale),
@@ -189,7 +198,13 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
         finally:
             await _release_action(self.tournament_id, self.match_id, "submit", lock_token)
         if result_mode == "admin_only":
-            ok, message = await verify_match_on_discord(self.tournament_id, self.match_id, "approve", interaction.user.id)
+            ok, message = await verify_match_on_discord(
+                self.tournament_id,
+                self.match_id,
+                "approve",
+                interaction.user.id,
+                guild_id=str(interaction.guild.id) if interaction.guild else None,
+            )
             await interaction.response.send_message(
                 await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ") + message, interaction.locale),
                 ephemeral=True
@@ -217,7 +232,10 @@ class MatchResultView(discord.ui.View):
             button=discord.ui.Button(label=f"Winner: {entrant[:70]}", style=discord.ButtonStyle.primary, custom_id=f"alu_tourney_win_{self.match_id}_{index}")
             async def callback(interaction, entrant=entrant):
                 from bson import ObjectId
-                tournament=await bot.db.tournaments.find_one({"_id":ObjectId(self.tournament_id)}) if ObjectId.is_valid(self.tournament_id) else None
+                tournament_query={"_id":ObjectId(self.tournament_id)} if ObjectId.is_valid(self.tournament_id) else None
+                if tournament_query and interaction.guild:
+                    tournament_query["guild_id"]=str(interaction.guild.id)
+                tournament=await bot.db.tournaments.find_one(tournament_query) if tournament_query else None
                 match=next((m for m in _matches(tournament or {}) if str(m.get("id"))==self.match_id),None)
                 if not tournament or not match:
                     await interaction.response.send_message(
@@ -249,7 +267,14 @@ class TournamentSelect(discord.ui.Select):
         super().__init__(placeholder="Choose a tournament…",min_values=1,max_values=1,options=options)
 
     async def callback(self, interaction):
-        await interaction.response.edit_message(embed=await build_tournament_embed(self.values[0]),view=await build_tournament_view(self.values[0],interaction.user))
+        guild_id = str(interaction.guild.id) if interaction.guild else None
+        if not guild_id:
+            await interaction.response.send_message("❌ This tournament panel can only be used inside a server.", ephemeral=True)
+            return
+        await interaction.response.edit_message(
+            embed=await build_tournament_embed(self.values[0], guild_id=guild_id),
+            view=await build_tournament_view(self.values[0], interaction.user, guild_id=guild_id),
+        )
 
 class TournamentPickerView(discord.ui.View):
     def __init__(self,tournaments):
@@ -283,9 +308,12 @@ async def _sync_completed_tournament_roles(tournament):
         )
     except Exception:
         log.exception("Failed to synchronize tournament roles for completed tournament %s", tournament.get("_id"))
-async def build_tournament_embed(tournament_id):
+async def build_tournament_embed(tournament_id, guild_id=None):
     from bson import ObjectId
-    t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
+    query={"_id":ObjectId(str(tournament_id))} if ObjectId.is_valid(str(tournament_id)) else None
+    if query is not None and guild_id:
+        query["guild_id"]=str(guild_id)
+    t=await bot.db.tournaments.find_one(query) if query else None
     if not t:
         return discord.Embed(title="🏆 Tournament",description="Tournament not found.")
     embed=discord.Embed(title=f"🏆 {t.get('name','Tournament')}",color=0x7C4DFF)
@@ -312,9 +340,12 @@ async def build_tournament_embed(tournament_id):
     embed.add_field(name="🎮 Match Center",value="\n".join(lines) or "No active matches.",inline=False)
     return embed
 
-async def verify_match_on_discord(tournament_id, match_id, action, user_id):
+async def verify_match_on_discord(tournament_id, match_id, action, user_id, guild_id=None):
     from bson import ObjectId
-    t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
+    query={"_id":ObjectId(str(tournament_id))} if ObjectId.is_valid(str(tournament_id)) else None
+    if query is not None and guild_id:
+        query["guild_id"]=str(guild_id)
+    t=await bot.db.tournaments.find_one(query) if query else None
     if not t:
         return False, "Tournament not found."
     bracket=t.get("bracket") or {}
@@ -496,9 +527,12 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
         await _release_action(tournament_id, str(match_id), "verify", lock_token)
 
 
-async def build_tournament_view(tournament_id,user):
+async def build_tournament_view(tournament_id,user,guild_id=None):
     from bson import ObjectId
-    t=await bot.db.tournaments.find_one({"_id":ObjectId(str(tournament_id))}) if ObjectId.is_valid(str(tournament_id)) else None
+    query={"_id":ObjectId(str(tournament_id))} if ObjectId.is_valid(str(tournament_id)) else None
+    if query is not None and guild_id:
+        query["guild_id"]=str(guild_id)
+    t=await bot.db.tournaments.find_one(query) if query else None
     view=discord.ui.View(timeout=900)
     if not t: return view
     ready=[m for m in _matches(t) if m.get("status")=="ready" and len([x for x in (m.get("player_slots") or []) if x])==2]
@@ -547,7 +581,13 @@ ephemeral=True,
 ephemeral=True,
                     )
                     return
-                ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"approve",interaction.user.id)
+                ok,msg=await verify_match_on_discord(
+                    tournament_id,
+                    match.get("id"),
+                    "approve",
+                    interaction.user.id,
+                    guild_id=str(interaction.guild.id) if interaction.guild else None,
+                )
                 await interaction.response.send_message(
                     await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ")+msg, interaction.locale),
                     ephemeral=True
@@ -562,7 +602,13 @@ ephemeral=True,
 ephemeral=True,
                     )
                     return
-                ok,msg=await verify_match_on_discord(tournament_id,match.get("id"),"reject",interaction.user.id)
+                ok,msg=await verify_match_on_discord(
+                    tournament_id,
+                    match.get("id"),
+                    "reject",
+                    interaction.user.id,
+                    guild_id=str(interaction.guild.id) if interaction.guild else None,
+                )
                 await interaction.response.send_message(
                     await localize_text(bot, interaction.user.id, ("✅ " if ok else "❌ ")+msg, interaction.locale),
                     ephemeral=True
@@ -590,7 +636,10 @@ class TournamentMediaModerationView(discord.ui.View):
                 ephemeral=True
             )
             return
-        media = await bot.db.tournament_media.find_one({"_id": self.media_id})
+        media = await bot.db.tournament_media.find_one({
+            "_id": self.media_id,
+            "guild_id": str(interaction.guild.id) if interaction.guild else "",
+        })
         if not media or media.get("status") != "pending":
             await interaction.response.send_message(
                 await localize_text(bot, interaction.user.id, "This media submission has already been reviewed or is no longer available.", interaction.locale),
