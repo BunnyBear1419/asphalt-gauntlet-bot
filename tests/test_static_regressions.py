@@ -450,3 +450,13 @@ def test_reference_hub_timestamp_notes_seek_and_staff_queue():
     assert "async def admin_reference_review_queue" in admin
     assert 'status": {"$in": ["pending", "approving"]}' in admin
     assert 'gauntlet_references.delete_one' in admin
+
+def test_reference_hub_has_video_reference_leaderboard():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    assert "Video Leaderboard" in page
+    assert "mode=videos" in page
+    assert "async function loadContributors()" in page
+    assert 'mode == "videos"' in gauntlet
+    assert '"seconds": seconds' in gauntlet
+    assert "rows[:50]" in gauntlet
