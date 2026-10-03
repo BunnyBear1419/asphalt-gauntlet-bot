@@ -15,7 +15,7 @@ EXPECTED_OPERATIONAL_COLLECTIONS = {
     "season_state",
     "season_history",
     "settings",
-    "reference_pending",
+    "reference_pending", "gauntlet_reference_notes",
     "lap_times",
     "lap_time_history",
     "map_records",
