@@ -4,6 +4,7 @@ All features are free and separate from competitive Gauntlet scoring.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from pymongo.errors import DuplicateKeyError
 
@@ -42,6 +43,7 @@ DEFAULT_XP_SETTINGS = {
     "level_up_message": "🏁 {mention} reached Level {level}!",
 }
 PERMANENT_LEVELS = {5: "Bronze", 10: "Silver", 25: "Gold", 50: "Platinum", 75: "Champion", 100: "Legend"}
+log = logging.getLogger(__name__)
 
 
 def required_xp(level: int, settings: dict | None = None) -> int:
@@ -180,7 +182,7 @@ async def award_xp(db, *, guild_id: str, user_id: str, amount: int, source: str,
             try:
                 await db.rsl_xp_events.delete_one({"_id": transaction_id})
             except Exception:
-                pass
+                log.exception("Failed to roll back orphaned XP event %s", transaction_id)
             raise
 
     try:
