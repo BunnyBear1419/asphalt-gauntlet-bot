@@ -204,7 +204,13 @@ class AdminRoutesMixin:
             except Exception as exc:
                 log.exception("Brand asset GridFS read failed for %s", asset_id)
                 raise web.HTTPServiceUnavailable(text="Brand asset is temporarily unavailable.") from exc
-        return web.Response(body=body,content_type=str(asset.get("content_type") or "application/octet-stream"),headers={"Cache-Control":"private, max-age=3600"})
+        response = web.Response(
+            body=body,
+            content_type=str(asset.get("content_type") or "application/octet-stream"),
+            headers={"Cache-Control":"private, max-age=3600"},
+        )
+        self._apply_security_headers(request, response)
+        return response
 
     async def admin_csp_diagnostics(self, request: web.Request) -> web.Response:
         """Return a privacy-safe aggregate of recent CSP reports for authorized staff."""
