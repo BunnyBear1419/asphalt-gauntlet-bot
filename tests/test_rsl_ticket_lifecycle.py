@@ -236,6 +236,8 @@ def test_stale_ticket_provisioning_recovery_is_wired():
     cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
     assert "async def reconcile_provisioning" in cog
     assert '"status":"provisioning","active":True' in cog
+    assert '"guild_id":str(row.get("guild_id") or ""), "status":"provisioning","active":True' in cog
+    assert '"guild_id":str(row.get("guild_id") or ""), "status":"recovering"' in cog
     assert '"status":"failed","active":False,"recovery_status":"stale_provisioning"' in cog
     assert '"provisioning_stale"' in cog
     assert "await self.reconcile_provisioning()" in cog
