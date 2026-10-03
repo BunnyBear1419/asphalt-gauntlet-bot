@@ -452,9 +452,10 @@ class PublicRoutesMixin:
             )
             return replaced is not None
 
-    async def _release_tournament_action(self, tournament_id, match_id):
+    async def _release_tournament_action(self, tournament_id, match_id, action):
+        # Do not delete a replacement lock created after the original 60-second lease expired.
         await self.bot.db.tournament_action_locks.delete_one(
-            {"tournament_id": str(tournament_id), "match_id": str(match_id)}
+            {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action)}
         )
 
     async def serve_tournament_media(self, request: web.Request) -> web.Response:
