@@ -181,7 +181,7 @@ class AdminRoutesMixin:
                 stream = await bucket.open_download_stream(ObjectId(str(asset["gridfs_id"])))
                 response = web.StreamResponse(status=200, headers={
                     "Content-Type": str(asset.get("content_type") or "application/octet-stream"),
-                    "Cache-Control": "public, max-age=3600",
+                    "Cache-Control": "private, max-age=3600",
                 })
                 if getattr(stream, "length", None) is not None:
                     response.content_length = int(stream.length)
@@ -204,7 +204,7 @@ class AdminRoutesMixin:
             except Exception as exc:
                 log.exception("Brand asset GridFS read failed for %s", asset_id)
                 raise web.HTTPServiceUnavailable(text="Brand asset is temporarily unavailable.") from exc
-        return web.Response(body=body,content_type=str(asset.get("content_type") or "application/octet-stream"),headers={"Cache-Control":"public, max-age=3600"})
+        return web.Response(body=body,content_type=str(asset.get("content_type") or "application/octet-stream"),headers={"Cache-Control":"private, max-age=3600"})
 
     async def admin_csp_diagnostics(self, request: web.Request) -> web.Response:
         """Return a privacy-safe aggregate of recent CSP reports for authorized staff."""
