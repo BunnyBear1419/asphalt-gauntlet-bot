@@ -419,3 +419,20 @@ def test_players_page_uses_shared_rsl_surface_tokens():
     assert "RSL Players directory — shared page shell" in source
     assert "var(--rsl-box)" in source
     assert "var(--rsl-box-line)" in source
+
+
+def test_reference_hub_exposes_player_notes_submission_and_leaderboard():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    routes = read("ALU_Gauntlet/web/routes/core.py")
+    gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    admin = read("ALU_Gauntlet/web/routes/admin.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Contributor Leaderboard" in page
+    assert "/api/gauntlet/references/submit" in page
+    assert "/api/gauntlet/references/"+'"+encodeURIComponent(id)+"/notes' in page
+    assert "/api/gauntlet/references/submit" in routes
+    assert "async def gauntlet_reference_submit" in gauntlet
+    assert "async def gauntlet_reference_notes" in gauntlet
+    assert "async def gauntlet_reference_leaderboard" in gauntlet
+    assert "async def admin_reference_review" in admin
+    assert "gauntlet_reference_notes" in main
