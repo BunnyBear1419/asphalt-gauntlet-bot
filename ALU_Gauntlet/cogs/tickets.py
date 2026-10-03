@@ -578,8 +578,10 @@ class TicketCog(commands.Cog):
         now=time.time()
         transition=await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id),"status":"recovering","active":False},{"$set":{"channel_id":str(ch.id),"category_id":str(cat.id) if cat else "","status":"open","active":True,"recovery_status":"recovered","updated_at":now,"last_activity_at":now}})
         if not transition.modified_count:
-            try: await ch.delete(reason="RSL recovery state changed before initialization")
-            except Exception: pass
+            try:
+                await ch.delete(reason="RSL recovery state changed before initialization")
+            except Exception:
+                log.exception("Unable to delete superseded recovery channel: ticket=%s channel=%s", ticket_id, getattr(ch, "id", "unknown"))
             return False
         row["channel_id"]=str(ch.id); row["status"]="open"; row["active"]=True
         await self.reconcile_ticket_permissions(guild,row,closed=False,locked=False)
@@ -587,8 +589,10 @@ class TicketCog(commands.Cog):
             await ch.send(content=member.mention,embed=discord.Embed(title=f"🔄 {row.get('type_label','RSL Support')} — Recovered",description="This ticket channel was recreated from its preserved RSL record. Please continue here.",color=discord.Color.blurple()),view=TicketActions(self,ticket_id))
         except Exception:
             await self.bot.db.rsl_tickets.update_one({"_id":oid,"guild_id":str(guild_id),"status":"open","active":True,"channel_id":str(ch.id)},{"$set":{"status":"orphaned","active":False,"recovery_status":"recovery_initialization_failed","updated_at":time.time()}})
-            try: await ch.delete(reason="RSL recovered ticket initialization failed")
-            except Exception: pass
+            try:
+                await ch.delete(reason="RSL recovered ticket initialization failed")
+            except Exception:
+                log.exception("Unable to delete failed recovered ticket channel: ticket=%s channel=%s", ticket_id, getattr(ch, "id", "unknown"))
             return False
         await log_event(guild_id,ticket_id,"recovered",actor_id,recovery_status="channel_recreated")
         return True
@@ -611,7 +615,8 @@ class TicketCog(commands.Cog):
                 if isinstance(original,discord.CategoryChannel): await ch.edit(category=original,reason="RSL ticket reopened")
                 await self.reconcile_ticket_permissions(ch.guild,row,closed=False,locked=False)
                 await ch.send("🔓 This ticket has been reopened.",view=TicketActions(self,ticket_id))
-            except Exception: pass
+            except Exception:
+                log.exception("Unable to fully re-open ticket channel: ticket=%s channel=%s", ticket_id, getattr(ch, "id", "unknown"))
         await log_event(guild_id,ticket_id,"reopened",actor_id)
         s=await settings_for(guild_id)
         await self.notify_ticket(ticket_id,row,"reopened",message="🔓 Your RSL support ticket has been reopened.",player=s.get("notify_player_dm",True),webhook_payload={"event":"ticket.reopened","guild_id":str(guild_id),"ticket_id":str(ticket_id)})
