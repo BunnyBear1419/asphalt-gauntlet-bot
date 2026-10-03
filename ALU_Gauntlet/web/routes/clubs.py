@@ -41,7 +41,7 @@ class ClubsRoutesMixin:
 
     async def clubs(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        guild_ids = {str(x) for x in user.guild_ids}
+        guild_ids = await self._live_guild_ids_for_user(user)
         rows = []
         async for club in self.bot.db.clubs.find({"guild_id": {"$in": list(guild_ids)}}).sort("name_ci", 1):
             club["id"] = str(club.pop("_id"))
@@ -113,7 +113,7 @@ class ClubsRoutesMixin:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         payload = await self._json_object(request)
         guild_id = str(payload.get("guild_id", "")).strip()
-        if guild_id not in {str(x) for x in user.guild_ids}:
+        if guild_id not in await self._live_guild_ids_for_user(user):
             raise web.HTTPForbidden(text="You are not a member of that server.")
         name = str(payload.get("name", "")).strip()
         if not name or len(name) > 40:
@@ -402,7 +402,7 @@ class ClubsRoutesMixin:
         user, _live_guild_id, _ = await self.require_guild_member(request)
         guild_id = str(request.query.get("guild_id", "")).strip()
         query = str(request.query.get("q", "")).strip().casefold()
-        if guild_id not in {str(x) for x in user.guild_ids}:
+        if guild_id not in await self._live_guild_ids_for_user(user):
             raise web.HTTPForbidden(text="You are not a member of that server.")
         actor_club_id = str(request.query.get("club_id", "")).strip()
         actor_role = await self._club_member_role(actor_club_id, str(user.user_id)) if ObjectId.is_valid(actor_club_id) else None
