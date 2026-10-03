@@ -232,11 +232,11 @@ class TournamentRoutesMixin:
         lineup = [str(x).strip() for x in (payload.get("lineup") or []) if str(x).strip()]
         if len(lineup) != size or len(set(lineup)) != size:
             raise web.HTTPBadRequest(text="Select exactly " + str(size) + " unique drivers for the lineup.")
-        member_rows = await self.bot.db.club_members.find({"club_id": club_id}).to_list(length=20)
+        member_rows = await self.bot.db.club_members.find({"club_id": club_id, "guild_id": str(tournament.get("guild_id"))}).to_list(length=20)
         members = {str(x["user_id"]) for x in member_rows}
         if not set(lineup).issubset(members):
             raise web.HTTPBadRequest(text="Every lineup driver must be a current club member.")
-        await self.bot.db.tournament_club_registrations.update_one({"_id": reg["_id"]}, {"$set": {"lineup": lineup, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        await self.bot.db.tournament_club_registrations.update_one({"_id": reg["_id"], "tournament_id": tournament_id, "guild_id": str(tournament.get("guild_id"))}, {"$set": {"lineup": lineup, "updated_at": datetime.now(timezone.utc).isoformat()}})
         return web.json_response({"ok": True, "message": str(size) + "v" + str(size) + " tournament lineup saved.", "lineup": lineup})
 
     async def tournament_match_result(self, request: web.Request) -> web.Response:
@@ -301,7 +301,7 @@ class TournamentRoutesMixin:
             raise web.HTTPConflict(text="Another result submission is already being processed for this match.")
         try:
             match.update({"result_status":"pending","submitted_by":str(user.user_id),"submitted_at":datetime.now(timezone.utc).isoformat(),"winner_id":winner_id,"proof_url":proof_url,"result_notes":notes})
-            await self.bot.db.tournaments.update_one({"_id": oid},{"$set":{"bracket":bracket,"updated_at":datetime.now(timezone.utc).isoformat()}})
+            await self.bot.db.tournaments.update_one({"_id": oid, "guild_id": str(t.get("guild_id"))},{"$set":{"bracket":bracket,"updated_at":datetime.now(timezone.utc).isoformat()}})
         finally:
             await self._release_tournament_action(str(oid), match_id, "submit")
         cfg = await self.bot.db.settings.find_one({"_id": str(t.get("guild_id"))}) or {}
@@ -783,7 +783,7 @@ class TournamentRoutesMixin:
         if int(t.get("team_size", 1)) > 1:
             checkin_payload = await self._json_object(request)
             requested_club_id = str(checkin_payload.get("club_id", "")).strip()
-            reg_query = {"tournament_id": tid, "guild_id": str(tournament.get("guild_id")), "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            reg_query = {"tournament_id": tid, "guild_id": str(t.get("guild_id")), "status": {"$in": ["pending", "accepted", "checked_in"]}}
             if requested_club_id:
                 if not ObjectId.is_valid(requested_club_id):
                     raise web.HTTPBadRequest(text="Invalid club ID.")
@@ -900,7 +900,7 @@ class TournamentRoutesMixin:
         try:
             started_at = datetime.now(timezone.utc).isoformat()
             transition = await self.bot.db.tournaments.update_one(
-            {"_id": oid, "status": {"$in": ["registration_open", "open"]}},
+            {"_id": oid, "guild_id": guild_id, "status": {"$in": ["registration_open", "open"]}},
             {"$set": {"status": "live", "started_at": started_at, "bracket": bracket, "started_by": str(user.user_id), "updated_at": started_at}},
         )
             if not transition.modified_count:
