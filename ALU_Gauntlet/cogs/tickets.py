@@ -450,7 +450,8 @@ class TicketCog(commands.Cog):
             await self.bot.db.rsl_tickets.update_one({"_id":ins.inserted_id,"guild_id":str(guild.id),"status":"provisioning"},{"$set":{"status":"failed","active":False,"recovery_status":"channel_creation_failed","updated_at":time.time()}})
             try:
                 await log_event(guild.id,tid,"provisioning_failed",member.id)
-            except Exception: pass
+            except Exception:
+                log.exception("Failed to record ticket provisioning failure: ticket=%s", tid)
             return "❌ Discord could not create the ticket channel. No active ticket was created; please try again."
         doc["_id"]=ins.inserted_id; doc["channel_id"]=str(ch.id); doc["status"]="open"
         auto_assignee=await choose_auto_assignee(guild,ticket_type,s,self.bot.db) if s.get("auto_assign_enabled") else None
@@ -525,8 +526,10 @@ class TicketCog(commands.Cog):
         if isinstance(ch,discord.TextChannel):
             s=await settings_for(guild_id); cid=str(s["closed_category_id"]); cat=ch.guild.get_channel(int(cid)) if cid.isdigit() else None
             if isinstance(cat,discord.CategoryChannel):
-                try: await ch.edit(category=cat,reason="RSL ticket closed")
-                except Exception: pass
+                try:
+                    await ch.edit(category=cat,reason="RSL ticket closed")
+                except Exception:
+                    log.debug("Unable to move closed ticket channel to archive category: ticket=%s", tid, exc_info=True)
             try:
                 await self.reconcile_ticket_permissions(ch.guild,row,closed=True,locked=False)
             except Exception: pass
@@ -677,6 +680,7 @@ class TicketCog(commands.Cog):
                     await log_event(row["guild_id"],str(row["_id"]),"channel_missing","system",recovery_status="channel_missing")
                     continue
                 except Exception:
+                    log.exception("Unable to recover missing ticket channel: ticket=%s channel=%s", row.get("_id"), channel_id)
                     continue
             if channel is None: continue
             
