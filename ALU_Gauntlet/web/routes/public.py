@@ -480,14 +480,22 @@ class PublicRoutesMixin:
                 })
                 if getattr(stream, "length", None) is not None:
                     response.content_length = int(stream.length)
+                self._apply_security_headers(request, response)
                 await response.prepare(request)
-                while True:
-                    chunk = await stream.read(64 * 1024)
-                    if not chunk:
-                        break
-                    await response.write(chunk)
-                await response.write_eof()
-                return response
+                try:
+                    while True:
+                        chunk = await stream.read(64 * 1024)
+                        if not chunk:
+                            break
+                        await response.write(chunk)
+                    await response.write_eof()
+                    return response
+                finally:
+                    close = getattr(stream, "close", None)
+                    if close is not None:
+                        result = close()
+                        if inspect.isawaitable(result):
+                            await result
             except Exception as exc:
                 log.exception("Tournament media GridFS read failed for %s", media_id)
                 raise web.HTTPServiceUnavailable(text="Tournament media is temporarily unavailable.") from exc
