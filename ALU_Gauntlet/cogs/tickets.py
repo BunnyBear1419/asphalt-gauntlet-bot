@@ -531,10 +531,13 @@ class TicketCog(commands.Cog):
                 except Exception:
                     log.debug("Unable to move closed ticket channel to archive category: ticket=%s", ticket_id, exc_info=True)
             try:
-                await self.reconcile_ticket_permissions(ch.guild,row,closed=True,locked=False)
-            except Exception: pass
-            try: await ch.send("🔒 This ticket has been closed. Staff may reopen it if needed.",view=TicketActions(self,ticket_id,closed=True))
-            except Exception: pass
+                await self.reconcile_ticket_permissions(ch.guild, row, closed=True, locked=False)
+            except Exception:
+                log.exception("Unable to reconcile permissions for closed ticket: ticket=%s", ticket_id)
+            try:
+                await ch.send("🔒 This ticket has been closed. Staff may reopen it if needed.", view=TicketActions(self, ticket_id, closed=True))
+            except Exception:
+                log.debug("Unable to send closed-ticket action message: ticket=%s", ticket_id, exc_info=True)
         await log_event(guild_id,ticket_id,"closed",actor_id,reason=reason)
         s=await settings_for(guild_id)
         await self.notify_ticket(ticket_id,row,"closed",message="🔒 Your RSL support ticket has been closed. Staff may reopen it if needed.",player=s.get("notify_player_dm",True),webhook_payload={"event":"ticket.closed","guild_id":str(guild_id),"ticket_id":str(ticket_id),"reason":reason})
