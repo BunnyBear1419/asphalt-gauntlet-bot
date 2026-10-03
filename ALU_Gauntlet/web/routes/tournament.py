@@ -73,7 +73,7 @@ class TournamentRoutesMixin:
         item.pop("_id", None)
         registrations = []
         async for row in self.bot.db.tournament_registrations.find(
-            {"tournament_id": tournament_id, "guild_id": str(item.get("guild_id")) if "item" in locals() else None, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            {"tournament_id": tournament_id, "guild_id": str(item.get("guild_id")), "status": {"$in": ["pending", "accepted", "checked_in"]}}
         ).sort("registered_at", 1):
             row["registration_id"] = str(row.get("_id", ""))
             row.pop("_id", None)
@@ -87,12 +87,12 @@ class TournamentRoutesMixin:
         item["registrations"] = registrations
         if int(item.get("team_size", 1)) > 1:
             clubs = []
-            async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tournament_id}).sort("registered_at", 1):
+            async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tournament_id, "guild_id": str(item.get("guild_id"))}).sort("registered_at", 1):
                 club = await self.bot.db.clubs.find_one({"_id": ObjectId(reg["club_id"]), "guild_id": str(item.get("guild_id"))})
                 if not club:
                     continue
                 members = []
-                async for member in self.bot.db.club_members.find({"club_id": reg["club_id"]}).sort("joined_at", 1):
+                async for member in self.bot.db.club_members.find({"club_id": reg["club_id"], "guild_id": str(item.get("guild_id"))}).sort("joined_at", 1):
                     member.pop("_id", None)
                     prefs = await self.bot.db.web_preferences.find_one({"_id": f"{reg.get('guild_id', item.get('guild_id', ''))}_{member.get('user_id', '')}"}) or {}
                     connection = prefs.get("asphalt_connection") or {}
