@@ -104,9 +104,10 @@ def test_completed_bonus_retry_failure_stays_recoverable(monkeypatch):
     assert update["$set"]["settlement_closed"] is True
     assert update["$set"]["rsl_bonus_checked"] is False
     assert update["$unset"] == {"processing_at": ""}
-    assert len(db.matches.updates) == 1
-    assert db.matches.updates[0][1]["$set"]["rsl_bonus_retry_attempts"] == 1
-    assert db.matches.updates[0][1]["$set"]["rsl_bonus_recovery_status"] == "retry_scheduled"
+    assert len(db.matches.updates) == 2
+    assert db.matches.updates[0][1]["$inc"]["rsl_bonus_retry_attempts"] == 1
+    assert db.matches.updates[0][1]["$set"]["rsl_bonus_last_error_at"]
+    assert db.matches.updates[1][1]["$set"]["rsl_bonus_recovery_status"] == "retry_scheduled"
 
 
 def test_settlement_recovery_has_bounded_bonus_retry_and_staff_review_terminal_state():
@@ -244,3 +245,4 @@ def test_bonus_retry_counter_is_atomic_for_concurrent_recovery_workers():
     assert 'await db.matches.find_one(' in helper
     assert 'rsl_bonus_recovery_status": {"$ne": "needs_staff_review"}' in helper
 
+\n\ndef test_recovery_run_has_durable_running_and_terminal_states():\n    source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")\n    assert '"kind": "recovery_run"' in source\n    assert '"status": "running"' in source\n    assert '"status": "completed"' in source\n    assert '"status": "failed"' in source\n    assert 'await _finish_recovery_run(db, guild_id, run_id, "failed", stats, error=exc)' in source\n\n\ndef test_recovery_diagnostics_treat_stale_running_run_as_stale_not_success():\n    source = (ROOT / "ALU_Gauntlet/core/rsl_reliability.py").read_text(encoding="utf-8")\n    assert 'async def recovery_run_snapshot' in source\n    assert 'status == "running" and updated_at and now - updated_at > 30 * 60' in source\n    assert 'status": "stale"' in source\n
