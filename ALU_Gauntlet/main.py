@@ -2,9 +2,12 @@ import time
 import os
 import asyncio
 import discord
+import logging
 from .core.core import bot
 from .core.ui_fixes import install_ui_fixes
 from .web.server import WebControlCenter
+
+log = logging.getLogger(__name__)
 
 install_ui_fixes()
 
@@ -275,7 +278,7 @@ async def _apply_rsl_identity():
         try:
             await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Racing Syndicate League"))
         except Exception:
-            pass
+            log.exception("Failed to update Discord bot presence during RSL identity reconciliation")
 
 
 @bot.event
