@@ -362,6 +362,29 @@ class AdminRoutesMixin:
             "results": results,
         })
 
+    async def admin_reference_review_queue(self, request: web.Request) -> web.Response:
+        """Return the current guild's pending reference submissions for staff review."""
+        _, guild_id, _ = await self.require_admin(request)
+        rows = await self.bot.db.reference_pending.find(
+            {"guild_id": str(guild_id), "status": {"$in": ["pending", "approving"]}}
+        ).sort("created_at", -1).limit(100).to_list(length=100)
+        queue = []
+        for row in rows:
+            queue.append({
+                "id": str(row.get("_id") or ""),
+                "course": str(row.get("course") or row.get("track") or ""),
+                "title": str(row.get("title") or "Community Reference"),
+                "user_id": str(row.get("user_id") or ""),
+                "driver": str(row.get("driver") or ""),
+                "time": str(row.get("time") or row.get("lap_time") or ""),
+                "car": str(row.get("car") or ""),
+                "video_url": str(row.get("video_url") or row.get("video_reference") or ""),
+                "description": str(row.get("description") or ""),
+                "submitted_at": row.get("submitted_at") or row.get("created_at"),
+                "status": str(row.get("status") or "pending"),
+            })
+        return web.json_response({"queue": queue})
+
     async def admin_reference_review(self, request: web.Request) -> web.Response:
         """Approve or reject a guild-scoped web reference submission."""
         user, guild_id, _ = await self.require_admin(request)
@@ -413,8 +436,10 @@ class AdminRoutesMixin:
                 {"$set": {"status": "pending"}, "$unset": {"review_started_by": "", "review_started_at": ""}},
             )
             raise web.HTTPBadRequest(text="Pending reference is missing required metadata.")
+        inserted_reference = False
         try:
             await self.bot.db.gauntlet_references.insert_one(reference)
+            inserted_reference = True
             result = await self.bot.db.reference_pending.update_one(
                 {"_id": submission_id, "guild_id": str(guild_id), "status": "approving"},
                 {"$set": {"status": "approved", "reference_id": str(reference["_id"]), "reviewed_by": str(user.user_id), "reviewed_at": time.time()}},
@@ -422,6 +447,13 @@ class AdminRoutesMixin:
             if result.modified_count != 1:
                 raise web.HTTPConflict(text="Reference review state changed unexpectedly.")
         except Exception:
+            if inserted_reference:
+                try:
+                    await self.bot.db.gauntlet_references.delete_one(
+                        {"_id": reference["_id"], "guild_id": str(guild_id)}
+                    )
+                except Exception:
+                    log.exception("Failed to roll back approved reference %s", reference["_id"])
             await self.bot.db.reference_pending.update_one(
                 {"_id": submission_id, "guild_id": str(guild_id), "status": "approving"},
                 {"$set": {"status": "pending"}, "$unset": {"review_started_by": "", "review_started_at": ""}},
