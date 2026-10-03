@@ -145,3 +145,25 @@ def test_guild_ownership_audit_exempts_only_global_production_heartbeat():
     assert '"_id": "production_heartbeat"' in audit
     assert '"_id": {"$ne": "production_heartbeat"}' in audit
     assert '"exempted_global": int(exempted)' in audit
+
+
+def test_guild_ownership_audit_is_bot_owner_only_and_uses_estimated_totals():
+    source = (ROOT / "ALU_Gauntlet/web/routes/admin.py").read_text(encoding="utf-8")
+    audit = source.split("async def admin_guild_ownership_audit", 1)[1].split("async def admin_diagnostics", 1)[0]
+    assert "is_owner = await self.bot.is_owner(user)" in audit
+    assert 'web.HTTPForbidden(text="The guild ownership audit is restricted to the bot owner.")' in audit
+    assert 'estimated_document_count()' in audit
+    assert '{"guild_id": str(guild_id)}' in audit
+
+
+def test_brand_asset_inline_response_gets_security_headers():
+    source = (ROOT / "ALU_Gauntlet/web/routes/admin.py").read_text(encoding="utf-8")
+    serve = source.split("async def serve_brand_asset", 1)[1].split("async def admin_csp_diagnostics", 1)[0]
+    assert "self._apply_security_headers(request, response)" in serve
+    assert '"Cache-Control":"private, max-age=3600"' in serve
+
+
+def test_theme_storage_failures_do_not_block_cookie_persistence():
+    source = (ROOT / "ALU_Gauntlet/web/static/theme.js").read_text(encoding="utf-8")
+    assert 'try{localStorage.setItem(KEY,t)}catch(e){}' in source
+    assert 'try{document.cookie="rsl_theme="' in source
