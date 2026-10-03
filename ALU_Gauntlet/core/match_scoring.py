@@ -56,7 +56,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
         async with await client.start_session() as session:
             async with session.start_transaction():
                 current = await db.matches.find_one(
-                    {"_id": match_data["_id"]},
+                    {"_id": match_data["_id"], "guild_id": str(match_data.get("guild_id") or "")},
                     {"rsl_margin_bonus_applied": 1},
                     session=session,
                 )
@@ -64,7 +64,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
                     return 0
 
                 claim = await db.matches.update_one(
-                    {"_id": match_data["_id"], "rsl_margin_bonus_applied": {"$ne": True}},
+                    {"_id": match_data["_id"], "guild_id": str(match_data.get("guild_id") or ""), "rsl_margin_bonus_applied": {"$ne": True}},
                     {"$set": {
                         **metadata,
                         "rsl_margin_bonus_applied": True,
@@ -97,7 +97,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
         # zero documents and the non-transactional bonus path never applied.
         if margin == 0:
             await db.matches.update_one(
-                {"_id": match_data["_id"]},
+                {"_id": match_data["_id"], "guild_id": str(match_data.get("guild_id") or "")},
                 {"$set": {
                     **metadata,
                     "rsl_margin_bonus_applied": True,
@@ -142,7 +142,7 @@ async def apply_rsl_performance_bonus(db, match_data: dict) -> int:
                 )
             finally:
                 await db.matches.update_one(
-                    {"_id": match_data["_id"]},
+                    {"_id": match_data["_id"], "guild_id": str(match_data.get("guild_id") or "")},
                     {"$unset": {"rsl_margin_bonus_applied": ""}},
                 )
             raise
