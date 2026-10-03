@@ -55,6 +55,19 @@
 @media(max-width:900px){.admin-layout{grid-template-columns:1fr}.admin-side{position:static;display:grid;grid-template-columns:repeat(2,1fr)}.admin-tools-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.admin-page{padding:18px 12px 50px}.admin-head{align-items:flex-start;flex-direction:column}.admin-head h1{font-size:30px}.admin-grid,.admin-grid.three,.admin-preview{grid-template-columns:1fr}.admin-tools-grid{grid-template-columns:1fr}.admin-side{grid-template-columns:1fr}.admin-toolbar,.admin-toolbar select{width:100%}}
 </style>
+<style>
+/* FINAL ADMIN THEME SURFACE AUDIT */
+html[data-theme] .admin-page{background:radial-gradient(circle at 70% 5%,var(--rsl-box-alt) 0,var(--rsl-box) 48%,var(--rsl-box) 100%)!important;color:var(--rsl-box-text)!important}
+html[data-theme] .admin-head,html[data-theme] .admin-side,html[data-theme] .admin-card,html[data-theme] .admin-log,html[data-theme] .admin-logo-preview,html[data-theme] .admin-hero-preview,html[data-theme] .admin-tool{border-color:var(--rsl-box-line)!important}
+html[data-theme] .admin-side,html[data-theme] .admin-card,html[data-theme] .admin-log,html[data-theme] .admin-logo-preview,html[data-theme] .admin-hero-preview,html[data-theme] .admin-tool{background:var(--rsl-box)!important;color:var(--rsl-box-text)!important}
+html[data-theme] .admin-side button{color:var(--rsl-box-muted)!important}
+html[data-theme] .admin-side button:hover,html[data-theme] .admin-side button.active{background:var(--rsl-box-alt)!important;color:var(--rsl-box-accent)!important}
+html[data-theme] .admin-toolbar select,html[data-theme] .admin-upload-drop{border-color:var(--rsl-box-line)!important;background:var(--rsl-box-alt)!important;color:var(--rsl-box-text)!important}
+html[data-theme] .admin-upload-drop:hover,html[data-theme] .admin-upload-drop.is-dragover{border-color:var(--rsl-box-accent)!important;background:var(--rsl-box)!important}
+html[data-theme] .admin-btn{border-color:var(--rsl-box-accent)!important}
+html[data-theme] .admin-tool:hover{border-color:var(--rsl-box-accent)!important}
+html[data-theme] .admin-check,html[data-theme] .admin-log-row{border-color:var(--rsl-box-line)!important}
+</style>
 </head>
 <body>
 <div class="admin-page">
