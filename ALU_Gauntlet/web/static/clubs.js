@@ -72,7 +72,19 @@ function editor(c){
  bindLinkRows(x);
  const file=x.querySelector('input[type="file"]'),preview=x.querySelector(".club-image-preview");file.onchange=()=>{const f=file.files?.[0];if(!f)return;const u=URL.createObjectURL(f);preview.innerHTML='<img src="'+u+'" alt="New club picture preview">'};
  x.querySelector("form").onsubmit=async e=>{e.preventDefault();const status=x.querySelector(".club-editor-status");try{const f=new FormData(e.target);const image=await imageData(file.files?.[0]);const links=[...x.querySelectorAll('input[name="link"]')].map(i=>i.value.trim()).filter(Boolean);const r=await api("/api/clubs/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({club_id:c.id,name:f.get("name"),about:f.get("about"),discord:f.get("discord"),links,image:image||c.image||""})});toast(r.message);x.remove();load()}catch(err){status.textContent=err.message;status.dataset.bad="1"}}}
-async function load(){try{loadPageDiscordStats();const me=await api("/api/me");window._me=me;const g=await api("/api/guilds");$("#club-guild").innerHTML=(g.guilds||[]).filter(x=>x.id).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name||x.id)+'</option>').join("");const data=await api("/api/clubs");window._clubs=data.clubs||[];$("#club-list").innerHTML=window._clubs.length?window._clubs.map(clubCard).join(""):'<div class="glass-panel tournament-empty">No clubs yet. Create the first one.</div>';bind()}catch(e){$("#club-list").innerHTML='<div class="tournament-empty">'+esc(e.message)+'</div>'}}
+async async function loadPageDiscordStats(){
+ try{
+  const r=await fetch("/api/discord-stats",{credentials:"same-origin",cache:"no-store"});
+  if(!r.ok)return;
+  const d=await r.json();
+  if(!d.available)return;
+  const online=document.getElementById("page-discord-online");
+  const total=document.getElementById("page-discord-total");
+  if(online)online.textContent=Number(d.online_members||0).toLocaleString();
+  if(total)total.textContent=Number(d.server_members||0).toLocaleString();
+ }catch(_e){}
+}
+async function load(){try{await loadPageDiscordStats();const me=await api("/api/me");window._me=me;const g=await api("/api/guilds");$("#club-guild").innerHTML=(g.guilds||[]).filter(x=>x.id).map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name||x.id)+'</option>').join("");const data=await api("/api/clubs");window._clubs=data.clubs||[];$("#club-list").innerHTML=window._clubs.length?window._clubs.map(clubCard).join(""):'<div class="glass-panel tournament-empty">No clubs yet. Create the first one.</div>';bind()}catch(e){$("#club-list").innerHTML='<div class="tournament-empty">'+esc(e.message)+'</div>'}}
 function actionModal(title,body){
  document.querySelector(".club-action-overlay")?.remove();
  const x=document.createElement("div");x.className="club-action-overlay";
