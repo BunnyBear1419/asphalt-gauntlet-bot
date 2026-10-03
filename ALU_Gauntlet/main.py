@@ -85,11 +85,11 @@ async def _ensure_database_indexes():
     try:
         await db.notification_deliveries.drop_index("uniq_notification_delivery")
     except Exception:
-        pass
+        log.debug("Legacy notification delivery index was not present during startup cleanup", exc_info=True)
     try:
         await db.rsl_economy_transactions.drop_index("uniq_rsl_economy_message_transaction")
     except Exception:
-        pass
+        log.debug("Legacy economy transaction index was not present during startup cleanup", exc_info=True)
     await db.rsl_economy_transactions.create_index(
         [("guild_id", 1), ("user_id", 1), ("created_at", -1)],
         name="idx_rsl_economy_history",
@@ -274,7 +274,7 @@ async def _apply_rsl_identity():
             if bot.user.name != "Racing Syndicate League":
                 await bot.user.edit(username="Racing Syndicate League")
         except Exception:
-            pass
+            log.exception("Failed to reconcile Discord bot username during RSL identity update")
         try:
             await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Racing Syndicate League"))
         except Exception:
