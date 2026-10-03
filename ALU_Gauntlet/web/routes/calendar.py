@@ -32,6 +32,8 @@ class CalendarRoutesMixin:
         except ValueError as exc:
             raise web.HTTPBadRequest(text="Reminder date/time must be a valid ISO date and time.") from exc
         guild_id = str(payload.get("guild_id", existing.get("guild_id", ""))).strip()
+        if guild_id and guild_id not in await self._live_guild_ids_for_user(user):
+            raise web.HTTPForbidden(text="You are not a member of that server.")
         guild_prefs = await self.bot.db.web_preferences.find_one({"_id": f"{guild_id}_{user.user_id}"}) if guild_id else None
         timezone_name = str(payload.get("timezone", (guild_prefs or {}).get("timezone", "UTC"))).strip()
         if timezone_name not in {value for _, value in TIMEZONE_LABELS}:
