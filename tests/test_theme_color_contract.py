@@ -32,3 +32,9 @@ def test_orange_palette_final_text_remains_valid():
 def test_branding_cleanup_imports_object_id():
     source = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "public.py").read_text(encoding="utf-8")
     assert "from bson import ObjectId" in source
+
+
+def test_light_theme_action_buttons_use_high_contrast_text():
+    source = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    assert 'html[data-theme="light"] .qa-blue' in source
+    assert 'html[data-theme="light"] .discord-cta-button{color:#fff!important}' in source
