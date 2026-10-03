@@ -80,7 +80,7 @@ class GauntletRoutesMixin:
             else: my_time,my_rank,my_car=(mine if mine else None),None,None
             refs.append({"id":str(item.get("_id")),"course":course,"title":str(item.get("title","")),"driver":str(item.get("driver","")),"time":str(item.get("time","")),"car":str(item.get("car","")),"car_rank":safe_int(item.get("car_rank",item.get("car_performance",0))),"video_url":str(item.get("video_url","")),"description":str(item.get("description","")),"official":bool(item.get("official",False)),"my_best_time":str(my_time or ""),"my_car":str(my_car or ""),"my_car_rank":safe_int(my_rank)})
         member=self.bot.get_guild(int(guild_id)).get_member(int(user.user_id)) if self.bot.get_guild(int(guild_id)) else None
-        return web.json_response({"courses":list(ALU_TRACKS),"references":refs,"is_staff":bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))})
+        return web.json_response({"courses":list(ALU_TRACKS),"references":refs,"viewer_id":str(user.user_id),"is_staff":bool(member and (member.guild_permissions.manage_guild or member.guild_permissions.administrator))})
 
     async def gauntlet_reference_submit(self, request: web.Request) -> web.Response:
         """Submit a player reference video to the guild-scoped moderation queue."""
