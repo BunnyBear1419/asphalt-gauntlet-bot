@@ -157,7 +157,7 @@ class TournamentRoutesMixin:
         if action == "approve":
             accepted_statuses = {"accepted", "checked_in"}
             accepted_count = await collection.count_documents(
-                {"tournament_id": tournament_id, "status": {"$in": list(accepted_statuses)}}
+                {"tournament_id": tournament_id, "guild_id": guild_id, "status": {"$in": list(accepted_statuses)}}
             )
             if accepted_count >= int(tournament.get("max_players", 32)):
                 raise web.HTTPConflict(text="The tournament has reached its entrant capacity.")
@@ -171,7 +171,7 @@ class TournamentRoutesMixin:
                     )
 
             result = await collection.update_one(
-                {"_id": registration["_id"], "status": "pending"},
+                {"_id": registration["_id"], "tournament_id": tournament_id, "guild_id": guild_id, "status": "pending"},
                 {"$set": {
                     "status": "accepted",
                     "approved_by": str(user.user_id),
