@@ -107,7 +107,8 @@ def test_csp_report_collector_supports_legacy_and_reporting_api_payloads():
 
 def test_csp_report_headers_advertise_both_reporting_formats():
     core = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
-    assert 'Content-Security-Policy-Report-Only' in core
+    assert 'Content-Security-Policy"' in core
+    assert 'Content-Security-Policy-Report-Only' not in core
     assert 'report-uri /api/csp-report' in core
     assert 'report-to rsl-csp' in core
     assert 'Reporting-Endpoints' in core
