@@ -53,3 +53,16 @@ def test_web_guild_selection_uses_live_membership_not_only_oauth_snapshot():
     admin_end = server.index("async def admin_page", admin_start)
     admin = server[admin_start:admin_end]
     assert "await self._connected_guilds_for_user(user)" in admin
+
+
+def test_tenant_scoped_web_routes_do_not_authorize_from_stale_oauth_guild_snapshot():
+    routes = [
+        "public.py", "tournament.py", "gauntlet.py", "player.py", "clubs.py", "calendar.py",
+    ]
+    root = ROOT / "ALU_Gauntlet" / "web" / "routes"
+    for filename in routes:
+        source = (root / filename).read_text(encoding="utf-8")
+        assert "user.guild_ids" not in source, f"{filename} still trusts the stale OAuth guild snapshot"
+    auth = (root / "auth.py").read_text(encoding="utf-8")
+    assert "async def _live_guild_ids_for_user" in auth
+    assert "_connected_guilds_for_user(user)" in auth
