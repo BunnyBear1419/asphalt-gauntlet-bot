@@ -371,7 +371,7 @@ class StaffCog(commands.Cog):
                 if task_obj.failed():
                     return '🔴 Failed'
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("Unable to inspect Discord task status", exc_info=True)
             return '⚪ Stopped'
         runtime = []
         counts = {}
