@@ -448,7 +448,7 @@ def test_admin_ticket_action_parity_supports_unclaim_and_lock_controls():
     assert '"claimed_by":str(user.user_id)' in body
     assert '"claimed_by":None' in body
     assert 'locked = action == "lock"' in body
-    assert 'reconcile_ticket_permissions(guild,updated,closed=False,locked=locked)' in body
+    assert "reconcile_ticket_permissions(guild, updated, closed=False, locked=locked)" in body
 
 def test_admin_ticket_actions_are_race_safe():
     server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "routes" / "admin.py").read_text(encoding="utf-8")
