@@ -34,7 +34,7 @@ COLLECTIONS = (
     "rsl_activity_events",
     "web_brand_assets",
     "news",
-    "reference_pending", "gauntlet_reference_notes", "reference_intel", "reference_intel_votes",
+    "reference_pending", "gauntlet_reference_notes", "reference_intel", "reference_intel_votes", "reference_requests", "reference_request_votes",
 )
 
 
