@@ -1,5 +1,8 @@
 from pathlib import Path
+import ast
 import re
+import subprocess
+import textwrap
 
 ROOT = Path(__file__).resolve().parents[1]
 STATIC = ROOT / "ALU_Gauntlet" / "web" / "static"
@@ -21,7 +24,25 @@ def test_no_theme_variable_is_followed_by_raw_hex_alpha():
 
 def test_core_theme_first_paint_defaults_to_dark():
     source = CORE.read_text(encoding="utf-8")
-    assert 'document.documentElement.setAttribute("data-theme",saved || "dark");' in source
+    start = source.index("(function(){")
+    end = source.index("</script>", start)
+    script = source[start:end]
+    node = textwrap.dedent(
+        """
+        globalThis.localStorage = { getItem: () => null };
+        globalThis.document = {
+          documentElement: {
+            value: "",
+            setAttribute(name, value) {
+              if (name === "data-theme") this.value = value;
+            }
+          }
+        };
+        __SCRIPT__
+        if (document.documentElement.value !== "dark") process.exit(1);
+        """
+    ).replace("__SCRIPT__", script)
+    subprocess.run(["node", "--input-type=module"], input=node, text=True, check=True)
 
 
 def test_orange_palette_final_text_remains_valid():
@@ -29,9 +50,23 @@ def test_orange_palette_final_text_remains_valid():
     assert "--rsl-final-text:#fff0e5" in source
 
 
-def test_branding_cleanup_imports_object_id():
+def test_branding_cleanup_imports_object_id_inside_cleanup_block():
     source = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "public.py").read_text(encoding="utf-8")
-    assert "from bson import ObjectId" in source
+    tree = ast.parse(source)
+    fn = next(node for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef) and node.name == "save_admin_branding")
+    cleanup_if = next(
+        node for node in ast.walk(fn)
+        if isinstance(node, ast.If) and any(
+            isinstance(name, ast.Name) and name.id == "superseded_asset_ids"
+            for name in ast.walk(node.test)
+        )
+    )
+    assert any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == "bson"
+        and any(alias.name == "ObjectId" for alias in node.names)
+        for node in cleanup_if.body
+    )
 
 
 def test_light_theme_action_buttons_use_high_contrast_text():
