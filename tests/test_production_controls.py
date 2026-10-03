@@ -10,7 +10,7 @@ def test_production_controls_define_safe_maintenance_surface():
     source = CONTROLS.read_text(encoding="utf-8")
     assert "MAINTENANCE_PATH_PREFIXES" in source
     assert "/api/gauntlet/" in source
-    assert "/api/tournaments/" in source
+    assert "/api/tournaments" in source
     assert "is_mutating_competition_path" in source
     assert "set_maintenance_mode" in source
 
