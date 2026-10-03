@@ -284,13 +284,13 @@ class ClubMemberActionView(discord.ui.View):
             if self.owner_role != "leader":
                 await localize_text(bot, interaction.user.id, "❌ Only the club leader can promote members to Officer.", interaction.locale)
                 return
-            await bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": "officer"}})
+            await bot.db.club_members.update_one({"_id": member["_id"], "club_id": str(self.club["_id"]), "guild_id": str(self.club.get("guild_id"))}, {"$set": {"role": "officer"}})
             message = "✅ Member promoted to Officer."
         elif action == "demote":
             if self.owner_role != "leader":
                 await localize_text(bot, interaction.user.id, "❌ Only the club leader can demote Officers.", interaction.locale)
                 return
-            await bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": "member"}})
+            await bot.db.club_members.update_one({"_id": member["_id"], "club_id": str(self.club["_id"]), "guild_id": str(self.club.get("guild_id"))}, {"$set": {"role": "member"}})
             message = "✅ Officer demoted to Member."
         else:
             message = "❌ Unsupported member action."
@@ -341,7 +341,7 @@ class ClubCenterView(discord.ui.View):
             return
         result = await bot.db.club_members.delete_one({"club_id": str(self.current_club["_id"]), "guild_id": str(self.current_club.get("guild_id")), "user_id": self.user_id})
         if result.deleted_count:
-            await _recount_club_members(str(self.current_club["_id"]))
+            await _recount_club_members(str(self.current_club["_id"]), str(self.current_club.get("guild_id")))
         await send_club_center(interaction, replace=True)
 
     @discord.ui.button(label="Edit Club", style=discord.ButtonStyle.primary, emoji="✏️")
@@ -362,7 +362,7 @@ class ClubCenterView(discord.ui.View):
                 ephemeral=True
             )
             return
-        members = await bot.db.club_members.find({"club_id": str(self.current_club["_id"])}).sort("joined_at", 1).to_list(length=20)
+        members = await bot.db.club_members.find({"club_id": str(self.current_club["_id"]), "guild_id": str(self.current_club.get("guild_id"))}).sort("joined_at", 1).to_list(length=20)
         members = [m for m in members if str(m.get("user_id")) != self.user_id]
         if not members:
             await interaction.response.send_message(
