@@ -352,7 +352,7 @@ class TournamentRoutesMixin:
                     match.pop(key, None)
                 match["status"] = "ready"
                 await self.bot.db.tournaments.update_one(
-                    {"_id": oid},
+                    {"_id": oid, "guild_id": str(t.get("guild_id"))},
                     {"$set": {"bracket": bracket, "updated_at": datetime.now(timezone.utc).isoformat()}},
                 )
                 message = "Result rejected. The match is ready for another submission."
@@ -481,7 +481,7 @@ class TournamentRoutesMixin:
                         bracket["protected_finalist"] = winner_id
 
                 await self.bot.db.tournaments.update_one(
-                    {"_id": oid},
+                    {"_id": oid, "guild_id": str(t.get("guild_id"))},
                     {"$set": {
                         "bracket": bracket,
                         "status": t.get("status", "live"),
