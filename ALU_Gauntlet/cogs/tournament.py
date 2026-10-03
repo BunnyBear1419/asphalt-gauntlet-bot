@@ -86,6 +86,11 @@ async def _is_tournament_staff(interaction):
         try:
             member = await interaction.guild.fetch_member(interaction.user.id)
         except Exception:
+            log.exception(
+                "Unable to resolve tournament staff member %s in guild %s",
+                interaction.user.id,
+                interaction.guild.id,
+            )
             return False
     permissions = getattr(member, "guild_permissions", None)
     if permissions and (permissions.administrator or permissions.manage_guild):
