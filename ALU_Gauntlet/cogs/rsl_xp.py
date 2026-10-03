@@ -90,7 +90,11 @@ class RSLXPCog(commands.Cog):
         try:
             await target.send(text)
         except Exception:
-            pass
+            import logging
+            logging.getLogger(__name__).exception(
+                "Failed to announce RSL XP level %s for %s",
+                level, member.id,
+            )
 
     async def _sync_leader_role(self, guild, settings):
         role_id = str(settings.get("leader_role_id") or "")
