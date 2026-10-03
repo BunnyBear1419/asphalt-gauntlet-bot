@@ -512,3 +512,15 @@ def test_reference_hub_has_video_reference_leaderboard():
     assert 'mode == "videos"' in gauntlet
     assert '"seconds": seconds' in gauntlet
     assert "rows[:50]" in gauntlet
+
+
+def test_reference_hub_has_car_track_explorer():
+    html = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-references.html").read_text(encoding="utf-8")
+    route = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "gauntlet.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    assert 'data-tab="explorer"' in html
+    assert 'Car × Track Explorer' in html
+    assert 'async function loadExplorer()' in html
+    assert '/api/gauntlet/references/explorer' in html
+    assert 'async def gauntlet_reference_explorer(' in route
+    assert 'add_get("/api/gauntlet/references/explorer"' in core
