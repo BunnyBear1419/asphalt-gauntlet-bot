@@ -125,7 +125,7 @@
 #profile-settings .settings-save-row>div>span{color:#7188a7}
 #profile-settings .settings-save-row b{display:block;margin-top:4px;color:#eef5ff;font-size:14px}
 #profile-settings .settings-save-row small{display:block;margin-top:4px;color:#8198b5;font-size:10px}
-#profile-settings .settings-save-row .qa{margin:0}
+#profile-settings .settings-save-row .qa{margin:0}#profile-settings .settings-savebar small{display:block;margin-top:4px;color:var(--rsl-box-muted);font-size:10px;line-height:1.45}
 @media(max-width:800px){
  #profile-settings .settings-workspace{grid-template-columns:1fr}
  #profile-settings .settings-rail{border-right:0;border-bottom:1px solid var(--rsl-box-line);display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:12px}
@@ -160,7 +160,7 @@ body[data-rsl-player-mode="settings"] #help{display:none!important}
 body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:first-child{display:none}
 body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:nth-child(2){display:block}
 body[data-rsl-player-mode="settings"] #profile-settings .settings-menu a:last-of-type{display:block}
-body[data-rsl-player-mode="settings"] #profile-settings .settings-savebar b:after{content:"Changes are saved to your RSL account."}
+
 body[data-rsl-player-mode="settings"] #profile-settings{margin-top:30px}
 body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:nth-child(2){display:none}
 body[data-rsl-player-mode="profile"] #profile-settings .settings-menu a:first-child{display:block}
@@ -331,7 +331,7 @@ html[data-theme] .rsl-player-redesign .qa:hover{border-color:var(--rsl-box-accen
     </section>
 
     <nav class="player-section-nav" aria-label="Driver dashboard sections">
-      <a href="#overview">Overview</a><a href="#gauntlet">Gauntlet</a><a href="#defense">Defense</a><a href="#registration">Registration</a><a href="#profile-settings">Profile &amp; Settings</a><a href="#career">Career</a>
+      <a href="/player#overview">Overview</a><a href="/player#gauntlet">Gauntlet</a><a href="/player#defense">Defense</a><a href="/player#registration">Registration</a><a href="/player/settings">Profile &amp; Settings</a><a href="/player#career">Career</a>
     </nav>
 
     <details class="driver-onboarding" id="driver-onboarding">
@@ -501,7 +501,7 @@ html[data-theme] .rsl-player-redesign .qa:hover{border-color:var(--rsl-box-accen
             <div id="profile-links" class="profile-links-list"></div>
             <button class="text-action" id="add-profile-link" type="button">＋ Add another link</button>
           </section>
-          <div class="settings-savebar"><div><span id="profile-save-kicker">PROFILE STATUS</span><b id="profile-save-copy">Ready to save changes</b></div><button class="qa qa-green" id="save-profile" type="button">Save Profile →</button></div>
+          <div class="settings-savebar"><div><span id="profile-save-kicker">PROFILE STATUS</span><b id="profile-save-copy">Ready to save changes</b><small id="profile-save-account-copy">Changes are saved to your RSL account.</small></div><button class="qa qa-green" id="save-profile" type="button">Save Profile →</button></div>
         </div>
       </div>
     </section>
