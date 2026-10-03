@@ -77,6 +77,7 @@ async def _all_participant_users(db, tournament: dict) -> list[str]:
     users = []
     cursor = db.tournament_registrations.find({
         "tournament_id": tournament_id,
+        "guild_id": str(tournament.get("guild_id")),
         "status": {"$in": ["accepted", "checked_in"]},
     })
     async for registration in cursor:
