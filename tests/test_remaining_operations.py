@@ -22,7 +22,7 @@ def test_remaining_operations_extend_existing_surfaces():
     assert "Evidence/review queues" in server
     assert "safe-mode-toggle" in admin
     assert "/api/admin/operations" in admin
-    assert 'action:"maintenance"' in admin
+    assert "/api/admin/competition-safe-mode" in admin
     assert 'action == "maintenance"' in server
     assert "season-finalize" in admin
     assert "load-evidence" in admin
