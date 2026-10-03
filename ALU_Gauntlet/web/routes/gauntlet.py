@@ -192,6 +192,75 @@ class GauntletRoutesMixin:
                 raise
         return web.json_response({"ok": True, "id": note_id, "visibility": visibility, "seconds": seconds})
 
+    async def gauntlet_reference_intel(self, request: web.Request) -> web.Response:
+        """Return community track intel for the selected guild."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        course = str(request.query.get("course", "")).strip()
+        query = {"guild_id": str(guild_id)}
+        if course:
+            query["course"] = course
+        rows = []
+        async for item in self.bot.db.reference_intel.find(query).sort("created_at", -1).limit(200):
+            rows.append({
+                "id": str(item.get("_id")),
+                "course": str(item.get("course") or ""),
+                "kind": str(item.get("kind") or "tip"),
+                "title": str(item.get("title") or ""),
+                "body": str(item.get("body") or ""),
+                "seconds": int(item.get("seconds") or 0),
+                "driver": str(item.get("driver") or ""),
+                "user_id": str(item.get("user_id") or ""),
+                "helpful": int(item.get("helpful") or 0),
+                "created_at": item.get("created_at"),
+            })
+        return web.json_response({"rows": rows})
+
+    async def gauntlet_reference_intel_action(self, request: web.Request) -> web.Response:
+        """Create or vote on community track intel."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        action = str(payload.get("action") or "create").strip().lower()
+        if action == "vote":
+            from bson import ObjectId
+            try:
+                iid = ObjectId(str(payload.get("id") or ""))
+            except Exception as exc:
+                raise web.HTTPBadRequest(text="Invalid intel id.") from exc
+            row = await self.bot.db.reference_intel.find_one({"_id": iid, "guild_id": str(guild_id)})
+            if not row:
+                raise web.HTTPNotFound(text="Intel not found.")
+            key = f"{guild_id}:{iid}:{user.user_id}"
+            await self.bot.db.reference_intel_votes.update_one(
+                {"_id": hashlib.sha256(key.encode()).hexdigest()},
+                {"$setOnInsert": {"guild_id": str(guild_id), "intel_id": iid, "user_id": str(user.user_id), "created_at": time.time()}},
+                upsert=True,
+            )
+            votes = await self.bot.db.reference_intel_votes.count_documents({"guild_id": str(guild_id), "intel_id": iid})
+            await self.bot.db.reference_intel.update_one({"_id": iid, "guild_id": str(guild_id)}, {"$set": {"helpful": int(votes)}})
+            return web.json_response({"ok": True, "helpful": int(votes)})
+        course = str(payload.get("course") or "").strip()
+        title = str(payload.get("title") or "").strip()[:120]
+        body = str(payload.get("body") or "").strip()[:1000]
+        kind = str(payload.get("kind") or "tip").strip().lower()
+        try:
+            seconds = max(0, min(7200, int(payload.get("seconds") or 0)))
+        except (TypeError, ValueError):
+            seconds = 0
+        if course not in ALU_TRACKS or not title or not body or kind not in {"tip", "shortcut", "hazard", "route"}:
+            raise web.HTTPBadRequest(text="Valid course, title, body and intel type are required.")
+        fingerprint = hashlib.sha256(f"{guild_id}:{user.user_id}:{course}:{kind}:{title.lower()}:{body.lower()}:{seconds}".encode()).hexdigest()
+        existing = await self.bot.db.reference_intel.find_one({"_id": fingerprint, "guild_id": str(guild_id)})
+        if existing:
+            return web.json_response({"ok": True, "id": fingerprint, "duplicate": True})
+        driver = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        await self.bot.db.reference_intel.insert_one({
+            "_id": fingerprint, "guild_id": str(guild_id), "course": course, "kind": kind,
+            "title": title, "body": body, "seconds": seconds, "driver": str(driver.get("game_id") or driver.get("username") or user.username),
+            "user_id": str(user.user_id), "helpful": 0, "created_at": time.time(),
+        })
+        await self._audit(str(guild_id), str(user.user_id), "Community reference intel submitted")
+        return web.json_response({"ok": True, "id": fingerprint, "status": "published"})
+
     async def gauntlet_reference_leaderboard(self, request: web.Request) -> web.Response:
         """Return guild-scoped contributor or video-reference standings."""
         _, guild_id, _ = await self.require_guild_member(request)
