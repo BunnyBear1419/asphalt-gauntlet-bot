@@ -192,6 +192,39 @@ class GauntletRoutesMixin:
                 raise
         return web.json_response({"ok": True, "id": note_id, "visibility": visibility, "seconds": seconds})
 
+    async def gauntlet_reference_practice_plan(self, request: web.Request) -> web.Response:
+        """Build a practice plan from the player's best laps versus timed references."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        personal = {}
+        async for row in self.bot.db.lap_times.find({"guild_id": str(guild_id), "user_id": str(user.user_id)}).limit(500):
+            try:
+                ms = int(row.get("best_ms") or 0)
+            except (TypeError, ValueError):
+                ms = 0
+            track = str(row.get("track") or "").strip()
+            if track and ms > 0:
+                personal[track] = min(ms, personal.get(track, 10**18))
+        rows = []
+        async for ref in self.bot.db.gauntlet_references.find({"guild_id": str(guild_id), "status": "approved"}).sort("created_at", -1).limit(500):
+            track = str(ref.get("course") or ref.get("track") or "").strip()
+            raw = ref.get("time") or ref.get("lap_time")
+            try:
+                if isinstance(raw, str) and ":" in raw:
+                    mm, ss = raw.split(":", 1)
+                    ref_seconds = float(mm) * 60 + float(ss)
+                else:
+                    ref_seconds = float(raw)
+            except (TypeError, ValueError):
+                continue
+            if not track or ref_seconds <= 0 or track not in personal:
+                continue
+            personal_seconds = personal[track] / 1000.0
+            gap = personal_seconds - ref_seconds
+            if gap > 0.05:
+                rows.append({"course": track, "your_time": personal_seconds, "reference_time": ref_seconds, "gap": gap, "title": str(ref.get("title") or ""), "video_url": str(ref.get("video_url") or "")})
+        rows.sort(key=lambda x: x["gap"], reverse=True)
+        return web.json_response({"rows": rows[:20]})
+
     async def gauntlet_reference_requests(self, request: web.Request) -> web.Response:
         """Return community feature/data requests for the selected guild."""
         _, guild_id, _ = await self.require_guild_member(request)
