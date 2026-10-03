@@ -582,8 +582,15 @@ class PlayerRoutesMixin:
         guild = next((g for g in self.bot.guilds if str(g.id) == str(guild_id)), None)
         member = guild.get_member(int(user_id)) if guild else None
         if member is None and guild:
-            try: member = await guild.fetch_member(int(user_id))
-            except Exception: member = None
+            try:
+                member = await guild.fetch_member(int(user_id))
+            except Exception:
+                log.exception(
+                    "Unable to resolve public profile member %s in guild %s",
+                    user_id,
+                    guild_id,
+                )
+                member = None
         if player is None and member is None:
             raise web.HTTPNotFound(text="Driver not found.")
         player = player or {}
@@ -606,6 +613,7 @@ class PlayerRoutesMixin:
             xp_rows = await xp_leaderboard(self.bot.db, guild_id, period="all")
             xp_rank = next((i + 1 for i,row in enumerate(xp_rows) if str(row.get("user_id")) == user_id), None)
         except Exception:
+            log.exception("Unable to build XP profile data for %s in guild %s", user_id, guild_id)
             xp, progress, xp_rank = 0, {"level": 1}, None
         public_player = {
             "user_id": user_id, "discord_name": profile_name, "discord_username": discord_username, "avatar_url": avatar_url, "discord_original_name": discord_name, "discord_avatar_url": str(getattr(getattr(member, "display_avatar", None), "url", "") or ""),
