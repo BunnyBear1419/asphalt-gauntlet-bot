@@ -46,7 +46,7 @@ class ClubsRoutesMixin:
         async for club in self.bot.db.clubs.find({"guild_id": {"$in": list(guild_ids)}}).sort("name_ci", 1):
             club["id"] = str(club.pop("_id"))
             members = []
-            async for member in self.bot.db.club_members.find({"club_id": club["id"]}).sort("joined_at", 1):
+            async for member in self.bot.db.club_members.find({"club_id": club["id"], "guild_id": club["guild_id"]}).sort("joined_at", 1):
                 member.pop("_id", None)
                 prefs = await self.bot.db.web_preferences.find_one({"_id": f"{club['guild_id']}_{member.get('user_id', '')}"}) or {}
                 connection = prefs.get("asphalt_connection") or {}
@@ -192,11 +192,11 @@ class ClubsRoutesMixin:
             if not updated.modified_count:
                 raise web.HTTPConflict(text="Club leadership changed before your transfer completed.")
             old_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "guild_id": str(club.get("guild_id")), "user_id": str(user.user_id)}, {"$set": {"role": "officer", "updated_at": now}})
-            new_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": target_id}, {"$set": {"role": "leader", "updated_at": now}})
+            new_role = await self.bot.db.club_members.update_one({"club_id": str(club_id), "guild_id": str(club.get("guild_id")), "user_id": target_id}, {"$set": {"role": "leader", "updated_at": now}})
             if not old_role.modified_count or not new_role.modified_count:
-                await self.bot.db.clubs.update_one({"_id": club_id, "leader_id": target_id}, {"$set": {"leader_id": str(user.user_id), "updated_at": now}})
-                await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": str(user.user_id)}, {"$set": {"role": "leader", "updated_at": now}})
-                await self.bot.db.club_members.update_one({"club_id": str(club_id), "user_id": target_id}, {"$set": {"role": "member", "updated_at": now}})
+                await self.bot.db.clubs.update_one({"_id": club_id, "guild_id": str(club.get("guild_id")), "leader_id": target_id}, {"$set": {"leader_id": str(user.user_id), "updated_at": now}})
+                await self.bot.db.club_members.update_one({"club_id": str(club_id), "guild_id": str(club.get("guild_id")), "user_id": str(user.user_id)}, {"$set": {"role": "leader", "updated_at": now}})
+                await self.bot.db.club_members.update_one({"club_id": str(club_id), "guild_id": str(club.get("guild_id")), "user_id": target_id}, {"$set": {"role": "member", "updated_at": now}})
                 raise web.HTTPConflict(text="Club leadership transfer could not be completed safely.")
         await self._club_notify_user(target_id, "Club leadership transferred", f"You are now the Leader of {club.get('name', 'the club')}.")
         return web.json_response({"ok": True, "message": "Club leadership transferred. You are now an Officer."})
@@ -220,12 +220,12 @@ class ClubsRoutesMixin:
         if client is not None:
             async with await client.start_session() as session:
                 async with session.start_transaction():
-                    result = await self.bot.db.clubs.delete_one({"_id": club_id, "leader_id": str(user.user_id)}, session=session)
+                    result = await self.bot.db.clubs.delete_one({"_id": club_id, "guild_id": str(club.get("guild_id")), "leader_id": str(user.user_id)}, session=session)
                     if not result.deleted_count:
                         raise web.HTTPConflict(text="Club changed before deletion completed.")
-                    await self.bot.db.club_invitations.delete_many({"club_id": str(club_id)}, session=session)
-                    await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id)}, session=session)
-                    await self.bot.db.club_members.delete_many({"club_id": str(club_id)}, session=session)
+                    await self.bot.db.club_invitations.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))}, session=session)
+                    await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))}, session=session)
+                    await self.bot.db.club_members.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))}, session=session)
         else:
             result = await self.bot.db.clubs.delete_one({"_id": club_id, "leader_id": str(user.user_id)})
             if not result.deleted_count:
