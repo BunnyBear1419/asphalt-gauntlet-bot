@@ -44,9 +44,9 @@ def _club_links(value: str) -> list[str]:
 
 
 async def _recount_club_members(club_id: str) -> int:
-    count = await bot.db.club_members.count_documents({"club_id": str(club_id)})
+    count = await bot.db.club_members.count_documents({"club_id": str(club_id), "guild_id": guild_id})
     await bot.db.clubs.update_one(
-        {"_id": ObjectId(str(club_id))},
+        {"_id": ObjectId(str(club_id)), "guild_id": guild_id},
         {"$set": {"member_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
     return count
@@ -56,7 +56,7 @@ async def _club_for_user(guild_id: str, user_id: str):
     member = await bot.db.club_members.find_one({"guild_id": guild_id, "user_id": user_id})
     if not member:
         return None, None
-    club = await bot.db.clubs.find_one({"_id": ObjectId(str(member["club_id"]))})
+    club = await bot.db.clubs.find_one({"_id": ObjectId(str(member["club_id"])), "guild_id": guild_id})
     return club, member
 
 
