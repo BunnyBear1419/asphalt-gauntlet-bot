@@ -409,7 +409,7 @@ class AdminRoutesMixin:
         if result.modified_count != 1:
             raise web.HTTPConflict(text="Reference review was already completed.")
         await self._audit(str(guild_id), str(user.user_id), f"Approved Gauntlet reference {submission_id}")
-        return web.json_response({"ok": True, "status": "approved", "reference_id": str(reference["_id")})
+        return web.json_response({"ok": True, "status": "approved", "reference_id": str(reference["_id"]))
 
     async def admin_diagnostics(self, request: web.Request) -> web.Response:
         _, guild_id, guild = await self.require_admin(request)
