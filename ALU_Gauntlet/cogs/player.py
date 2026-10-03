@@ -43,7 +43,8 @@ def _club_links(value: str) -> list[str]:
     return links
 
 
-async def _recount_club_members(club_id: str) -> int:
+async def _recount_club_members(club_id: str, guild_id: str) -> int:
+    guild_id = str(guild_id)
     count = await bot.db.club_members.count_documents({"club_id": str(club_id), "guild_id": guild_id})
     await bot.db.clubs.update_one(
         {"_id": ObjectId(str(club_id)), "guild_id": guild_id},
@@ -75,7 +76,7 @@ async def _club_embed(guild_id: str, user_id: str) -> discord.Embed:
         )
         return discord.Embed(title="🏎️ RSL CLUB CENTER", description=description[:4096], color=ASPHALT_THEME_COLOR)
 
-    members = await bot.db.club_members.find({"club_id": str(club["_id"])}).sort("joined_at", 1).to_list(length=20)
+    members = await bot.db.club_members.find({"club_id": str(club["_id"]), "guild_id": guild_id}).sort("joined_at", 1).to_list(length=20)
     wins = int(club.get("tournament_wins", 0) or 0)
     losses = int(club.get("tournament_losses", 0) or 0)
     role = str(membership.get("role", "member")).upper()
@@ -150,7 +151,7 @@ class CreateClubModal(discord.ui.Modal, title="Create RSL Club"):
             await bot.db.club_members.insert_one({"club_id": str(result.inserted_id), "guild_id": guild_id, "user_id": user_id, "username": str(interaction.user.global_name or interaction.user.name or user_id), "role": "leader", "joined_at": now})
         except Exception as exc:
             if result is not None:
-                await bot.db.clubs.delete_one({"_id": result.inserted_id})
+                await bot.db.clubs.delete_one({"_id": result.inserted_id, "guild_id": guild_id})
             await interaction.followup.send(
                 await localize_text(bot, interaction.user.id, "❌ The club could not be created. No partial club was kept.", interaction.locale),
                 ephemeral=True
@@ -212,7 +213,7 @@ class EditClubModal(discord.ui.Modal, title="Edit RSL Club"):
                 ephemeral=True
             )
             return
-        await bot.db.clubs.update_one({"_id": club["_id"], "leader_id": user_id}, {"$set": {"name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        await bot.db.clubs.update_one({"_id": club["_id"], "guild_id": guild_id, "leader_id": user_id}, {"$set": {"name": name, "name_ci": name.casefold(), "about": str(self.about.value or "").strip()[:500], "discord": discord_link[:300], "links": links, "image": image, "updated_at": datetime.now(timezone.utc).isoformat()}})
         await interaction.followup.send(
             await localize_text(bot, interaction.user.id, "✅ Club profile updated.", interaction.locale),
             embed=await _club_embed(guild_id, user_id),
@@ -264,7 +265,7 @@ class ClubMemberActionView(discord.ui.View):
                 ephemeral=True
             )
             return
-        member = await bot.db.club_members.find_one({"club_id": str(self.club["_id"]), "user_id": self.target_user_id})
+        member = await bot.db.club_members.find_one({"club_id": str(self.club["_id"]), "guild_id": str(self.club.get("guild_id")), "user_id": self.target_user_id})
         if not member:
             await interaction.response.send_message(
                 await localize_text(bot, interaction.user.id, "❌ Club member not found.", interaction.locale),
@@ -276,8 +277,8 @@ class ClubMemberActionView(discord.ui.View):
             if target_role == "officer" and self.owner_role != "leader":
                 await localize_text(bot, interaction.user.id, "❌ Officers cannot kick another Officer.", interaction.locale)
                 return
-            await bot.db.club_members.delete_one({"_id": member["_id"]})
-            await _recount_club_members(str(self.club["_id"]))
+            await bot.db.club_members.delete_one({"_id": member["_id"], "club_id": str(self.club["_id"]), "guild_id": str(self.club.get("guild_id"))})
+            await _recount_club_members(str(self.club["_id"]), str(self.club.get("guild_id")))
             message = "✅ Member removed from the club."
         elif action == "promote":
             if self.owner_role != "leader":
@@ -338,7 +339,7 @@ class ClubCenterView(discord.ui.View):
                 ephemeral=True
             )
             return
-        result = await bot.db.club_members.delete_one({"club_id": str(self.current_club["_id"]), "user_id": self.user_id})
+        result = await bot.db.club_members.delete_one({"club_id": str(self.current_club["_id"]), "guild_id": str(self.current_club.get("guild_id")), "user_id": self.user_id})
         if result.deleted_count:
             await _recount_club_members(str(self.current_club["_id"]))
         await send_club_center(interaction, replace=True)
@@ -410,7 +411,7 @@ class ClubPickerSelect(discord.ui.Select):
                 ephemeral=True
             )
             return
-        reservation = await bot.db.clubs.update_one({"_id": club["_id"], "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]}, {"$inc": {"member_count": 1}})
+        reservation = await bot.db.clubs.update_one({"_id": club["_id"], "guild_id": guild_id, "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]}, {"$inc": {"member_count": 1}})
         if not reservation.modified_count:
             await interaction.response.send_message(
                 await localize_text(bot, interaction.user.id, "❌ That club is full.", interaction.locale),
@@ -421,7 +422,7 @@ class ClubPickerSelect(discord.ui.Select):
         try:
             await bot.db.club_members.insert_one({"club_id": str(club["_id"]), "guild_id": guild_id, "user_id": user_id, "username": str(interaction.user.global_name or interaction.user.name or user_id), "role": "member", "joined_at": now})
         except Exception as exc:
-            await bot.db.clubs.update_one({"_id": club["_id"], "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+            await bot.db.clubs.update_one({"_id": club["_id"], "guild_id": guild_id, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             if exc.__class__.__name__ == "DuplicateKeyError":
                 await interaction.response.send_message(
                     await localize_text(bot, interaction.user.id, "❌ You are already in a club in this server.", interaction.locale),
