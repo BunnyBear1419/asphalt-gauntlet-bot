@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 from datetime import datetime, timezone
@@ -9,6 +10,8 @@ from discord.ext import commands
 from ..core.core import *
 from .translation import localize_text
 from ..core.rsl_reliability import build_reliability_snapshot
+
+log = logging.getLogger(__name__)
 
 
 class OperationsCog(commands.Cog):
@@ -30,7 +33,7 @@ class OperationsCog(commands.Cog):
             mongo_ms = round((time.perf_counter() - started) * 1000, 1)
             mongo_ok = True
         except Exception:
-            pass
+            log.exception("MongoDB status ping failed for guild %s", gid)
 
         state = await bot.db.season_state.find_one({"_id": f"guild_{gid}"}) if mongo_ok else None
         settings = await bot.db.settings.find_one({"_id": gid}) if mongo_ok else None
@@ -46,7 +49,7 @@ class OperationsCog(commands.Cog):
                 if obj and obj.is_running(): return "🟢"
                 if obj and obj.failed(): return "🔴"
             except Exception:
-                pass
+                log.debug("Unable to inspect background task state", exc_info=True)
             return "⚪"
 
         embed = discord.Embed(title=await localize_text(bot, interaction.user.id, "🛰️ RACING SYNDICATE LEAGUE — LIVE STATUS", getattr(interaction, "locale", None)), color=ASPHALT_VICTORY_COLOR if mongo_ok and not stale else ASPHALT_ALERT_COLOR, timestamp=datetime.now(timezone.utc))
