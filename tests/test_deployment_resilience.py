@@ -149,12 +149,17 @@ def test_restart_failure_enters_rollback_path():
     assert "if: steps.restart.outcome == 'success'" in source
     assert "if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure'" in source
     assert "Both rollback uploads failed" in source
-    assert "(steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
+    assert "(steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
+
+
+def test_live_e2e_failure_does_not_trigger_rollback():
+    source = (ROOT / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
+    assert "steps.live_e2e.outcome == 'failure'" not in source.split("- name: Roll back to previous known-good revision", 1)[1].split("- name: Mark deployment failed after successful recovery", 1)[0]
 
 
 def test_rollback_retry_conditions_preserve_failure_precedence():
     source = _source()
-    assert "if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
+    assert "if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'" in source
 
 
 def test_recovery_success_requires_rollback_restart_and_verification():
