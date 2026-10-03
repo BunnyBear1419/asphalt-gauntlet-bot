@@ -335,3 +335,47 @@ def test_gauntlet_xp_and_coin_rewards_are_separate_from_match_settlement():
     settlement = source[start:end]
     assert "apply_coin_transaction(" not in settlement
     assert "award_xp(" not in settlement
+
+
+
+def test_player_career_uses_selected_live_guild_for_tournament_history():
+    source = read("ALU_Gauntlet/web/routes/player.py")
+    start = source.index("async def player_career")
+    end = source.index("async def player_list", start)
+    block = source[start:end]
+    assert '"guild_id": str(guild_id)' in block
+    assert 'list(guild_ids)' not in block
+
+
+def test_public_driver_career_uses_selected_live_guild_for_tournament_history():
+    source = read("ALU_Gauntlet/web/routes/public.py")
+    start = source.index("async def public_driver_career")
+    end = source.index("async def ", start + len("async def public_driver_career"))
+    block = source[start:end]
+    assert '"guild_id": str(guild_id)' in block
+    assert '_live_guild_ids_for_user(user)' not in block
+
+
+def test_recovery_runs_have_bounded_retention():
+    recovery = read("ALU_Gauntlet/core/rsl_recovery.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert '"expires_at": now + (7 * 24 * 60 * 60)' in recovery
+    assert 'name="ttl_rsl_recovery_runs"' in main
+    assert 'partialFilterExpression={"kind": "recovery_run"}' in main
+
+
+def test_gated_brand_assets_are_not_publicly_cached():
+    source = read("ALU_Gauntlet/web/routes/admin.py")
+    start = source.index("async def serve_brand_asset")
+    end = source.index("async def admin_csp_diagnostics", start)
+    block = source[start:end]
+    assert '"Cache-Control": "private, max-age=3600"' in block
+    assert 'headers={"Cache-Control":"private, max-age=3600"}' in block
+
+
+def test_theme_cookie_is_persisted_for_first_paint_restoration():
+    theme = read("ALU_Gauntlet/web/static/theme.js")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    assert 'document.cookie="rsl_theme="+encodeURIComponent(t)' in theme
+    assert 'rsl_theme=([^;]+)' in theme
+    assert 'rsl_theme=([^;]+)' in core
