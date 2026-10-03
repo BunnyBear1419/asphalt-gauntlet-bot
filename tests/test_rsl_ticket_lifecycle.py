@@ -188,7 +188,7 @@ def test_ticket_permission_reconciliation_cleans_stale_members():
     cog=(root/"ALU_Gauntlet"/"cogs"/"tickets.py").read_text(encoding="utf-8")
     assert "async def reconcile_ticket_permissions" in cog
     assert "RSL ticket permission reconciliation" in cog
-    assert "closed=True,locked=False" in cog
+    assert "closed=True, locked=False" in cog
     assert "member_ids={str(x) for x in row.get(\"member_ids\",[])}" in cog
 
 
