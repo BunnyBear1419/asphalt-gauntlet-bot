@@ -455,6 +455,24 @@ def test_reference_hub_timestamp_notes_seek_and_staff_queue():
     assert '"$set": {"status": "pending", "recovered_at": now}' in admin
     assert '"$unset": {"review_started_by": "", "review_started_at": ""}' in admin
 
+def test_reference_hub_has_community_track_intel():
+    html = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-references.html").read_text(encoding="utf-8")
+    route = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "gauntlet.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    main = (ROOT / "ALU_Gauntlet" / "main.py").read_text(encoding="utf-8")
+    assert 'data-tab="intel"' in html
+    assert 'Community Track Intel' in html
+    assert 'async function loadIntel()' in html
+    assert 'async function submitIntel(' in html
+    assert '/api/gauntlet/references/intel' in html
+    assert 'async def gauntlet_reference_intel(' in route
+    assert 'async def gauntlet_reference_intel_action(' in route
+    assert 'add_get("/api/gauntlet/references/intel"' in core
+    assert 'add_post("/api/gauntlet/references/intel"' in core
+    assert 'reference_intel.create_index' in main
+    assert 'uniq_reference_intel_vote' in main
+
+
 def test_reference_hub_has_video_reference_leaderboard():
     page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
     gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
