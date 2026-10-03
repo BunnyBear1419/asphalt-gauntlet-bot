@@ -1149,6 +1149,39 @@ html[data-theme] input,html[data-theme] textarea,html[data-theme] select,html[da
 
 /* Form-control theme normalization: page-local legacy rules must never leak their original palette into a selected theme. */
 html[data-theme] input,html[data-theme] textarea,html[data-theme] select,html[data-theme] [contenteditable="true"]{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important;accent-color:var(--rsl-audit-accent)!important}
+html[data-theme] .admin-upload-drop,
+html[data-theme] .rsl-upload-drop,
+html[data-theme] .dropzone,
+html[data-theme] .file-drop,
+html[data-theme] .custom-select,
+html[data-theme] .select-trigger,
+html[data-theme] .dropdown-trigger,
+html[data-theme] .server-control select,
+html[data-theme] .registration-top-five input,
+html[data-theme] .profile-link-row input,
+html[data-theme] .news-form input,
+html[data-theme] .news-form textarea,
+html[data-theme] .news-form select,
+html[data-theme] .news-guild,
+html[data-theme] .tournament-create input,
+html[data-theme] .tournament-create textarea,
+html[data-theme] .tournament-create select{
+  background:var(--rsl-audit-panel)!important;
+  color:var(--rsl-audit-text)!important;
+  border-color:var(--rsl-audit-line)!important;
+}
+html[data-theme] .admin-upload-drop:hover,
+html[data-theme] .admin-upload-drop.is-dragover,
+html[data-theme] .rsl-upload-drop:hover,
+html[data-theme] .dropzone:hover,
+html[data-theme] .file-drop:hover,
+html[data-theme] .custom-select:hover,
+html[data-theme] .select-trigger:hover,
+html[data-theme] .dropdown-trigger:hover{
+  background:var(--rsl-audit-panel2)!important;
+  color:var(--rsl-audit-accent)!important;
+  border-color:var(--rsl-audit-accent)!important;
+}
 html[data-theme] select{color-scheme:dark}
 html[data-theme="light"] select{color-scheme:light}
 html[data-theme] select option,html[data-theme] select optgroup{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important}
