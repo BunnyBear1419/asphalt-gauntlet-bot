@@ -8,13 +8,13 @@
 <section id="panel-intel" class="glass-panel ref-panel hidden" style="padding:20px">
 <h2>Community Track Intel</h2>
 <p class="ref-meta">Share route tips, shortcuts and hazards. Helpful intel is ranked by the community and remains tied to the selected RSL guild.</p>
-<div class="ref-toolbar"><select id="intel-course"><option value="">All Courses</option></select><select id="intel-kind"><option value="">All Intel</option><option value="tip">Tips</option><option value="shortcut">Shortcuts</option><option value="hazard">Hazards</option><option value="route">Routes</option></select></div>
+<div class="ref-toolbar"><select id="intel-course"><option value="">All Courses</option></select><input id="intel-car" maxlength="100" placeholder="Filter by car (optional)"><select id="intel-kind"><option value="">All Intel</option><option value="tip">Tips</option><option value="shortcut">Shortcuts</option><option value="hazard">Hazards</option><option value="route">Routes</option></select></div>
 <div id="intel-list" class="ref-grid"></div>
 <h3 style="margin-top:24px">Submit Track Intel</h3>
 <form id="intel-form" class="ref-form"><div class="ref-form-grid">
-<select id="intel-f-course" required></select><select id="intel-f-kind"><option value="tip">Tip</option><option value="shortcut">Shortcut</option><option value="hazard">Hazard</option><option value="route">Route</option></select>
+<select id="intel-f-course" required></select><input id="intel-f-car" maxlength="100" placeholder="Car (optional)"><select id="intel-f-kind"><option value="tip">Tip</option><option value="shortcut">Shortcut</option><option value="hazard">Hazard</option><option value="route">Route</option></select>
 <input id="intel-f-title" maxlength="120" required placeholder="Intel title"><input id="intel-f-seconds" type="number" min="0" max="7200" placeholder="Video timestamp (seconds)">
-<textarea id="intel-f-body" maxlength="1000" required placeholder="Describe the route, shortcut, hazard, or technique…"></textarea></div><br><button>Publish Intel</button><p id="intel-msg"></p></form>
+<textarea id="intel-f-body" maxlength="1000" required placeholder="Describe the route, shortcut, hazard, or technique…"></textarea><input id="intel-f-video" maxlength="500" placeholder="Evidence/video URL (optional)"></div><br><button>Publish Intel</button><p id="intel-msg"></p></form>
 </section><section id="panel-practice" class="glass-panel ref-panel hidden" style="padding:20px">
 <h2>My Practice Planner</h2>
 <p class="ref-meta">RSL compares your recorded best laps with approved community reference times and puts the biggest gaps first.</p>
@@ -90,8 +90,8 @@ async function submitRequest(e){
   $("#request-msg").textContent=r.ok?"Request submitted.":"Unable to submit request.";if(r.ok){e.target.reset();loadRequests();}
 }
 async function loadIntel(){
-  const course=$("#intel-course").value,kind=$("#intel-kind").value;
-  const q=new URLSearchParams();if(course)q.set("course",course);
+  const course=$("#intel-course").value,kind=$("#intel-kind").value,car=$("#intel-car").value.trim();
+  const q=new URLSearchParams();if(course)q.set("course",course);if(car)q.set("car",car);
   const r=await fetch("/api/gauntlet/references/intel?"+q.toString(),{credentials:"same-origin"});
   if(!r.ok)return;
   const d=await r.json();
