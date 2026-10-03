@@ -6,6 +6,7 @@ for explicit checkpoint creation requested by staff.
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 from pathlib import Path
@@ -13,6 +14,9 @@ from typing import Any
 
 from .platform_assurance import anomaly_flags, readiness_check, redact_document
 from .rsl_hardening import ADMIN_CAPABILITIES
+
+
+log = logging.getLogger(__name__)
 
 
 RELIABILITY_VERSION = "2"
