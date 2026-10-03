@@ -28,29 +28,68 @@ BONUS_RETRY_BASE_SECONDS = 5 * 60
 
 
 async def _record_bonus_failure(db, reservation: dict, now: float, *, error: BaseException | None = None) -> bool:
-    """Schedule the next bonus retry, or mark the match for staff review.
+    """Atomically advance the bonus retry counter and record its next action.
 
-    Returns True when retries are exhausted. A failed bookkeeping write is logged
-    and treated as "not exhausted" so one bad write cannot abort the whole pass.
+    Recovery can run concurrently from Discord, web, or scheduled workers.
+    The retry counter therefore must not be derived from a stale reservation
+    snapshot; use Mongo's atomic $inc and read the resulting durable count.
     """
+    exhausted = False
     attempts = int(reservation.get("rsl_bonus_retry_attempts", 0) or 0) + 1
-    base = {"rsl_bonus_retry_attempts": attempts, "rsl_bonus_last_error_at": now}
-    exhausted = attempts >= BONUS_RETRY_MAX_ATTEMPTS
     try:
+        result = await db.matches.update_one(
+            {
+                "_id": reservation["_id"],
+                "settlement_status": "completed",
+                "rsl_bonus_recovery_status": {"$ne": "needs_staff_review"},
+            },
+            {
+                "$inc": {"rsl_bonus_retry_attempts": 1},
+                "$set": {"rsl_bonus_last_error_at": now},
+            },
+        )
+        if getattr(result, "modified_count", 0) != 1:
+            current = await db.matches.find_one(
+                {"_id": reservation["_id"]},
+                {"rsl_bonus_retry_attempts": 1, "rsl_bonus_recovery_status": 1},
+            ) or {}
+            attempts = int(current.get("rsl_bonus_retry_attempts", attempts) or attempts)
+            exhausted = str(current.get("rsl_bonus_recovery_status") or "").casefold() == "needs_staff_review"
+        else:
+            current = await db.matches.find_one(
+                {"_id": reservation["_id"]},
+                {"rsl_bonus_retry_attempts": 1},
+            ) or {}
+            attempts = int(current.get("rsl_bonus_retry_attempts", attempts) or attempts)
+            exhausted = attempts >= BONUS_RETRY_MAX_ATTEMPTS
+
         if exhausted:
             await db.matches.update_one(
-                {"_id": reservation["_id"], "settlement_status": "completed"},
-                {"$set": {**base, "rsl_bonus_recovery_status": "needs_staff_review"}},
+                {
+                    "_id": reservation["_id"],
+                    "settlement_status": "completed",
+                    "rsl_bonus_retry_attempts": {"$gte": BONUS_RETRY_MAX_ATTEMPTS},
+                },
+                {"$set": {"rsl_bonus_recovery_status": "needs_staff_review"}},
             )
             log.error(
                 "RSL performance bonus recovery exhausted for settlement %s after %s attempts; staff review required",
                 reservation.get("_id"), attempts, exc_info=error is not None,
             )
         else:
-            delay = BONUS_RETRY_BASE_SECONDS * (2 ** (attempts - 1))
+            delay = BONUS_RETRY_BASE_SECONDS * (2 ** max(0, attempts - 1))
             await db.matches.update_one(
-                {"_id": reservation["_id"], "settlement_status": "completed"},
-                {"$set": {**base, "rsl_bonus_next_retry_at": now + delay, "rsl_bonus_recovery_status": "retry_scheduled"}},
+                {
+                    "_id": reservation["_id"],
+                    "settlement_status": "completed",
+                    "rsl_bonus_recovery_status": {"$ne": "needs_staff_review"},
+                },
+                {
+                    "$set": {
+                        "rsl_bonus_next_retry_at": now + delay,
+                        "rsl_bonus_recovery_status": "retry_scheduled",
+                    }
+                },
             )
             log.warning(
                 "RSL performance bonus retry %s/%s scheduled for settlement %s in %ss",
