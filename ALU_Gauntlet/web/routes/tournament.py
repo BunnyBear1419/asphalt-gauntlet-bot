@@ -303,7 +303,7 @@ class TournamentRoutesMixin:
             match.update({"result_status":"pending","submitted_by":str(user.user_id),"submitted_at":datetime.now(timezone.utc).isoformat(),"winner_id":winner_id,"proof_url":proof_url,"result_notes":notes})
             await self.bot.db.tournaments.update_one({"_id": oid},{"$set":{"bracket":bracket,"updated_at":datetime.now(timezone.utc).isoformat()}})
         finally:
-            await self._release_tournament_action(str(oid), match_id)
+            await self._release_tournament_action(str(oid), match_id, "submit")
         cfg = await self.bot.db.settings.find_one({"_id": str(t.get("guild_id"))}) or {}
         channel_id = cfg.get("match_results_channel_id")
         channel = self.bot.get_channel(int(channel_id)) if channel_id else None
@@ -492,7 +492,7 @@ class TournamentRoutesMixin:
                 )
                 message = "Result verified and tournament state advanced."
         finally:
-            await self._release_tournament_action(str(oid), match_id)
+            await self._release_tournament_action(str(oid), match_id, "verify")
 
         if t.get("status") == "completed":
             try:
