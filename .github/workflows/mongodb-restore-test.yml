@@ -163,7 +163,7 @@ jobs:
 
           required = {
               "drivers", "pending", "matches", "active_challenges", "season_state",
-              "season_history", "settings", "reference_pending", "gauntlet_reference_notes", "reference_intel", "reference_intel_votes", "lap_times",
+              "season_history", "settings", "reference_pending", "gauntlet_reference_notes", "reference_intel", "reference_intel_votes", "reference_requests", "reference_request_votes", "lap_times",
               "lap_time_history", "map_records", "map_references", "system_events", "disputes",
           }
           missing = sorted(required - set(collections))
