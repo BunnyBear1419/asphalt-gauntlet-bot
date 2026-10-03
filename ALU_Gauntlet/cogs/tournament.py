@@ -30,7 +30,7 @@ async def _entrant_name(tournament, entrant_id):
     try:
         member = bot.get_user(int(sid)) or await bot.fetch_user(int(sid))
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("Unable to resolve tournament user %s", sid, exc_info=True)
     return str(getattr(member, "display_name", None) or getattr(member, "name", None) or sid)
 
 async def _claim_action(tournament_id, match_id, action):
