@@ -276,6 +276,53 @@ class GauntletRoutesMixin:
             "tracks": sorted(tracks, key=str.casefold),
         })
 
+    async def gauntlet_reference_car_comparison(self, request: web.Request) -> web.Response:
+        """Return guild-scoped car comparison data from approved RSL references."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        raw_cars = str(request.query.get("cars") or "").split(",")
+        selected = []
+        seen = set()
+        for value in raw_cars:
+            car = value.strip()
+            key = car.casefold()
+            if car and key not in seen:
+                seen.add(key); selected.append(car)
+        selected = selected[:4]
+        if len(selected) < 2:
+            return web.json_response({"cars": [], "tracks": [], "rows": [], "message": "Select at least two cars."})
+        query = {"guild_id": str(guild_id), "status": {"$in": ["approved", "published"]}}
+        refs = []
+        async for ref in self.bot.db.gauntlet_references.find(query).sort("created_at", -1).limit(2000):
+            car = str(ref.get("car") or "").strip()
+            if not car or car.casefold() not in seen:
+                continue
+            track = str(ref.get("course") or ref.get("track") or "").strip()
+            if not track:
+                continue
+            raw = ref.get("time") or ref.get("lap_time")
+            try:
+                text = str(raw or "").strip().replace(",", ".")
+                seconds = (float(text.split(":", 1)[0]) * 60 + float(text.split(":", 1)[1])) if ":" in text else float(text)
+            except (TypeError, ValueError):
+                continue
+            if seconds <= 0:
+                continue
+            refs.append((track, car, seconds, bool(ref.get("official", False)), str(ref.get("title") or ""), str(ref.get("driver") or ""), str(ref.get("video_url") or "")))
+        best = {}
+        for track, car, seconds, official, title, driver, video_url in refs:
+            key = (track.casefold(), car.casefold())
+            row = best.get(key)
+            if row is None or seconds < row["time"] or (seconds == row["time"] and official and not row["official"]):
+                best[key] = {"track": track, "car": car, "time": seconds, "official": official, "title": title, "driver": driver, "video_url": video_url}
+        tracks = sorted({row["track"] for row in best.values()}, key=str.casefold)
+        rows = []
+        for track in tracks:
+            entries = [best[(track.casefold(), car.casefold())] for car in selected if (track.casefold(), car.casefold()) in best]
+            if len(entries) >= 2:
+                fastest = min(row["time"] for row in entries)
+                rows.append({"track": track, "entries": entries, "spread": max(row["time"] for row in entries) - fastest, "fastest_car": min(entries, key=lambda row: row["time"])["car"]})
+        return web.json_response({"cars": selected, "tracks": tracks, "rows": rows[:200]})
+
     async def gauntlet_reference_requests(self, request: web.Request) -> web.Response:
         """Return community feature/data requests for the selected guild."""
         _, guild_id, _ = await self.require_guild_member(request)

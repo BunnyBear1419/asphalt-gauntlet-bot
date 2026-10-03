@@ -524,3 +524,16 @@ def test_reference_hub_has_car_track_explorer():
     assert '/api/gauntlet/references/explorer' in html
     assert 'async def gauntlet_reference_explorer(' in route
     assert 'add_get("/api/gauntlet/references/explorer"' in core
+
+
+def test_reference_hub_has_car_comparison():
+    html = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    route = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    assert 'data-tab="comparison"' in html
+    assert "Car Comparison" in html
+    assert "async function loadComparison()" in html
+    assert "/api/gauntlet/references/car-comparison" in html
+    assert "async def gauntlet_reference_car_comparison(" in route
+    assert 'add_get("/api/gauntlet/references/car-comparison", self.gauntlet_reference_car_comparison)' in core
+    assert '"guild_id": str(guild_id)' in route[route.index("async def gauntlet_reference_car_comparison("):]
