@@ -24,7 +24,7 @@ class TournamentRoutesMixin:
 
     async def tournaments(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        guild_ids = set(str(x) for x in user.guild_ids)
+        guild_ids = await self._live_guild_ids_for_user(user)
         rows = []
         async for item in self.bot.db.tournaments.find({"guild_id": {"$in": list(guild_ids)}}).sort("start_time", 1):
             item["id"] = str(item.get("_id"))
@@ -61,7 +61,7 @@ class TournamentRoutesMixin:
         except Exception:
             raise web.HTTPBadRequest(text="Invalid tournament ID.")
         item = await self.bot.db.tournaments.find_one({"_id": oid})
-        if not item or str(item.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+        if not item or str(item.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Tournament not found.")
         detail_guild = next((g for g in getattr(self.bot, "guilds", []) if str(getattr(g, "id", "")) == str(item.get("guild_id"))), None)
         item["can_manage_results"] = bool(
@@ -249,7 +249,7 @@ class TournamentRoutesMixin:
         except Exception:
             raise web.HTTPBadRequest(text="Invalid tournament ID.")
         t = await self.bot.db.tournaments.find_one({"_id": oid})
-        if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+        if not t or str(t.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Tournament not found.")
         if t.get("status") != "live":
             raise web.HTTPConflict(text="Tournament is not live.")
@@ -773,7 +773,7 @@ class TournamentRoutesMixin:
         except Exception as exc:
             raise web.HTTPBadRequest(text="Invalid tournament ID.") from exc
         t = await self.bot.db.tournaments.find_one({"_id": oid})
-        if not t or str(t.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+        if not t or str(t.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Tournament not found.")
         if t.get("status") not in {"registration_open", "open"}:
             raise web.HTTPConflict(text="Check-in is closed once the tournament is live or completed.")
