@@ -194,7 +194,7 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
             return
         try:
             match.update({"result_status":"pending","submitted_by":str(interaction.user.id),"submitted_at":discord.utils.utcnow().isoformat(),"winner_id":self.winner_id,"proof_url":proof,"result_notes":str(self.notes.value).strip()})
-            await bot.db.tournaments.update_one({"_id":tournament["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
+            X,{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
         finally:
             await _release_action(self.tournament_id, self.match_id, "submit", lock_token)
         if result_mode == "admin_only":
@@ -371,7 +371,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id, guil
                 match.pop(key,None)
             match["status"]="ready"
             await bot.db.tournaments.update_one(
-                {"_id":t["_id"]},
+                {"_id":t["_id"],"guild_id":str(t.get("guild_id") or "")},
                 {"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}}
             )
             message="Result rejected. The match is ready for another submission."
@@ -517,7 +517,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id, guil
 
             message="Result approved and winner advanced."
         await bot.db.tournaments.update_one(
-            {"_id":t["_id"]},
+            {"_id":t["_id"],"guild_id":str(t.get("guild_id") or "")},
             {"$set":{"bracket":bracket,"status":t.get("status","live"),"champion_id":t.get("champion_id"),"standings":t.get("standings"),"updated_at":discord.utils.utcnow().isoformat()}}
         )
         if t.get("status") == "completed":
