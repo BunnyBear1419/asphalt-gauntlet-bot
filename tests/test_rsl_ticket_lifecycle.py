@@ -56,7 +56,7 @@ def test_ticket_unique_active_index_exists():
 
 
 def test_ticket_analytics_and_dashboard_metrics():
-    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "routes" / "admin.py").read_text(encoding="utf-8")
     page=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
     assert '"avg_first_response_minutes"' in server
     assert '"avg_resolution_hours"' in server
