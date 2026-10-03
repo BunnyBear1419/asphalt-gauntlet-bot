@@ -379,3 +379,43 @@ def test_theme_cookie_is_persisted_for_first_paint_restoration():
     assert 'document.cookie="rsl_theme="+encodeURIComponent(t)' in theme
     assert 'rsl_theme=([^;]+)' in theme
     assert 'rsl_theme=([^;]+)' in core
+
+
+def test_clubs_defines_its_discord_stats_loader():
+    source = read("ALU_Gauntlet/web/static/clubs.js")
+    assert "async function loadPageDiscordStats()" in source
+    assert 'fetch("/api/discord-stats"' in source
+
+
+def test_player_settings_section_links_leave_settings_route():
+    source = read("ALU_Gauntlet/web/static/player.html")
+    assert 'href="/player#overview"' in source
+    assert 'href="/player#gauntlet"' in source
+    assert 'href="/player#defense"' in source
+    assert 'href="/player#registration"' in source
+    assert 'href="/player/settings">Profile &amp; Settings</a>' in source
+    assert 'href="/player#career"' in source
+    assert 'content:"Changes are saved to your RSL account."' not in source
+
+
+def test_companion_links_target_shohans_companion():
+    index = read("ALU_Gauntlet/web/static/index.html")
+    profile = read("ALU_Gauntlet/web/static/profile.html")
+    assert 'href="https://alu.shohanlab.com/"' in index
+    assert 'href="https://alu.shohanlab.com/"' in profile or 'https://alu.shohanlab.com/' in profile
+
+
+def test_competition_safe_mode_has_dedicated_api_route():
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    admin = read("ALU_Gauntlet/web/routes/admin.py")
+    page = read("ALU_Gauntlet/web/static/admin.html")
+    assert '"/api/admin/competition-safe-mode"' in core
+    assert "async def admin_competition_safe_mode" in admin
+    assert '"/api/admin/competition-safe-mode"+q()' in page
+
+
+def test_players_page_uses_shared_rsl_surface_tokens():
+    source = read("ALU_Gauntlet/web/static/players.html")
+    assert "RSL Players directory — shared page shell" in source
+    assert "var(--rsl-box)" in source
+    assert "var(--rsl-box-line)" in source
