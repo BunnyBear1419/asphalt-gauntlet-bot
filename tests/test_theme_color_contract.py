@@ -85,7 +85,6 @@ def test_light_theme_action_buttons_use_high_contrast_text():
 
 
 def test_final_theme_control_surface_contract():
-def test_final_theme_control_surface_contract():
     source = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.css").read_text(encoding="utf-8")
     assert 'html[data-theme] input:not([type="checkbox"]):not([type="radio"])' in source
     assert 'html[data-theme] select option' in source
