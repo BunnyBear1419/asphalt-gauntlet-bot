@@ -177,6 +177,7 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
             return
         proof = str(self.proof.value).strip()
         if proof and not proof.lower().startswith(("http://", "https://")):
+            await _release_action(self.tournament_id, self.match_id, "submit", lock_token)
             await interaction.response.send_message(
                 await localize_text(bot, interaction.user.id, "❌ Proof must be a valid URL.", interaction.locale),
                 ephemeral=True
