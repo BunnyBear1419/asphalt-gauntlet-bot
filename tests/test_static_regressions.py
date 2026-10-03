@@ -211,7 +211,8 @@ def test_web_gauntlet_failure_path_imports_shared_recovery():
 
 def test_csp_report_only_allows_google_integrations():
     source = read("ALU_Gauntlet/web/routes/core.py")
-    assert "Content-Security-Policy-Report-Only" in source
+    assert 'Content-Security-Policy"' in source
+    assert "Content-Security-Policy-Report-Only" not in source
     assert "https://www.googletagmanager.com" in source
     assert "https://translate.google.com" in source
     assert "https://translate.googleapis.com" in source
