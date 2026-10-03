@@ -378,18 +378,18 @@ class PublicRoutesMixin:
             club = await self.bot.db.clubs.find_one({"_id": club_oid, "guild_id": str(tournament["guild_id"])})
             if not club:
                 raise web.HTTPNotFound(text="Club not found in this server.")
-            membership = await self.bot.db.club_members.find_one({"club_id": club_id, "user_id": str(user.user_id)})
+            membership = await self.bot.db.club_members.find_one({"club_id": club_id, "guild_id": str(tournament["guild_id"]), "user_id": str(user.user_id)})
             if not membership:
                 raise web.HTTPForbidden(text="You must be a member of the club to register it.")
             if str(club.get("leader_id")) != str(user.user_id):
                 raise web.HTTPForbidden(text="Only the club leader can enter a club in a tournament.")
             count = await self.bot.db.tournament_club_registrations.count_documents(
-                {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                {"tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]), "status": {"$in": ["pending", "accepted", "checked_in"]}}
             )
             if count >= int(tournament.get("max_players", 32)):
                 raise web.HTTPConflict(text="This tournament is full.")
             existing = await self.bot.db.tournament_club_registrations.find_one(
-                {"tournament_id": tournament_id, "club_id": club_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+                {"tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]), "club_id": club_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
             )
             if existing:
                 raise web.HTTPConflict(text="This club is already registered for the tournament.")
