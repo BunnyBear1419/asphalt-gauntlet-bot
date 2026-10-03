@@ -252,7 +252,7 @@ def test_recovery_run_has_durable_running_and_terminal_states():
     assert '"kind": "recovery_run"' in source
     assert '"status": "running"' in source
     assert '"status": "completed"' in source
-    assert '"status": "failed"' in source
+    assert '"failed", stats, error=exc' in source
     assert 'await _finish_recovery_run(db, guild_id, run_id, "failed", stats, error=exc)' in source
 
 
@@ -260,4 +260,4 @@ def test_recovery_diagnostics_treat_stale_running_run_as_stale_not_success():
     source = (ROOT / "ALU_Gauntlet/core/rsl_reliability.py").read_text(encoding="utf-8")
     assert 'async def recovery_run_snapshot' in source
     assert 'status == "running" and updated_at and now - updated_at > 30 * 60' in source
-    assert 'status": "stale"' in source
+    assert 'status = "stale"' in source
