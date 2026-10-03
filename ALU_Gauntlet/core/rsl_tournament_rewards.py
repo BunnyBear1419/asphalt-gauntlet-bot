@@ -40,6 +40,7 @@ async def _entrant_users(db, tournament: dict, entrant_id: str) -> list[str]:
         cursor = db.tournament_club_registrations.find({
             "tournament_id": str(tournament.get("_id")),
             "club_id": entrant_id,
+            "guild_id": str(tournament.get("guild_id")),
             "status": {"$in": ["accepted", "checked_in"]},
         })
         async for registration in cursor:
@@ -66,6 +67,7 @@ async def _all_participant_users(db, tournament: dict) -> list[str]:
         users = []
         cursor = db.tournament_club_registrations.find({
             "tournament_id": tournament_id,
+            "guild_id": str(tournament.get("guild_id")),
             "status": {"$in": ["accepted", "checked_in"]},
         })
         async for registration in cursor:
@@ -174,7 +176,7 @@ async def settle_tournament_rewards(db, tournament: dict) -> dict:
 
     marker = f"tournament:{tournament_id}:rewards_settled"
     marker_result = await db.tournaments.update_one(
-        {"_id": tournament.get("_id")},
+        {"_id": tournament.get("_id"), "guild_id": guild_id},
         {"$set": {"rewards_settled": True, "rewards_settled_marker": marker}},
     )
     if getattr(marker_result, "matched_count", 1) != 1:
