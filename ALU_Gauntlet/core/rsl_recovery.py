@@ -410,10 +410,8 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
             else:
                 stats["skipped"] += 1
 
+        await _finish_recovery_run(db, guild_id, run_id, "completed", stats)
         return stats
-
-    await _finish_recovery_run(db, guild_id, run_id, "completed", stats)
-    return stats
     except Exception as exc:
         await _finish_recovery_run(db, guild_id, run_id, "failed", stats, error=exc)
         raise
