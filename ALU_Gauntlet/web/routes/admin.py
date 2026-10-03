@@ -777,8 +777,13 @@ class AdminRoutesMixin:
                 if ok:
                     updated=await self.bot.db.rsl_tickets.find_one({"_id":row["_id"],"guild_id":str(guild_id)})
                     if updated:
-                        try: await cog.reconcile_ticket_permissions(guild,updated,closed=False,locked=locked)
-                        except Exception: pass
+                        try:
+                            await cog.reconcile_ticket_permissions(guild, updated, closed=False, locked=locked)
+                        except Exception:
+                            logging.getLogger(__name__).exception(
+                                "Unable to reconcile ticket permissions after admin ticket action: ticket=%s",
+                                ticket_id,
+                            )
             if ok:
                 from ..cogs.tickets import log_event
                 await log_event(str(guild_id), ticket_id, action, str(user.user_id))
