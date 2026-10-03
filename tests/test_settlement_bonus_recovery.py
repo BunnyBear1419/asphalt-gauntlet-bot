@@ -59,13 +59,53 @@ class _FakeCollection:
         return _AsyncCursor(self.rows)
 
     async def find_one(self, query, projection=None):
+        for row in self.rows:
+            if all(
+                row.get(key) == value
+                for key, value in query.items()
+                if not isinstance(value, dict)
+            ):
+                if projection:
+                    return {key: row.get(key) for key, include in projection.items() if include and key in row}
+                return dict(row)
+        return None
+
+    async def find_one_and_update(self, query, update, projection=None, return_document=None):
+        self.updates.append((query, update))
+        for row in self.rows:
+            if row.get("_id") != query.get("_id"):
+                continue
+            if query.get("settlement_status") is not None and row.get("settlement_status") != query["settlement_status"]:
+                continue
+            status_filter = query.get("rsl_bonus_recovery_status")
+            if isinstance(status_filter, dict) and "$ne" in status_filter and row.get("rsl_bonus_recovery_status") == status_filter["$ne"]:
+                continue
+            for key, value in update.get("$inc", {}).items():
+                row[key] = int(row.get(key, 0) or 0) + value
+            row.update(update.get("$set", {}))
+            result = dict(row)
+            if projection:
+                result = {key: row.get(key) for key, include in projection.items() if include and key in row}
+            return result
         return None
 
     async def update_one(self, query, update):
         self.updates.append((query, update))
-        if "active_challenges" in getattr(self, "name", ""):
+        for row in self.rows:
+            if row.get("_id") != query.get("_id"):
+                continue
+            if query.get("settlement_status") is not None and row.get("settlement_status") != query["settlement_status"]:
+                continue
+            status_filter = query.get("rsl_bonus_recovery_status")
+            if isinstance(status_filter, dict) and "$ne" in status_filter and row.get("rsl_bonus_recovery_status") == status_filter["$ne"]:
+                continue
+            for key, value in update.get("$inc", {}).items():
+                row[key] = int(row.get(key, 0) or 0) + value
+            row.update(update.get("$set", {}))
+            for key in update.get("$unset", {}):
+                row.pop(key, None)
             return _UpdateResult(1)
-        return _UpdateResult(1)
+        return _UpdateResult(0)
 
 
 class _FakeDB:
