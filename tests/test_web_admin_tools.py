@@ -113,3 +113,18 @@ def test_csp_report_headers_advertise_both_reporting_formats():
     assert 'report-to rsl-csp' in core
     assert 'Reporting-Endpoints' in core
     assert 'rsl-csp="/api/csp-report"' in core
+
+
+def test_guild_ownership_audit_is_read_only_and_registered():
+    source = (ROOT / "ALU_Gauntlet/web/routes/admin.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet/web/routes/core.py").read_text(encoding="utf-8")
+    page = (ROOT / "ALU_Gauntlet/web/static/admin.html").read_text(encoding="utf-8")
+    assert "async def admin_guild_ownership_audit" in source
+    audit = source.split("async def admin_guild_ownership_audit", 1)[1].split("async def admin_diagnostics", 1)[0]
+    assert "count_documents" in audit
+    assert "update_one" not in audit
+    assert "delete_one" not in audit
+    assert "insert_one" not in audit
+    assert '"/api/admin/guild-ownership-audit", self.admin_guild_ownership_audit' in core
+    assert 'id="run-guild-ownership-audit"' in page
+    assert '"/api/admin/guild-ownership-audit"+q()' in page
