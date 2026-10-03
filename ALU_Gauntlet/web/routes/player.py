@@ -12,11 +12,11 @@ class PlayerRoutesMixin:
             tid = str(t.get("_id"))
             team_size = int(t.get("team_size", 1))
             entrant_ids = {uid}
-            registration = await self.bot.db.tournament_registrations.find_one({"tournament_id": tid, "user_id": uid}) if team_size == 1 else None
+            registration = await self.bot.db.tournament_registrations.find_one({"tournament_id": tid, "guild_id": str(t.get("guild_id")), "user_id": uid}) if team_size == 1 else None
             participant = bool(registration and registration.get("status") not in {"withdrawn", "cancelled", "rejected"})
             club_regs = []
             if team_size > 1:
-                async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tid, "status": {"$nin": ["withdrawn", "cancelled", "rejected"]}}):
+                async for reg in self.bot.db.tournament_club_registrations.find({"tournament_id": tid, "guild_id": str(t.get("guild_id")), "status": {"$nin": ["withdrawn", "cancelled", "rejected"]}}):
                     if uid in {str(x) for x in (reg.get("lineup") or [])}:
                         participant = True
                         club_regs.append(reg)
