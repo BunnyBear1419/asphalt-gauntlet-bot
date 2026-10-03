@@ -2649,6 +2649,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/gauntlet/references/requests", self.gauntlet_reference_requests)
         self.app.router.add_post("/api/gauntlet/references/requests", self.gauntlet_reference_request_action)
         self.app.router.add_get("/api/gauntlet/references/practice-plan", self.gauntlet_reference_practice_plan)
+        self.app.router.add_get("/api/gauntlet/references/explorer", self.gauntlet_reference_explorer)
         self.app.router.add_get("/api/gauntlet/references/{reference_id}/notes", self.gauntlet_reference_notes)
         self.app.router.add_post("/api/gauntlet/references/{reference_id}/notes", self.gauntlet_reference_note_action)
         self.app.router.add_delete("/api/gauntlet/references/{reference_id}/notes", self.gauntlet_reference_note_action)
