@@ -225,6 +225,57 @@ class GauntletRoutesMixin:
         rows.sort(key=lambda x: x["gap"], reverse=True)
         return web.json_response({"rows": rows[:20]})
 
+    async def gauntlet_reference_explorer(self, request: web.Request) -> web.Response:
+        """Return guild-scoped car × track reference rows for exploration."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        course_filter = str(request.query.get("course") or "").strip()
+        car_filter = str(request.query.get("car") or "").strip().casefold()
+        rows_by_key = {}
+        cars, tracks = set(), set()
+        cursor = self.bot.db.gauntlet_references.find({
+            "guild_id": str(guild_id),
+            "status": {"$in": ["approved", "published"]},
+        }).sort("created_at", -1).limit(1000)
+        def parse_seconds(value):
+            try:
+                text = str(value or "").strip().replace(",", ".")
+                if ":" in text:
+                    parts = text.split(":")
+                    if len(parts) == 2:
+                        return float(parts[0]) * 60 + float(parts[1])
+                return float(text)
+            except (TypeError, ValueError):
+                return 0.0
+        async for ref in cursor:
+            track = str(ref.get("course") or ref.get("track") or "").strip()
+            car = str(ref.get("car") or "").strip()
+            if not track or not car or (course_filter and track != course_filter):
+                continue
+            if car_filter and car.casefold() != car_filter:
+                continue
+            seconds = parse_seconds(ref.get("time") or ref.get("lap_time"))
+            if seconds <= 0:
+                continue
+            cars.add(car); tracks.add(track)
+            key = (track.casefold(), car.casefold())
+            row = rows_by_key.get(key)
+            candidate = {
+                "course": track, "car": car, "time": seconds,
+                "title": str(ref.get("title") or ""),
+                "driver": str(ref.get("driver") or ""),
+                "video_url": str(ref.get("video_url") or ""),
+                "car_rank": int(ref.get("car_rank") or ref.get("car_performance") or 0),
+                "official": bool(ref.get("official", False)),
+            }
+            if row is None or seconds < row["time"] or (seconds == row["time"] and candidate["official"] and not row["official"]):
+                rows_by_key[key] = candidate
+        rows = sorted(rows_by_key.values(), key=lambda x: (x["course"].casefold(), x["time"], x["car"].casefold()))
+        return web.json_response({
+            "rows": rows[:500],
+            "cars": sorted(cars, key=str.casefold),
+            "tracks": sorted(tracks, key=str.casefold),
+        })
+
     async def gauntlet_reference_requests(self, request: web.Request) -> web.Response:
         """Return community feature/data requests for the selected guild."""
         _, guild_id, _ = await self.require_guild_member(request)
