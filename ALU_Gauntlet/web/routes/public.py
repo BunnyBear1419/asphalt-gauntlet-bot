@@ -80,6 +80,7 @@ class PublicRoutesMixin:
         await self.bot.db.settings.update_one({"_id":guild_id},{"$set":{"web_branding":clean}},upsert=True)
         if superseded_asset_ids:
             try:
+                from bson import ObjectId
                 async for asset in self.bot.db.web_brand_assets.find({
                     "guild_id": str(guild_id),
                     "_id": {"$in": list(superseded_asset_ids)},
