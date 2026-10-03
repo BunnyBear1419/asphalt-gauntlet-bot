@@ -407,7 +407,7 @@ class PublicRoutesMixin:
                 raise
             return web.json_response({"ok": True, "message": "Club registration submitted for staff review."})
         count = await self.bot.db.tournament_registrations.count_documents(
-            {"tournament_id": tournament_id, "status": {"$in": ["pending", "accepted", "checked_in"]}}
+            {"tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]), "status": {"$in": ["pending", "accepted", "checked_in"]}}
         )
         if count >= int(tournament.get("max_players", 32)):
             raise web.HTTPConflict(text="This tournament is full.")
@@ -417,7 +417,7 @@ class PublicRoutesMixin:
             if not profile or not profile.get("season_registered") or int(profile.get("season_number", 0) or 0) != int(current_season):
                 raise web.HTTPForbidden(text="This tournament is limited to drivers registered for the current Gauntlet season.")
         existing = await self.bot.db.tournament_registrations.find_one(
-            {"tournament_id": tournament_id, "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}}
+            {"tournament_id": tournament_id, "guild_id": str(tournament["guild_id"]), "user_id": str(user.user_id), "status": {"$in": ["pending", "accepted"]}}
         )
         if existing:
             raise web.HTTPConflict(text="You are already registered for this tournament.")
