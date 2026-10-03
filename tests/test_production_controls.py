@@ -58,3 +58,12 @@ def test_maintenance_guard_fails_closed_when_state_cannot_be_verified():
     tail = block[failure:]
     assert "return await handler(request)" not in tail
 
+
+
+def test_maintenance_covers_competition_creation_routes():
+    assert is_mutating_competition_path("/api/tournaments", "POST")
+    assert is_mutating_competition_path("/api/tournaments/register", "POST")
+    assert is_mutating_competition_path("/api/clubs", "POST")
+    assert is_mutating_competition_path("/api/clubs/join", "POST")
+    # Staff emergency/admin controls remain available while Safe Mode is active.
+    assert not is_mutating_competition_path("/api/admin/gauntlet/matches/revert", "POST")
