@@ -271,6 +271,7 @@ async def reconcile_completed_tournament_achievement_roles(
         else:
             regs = db.tournament_registrations.find({
                 "tournament_id": tournament_id,
+                "guild_id": str(tournament.get("guild_id")),
                 "status": {"$in": ["accepted", "checked_in"]},
             })
             async for reg in regs:
