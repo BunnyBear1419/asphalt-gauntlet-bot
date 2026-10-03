@@ -57,9 +57,11 @@ async def _claim_action(tournament_id, match_id, action):
         return replaced is not None
 
 
-async def _release_action(tournament_id, match_id):
+async def _release_action(tournament_id, match_id, action):
+    # Release only the lock owned by this action. If a long-running action
+    # outlives the 60-second lease, a later action may replace the expired lock.
     await bot.db.tournament_action_locks.delete_one(
-        {"tournament_id": str(tournament_id), "match_id": str(match_id)}
+        {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action)}
     )
 
 
@@ -182,7 +184,7 @@ class TournamentResultModal(discord.ui.Modal, title="Submit Match Result"):
             match.update({"result_status":"pending","submitted_by":str(interaction.user.id),"submitted_at":discord.utils.utcnow().isoformat(),"winner_id":self.winner_id,"proof_url":proof,"result_notes":str(self.notes.value).strip()})
             await bot.db.tournaments.update_one({"_id":tournament["_id"]},{"$set":{"bracket":bracket,"updated_at":discord.utils.utcnow().isoformat()}})
         finally:
-            await _release_action(self.tournament_id, self.match_id)
+            await _release_action(self.tournament_id, self.match_id, "submit")
         if result_mode == "admin_only":
             ok, message = await verify_match_on_discord(self.tournament_id, self.match_id, "approve", interaction.user.id)
             await interaction.response.send_message(
@@ -487,7 +489,7 @@ async def verify_match_on_discord(tournament_id, match_id, action, user_id):
             await _sync_completed_tournament_roles(t)
         return True, message
     finally:
-        await _release_action(tournament_id, str(match_id))
+        await _release_action(tournament_id, str(match_id), "verify")
 
 
 async def build_tournament_view(tournament_id,user):
