@@ -171,6 +171,11 @@ jobs:
           fi
           echo "Discord bot token preflight passed."
 
+      - name: Run pre-deployment legacy data audit
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        run: python scripts/pre_deploy_data_audit.py
+
       - name: Clean CI-generated files before Discloud upload
         run: |
           set -euo pipefail
