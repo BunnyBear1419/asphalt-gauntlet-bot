@@ -93,3 +93,8 @@ def test_final_theme_control_surface_contract():
     assert 'color-scheme:dark' in source
     assert 'html[data-theme="light"]' in source and 'color-scheme:light' in source
     assert 'var(--rsl-box-accent)' in source
+    core = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    assert 'html[data-theme] .admin-upload-drop' in core
+    assert 'html[data-theme] .server-control select' in core
+    assert 'html[data-theme] .news-form select' in core
+    assert 'html[data-theme] .tournament-create select' in core
