@@ -437,25 +437,27 @@ class PublicRoutesMixin:
         return web.json_response({"ok": True, "message": "Tournament registration submitted for staff review."})
 
     async def _claim_tournament_action(self, tournament_id, match_id, action):
-        """Claim a short-lived MongoDB lock shared by web tournament actions."""
+        """Claim a short-lived MongoDB lock shared by web tournament actions and return its owner token."""
         from datetime import datetime, timezone, timedelta
+        from secrets import token_urlsafe
         from pymongo.errors import DuplicateKeyError
         now = datetime.now(timezone.utc)
+        token = token_urlsafe(24)
         doc = {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action),
-               "claimed_at": now, "expires_at": now + timedelta(seconds=60)}
+               "claimed_at": now, "expires_at": now + timedelta(seconds=60), "lock_token": token}
         try:
             await self.bot.db.tournament_action_locks.insert_one(doc)
-            return True
+            return token
         except DuplicateKeyError:
             replaced = await self.bot.db.tournament_action_locks.find_one_and_replace(
                 {"tournament_id": str(tournament_id), "match_id": str(match_id), "expires_at": {"$lt": now}}, doc
             )
-            return replaced is not None
+            return replaced.get("lock_token") == token if replaced else False
 
-    async def _release_tournament_action(self, tournament_id, match_id, action):
+    async def _release_tournament_action(self, tournament_id, match_id, action, lock_token):
         # Do not delete a replacement lock created after the original 60-second lease expired.
         await self.bot.db.tournament_action_locks.delete_one(
-            {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action)}
+            {"tournament_id": str(tournament_id), "match_id": str(match_id), "action": str(action), "lock_token": str(lock_token)}
         )
 
     async def serve_tournament_media(self, request: web.Request) -> web.Response:
