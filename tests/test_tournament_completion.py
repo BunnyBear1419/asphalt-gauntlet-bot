@@ -89,7 +89,7 @@ def test_admin_only_result_submission_advances_without_second_manual_review():
     cog = COG.read_text(encoding="utf-8")
     tournaments = TOURNAMENTS.read_text(encoding="utf-8")
     assert 'if result_mode == "admin_only":' in cog
-    assert 'verify_match_on_discord(self.tournament_id, self.match_id, "approve", interaction.user.id)' in cog
+    assert 'verify_match_on_discord(\n                self.tournament_id,\n                self.match_id,\n                "approve",\n                interaction.user.id,\n                guild_id=str(interaction.guild.id) if interaction.guild else None,\n            )' in cog
     assert 'const verified=await api("/api/tournaments/result/verify"' in tournaments
     assert 'action:"approve"' in tournaments
     assert 'Admin result entry: the submitted winner will be recorded and the bracket advanced immediately.' in tournaments
@@ -194,4 +194,3 @@ def test_tournament_action_locks_are_owner_scoped_and_released_by_token():
     assert "async def _release_action(tournament_id, match_id, action, lock_token)" in cog
     assert 'async def _release_tournament_action(self, tournament_id, match_id, action, lock_token)' in public
     assert '"lock_token": str(lock_token)' in public
-
