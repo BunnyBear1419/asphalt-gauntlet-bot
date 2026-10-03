@@ -235,3 +235,12 @@ def test_discord_and_web_bonus_failures_leave_recovery_marker_unchecked():
     assert "bonus_checked = False" in gauntlet
     assert "bonus_checked = True" in gauntlet
     assert '"rsl_bonus_checked":bonus_checked' in gauntlet
+
+def test_bonus_retry_counter_is_atomic_for_concurrent_recovery_workers():
+    source = (ROOT / "ALU_Gauntlet/core/rsl_recovery.py").read_text(encoding="utf-8")
+    helper = source[source.index("async def _record_bonus_failure"):source.index("async def _park_for_staff_review")]
+    assert '"$inc": {"rsl_bonus_retry_attempts": 1}' in helper
+    assert 'rsl_bonus_retry_attempts": {"$gte": BONUS_RETRY_MAX_ATTEMPTS}' in helper
+    assert 'await db.matches.find_one(' in helper
+    assert 'rsl_bonus_recovery_status": {"$ne": "needs_staff_review"}' in helper
+
