@@ -440,7 +440,7 @@ def test_ticket_notification_indexes_use_one_consistent_schema():
 
 
 def test_admin_ticket_action_parity_supports_unclaim_and_lock_controls():
-    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "routes" / "admin.py").read_text(encoding="utf-8")
     start=server.index("async def admin_ticket_action")
     end=server.index("async def admin_ticket_panel",start)
     body=server[start:end]
@@ -451,7 +451,7 @@ def test_admin_ticket_action_parity_supports_unclaim_and_lock_controls():
     assert 'reconcile_ticket_permissions(guild,updated,closed=False,locked=locked)' in body
 
 def test_admin_ticket_actions_are_race_safe():
-    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "server.py").read_text(encoding="utf-8")
+    server=(Path(__file__).parents[1] / "ALU_Gauntlet" / "web" / "routes" / "admin.py").read_text(encoding="utf-8")
     start=server.index("async def admin_ticket_action")
     end=server.index("async def admin_ticket_panel",start)
     body=server[start:end]
