@@ -365,6 +365,22 @@ class AdminRoutesMixin:
     async def admin_reference_review_queue(self, request: web.Request) -> web.Response:
         """Return the current guild's pending reference submissions for staff review."""
         _, guild_id, _ = await self.require_admin(request)
+        # An approval claim is a short-lived lease. If a worker dies after
+        # claiming a reference, return it to the pending queue so staff can
+        # recover it instead of leaving it permanently stuck in "approving".
+        now = time.time()
+        stale_before = now - (10 * 60)
+        await self.bot.db.reference_pending.update_many(
+            {
+                "guild_id": str(guild_id),
+                "status": "approving",
+                "review_started_at": {"$lt": stale_before},
+            },
+            {
+                "$set": {"status": "pending", "recovered_at": now},
+                "$unset": {"review_started_by": "", "review_started_at": ""},
+            },
+        )
         rows = await self.bot.db.reference_pending.find(
             {"guild_id": str(guild_id), "status": {"$in": ["pending", "approving"]}}
         ).sort("created_at", -1).limit(100).to_list(length=100)
