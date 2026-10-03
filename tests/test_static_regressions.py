@@ -455,6 +455,24 @@ def test_reference_hub_timestamp_notes_seek_and_staff_queue():
     assert '"$set": {"status": "pending", "recovered_at": now}' in admin
     assert '"$unset": {"review_started_by": "", "review_started_at": ""}' in admin
 
+def test_reference_hub_has_community_requests():
+    html = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-references.html").read_text(encoding="utf-8")
+    route = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "gauntlet.py").read_text(encoding="utf-8")
+    core = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "core.py").read_text(encoding="utf-8")
+    main = (ROOT / "ALU_Gauntlet" / "main.py").read_text(encoding="utf-8")
+    assert 'data-tab="requests"' in html
+    assert 'Community Requests &amp; Corrections' in html
+    assert 'async function loadRequests()' in html
+    assert 'async function submitRequest(' in html
+    assert '/api/gauntlet/references/requests' in html
+    assert 'async def gauntlet_reference_requests(' in route
+    assert 'async def gauntlet_reference_request_action(' in route
+    assert 'add_get("/api/gauntlet/references/requests"' in core
+    assert 'add_post("/api/gauntlet/references/requests"' in core
+    assert 'reference_requests.create_index' in main
+    assert 'uniq_reference_request_vote' in main
+
+
 def test_reference_hub_has_community_track_intel():
     html = (ROOT / "ALU_Gauntlet" / "web" / "static" / "gauntlet-references.html").read_text(encoding="utf-8")
     route = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "gauntlet.py").read_text(encoding="utf-8")
