@@ -192,6 +192,67 @@ class GauntletRoutesMixin:
                 raise
         return web.json_response({"ok": True, "id": note_id, "visibility": visibility, "seconds": seconds})
 
+    async def gauntlet_reference_requests(self, request: web.Request) -> web.Response:
+        """Return community feature/data requests for the selected guild."""
+        _, guild_id, _ = await self.require_guild_member(request)
+        kind = str(request.query.get("kind") or "").strip().lower()
+        query = {"guild_id": str(guild_id), "status": {"$in": ["open", "planned", "in_progress", "completed"]}}
+        if kind:
+            query["kind"] = kind
+        rows = []
+        async for item in self.bot.db.reference_requests.find(query).sort("votes", -1).sort("created_at", -1).limit(100):
+            rows.append({
+                "id": str(item.get("_id")), "kind": str(item.get("kind") or "feature"),
+                "title": str(item.get("title") or ""), "body": str(item.get("body") or ""),
+                "evidence_url": str(item.get("evidence_url") or ""), "status": str(item.get("status") or "open"),
+                "votes": int(item.get("votes") or 0), "driver": str(item.get("driver") or ""),
+                "created_at": item.get("created_at"),
+            })
+        return web.json_response({"rows": rows})
+
+    async def gauntlet_reference_request_action(self, request: web.Request) -> web.Response:
+        """Create or vote on a community feature/data request."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        action = str(payload.get("action") or "create").strip().lower()
+        if action == "vote":
+            from bson import ObjectId
+            try:
+                rid = ObjectId(str(payload.get("id") or ""))
+            except Exception as exc:
+                raise web.HTTPBadRequest(text="Invalid request id.") from exc
+            row = await self.bot.db.reference_requests.find_one({"_id": rid, "guild_id": str(guild_id)})
+            if not row:
+                raise web.HTTPNotFound(text="Request not found.")
+            key = f"{guild_id}:{rid}:{user.user_id}"
+            await self.bot.db.reference_request_votes.update_one(
+                {"_id": hashlib.sha256(key.encode()).hexdigest()},
+                {"$setOnInsert": {"guild_id": str(guild_id), "request_id": rid, "user_id": str(user.user_id), "created_at": time.time()}},
+                upsert=True,
+            )
+            votes = await self.bot.db.reference_request_votes.count_documents({"guild_id": str(guild_id), "request_id": rid})
+            await self.bot.db.reference_requests.update_one({"_id": rid, "guild_id": str(guild_id)}, {"$set": {"votes": int(votes)}})
+            return web.json_response({"ok": True, "votes": int(votes)})
+        kind = str(payload.get("kind") or "feature").strip().lower()
+        title = str(payload.get("title") or "").strip()[:120]
+        body = str(payload.get("body") or "").strip()[:1200]
+        evidence_url = str(payload.get("evidence_url") or "").strip()[:500]
+        if kind not in {"feature", "missing_data", "bad_data", "broken_video", "duplicate"} or not title or not body:
+            raise web.HTTPBadRequest(text="Valid request type, title and description are required.")
+        if evidence_url and not evidence_url.startswith(("https://", "http://")):
+            raise web.HTTPBadRequest(text="Evidence URL must use http or https.")
+        driver = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
+        from bson import ObjectId
+        row = {
+            "_id": ObjectId(), "guild_id": str(guild_id), "kind": kind, "title": title, "body": body,
+            "evidence_url": evidence_url, "status": "open", "votes": 0,
+            "driver": str(driver.get("game_id") or driver.get("username") or user.username),
+            "user_id": str(user.user_id), "created_at": time.time(),
+        }
+        await self.bot.db.reference_requests.insert_one(row)
+        await self._audit(str(guild_id), str(user.user_id), "Community reference request submitted")
+        return web.json_response({"ok": True, "id": str(row["_id"]), "status": "open"})
+
     async def gauntlet_reference_intel(self, request: web.Request) -> web.Response:
         """Return community track intel for the selected guild."""
         _, guild_id, _ = await self.require_guild_member(request)
