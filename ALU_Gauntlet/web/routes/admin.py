@@ -1031,12 +1031,12 @@ class AdminRoutesMixin:
                     if not result.modified_count:
                         raise web.HTTPConflict(text="The club leadership changed before this action completed.")
                     old_role = await self.bot.db.club_members.update_one(
-                        {"club_id": club_id, "user_id": old_leader_id},
+                        {"club_id": club_id, "guild_id": str(guild_id), "user_id": old_leader_id},
                         {"$set": {"role": "officer", "updated_at": now}},
                         session=session,
                     )
                     new_role = await self.bot.db.club_members.update_one(
-                        {"club_id": club_id, "user_id": target_id},
+                        {"club_id": club_id, "guild_id": str(guild_id), "user_id": target_id},
                         {"$set": {"role": "leader", "updated_at": now}},
                         session=session,
                     )
