@@ -43,3 +43,9 @@ def test_discord_status_exposes_reliability_signals():
     source = (ROOT / "ALU_Gauntlet" / "cogs" / "operations.py").read_text(encoding="utf-8")
     assert "build_reliability_snapshot" in source
     assert '"Reliability"' in source
+
+
+def test_admin_reliability_surface_displays_durable_recovery_state():
+    admin = ADMIN.read_text(encoding="utf-8")
+    assert 'd.recovery||{}' in admin
+    assert '["Recovery run",recoveryStatus' in admin
