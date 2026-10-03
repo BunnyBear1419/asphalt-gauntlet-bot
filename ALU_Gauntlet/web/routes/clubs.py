@@ -34,9 +34,16 @@ class ClubsRoutesMixin:
         return parsed.isoformat() if parsed else value
 
     async def _club_recount_member_count(self, club_id: str) -> int:
-        count = await self.bot.db.club_members.count_documents({"club_id": str(club_id)})
         oid = ObjectId(str(club_id)) if ObjectId.is_valid(str(club_id)) else club_id
-        await self.bot.db.clubs.update_one({"_id": oid}, {"$set": {"member_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        club = await self.bot.db.clubs.find_one({"_id": oid}, {"guild_id": 1})
+        guild_id = str(club.get("guild_id")) if club and club.get("guild_id") else None
+        member_query = {"club_id": str(club_id)}
+        club_query = {"_id": oid}
+        if guild_id:
+            member_query["guild_id"] = guild_id
+            club_query["guild_id"] = guild_id
+        count = await self.bot.db.club_members.count_documents(member_query)
+        await self.bot.db.clubs.update_one(club_query, {"$set": {"member_count": count, "updated_at": datetime.now(timezone.utc).isoformat()}})
         return count
 
     async def clubs(self, request: web.Request) -> web.Response:
@@ -227,12 +234,12 @@ class ClubsRoutesMixin:
                     await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))}, session=session)
                     await self.bot.db.club_members.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))}, session=session)
         else:
-            result = await self.bot.db.clubs.delete_one({"_id": club_id, "leader_id": str(user.user_id)})
+            result = await self.bot.db.clubs.delete_one({"_id": club_id, "guild_id": str(club.get("guild_id")), "leader_id": str(user.user_id)})
             if not result.deleted_count:
                 raise web.HTTPConflict(text="Club changed before deletion completed.")
-            await self.bot.db.club_invitations.delete_many({"club_id": str(club_id)})
-            await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id)})
-            await self.bot.db.club_members.delete_many({"club_id": str(club_id)})
+            await self.bot.db.club_invitations.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))})
+            await self.bot.db.club_join_requests.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))})
+            await self.bot.db.club_members.delete_many({"club_id": str(club_id), "guild_id": str(club.get("guild_id"))})
         return web.json_response({"ok": True, "message": "Club deleted."})
 
     async def update_club(self, request: web.Request) -> web.Response:
@@ -288,7 +295,7 @@ class ClubsRoutesMixin:
             updates["image"] = image
         if updates:
             updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-            await self.bot.db.clubs.update_one({"_id": oid}, {"$set": updates})
+            await self.bot.db.clubs.update_one({"_id": oid, "guild_id": str(club.get("guild_id"))}, {"$set": updates})
         return web.json_response({"ok": True, "message": "Club profile updated."})
 
 
@@ -342,7 +349,7 @@ class ClubsRoutesMixin:
         removed = await self.bot.db.club_members.delete_one({"club_id": str(oid), "guild_id": str(club.get("guild_id")), "user_id": str(user.user_id)})
         if not removed.deleted_count:
             raise web.HTTPConflict(text="You are not a member of this club.")
-        await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
+        await self.bot.db.clubs.update_one({"_id": oid, "guild_id": str(club.get("guild_id")), "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
         await self._club_recount_member_count(str(oid))
         return web.json_response({"ok": True, "message": "You left the club."})
 
@@ -382,7 +389,7 @@ class ClubsRoutesMixin:
             if target_role == "leader":
                 raise web.HTTPForbidden(text="The club leader cannot be changed through member management.")
             value = "officer" if action == "promote" else "member"
-            await self.bot.db.club_members.update_one({"_id": member["_id"]}, {"$set": {"role": value}})
+            await self.bot.db.club_members.update_one({"_id": member["_id"], "club_id": str(oid), "guild_id": str(club.get("guild_id"))}, {"$set": {"role": value}})
             return web.json_response({"ok": True, "message": "Member promoted to Officer." if value == "officer" else "Officer demoted to Member."})
         if action == "kick":
             # Officers may remove regular Members. Only the Leader may remove an Officer.
@@ -390,7 +397,7 @@ class ClubsRoutesMixin:
                 raise web.HTTPForbidden(text="The club leader cannot be kicked.")
             if target_role == "officer" and actor_role != "leader":
                 raise web.HTTPForbidden(text="Officers cannot kick another Officer.")
-            removed = await self.bot.db.club_members.delete_one({"_id": member["_id"]})
+            removed = await self.bot.db.club_members.delete_one({"_id": member["_id"], "club_id": str(oid), "guild_id": str(club.get("guild_id"))})
             if removed.deleted_count:
                 await self.bot.db.clubs.update_one({"_id": oid, "member_count": {"$gt": 0}}, {"$inc": {"member_count": -1}})
             await self._club_recount_member_count(str(oid))
@@ -546,7 +553,7 @@ class ClubsRoutesMixin:
         now = datetime.now(timezone.utc)
         expires_at = self._club_datetime(invite.get("expires_at"))
         if expires_at is not None and expires_at <= now:
-            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
+            await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "guild_id": str(invite.get("guild_id", club.get("guild_id") if "club" in locals() else "")), "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
             raise web.HTTPConflict(text="That invitation has expired.")
         if action == "decline":
             await self.bot.db.club_invitations.update_one({"_id": invite["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
@@ -568,7 +575,7 @@ class ClubsRoutesMixin:
         if await self.bot.db.club_members.find_one({"guild_id": str(club["guild_id"]), "user_id": str(user.user_id)}):
             raise web.HTTPConflict(text="You are already in a club in this server.")
         reservation = await self.bot.db.clubs.update_one(
-            {"_id": club["_id"], "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
+            {"_id": club["_id"], "guild_id": str(club.get("guild_id")), "$or": [{"member_count": {"$lt": 20}}, {"member_count": {"$exists": False}}]},
             {"$inc": {"member_count": 1}},
         )
         if not reservation.modified_count:
@@ -647,7 +654,7 @@ class ClubsRoutesMixin:
         now = datetime.now(timezone.utc)
         expires_at = self._club_datetime(join_request.get("expires_at"))
         if expires_at is not None and expires_at <= now:
-            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
+            await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "guild_id": str(join_request.get("guild_id", club.get("guild_id") if "club" in locals() else "")), "status": "pending"}, {"$set": {"status": "expired", "updated_at": now}})
             raise web.HTTPConflict(text="That join request has expired.")
         if action == "decline":
             await self.bot.db.club_join_requests.update_one({"_id": join_request["_id"], "status": "pending"}, {"$set": {"status": "declined", "updated_at": now}})
