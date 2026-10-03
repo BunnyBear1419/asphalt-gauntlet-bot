@@ -635,10 +635,10 @@ class ClubsRoutesMixin:
         request_id = str(payload.get("request_id", "")).strip()
         if not ObjectId.is_valid(request_id):
             raise web.HTTPBadRequest(text="Invalid request ID.")
-        join_request = await self.bot.db.club_join_requests.find_one({"_id": ObjectId(request_id), "status": "pending"})
+        join_request = await self.bot.db.club_join_requests.find_one({"_id": ObjectId(request_id), "guild_id": {"$in": list(await self._live_guild_ids_for_user(user))}, "status": "pending"})
         if not join_request:
             raise web.HTTPNotFound(text="Join request not found or already handled.")
-        club = await self.bot.db.clubs.find_one({"_id": ObjectId(str(join_request["club_id"]))})
+        club = await self.bot.db.clubs.find_one({"_id": ObjectId(str(join_request["club_id"])), "guild_id": str(join_request.get("guild_id"))})
         if not club:
             raise web.HTTPNotFound(text="Club not found.")
         actor_role = await self._club_member_role(str(join_request["club_id"]), str(user.user_id))
