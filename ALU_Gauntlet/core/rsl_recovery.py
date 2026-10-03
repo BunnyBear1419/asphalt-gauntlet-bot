@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import time
+import uuid
 
 from .match_scoring import apply_rsl_performance_bonus
 
@@ -25,6 +26,49 @@ log = logging.getLogger(__name__)
 PROCESSING_LEASE_SECONDS = 15 * 60
 BONUS_RETRY_MAX_ATTEMPTS = 5
 BONUS_RETRY_BASE_SECONDS = 5 * 60
+
+
+async def _start_recovery_run(db, guild_id: str) -> str | None:
+    """Create a durable recovery-run marker before reconciliation mutations."""
+    run_id = uuid.uuid4().hex
+    try:
+        now = time.time()
+        await db.rsl_recovery_checkpoints.insert_one({
+            "_id": f"recovery-run:{run_id}",
+            "kind": "recovery_run",
+            "guild_id": str(guild_id),
+            "status": "running",
+            "started_at": now,
+            "updated_at": now,
+            "stats": {},
+        })
+        return run_id
+    except Exception:
+        # Older/test databases may not expose the audit collection yet.
+        log.exception("Unable to create durable recovery-run marker for guild %s", guild_id)
+        return None
+
+
+async def _finish_recovery_run(db, guild_id: str, run_id: str | None, status: str, stats: dict[str, int], *, error: BaseException | None = None) -> None:
+    """Persist the terminal recovery state so partial work cannot look successful."""
+    if not run_id:
+        return
+    now = time.time()
+    payload = {
+        "status": str(status),
+        "updated_at": now,
+        "completed_at": now,
+        "stats": {key: int(value) for key, value in stats.items()},
+    }
+    if error is not None:
+        payload["error"] = str(error)[:500]
+    try:
+        await db.rsl_recovery_checkpoints.update_one(
+            {"_id": f"recovery-run:{run_id}", "guild_id": str(guild_id), "kind": "recovery_run", "status": "running"},
+            {"$set": payload},
+        )
+    except Exception:
+        log.exception("Unable to finalize durable recovery-run marker %s", run_id)
 
 
 async def _record_bonus_failure(db, reservation: dict, now: float, *, error: BaseException | None = None) -> bool:
@@ -160,93 +204,145 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
     guild_id = str(guild_id)
     now = time.time()
     stats = {"closed": 0, "reopened": 0, "pending": 0, "skipped": 0, "bonus_retried": 0, "bonus_failed": 0, "staff_review": 0}
+    run_id = await _start_recovery_run(db, guild_id)
 
-    challenges = []
-    async for challenge in db.active_challenges.find({
-        "guild_id": guild_id,
-        "$or": [
-            {"status": "processing"},
-            {"status": "completed", "rsl_bonus_checked": {"$ne": True}, "rsl_bonus_recovery_status": {"$ne": "needs_staff_review"}},
-        ],
-    }):
-        challenges.append(challenge)
+    try:
 
-    challenge_ids = [str(item.get("_id") or "") for item in challenges if item.get("_id")]
-    reservations = {}
-    if challenge_ids:
-        async for reservation in db.matches.find({
+        challenges = []
+        async for challenge in db.active_challenges.find({
             "guild_id": guild_id,
-            "_id": {"$in": [f"{challenge_id}:match" for challenge_id in challenge_ids]},
+            "$or": [
+                {"status": "processing"},
+                {"status": "completed", "rsl_bonus_checked": {"$ne": True}, "rsl_bonus_recovery_status": {"$ne": "needs_staff_review"}},
+            ],
         }):
-            reservations[str(reservation.get("_id") or "")] = reservation
+            challenges.append(challenge)
 
-    for challenge in challenges:
-        challenge_id = str(challenge.get("_id") or "")
-        if not challenge_id:
-            stats["skipped"] += 1
-            continue
+        challenge_ids = [str(item.get("_id") or "") for item in challenges if item.get("_id")]
+        reservations = {}
+        if challenge_ids:
+            async for reservation in db.matches.find({
+                "guild_id": guild_id,
+                "_id": {"$in": [f"{challenge_id}:match" for challenge_id in challenge_ids]},
+            }):
+                reservations[str(reservation.get("_id") or "")] = reservation
 
-        reservation = reservations.get(f"{challenge_id}:match")
-
-        if reservation:
-            retry_status = str(reservation.get("rsl_bonus_recovery_status") or "").casefold()
-            if retry_status == "needs_staff_review":
-                # Retries were exhausted on an earlier pass (or by an older build
-                # that left the challenge locked in processing).
-                await _park_for_staff_review(db, challenge, reservation, guild_id, now, stats)
+        for challenge in challenges:
+            challenge_id = str(challenge.get("_id") or "")
+            if not challenge_id:
+                stats["skipped"] += 1
                 continue
-            next_retry_at = reservation.get("rsl_bonus_next_retry_at")
-            try:
-                if next_retry_at is not None and float(next_retry_at) > now:
-                    stats["pending"] += 1
-                    continue
-            except (TypeError, ValueError):
-                pass
-            settlement_status = str(reservation.get("settlement_status") or "").casefold()
-            if settlement_status == "completed":
-                # The base settlement is authoritative. The RSL margin marker
-                # is also authoritative for recovery: zero-margin 3-2/2-3
-                # results are explicitly marked as checked by the bonus helper.
-                bonus_failed = False
-                exhausted = False
-                # Pre-marker settlements are valid historical records. If the
-                # one-time margin claim is already durable, backfill the newer
-                # checked marker without opening another bonus transaction.
-                if reservation.get("rsl_bonus_checked") is True or reservation.get("rsl_margin_bonus_applied") is True:
-                    if reservation.get("rsl_bonus_checked") is not True:
-                        await db.matches.update_one(
-                            {"_id": reservation["_id"], "rsl_margin_bonus_applied": True},
-                            {"$set": {"rsl_bonus_checked": True}},
-                        )
-                else:
-                    try:
-                        await apply_rsl_performance_bonus(db, reservation)
-                        refreshed = await db.matches.find_one(
-                            {"_id": reservation["_id"]},
-                            {"rsl_margin_bonus_applied": 1, "rsl_bonus_checked": 1},
-                        ) or {}
-                        if refreshed.get("rsl_bonus_checked") is True or refreshed.get("rsl_margin_bonus_applied") is True:
-                            if refreshed.get("rsl_bonus_checked") is not True:
-                                await db.matches.update_one(
-                                    {"_id": reservation["_id"], "rsl_margin_bonus_applied": True},
-                                    {"$set": {"rsl_bonus_checked": True}},
-                                )
-                            stats["bonus_retried"] += 1
-                        else:
-                            bonus_failed = True
-                            stats["bonus_failed"] += 1
-                            exhausted = await _record_bonus_failure(db, reservation, now)
-                    except Exception as exc:
-                        bonus_failed = True
-                        stats["bonus_failed"] += 1
-                        exhausted = await _record_bonus_failure(db, reservation, now, error=exc)
 
-                if exhausted:
+            reservation = reservations.get(f"{challenge_id}:match")
+
+            if reservation:
+                retry_status = str(reservation.get("rsl_bonus_recovery_status") or "").casefold()
+                if retry_status == "needs_staff_review":
+                    # Retries were exhausted on an earlier pass (or by an older build
+                    # that left the challenge locked in processing).
                     await _park_for_staff_review(db, challenge, reservation, guild_id, now, stats)
                     continue
-                if bonus_failed:
-                    # Base settlement is authoritative; do not leave the player
-                    # locked in processing while the optional bonus retries.
+                next_retry_at = reservation.get("rsl_bonus_next_retry_at")
+                try:
+                    if next_retry_at is not None and float(next_retry_at) > now:
+                        stats["pending"] += 1
+                        continue
+                except (TypeError, ValueError):
+                    pass
+                settlement_status = str(reservation.get("settlement_status") or "").casefold()
+                if settlement_status == "completed":
+                    # The base settlement is authoritative. The RSL margin marker
+                    # is also authoritative for recovery: zero-margin 3-2/2-3
+                    # results are explicitly marked as checked by the bonus helper.
+                    bonus_failed = False
+                    exhausted = False
+                    # Pre-marker settlements are valid historical records. If the
+                    # one-time margin claim is already durable, backfill the newer
+                    # checked marker without opening another bonus transaction.
+                    if reservation.get("rsl_bonus_checked") is True or reservation.get("rsl_margin_bonus_applied") is True:
+                        if reservation.get("rsl_bonus_checked") is not True:
+                            await db.matches.update_one(
+                                {"_id": reservation["_id"], "rsl_margin_bonus_applied": True},
+                                {"$set": {"rsl_bonus_checked": True}},
+                            )
+                    else:
+                        try:
+                            await apply_rsl_performance_bonus(db, reservation)
+                            refreshed = await db.matches.find_one(
+                                {"_id": reservation["_id"]},
+                                {"rsl_margin_bonus_applied": 1, "rsl_bonus_checked": 1},
+                            ) or {}
+                            if refreshed.get("rsl_bonus_checked") is True or refreshed.get("rsl_margin_bonus_applied") is True:
+                                if refreshed.get("rsl_bonus_checked") is not True:
+                                    await db.matches.update_one(
+                                        {"_id": reservation["_id"], "rsl_margin_bonus_applied": True},
+                                        {"$set": {"rsl_bonus_checked": True}},
+                                    )
+                                stats["bonus_retried"] += 1
+                            else:
+                                bonus_failed = True
+                                stats["bonus_failed"] += 1
+                                exhausted = await _record_bonus_failure(db, reservation, now)
+                        except Exception as exc:
+                            bonus_failed = True
+                            stats["bonus_failed"] += 1
+                            exhausted = await _record_bonus_failure(db, reservation, now, error=exc)
+
+                    if exhausted:
+                        await _park_for_staff_review(db, challenge, reservation, guild_id, now, stats)
+                        continue
+                    if bonus_failed:
+                        # Base settlement is authoritative; do not leave the player
+                        # locked in processing while the optional bonus retries.
+                        result = await db.active_challenges.update_one(
+                            {
+                                "_id": challenge_id,
+                                "guild_id": guild_id,
+                                "challenger_id": str(challenge.get("challenger_id") or ""),
+                                "status": "processing",
+                            },
+                            {
+                                "$set": {
+                                    "status": "completed",
+                                    "completed_at": now,
+                                    "match_id": reservation["_id"],
+                                    "ticket_burned": True,
+                                    "settlement_closed": True,
+                                    "rsl_bonus_checked": False,
+                                    "reconciled_at": now,
+                                    "reconciliation_reason": "completed_settlement_bonus_retry",
+                                },
+                                "$unset": {"processing_at": ""},
+                            },
+                        )
+                        if getattr(result, "modified_count", 0) == 1:
+                            stats["closed"] += 1
+                        else:
+                            stats["skipped"] += 1
+                        continue
+                    if str(challenge.get("status") or "") == "completed":
+                        # Historical completed challenges may predate the challenge
+                        # marker. Once the deterministic settlement is checked, make
+                        # the challenge itself terminal so it leaves recovery scans.
+                        result = await db.active_challenges.update_one(
+                            {
+                                "_id": challenge_id,
+                                "guild_id": guild_id,
+                                "status": "completed",
+                            },
+                            {
+                                "$set": {
+                                    "rsl_bonus_checked": True,
+                                    "reconciled_at": now,
+                                    "reconciliation_reason": "completed_settlement_backfill",
+                                },
+                            },
+                        )
+                        if getattr(result, "modified_count", 0) == 1:
+                            stats["closed"] += 1
+                        else:
+                            stats["skipped"] += 1
+                        continue
                     result = await db.active_challenges.update_one(
                         {
                             "_id": challenge_id,
@@ -261,9 +357,9 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                                 "match_id": reservation["_id"],
                                 "ticket_burned": True,
                                 "settlement_closed": True,
-                                "rsl_bonus_checked": False,
+                                "rsl_bonus_checked": True,
                                 "reconciled_at": now,
-                                "reconciliation_reason": "completed_settlement_bonus_retry",
+                                "reconciliation_reason": "completed_settlement",
                             },
                             "$unset": {"processing_at": ""},
                         },
@@ -272,95 +368,52 @@ async def reconcile_processing_challenges(db, guild_id: str) -> dict[str, int]:
                         stats["closed"] += 1
                     else:
                         stats["skipped"] += 1
-                    continue
-                if str(challenge.get("status") or "") == "completed":
-                    # Historical completed challenges may predate the challenge
-                    # marker. Once the deterministic settlement is checked, make
-                    # the challenge itself terminal so it leaves recovery scans.
-                    result = await db.active_challenges.update_one(
-                        {
-                            "_id": challenge_id,
-                            "guild_id": guild_id,
-                            "status": "completed",
-                        },
-                        {
-                            "$set": {
-                                "rsl_bonus_checked": True,
-                                "reconciled_at": now,
-                                "reconciliation_reason": "completed_settlement_backfill",
-                            },
-                        },
-                    )
-                    if getattr(result, "modified_count", 0) == 1:
-                        stats["closed"] += 1
-                    else:
-                        stats["skipped"] += 1
-                    continue
-                result = await db.active_challenges.update_one(
-                    {
-                        "_id": challenge_id,
-                        "guild_id": guild_id,
-                        "challenger_id": str(challenge.get("challenger_id") or ""),
-                        "status": "processing",
-                    },
-                    {
-                        "$set": {
-                            "status": "completed",
-                            "completed_at": now,
-                            "match_id": reservation["_id"],
-                            "ticket_burned": True,
-                            "settlement_closed": True,
-                            "rsl_bonus_checked": True,
-                            "reconciled_at": now,
-                            "reconciliation_reason": "completed_settlement",
-                        },
-                        "$unset": {"processing_at": ""},
-                    },
-                )
-                if getattr(result, "modified_count", 0) == 1:
-                    stats["closed"] += 1
                 else:
-                    stats["skipped"] += 1
-            else:
-                stats["pending"] += 1
-            continue
+                    stats["pending"] += 1
+                continue
 
-        if str(challenge.get("status") or "") != "processing":
-            stats["skipped"] += 1
-            continue
+            if str(challenge.get("status") or "") != "processing":
+                stats["skipped"] += 1
+                continue
 
-        raw_processing_at = challenge.get("processing_at")
-        try:
-            processing_at = float(raw_processing_at) if raw_processing_at is not None else now
-        except (TypeError, ValueError):
-            processing_at = now
+            raw_processing_at = challenge.get("processing_at")
+            try:
+                processing_at = float(raw_processing_at) if raw_processing_at is not None else now
+            except (TypeError, ValueError):
+                processing_at = now
 
-        if now - processing_at <= PROCESSING_LEASE_SECONDS:
-            stats["skipped"] += 1
-            continue
+            if now - processing_at <= PROCESSING_LEASE_SECONDS:
+                stats["skipped"] += 1
+                continue
 
-        result = await db.active_challenges.update_one(
-            {
-                "_id": challenge_id,
-                "guild_id": guild_id,
-                "challenger_id": str(challenge.get("challenger_id") or ""),
-                "status": "processing",
-            },
-            {
-                "$set": {
-                    "status": "active",
-                    "last_reminder": 0,
-                    "recovered_at": now,
-                    "recovery_reason": "processing_lease_expired_without_reservation",
-                    "ticket_burned": True,
-                    "settlement_closed": False,
+            result = await db.active_challenges.update_one(
+                {
+                    "_id": challenge_id,
+                    "guild_id": guild_id,
+                    "challenger_id": str(challenge.get("challenger_id") or ""),
+                    "status": "processing",
                 },
-                "$unset": {"processing_at": ""},
-            },
-        )
-        if getattr(result, "modified_count", 0) == 1:
-            stats["reopened"] += 1
-        else:
-            stats["skipped"] += 1
+                {
+                    "$set": {
+                        "status": "active",
+                        "last_reminder": 0,
+                        "recovered_at": now,
+                        "recovery_reason": "processing_lease_expired_without_reservation",
+                        "ticket_burned": True,
+                        "settlement_closed": False,
+                    },
+                    "$unset": {"processing_at": ""},
+                },
+            )
+            if getattr(result, "modified_count", 0) == 1:
+                stats["reopened"] += 1
+            else:
+                stats["skipped"] += 1
 
+        return stats
+
+    await _finish_recovery_run(db, guild_id, run_id, "completed", stats)
     return stats
+    except Exception as exc:
+        await _finish_recovery_run(db, guild_id, run_id, "failed", stats, error=exc)
+        raise
