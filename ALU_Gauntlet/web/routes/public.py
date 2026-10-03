@@ -235,7 +235,7 @@ class PublicRoutesMixin:
         if not 0 <= hour <= 23:
             raise web.HTTPBadRequest(text="Digest hour must be between 0 and 23.")
         guild_id = str(payload.get("guild_id", "")).strip()
-        if guild_id and guild_id not in {str(x) for x in user.guild_ids}:
+        if guild_id and guild_id not in await self._live_guild_ids_for_user(user):
             raise web.HTTPForbidden(text="You are not a member of that RSL server.")
         await self.bot.db.notification_preferences.update_one(
             {"_id": str(user.user_id)},
@@ -363,7 +363,7 @@ class PublicRoutesMixin:
                     raise web.HTTPConflict(text="Tournament registration has closed.")
             except ValueError:
                 raise web.HTTPConflict(text="This tournament has an invalid registration deadline.")
-        if not tournament or str(tournament.get("guild_id")) not in set(str(x) for x in user.guild_ids):
+        if not tournament or str(tournament.get("guild_id")) not in await self._live_guild_ids_for_user(user):
             raise web.HTTPNotFound(text="Tournament not found.")
         if tournament.get("status") not in {"registration_open", "open"}:
             raise web.HTTPConflict(text="Tournament registration is closed.")
@@ -464,7 +464,7 @@ class PublicRoutesMixin:
         user = await self.require_user(request); media_id = str(request.match_info.get("media_id", ""))
         media = await self.bot.db.tournament_media.find_one({"_id": media_id})
         if not media or media.get("status") != "approved": raise web.HTTPNotFound(text="Tournament media not found.")
-        if str(media.get("guild_id")) not in {str(x) for x in user.guild_ids}: raise web.HTTPForbidden(text="You are not a member of this server.")
+        if str(media.get("guild_id")) not in await self._live_guild_ids_for_user(user): raise web.HTTPForbidden(text="You are not a member of this server.")
         body = media.get("data") or b""
         if media.get("storage") == "gridfs" and media.get("gridfs_id"):
             try:
@@ -678,7 +678,7 @@ class PublicRoutesMixin:
             include_drafts = True
         else:
             user = await self.require_user(request)
-            guild_ids = {str(x) for x in user.guild_ids}
+            guild_ids = await self._live_guild_ids_for_user(user)
         query = {"guild_id": {"$in": list(guild_ids)}}
         if not include_drafts:
             query["published"] = True
