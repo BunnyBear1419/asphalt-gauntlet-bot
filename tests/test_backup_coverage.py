@@ -65,7 +65,6 @@ def test_manual_restore_verification_covers_operational_contract():
     assert "Required collections and operational indexes verified." in workflow
 
 
-def test_manual_restore_verification_covers_operational_contract():
     workflow = (REPO_ROOT / ".github" / "workflows" / "mongodb-restore-test.yml").read_text(encoding="utf-8")
     for collection in sorted(EXPECTED_OPERATIONAL_COLLECTIONS):
         assert f'"{collection}"' in workflow, (
