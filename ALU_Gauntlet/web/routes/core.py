@@ -178,9 +178,9 @@ class CoreRoutesMixin:
             "media-src 'self' blob:; "
             "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com"
         )
-        # Report first so existing Google Analytics/Translate integrations can be
-        # observed in production without breaking pages while the policy settles.
-        response.headers.setdefault("Content-Security-Policy-Report-Only", csp + "; report-uri /api/csp-report; report-to rsl-csp")
+        # Enforce the same policy that has been monitored by the CSP collector.
+        # Keep both reporting mechanisms so violations remain observable after enforcement.
+        response.headers.setdefault("Content-Security-Policy", csp + "; report-uri /api/csp-report; report-to rsl-csp")
         response.headers.setdefault("Reporting-Endpoints", 'rsl-csp="/api/csp-report"')
         if request.scheme == "https" or str(self.auth.public_url).startswith("https://"):
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
@@ -282,8 +282,11 @@ class CoreRoutesMixin:
 (function(){
   try {
     var saved=localStorage.getItem("rsl_theme");
-    if(["dark","light","ocean","purple","crimson","emerald","sunset","graphite"].includes(saved)) document.documentElement.setAttribute("data-theme",saved || "dark");
-  } catch(e) {}
+    document.documentElement.setAttribute("data-theme",
+      ["dark","light","ocean","purple","crimson","emerald","sunset","graphite"].includes(saved) ? saved : "dark");
+  } catch(e) {
+    document.documentElement.setAttribute("data-theme","dark");
+  }
 })();
 </script>
 <script src="/static/theme.js?v=20260924-theme5"></script>'''
