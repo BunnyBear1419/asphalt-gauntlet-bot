@@ -128,3 +128,4 @@ def test_guild_ownership_audit_is_read_only_and_registered():
     assert '"/api/admin/guild-ownership-audit", self.admin_guild_ownership_audit' in core
     assert 'id="run-guild-ownership-audit"' in page
     assert '"/api/admin/guild-ownership-audit"+q()' in page
+\n\ndef test_guild_ownership_audit_renders_details_without_overwriting_results():\n    page = (ROOT / "ALU_Gauntlet/web/static/admin.html").read_text(encoding="utf-8")\n    assert 'id="guild-ownership-audit-status"' in page\n    assert 'setStatus("guild-ownership-audit-status"' in page\n    assert 'id="diagnostic-results" class="admin-log"' in page\n    assert 'setStatus("diagnostic-results","Scanning guild-scoped collections' not in page\n
