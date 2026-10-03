@@ -638,4 +638,4 @@ async def setup(bot):
     except Exception:
         # MongoDB/index startup should remain authoritative; moderation views can
         # still be posted for new submissions if this recovery query is unavailable.
-        pass
+        log.exception("Unable to restore pending tournament media moderation views during startup")
