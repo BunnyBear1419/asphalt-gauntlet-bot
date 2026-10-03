@@ -40,8 +40,9 @@ class GauntletRoutesMixin:
     async def xp_leaderboard(self, request: web.Request) -> web.Response:
         from ...core.rsl_xp import leaderboard
         user = await self.require_user(request)
-        guild_id = str(request.query.get("guild_id") or (user.guild_ids[0] if user.guild_ids else ""))
-        if guild_id not in {str(x) for x in user.guild_ids}:
+        live_guild_ids = await self._live_guild_ids_for_user(user)
+        guild_id = str(request.query.get("guild_id") or (sorted(live_guild_ids)[0] if live_guild_ids else ""))
+        if guild_id not in live_guild_ids:
             raise web.HTTPForbidden(text="You are not a member of that server.")
         period = str(request.query.get("period", "all")).lower()
         if period not in {"all", "weekly", "monthly"}:
@@ -207,8 +208,9 @@ class GauntletRoutesMixin:
 
     async def gauntlet_leaderboard(self, request: web.Request) -> web.Response:
         user = await self.require_user(request)
-        guild_id = str(request.query.get("guild_id") or (user.guild_ids[0] if user.guild_ids else ""))
-        if guild_id not in {str(x) for x in user.guild_ids}:
+        live_guild_ids = await self._live_guild_ids_for_user(user)
+        guild_id = str(request.query.get("guild_id") or (sorted(live_guild_ids)[0] if live_guild_ids else ""))
+        if guild_id not in live_guild_ids:
             raise web.HTTPForbidden(text="You are not a member of that server.")
         requested_season = request.query.get("season")
         if requested_season:
