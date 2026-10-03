@@ -14,8 +14,8 @@ MAINTENANCE_KEY = "maintenance_mode"
 
 MAINTENANCE_PATH_PREFIXES = (
     "/api/gauntlet/",
-    "/api/tournaments/",
-    "/api/clubs/",
+    "/api/tournaments",
+    "/api/clubs",
     "/api/player/tickets/",
     "/api/player/register",
     "/api/player/challenge",
