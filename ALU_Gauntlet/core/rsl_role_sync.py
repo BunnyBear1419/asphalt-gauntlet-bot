@@ -263,6 +263,7 @@ async def reconcile_completed_tournament_achievement_roles(
         if team_size > 1:
             regs = db.tournament_club_registrations.find({
                 "tournament_id": tournament_id,
+                "guild_id": str(tournament.get("guild_id")),
                 "status": {"$in": ["accepted", "checked_in"]},
             })
             async for reg in regs:
@@ -298,6 +299,7 @@ async def reconcile_completed_tournament_achievement_roles(
             if team_size > 1:
                 regs = db.tournament_club_registrations.find({
                     "tournament_id": tournament_id,
+                    "guild_id": str(tournament.get("guild_id")),
                     "status": {"$in": ["accepted", "checked_in"]},
                     "club_id": champion_id,
                 })
