@@ -278,7 +278,14 @@ class AdminRoutesMixin:
 
     async def admin_guild_ownership_audit(self, request: web.Request) -> web.Response:
         """Run a read-only production scan for legacy guild-scoped documents missing guild_id."""
-        _, guild_id, _guild = await self.require_admin(request)
+        user, guild_id, _guild = await self.require_admin(request)
+        try:
+            is_owner = await self.bot.is_owner(user)
+        except Exception:
+            log.exception("Unable to verify bot owner for guild ownership audit")
+            is_owner = False
+        if not is_owner:
+            raise web.HTTPForbidden(text="The guild ownership audit is restricted to the bot owner.")
         collections = (
             "drivers", "matches", "active_challenges", "pending", "system_events",
             "clubs", "club_members", "club_invitations", "club_join_requests",
@@ -301,14 +308,27 @@ class AdminRoutesMixin:
                 })
                 continue
             try:
-                total = await self.bot.db[name].count_documents({})
-                missing_filter = {"guild_id": {"$exists": False}}
+                total = await self.bot.db[name].estimated_document_count()
+                missing_filter = {
+                    "$or": [
+                        {"guild_id": {"$exists": False}},
+                        {"guild_id": str(guild_id)},
+                    ]
+                }
                 exempted = 0
                 if name == "system_events":
                     # The production heartbeat is intentionally global: health checks
                     # consume this singleton and it is not owned by a Discord guild.
                     exempted = await self.bot.db[name].count_documents({"_id": "production_heartbeat", "guild_id": {"$exists": False}})
-                    missing_filter = {"guild_id": {"$exists": False}, "_id": {"$ne": "production_heartbeat"}}
+                    missing_filter = {
+                        "$and": [
+                            {"_id": {"$ne": "production_heartbeat"}},
+                            {"$or": [
+                                {"guild_id": {"$exists": False}},
+                                {"guild_id": str(guild_id)},
+                            ]},
+                        ]
+                    }
                 missing = await self.bot.db[name].count_documents(missing_filter)
                 scanned += total
                 total_missing += missing
