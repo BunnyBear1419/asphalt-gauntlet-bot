@@ -298,7 +298,7 @@ class AdminRoutesMixin:
             "tournament_registrations", "tournament_club_registrations", "tournament_media",
             "rsl_tickets", "rsl_ticket_events", "rsl_recovery_checkpoints",
             "rsl_economy_transactions", "rsl_xp_events", "rsl_activity_events",
-            "web_brand_assets", "news", "reference_pending", "reference_intel", "reference_intel_votes",
+            "web_brand_assets", "news", "reference_pending", "reference_intel", "reference_intel_votes", "reference_requests", "reference_request_votes",
         )
         results = []
         total_missing = 0
