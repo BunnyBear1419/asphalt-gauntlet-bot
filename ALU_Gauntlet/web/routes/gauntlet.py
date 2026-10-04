@@ -2,8 +2,9 @@ import hashlib
 """RSL web gauntlet route family."""
 from .._web_context import *
 from ...core.rsl_recovery import reconcile_processing_challenges
+from .reference_guides import CommunityGuidesMixin
 
-class GauntletRoutesMixin:
+class GauntletRoutesMixin(CommunityGuidesMixin):
     async def rsl_command_center_page(self, request: web.Request) -> web.StreamResponse:
         """Unified player/staff command center for activity, records, notifications, and health."""
         await self.require_user(request)
