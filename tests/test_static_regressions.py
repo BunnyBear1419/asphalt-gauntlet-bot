@@ -629,3 +629,19 @@ def test_reference_hub_has_career_event_reference():
     assert '"/api/admin/gauntlet/references/events/review"' in core
     assert 'name="idx_reference_events"' in main
     assert 'name="idx_reference_events_filters"' in main
+
+
+def test_reference_hub_has_saved_practice_lineup():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    routes = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Save 5-Car Lineup" in page
+    assert 'id="practice-cars"' in page
+    assert "loadSavedPractice()" in page
+    assert "savePractice()" in page
+    assert "gauntlet_reference_practice_saved" in routes
+    assert "gauntlet_reference_practice_save" in routes
+    assert "gauntlet_reference_practice_delete" in routes
+    assert '"/api/gauntlet/references/practice-plan/saved"' in core
+    assert 'name="uniq_gauntlet_practice_plan"' in main
