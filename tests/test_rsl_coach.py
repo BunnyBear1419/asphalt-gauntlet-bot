@@ -1,5 +1,6 @@
 from pathlib import Path
-import importlib.util
+
+from ALU_Gauntlet.web.routes.rsl_coach import build_coach_recommendations
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,11 +18,7 @@ def test_rsl_coach_extension_is_guild_scoped_and_deterministic():
     assert "rsl_coach" in init
 
 def test_rsl_coach_helper_prefers_largest_actionable_gap():
-    spec = importlib.util.spec_from_file_location("rsl_coach_test_module", ROOT / "ALU_Gauntlet" / "web" / "routes" / "rsl_coach.py")
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    result = module.build_coach_recommendations(
+    result = build_coach_recommendations(
         personal_rows=[
             {"track": "Track A", "best_ms": 95000},
             {"track": "Track B", "best_ms": 100000},
