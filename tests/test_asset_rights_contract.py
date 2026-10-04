@@ -17,3 +17,8 @@ def test_legal_page_contains_rights_safeguards():
     assert "A disclaimer does <em>not</em> create a license" in legal
     assert "No scraping or asset extraction" in legal
     assert "User screenshots and media" in legal
+
+
+def test_original_visuals_remain_the_default_fallback():
+    for name in ("rsl-car-silhouette.svg", "rsl-track-map.svg", "rsl-division-badge.svg"):
+        assert (ROOT / "ALU_Gauntlet" / "web" / "static" / "assets" / "rsl" / "visuals" / name).exists()
