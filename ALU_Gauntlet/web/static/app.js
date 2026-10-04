@@ -76,6 +76,16 @@ async function initPlayers(){
  finally{loading=false;if(refresh){refresh.disabled=false;refresh.textContent=originalRefresh||"Refresh"}}};
  sel.addEventListener("change",load);$("#refresh")?.addEventListener("click",load);$("#search")?.addEventListener("input",()=>{clearTimeout(window._searchTimer);window._searchTimer=setTimeout(load,250)});await load();
 }
+function initRSLAssetPolicy(){
+ const existing=document.querySelector('script[data-rsl-asset-policy]');
+ if(existing)return;
+ const script=document.createElement("script");
+ script.src="/static/rsl-asset-policy.js";
+ script.dataset.rslAssetPolicy="true";
+ script.defer=true;
+ document.head.appendChild(script);
+}
+initRSLAssetPolicy();
 window.ALUGauntlet={init:loadDashboard,initPlayers};
 document.addEventListener("DOMContentLoaded",()=>{if(location.pathname==="/")loadDashboard()});
 
