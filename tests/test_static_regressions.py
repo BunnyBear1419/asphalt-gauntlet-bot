@@ -516,7 +516,7 @@ def test_reference_hub_has_video_reference_leaderboard():
     assert "async function loadLeaderboard()" in page
     assert 'mode == "videos"' in gauntlet
     assert '"seconds": seconds' in gauntlet
-    assert "rows[:50]" in gauntlet
+    assert "rows[offset:offset + limit]" in gauntlet
 
 
 def test_reference_hub_has_car_track_explorer():
