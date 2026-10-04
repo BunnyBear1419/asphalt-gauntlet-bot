@@ -16,6 +16,8 @@ from .gauntlet import GauntletRoutesMixin
 
 def _parse_ms(value: Any) -> int:
     try:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return max(0, int(round(value)))
         text = str(value or "").strip().replace(",", ".")
         if ":" in text:
             minutes, seconds = text.split(":", 1)
