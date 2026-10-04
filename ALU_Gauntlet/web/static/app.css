@@ -1039,9 +1039,22 @@ body{background:var(--flat-bg)}
 }
 
 
-/* Shohan's Lab Companion navigation link */
-.companion-nav-link{color:#00f5c8!important}
-.companion-nav-link:hover{color:#00f5c8!important;filter:brightness(1.12)}
+/* Shohan's Lab Companion navigation link — intentionally independent of RSL theme accents. */
+.companion-nav-link{
+  color:var(--shohan-accent,#00f5c8)!important;
+  border-bottom:2px solid transparent!important;
+  text-shadow:0 0 10px color-mix(in srgb,var(--shohan-accent,#00f5c8) 22%,transparent);
+}
+.companion-nav-link:hover,
+.companion-nav-link:focus-visible{
+  color:var(--shohan-accent,#00f5c8)!important;
+  border-bottom-color:var(--shohan-accent,#00f5c8)!important;
+  background:color-mix(in srgb,var(--shohan-surface,#080f13) 72%,transparent)!important;
+  filter:none;
+}
+.companion-nav-link .companion-nav-icon{
+  filter:drop-shadow(0 0 5px color-mix(in srgb,var(--shohan-accent,#00f5c8) 38%,transparent));
+}
 
 
 /* RSL GLOBAL ACCOUNT NAV */
