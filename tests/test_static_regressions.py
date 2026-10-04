@@ -408,6 +408,16 @@ def test_companion_surfaces_keep_a_distinct_shohan_brand_identity():
     assert "shohan-partner-primary" in page
 
 
+def test_homepage_companion_banner_uses_shohan_brand_tokens():
+    index = read("ALU_Gauntlet/web/static/index.html")
+    assert 'class="partner-banner"' in index
+    assert "var(--shohan-accent,#00f5c8)" in index
+    assert "var(--shohan-surface,#080f13)" in index
+    assert "var(--shohan-surface-2,#0b171b)" in index
+    assert "var(--shohan-line,#164b4a)" in index
+    assert "VISIT COMPANION" in index
+
+
 def test_companion_links_target_shohans_companion():
     index = read("ALU_Gauntlet/web/static/index.html")
     profile = read("ALU_Gauntlet/web/static/profile.html")
