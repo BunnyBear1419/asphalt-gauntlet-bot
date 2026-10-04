@@ -418,6 +418,19 @@ def test_homepage_companion_banner_uses_shohan_brand_tokens():
     assert "VISIT COMPANION" in index
 
 
+def test_shohan_companion_brand_stays_theme_independent():
+    css = read("ALU_Gauntlet/web/static/app.css")
+    assert 'html[data-theme]{' in css
+    assert '--shohan-accent:#00f5c8' in css
+    for theme in ("light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"):
+        assert f'html[data-theme="{theme}"]' in css
+    # Theme variants may change surfaces for contrast, but never replace the partner accent.
+    assert "var(--shohan-accent)" in css
+    assert ".companion-info-menu" in css
+    assert ".partner-banner" in css
+    assert ".shohan-partner-hero" in css
+
+
 def test_companion_links_target_shohans_companion():
     index = read("ALU_Gauntlet/web/static/index.html")
     profile = read("ALU_Gauntlet/web/static/profile.html")
