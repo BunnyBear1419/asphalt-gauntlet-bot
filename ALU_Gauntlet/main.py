@@ -83,7 +83,29 @@ async def _ensure_database_indexes():
     await db.reference_intel_votes.create_index([("guild_id", 1), ("intel_id", 1), ("user_id", 1)], unique=True, name="uniq_reference_intel_vote")
     await db.reference_requests.create_index([("guild_id", 1), ("status", 1), ("votes", -1), ("created_at", -1)], name="idx_reference_requests")
     await db.reference_requests.create_index([("guild_id", 1), ("kind", 1), ("priority", -1), ("votes", -1), ("created_at", -1)], name="idx_reference_requests_kind_priority")
-    await db.reference_requests.create_index([("guild_id", 1), ("fingerprint", 1)], unique=True, partialFilterExpression={"fingerprint": {"$exists": True}}, name="uniq_reference_request_fingerprint")
+
+    # This index was introduced after older deployments already had the same
+    # named unique index without a partial filter. MongoDB rejects create_index
+    # when the name exists with different options, which can prevent the bot
+    # from starting after an otherwise valid deployment. Migrate the named
+    # index in-place only when its specification differs.
+    fingerprint_index_name = "uniq_reference_request_fingerprint"
+    fingerprint_key = [("guild_id", 1), ("fingerprint", 1)]
+    fingerprint_filter = {"fingerprint": {"$exists": True}}
+    fingerprint_indexes = await db.reference_requests.index_information()
+    existing_fingerprint_index = fingerprint_indexes.get(fingerprint_index_name)
+    if existing_fingerprint_index:
+        existing_key = list(existing_fingerprint_index.get("key", []))
+        existing_filter = existing_fingerprint_index.get("partialFilterExpression")
+        if existing_key != fingerprint_key or existing_filter != fingerprint_filter:
+            log.info("Migrating MongoDB index %s to its partial unique specification.", fingerprint_index_name)
+            await db.reference_requests.drop_index(fingerprint_index_name)
+    await db.reference_requests.create_index(
+        fingerprint_key,
+        unique=True,
+        partialFilterExpression=fingerprint_filter,
+        name=fingerprint_index_name,
+    )
     await db.reference_request_votes.create_index([("guild_id", 1), ("request_id", 1), ("user_id", 1)], unique=True, name="uniq_reference_request_vote")
     await db.gauntlet_reference_notes.create_index([("guild_id", 1), ("user_id", 1), ("reference_id", 1)], name="idx_gauntlet_reference_notes_owner")
     await db.reference_pending.create_index([("guild_id", 1), ("status", 1), ("created_at", -1)], name="idx_reference_pending_review")
