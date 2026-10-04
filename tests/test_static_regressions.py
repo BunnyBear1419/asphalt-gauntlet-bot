@@ -740,3 +740,18 @@ def test_reference_hub_has_feature_request_workflow_hardening():
     assert '"priority": str(item.get("priority") or "normal")' in route
     assert 'fingerprint = hashlib.sha256(' in route
     assert 'uniq_reference_request_fingerprint' in main
+
+
+def test_global_search_includes_reference_content():
+    public = read("ALU_Gauntlet/web/routes/public.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    assert '"references"' in public
+    assert 'reference_specs = (' in public
+    assert '"gauntlet_references"' in public
+    assert '"reference_guides"' in public
+    assert '"reference_history"' in public
+    assert '"reference_events"' in public
+    assert '"rsl_weekly_challenges"' in public
+    assert '"rsl_reference_beats"' in public
+    assert 'value="references">References' in core
+    assert "drivers, cars, tracks, videos, guides" in core

@@ -569,9 +569,9 @@ class CoreRoutesMixin:
   <div class="rsl-search-dialog" role="dialog" aria-modal="true" aria-labelledby="rsl-search-title">
     <div class="rsl-search-head"><strong id="rsl-search-title">Search Racing Syndicate League</strong><button type="button" class="rsl-search-close" id="rsl-search-close" aria-label="Close search">×</button></div>
     <div class="rsl-search-toolbar">
-      <div class="rsl-search-input-wrap"><img src="/assets/icons/search.png" alt=""><input id="rsl-search-input" type="search" placeholder="Search drivers, clubs, tournaments, pages…" autocomplete="off"></div>
+      <div class="rsl-search-input-wrap"><img src="/assets/icons/search.png" alt=""><input id="rsl-search-input" type="search" placeholder="Search drivers, cars, tracks, videos, guides, tournaments…" autocomplete="off"></div>
       <select id="rsl-search-type" aria-label="Search category">
-        <option value="all">Everything</option><option value="players">Drivers</option><option value="clubs">Clubs</option><option value="tournaments">Tournaments</option><option value="pages">Pages</option><option value="help">Help</option>
+        <option value="all">Everything</option><option value="players">Drivers</option><option value="references">References</option><option value="clubs">Clubs</option><option value="tournaments">Tournaments</option><option value="pages">Pages</option><option value="help">Help</option>
       </select>
     </div>
     <div class="rsl-search-meta" id="rsl-search-meta"></div>

@@ -522,7 +522,7 @@ class PublicRoutesMixin:
         if len(query) < 2:
             return web.json_response({"query": query, "type": category, "results": []})
 
-        allowed_types = {"all", "pages", "players", "clubs", "tournaments", "help"}
+        allowed_types = {"all", "pages", "players", "clubs", "tournaments", "help", "references"}
         if category not in allowed_types:
             category = "all"
         terms = [x.lower() for x in re.findall(r"[\w]+", query) if len(x) > 1][:8]
@@ -612,6 +612,29 @@ class PublicRoutesMixin:
                     name = str(tournament.get("name") or "Tournament")
                     details = " ".join(str(tournament.get(k) or "") for k in ("description", "format", "team_size", "status"))
                     add_result("tournaments", name, "/tournaments", f"Tournament • {details[:220]}", details)
+
+        if user and category in {"all", "references"}:
+            guild_ids = [str(x) for x in (getattr(user, "guild_ids", []) or [])]
+            if guild_ids:
+                reference_specs = (
+                    ("gauntlet_references", "Reference Video", "/gauntlet/references", ("title", "course", "track", "car", "driver", "description", "video_url"), {"status": {"$in": ["approved", "published"]}}),
+                    ("reference_guides", "Community Guide", "/gauntlet/references", ("title", "body", "summary", "tags", "video_url"), {"status": {"$in": ["approved", "published"]}}),
+                    ("reference_history", "Historical Reference", "/gauntlet/references", ("title", "summary", "details", "category", "era", "source_url", "video_url"), {"status": {"$in": ["approved", "published"]}}),
+                    ("reference_events", "Career / Event Reference", "/gauntlet/references", ("title", "summary", "details", "category", "season", "format", "reward", "source_url", "video_url"), {"status": {"$in": ["approved", "published"]}}),
+                    ("rsl_weekly_challenges", "Weekly Challenge", "/gauntlet/references", ("title", "prompt", "course", "track", "car", "target_time", "video_url"), {"status": {"$in": ["published", "closed"]}}),
+                    ("rsl_reference_beats", "Beat the Reference", "/gauntlet/references", ("title", "course", "track", "car", "video_url"), {"status": "published"}),
+                )
+                for collection_name, label, path, fields, status_filter in reference_specs:
+                    projection = {field: 1 for field in fields}
+                    projection.update({"guild_id": 1})
+                    async for row in self.bot.db[collection_name].find(
+                        {"guild_id": {"$in": guild_ids}, **status_filter}, projection
+                    ).limit(100):
+                        values = [str(row.get(field) or "") for field in fields]
+                        title = str(row.get("title") or row.get("course") or row.get("track") or label)
+                        searchable = " ".join(values)
+                        snippet = f"{label} • {searchable[:220]}"
+                        add_result("references", title, path, snippet, searchable)
 
         # Relevance: exact title/name matches first, then shorter snippets.
         needle = query.casefold()
