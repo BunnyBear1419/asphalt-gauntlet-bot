@@ -45,3 +45,14 @@ def test_gauntlet_six_division_command_center():
         "@media(prefers-reduced-motion:reduce)",
     ):
         assert token in css
+
+
+def test_championship_driver_card():
+    html=(ROOT/"ALU_Gauntlet/web/static/public-profile.html").read_text(encoding="utf-8")
+    js=(ROOT/"ALU_Gauntlet/web/static/public-profile.js").read_text(encoding="utf-8")
+    for token in ("rsl-driver-championship","Driver Championship Card","rsl-card-division","rsl-card-elo","rsl-card-record","rsl-card-winrate","rsl-card-rank"):
+        assert token in html
+    for token in ("rsl-card-division","rsl-card-elo","rsl-card-record","rsl-card-winrate","rsl-card-rank"):
+        assert token in js
+    for token in ("RSL CHAMPIONSHIP DRIVER CARD",".rsl-driver-championship",".rsl-driver-card-stats",".rsl-driver-card-badge","@media(max-width:560px)"):
+        assert token in css
