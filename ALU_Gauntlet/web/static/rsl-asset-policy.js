@@ -14,5 +14,5 @@
   }
   function init(){document.querySelectorAll("img[data-rsl-asset-src]").forEach(apply)}
   window.RSLAssetPolicy={fallbacks:FALLBACKS,init};
-  document.addEventListener("DOMContentLoaded",init);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
