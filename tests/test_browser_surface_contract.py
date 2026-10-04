@@ -6,6 +6,7 @@ def test_club_create_surface():
     assert 'id="open-create"' in page and 'id="club-form"' in page
     assert ('$("#open-create").onclick' in script or 'addEventListener("click"' in script) and '$("#club-form").onsubmit' in script
     assert '"/api/clubs"' in script and 'method:"POST"' in script
+    assert '/static/clubs.js?v=20261004-rsl-clubs2' in page
 def test_player_settings_surface():
     page,script=read("player.html"),read("player.js")
     assert 'href="/profile"' in page and 'href="/player/settings"' in page
