@@ -7,5 +7,11 @@ def test_asset_policy_loader_has_safe_fallbacks():
     assert "rsl-car-silhouette.svg" in js
     assert "rsl-track-map.svg" in js
     assert "rsl-division-badge.svg" in js
-    assert "addEventListener("error"" in js
+    assert 'addEventListener("error"' in js
     assert "window.RSLAssetPolicy" in js
+
+def test_asset_policy_loader_is_activated_site_wide():
+    app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
+    assert "initRSLAssetPolicy" in app
+    assert "/static/rsl-asset-policy.js" in app
+    assert 'data-rsl-asset-policy' in app
