@@ -5166,3 +5166,11 @@ html[data-theme] .rsl-visual-card{background:linear-gradient(145deg,var(--rsl-bo
 .rsl-surface-ribbon.rsl-calendar-ribbon{margin-left:0;margin-right:0}
 @media(max-width:760px){.rsl-surface-ribbon{grid-template-columns:1fr;margin-left:14px;margin-right:14px}.rsl-surface-ribbon .rsl-visual-card{min-height:94px}.rsl-surface-ribbon .rsl-visual-media{height:62px}.rsl-surface-ribbon .rsl-visual-media img{max-height:62px}}
 @media(prefers-reduced-motion:reduce){.rsl-visual-context::after,.public-profile-hero.rsl-visual-context::before,.clubs-center-hero.rsl-visual-context::before{animation:none!important}}
+
+/* Rights-safe visual asset metadata */
+.rsl-asset-frame{position:relative;overflow:hidden}
+.rsl-asset-frame img{display:block;width:100%;height:auto}
+.rsl-asset-attribution{display:flex;align-items:center;gap:.45rem;margin-top:.55rem;font-size:.72rem;line-height:1.35;opacity:.78}
+.rsl-asset-attribution .rsl-asset-source{font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.rsl-asset-attribution a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.rsl-asset-attribution[data-rsl-rights="original"]{opacity:.65}
