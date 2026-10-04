@@ -32,3 +32,24 @@ def test_rsl_coach_helper_prefers_largest_actionable_gap():
     assert result["recommendations"][0]["track"] == "Track B"
     assert result["recommendations"][0]["gap_ms"] == 5000
     assert result["learn_next"][0]["track"] == "Track C"
+
+
+def test_rsl_coach_helper_ignores_malformed_personal_times():
+    result = build_coach_recommendations(
+        personal_rows=[
+            {"track": "Broken", "best_ms": "not-a-time"},
+            {"track": "Valid", "best_ms": "1:40.000", "car_name": "Test Car"},
+        ],
+        reference_rows=[
+            {"course": "Valid", "time": "1:35.000", "official": True},
+        ],
+        tracks=["Broken", "Valid"],
+    )
+    assert result["summary"]["personal_tracks"] == 1
+    assert result["recommendations"][0]["track"] == "Valid"
+
+
+def test_rsl_coach_reference_query_uses_approved_records_only():
+    source = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "rsl_coach.py").read_text(encoding="utf-8")
+    assert '{"guild_id": guild, "status": "approved"}' in source
+    assert '"published"' not in source
