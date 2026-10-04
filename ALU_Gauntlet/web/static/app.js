@@ -86,6 +86,16 @@ function initRSLAssetPolicy(){
  document.head.appendChild(script);
 }
 initRSLAssetPolicy();
+function initRSLVisualExcellence(){
+ const existing=document.querySelector('script[data-rsl-visual-excellence]');
+ if(existing)return;
+ const script=document.createElement("script");
+ script.src="/static/rsl-visual-excellence.js";
+ script.dataset.rslVisualExcellence="true";
+ script.defer=true;
+ document.head.appendChild(script);
+}
+initRSLVisualExcellence();
 window.ALUGauntlet={init:loadDashboard,initPlayers};
 document.addEventListener("DOMContentLoaded",()=>{if(location.pathname==="/")loadDashboard()});
 
