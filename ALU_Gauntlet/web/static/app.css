@@ -5174,3 +5174,121 @@ html[data-theme] .rsl-visual-card{background:linear-gradient(145deg,var(--rsl-bo
 .rsl-asset-attribution .rsl-asset-source{font-weight:700;letter-spacing:.04em;text-transform:uppercase}
 .rsl-asset-attribution a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .rsl-asset-attribution[data-rsl-rights="original"]{opacity:.65}
+
+
+/* =========================================================
+   RSL VISUAL EXCELLENCE 3.0
+   Premium esports/racing presentation layer.
+   No external game assets required; all effects are CSS/original-art safe.
+   ========================================================= */
+:root{
+  --rsl-glow:color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 62%,transparent);
+  --rsl-glow-soft:color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 18%,transparent);
+  --rsl-surface-hi:color-mix(in srgb,var(--rsl-box-alt,#0a1a2d) 82%,white 18%);
+}
+body{background:
+  radial-gradient(900px 420px at 12% 8%,var(--rsl-glow-soft),transparent 62%),
+  radial-gradient(760px 420px at 88% 20%,color-mix(in srgb,var(--rsl-box-accent,#1878ff) 10%,transparent),transparent 65%),
+  var(--rsl-box)!important}
+body:before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:.26;
+  background-image:linear-gradient(115deg,transparent 0 48%,color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 7%,transparent) 49%,transparent 50%),
+    linear-gradient(0deg,transparent 0 96%,color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 5%,transparent) 97%);
+  background-size:320px 220px,100% 46px;
+}
+.top-nav{
+  backdrop-filter:blur(18px) saturate(135%);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--rsl-box-alt) 94%,transparent),color-mix(in srgb,var(--rsl-box) 91%,transparent));
+  box-shadow:0 12px 36px #0009,0 1px 0 var(--rsl-glow-soft);
+}
+.top-nav nav a{transition:color .2s ease,background .2s ease,transform .2s ease}
+.top-nav nav a:hover{color:#fff;background:color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 7%,transparent)}
+.top-brand.top-logo-mark,.top-brand{position:relative}
+.top-brand.top-logo-mark:after,.top-brand:not(.top-logo-mark):after{
+  content:"";position:absolute;right:8%;bottom:8px;width:46px;height:2px;
+  background:var(--rsl-box-accent,#28d7ff);box-shadow:0 0 14px var(--rsl-glow);
+}
+.page-hero{
+  position:relative;overflow:hidden;
+  border-bottom:1px solid color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 25%,var(--rsl-final-line,#173969));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--rsl-box-alt) 88%,transparent),transparent);
+}
+.page-hero:before{
+  content:"";position:absolute;inset:auto -8% 0 38%;height:2px;
+  background:linear-gradient(90deg,transparent,var(--rsl-box-accent,#28d7ff),transparent);
+  transform:skewX(-28deg);box-shadow:0 0 18px var(--rsl-glow);
+}
+.page-hero h1{letter-spacing:.01em;text-shadow:0 8px 28px #000b}
+.glass-panel,.home-card,.home-upcoming,.rsl-visual-card{
+  border-color:color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 24%,var(--rsl-final-line,#173969))!important;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--rsl-box-alt) 96%,white 4%),var(--rsl-box))!important;
+  box-shadow:0 18px 50px #0008,0 1px 0 #fff08 inset!important;
+}
+.glass-panel:before,.home-card:before,.rsl-visual-card:before{
+  content:"";position:absolute;left:0;right:0;top:0;height:2px;
+  background:linear-gradient(90deg,var(--rsl-box-accent,#28d7ff),transparent 72%);
+  opacity:.9;pointer-events:none;
+}
+.rsl-visual-card,.home-feature-card,.home-help-card,.home-upcoming-item{
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
+}
+.rsl-visual-card:hover,.home-feature-card:hover,.home-upcoming-item:hover{
+  transform:translateY(-4px);
+  border-color:color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 72%,white)!important;
+  box-shadow:0 24px 60px #000a,0 0 32px var(--rsl-glow-soft)!important;
+}
+.rsl-visual-card{isolation:isolate}
+.rsl-visual-card .rsl-visual-media,.rsl-visual-card img{transition:transform .45s cubic-bezier(.2,.7,.2,1),filter .45s ease}
+.rsl-visual-card:hover .rsl-visual-media,.rsl-visual-card:hover img{transform:scale(1.035)}
+.rsl-visual-card:after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;
+  background:linear-gradient(115deg,transparent 0 35%,color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 5%,transparent) 50%,transparent 66%);
+  transform:translateX(-110%);transition:transform .7s ease;
+}
+.rsl-visual-card:hover:after{transform:translateX(110%)}
+.rsl-racing-line{
+  position:absolute!important;left:-12%;right:-12%;bottom:12%;height:2px!important;
+  background:linear-gradient(90deg,transparent,var(--rsl-box-accent,#28d7ff),transparent)!important;
+  box-shadow:0 0 18px var(--rsl-glow)!important;opacity:.8;
+  transform:rotate(-4deg);animation:rsl-line-sweep 4.5s linear infinite;
+}
+@keyframes rsl-line-sweep{0%{translate:-28% 0}50%{translate:28% 0}100%{translate:-28% 0}}
+.rsl-xp-bar{position:relative;overflow:hidden;background:#061020;border:1px solid #1b4773;border-radius:999px;height:9px}
+.rsl-xp-bar>i{display:block;height:100%;width:var(--xp,50%);background:linear-gradient(90deg,#1878ff,#28d7ff);box-shadow:0 0 14px #28d7ff55;border-radius:inherit;animation:rsl-xp-fill 1s ease-out}
+@keyframes rsl-xp-fill{from{width:0}}
+.rsl-rank-up{display:inline-flex;align-items:center;gap:6px;color:#18e19e;font-weight:800}
+.rsl-rank-up:before{content:"↗";display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#18e19e18;border:1px solid #18e19e55}
+.rsl-status-live{display:inline-flex;align-items:center;gap:7px;color:#18e19e;font-weight:800}
+.rsl-status-live:before{content:"";width:8px;height:8px;border-radius:50%;background:#18e19e;box-shadow:0 0 12px #18e19e;animation:rsl-live-pulse 1.5s ease-in-out infinite}
+@keyframes rsl-live-pulse{50%{opacity:.35;transform:scale(.72)}}
+.rsl-achievement-reveal{animation:rsl-achievement .6s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rsl-achievement{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.home-hero{border-color:color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 38%,#214d78)!important;box-shadow:0 26px 70px #000b,0 0 42px var(--rsl-glow-soft)!important}
+.home-hero:before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,transparent 35%,color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 6%,transparent) 50%,transparent 65%);
+  mix-blend-mode:screen;
+}
+.hero-actions{z-index:4}
+.hero-action{box-shadow:0 10px 30px #0007,0 0 18px var(--rsl-glow-soft)!important}
+.home-upcoming{position:relative;overflow:hidden}
+.home-upcoming:after{
+  content:"";position:absolute;right:-80px;top:-80px;width:220px;height:220px;border:1px solid var(--rsl-glow-soft);border-radius:50%;
+  box-shadow:0 0 0 22px #28d7ff05,0 0 0 44px #28d7ff03;pointer-events:none;
+}
+.home-feature-icon{transition:transform .25s ease,box-shadow .25s ease}
+.home-feature-card:hover .home-feature-icon{transform:rotate(-3deg) scale(1.04);box-shadow:0 0 30px var(--rsl-glow-soft)}
+.partner-banner{box-shadow:0 18px 55px #0009,0 0 24px color-mix(in srgb,var(--shohan-accent,#00f5c8) 8%,transparent)!important}
+.qa,.wide-action,.discord-cta-button{transition:transform .18s ease,filter .18s ease,box-shadow .18s ease}
+.qa:hover,.wide-action:hover,.discord-cta-button:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:0 10px 28px #0007,0 0 18px var(--rsl-glow-soft)}
+table tr, .leader-row, .match-row, .player-directory-card{transition:background .18s ease,transform .18s ease}
+table tbody tr:hover,.leader-row:hover,.match-row:hover,.player-directory-card:hover{background:color-mix(in srgb,var(--rsl-box-accent,#28d7ff) 5%,transparent);transform:translateX(2px)}
+:focus-visible{outline:2px solid var(--rsl-box-accent,#28d7ff)!important;outline-offset:3px}
+@media(max-width:760px){
+  .page-hero h1{font-size:clamp(34px,9vw,45px)}
+  .rsl-visual-card:hover,.home-feature-card:hover,.home-upcoming-item:hover{transform:translateY(-2px)}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.001ms!important}
+  .rsl-visual-card:hover,.home-feature-card:hover,.home-upcoming-item:hover{transform:none}
+}
