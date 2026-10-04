@@ -5103,3 +5103,48 @@ html[data-theme] [contenteditable="true"]:focus{
 .shohan-partner-split h2{margin:8px 0 10px}.shohan-partner-split p{color:var(--shohan-muted);line-height:1.7}
 .shohan-partner-callout{display:flex;flex-direction:column;gap:12px}.shohan-partner-callout span{color:var(--shohan-muted);line-height:1.6}.shohan-partner-callout a{width:max-content;border:1px solid var(--shohan-accent);color:var(--shohan-text)}
 @media(max-width:800px){.shohan-partner-grid,.shohan-partner-split{grid-template-columns:1fr}.shohan-partner-hero{padding:32px 24px}}
+
+/* =========================================================
+   RSL VISUAL IDENTITY 2.0 — shared racing presentation
+   Original artwork, controlled motion, theme-aware surfaces.
+   ========================================================= */
+.rsl-visual-card{position:relative;overflow:hidden;border:1px solid var(--rsl-box-line);border-radius:14px;background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt));color:var(--rsl-box-text);box-shadow:0 12px 34px rgba(0,0,0,.22);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.rsl-visual-card:hover{transform:translateY(-4px);border-color:var(--rsl-box-accent);box-shadow:0 18px 42px rgba(0,0,0,.28),0 0 24px color-mix(in srgb,var(--rsl-box-accent) 12%,transparent)}
+.rsl-visual-card::after{content:"";position:absolute;inset:-30% -80%;pointer-events:none;background:linear-gradient(105deg,transparent 42%,color-mix(in srgb,var(--rsl-box-accent) 10%,transparent) 50%,transparent 58%);transform:translateX(-45%);transition:transform .7s ease}
+.rsl-visual-card:hover::after{transform:translateX(45%)}
+.rsl-visual-media{display:block;width:100%;height:100%;object-fit:cover;transition:transform .45s ease,filter .45s ease}
+.rsl-visual-card:hover .rsl-visual-media{transform:scale(1.035);filter:saturate(1.08)}
+.rsl-visual-badge{display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border:1px solid var(--rsl-box-line);border-radius:999px;background:color-mix(in srgb,var(--rsl-box) 86%,transparent);color:var(--rsl-box-accent);font-size:9px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.rsl-visual-icon{width:48px;height:48px;object-fit:contain;display:block;filter:drop-shadow(0 0 9px color-mix(in srgb,var(--rsl-box-accent) 25%,transparent))}
+.rsl-car-visual{animation:rsl-car-float 4.8s ease-in-out infinite}
+.rsl-track-visual{animation:rsl-track-pulse 4.5s ease-in-out infinite}
+.rsl-division-visual{animation:rsl-badge-float 5.2s ease-in-out infinite}
+.rsl-racing-line{position:absolute;left:-15%;right:-15%;bottom:14%;height:2px;background:linear-gradient(90deg,transparent,var(--rsl-box-accent),transparent);box-shadow:0 0 16px color-mix(in srgb,var(--rsl-box-accent) 50%,transparent);transform:skewY(-3deg);animation:rsl-speed-line 3.8s linear infinite}
+.rsl-xp-bar{height:7px;border:1px solid var(--rsl-box-line);border-radius:999px;overflow:hidden;background:var(--rsl-box-alt)}
+.rsl-xp-bar>span{display:block;height:100%;width:var(--xp,0%);background:linear-gradient(90deg,var(--rsl-box-accent),color-mix(in srgb,var(--rsl-box-accent) 55%,#fff));transform-origin:left center;animation:rsl-xp-in .9s ease-out both}
+.rsl-bracket-live{position:relative}
+.rsl-bracket-live::before{content:"LIVE";position:absolute;top:10px;right:10px;padding:4px 7px;border-radius:999px;background:var(--rsl-box-accent);color:var(--rsl-box);font-size:8px;font-weight:900;letter-spacing:.1em;animation:rsl-live-pulse 1.8s ease-in-out infinite}
+.rsl-achievement-reveal{animation:rsl-achievement .65s cubic-bezier(.2,.8,.2,1) both}
+@keyframes rsl-car-float{0%,100%{transform:translateY(0) rotate(-.4deg)}50%{transform:translateY(-5px) rotate(.4deg)}}
+@keyframes rsl-track-pulse{0%,100%{filter:drop-shadow(0 0 0 transparent)}50%{filter:drop-shadow(0 0 12px color-mix(in srgb,var(--rsl-box-accent) 24%,transparent))}}
+@keyframes rsl-badge-float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.015)}}
+@keyframes rsl-speed-line{from{transform:translateX(-18%) skewY(-3deg)}to{transform:translateX(18%) skewY(-3deg)}}
+@keyframes rsl-xp-in{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes rsl-live-pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 color-mix(in srgb,var(--rsl-box-accent) 30%,transparent)}50%{opacity:.72;box-shadow:0 0 0 7px transparent}}
+@keyframes rsl-achievement{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.rsl-visual-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px;margin-top:18px}
+.rsl-visual-feature{min-height:210px;padding:18px;display:grid;grid-template-columns:1fr 1.25fr;gap:14px;align-items:center}
+.rsl-visual-feature .rsl-visual-art{min-height:170px;display:grid;place-items:center;border:1px solid var(--rsl-box-line);border-radius:10px;background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--rsl-box-accent) 12%,var(--rsl-box)),var(--rsl-box-alt));overflow:hidden}
+.rsl-visual-feature .rsl-visual-art img{width:100%;height:100%;object-fit:contain;padding:10px}
+.rsl-visual-copy h2{margin:8px 0 7px;font-size:23px;line-height:1.05}
+.rsl-visual-copy p{margin:0;color:var(--rsl-box-muted);font-size:11px;line-height:1.55}
+.rsl-visual-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.rsl-visual-tile{min-height:210px;padding:18px;display:flex;flex-direction:column;justify-content:space-between}
+.rsl-visual-tile .rsl-visual-art{height:120px;border:1px solid var(--rsl-box-line);border-radius:10px;background:var(--rsl-box-alt);overflow:hidden;display:grid;place-items:center}
+.rsl-visual-tile .rsl-visual-art img{width:100%;height:100%;object-fit:contain;padding:9px}
+.rsl-visual-tile h3{margin:10px 0 4px;font-size:17px}
+.rsl-visual-tile p{margin:0;color:var(--rsl-box-muted);font-size:10px;line-height:1.45}
+@media(max-width:900px){.rsl-visual-grid{grid-template-columns:1fr 1fr}.rsl-visual-feature{grid-column:1/-1}}
+@media(max-width:560px){.rsl-visual-grid{grid-template-columns:1fr}.rsl-visual-feature{grid-template-columns:1fr}.rsl-visual-feature .rsl-visual-art{min-height:145px}.rsl-visual-tile{min-height:190px}}
+@media(prefers-reduced-motion:reduce){.rsl-car-visual,.rsl-track-visual,.rsl-division-visual,.rsl-racing-line,.rsl-xp-bar>span,.rsl-bracket-live::before,.rsl-achievement-reveal{animation:none!important}.rsl-visual-card,.rsl-visual-media{transition:none!important}.rsl-visual-card:hover{transform:none}.rsl-visual-card:hover .rsl-visual-media{transform:none}}
+html[data-theme] .rsl-visual-card{background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt));border-color:var(--rsl-box-line);color:var(--rsl-box-text)}
