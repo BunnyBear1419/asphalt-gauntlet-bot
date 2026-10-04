@@ -722,3 +722,16 @@ def test_reference_hub_has_community_request_moderation():
     assert "async def admin_reference_request_action(" in route
     assert 'add_post("/api/admin/gauntlet/references/requests/review"' in core
     assert 'allowed = {"open", "planned", "in_progress", "completed", "rejected"}' in route
+
+
+def test_reference_hub_has_feature_request_workflow_hardening():
+    html = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    route = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert 'id="request-f-priority"' in html
+    assert 'data-request-priority' in html
+    assert 'priority:$("#request-f-priority").value' in html
+    assert 'async def admin_reference_request_action(' in route
+    assert '"priority": str(item.get("priority") or "normal")' in route
+    assert 'fingerprint = hashlib.sha256(' in route
+    assert 'uniq_reference_request_fingerprint' in main

@@ -473,9 +473,15 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
 
     async def gauntlet_reference_requests(self, request: web.Request) -> web.Response:
         """Return community feature/data requests for the selected guild."""
-        _, guild_id, _ = await self.require_guild_member(request)
+        staff_view = str(request.query.get("staff") or "").strip() == "1"
+        if staff_view:
+            _, guild_id, _guild = await self.require_admin(request)
+        else:
+            _, guild_id, _guild = await self.require_guild_member(request)
         kind = str(request.query.get("kind") or "").strip().lower()
-        query = {"guild_id": str(guild_id), "status": {"$in": ["open", "planned", "in_progress", "completed"]}}
+        query = {"guild_id": str(guild_id)}
+        if not staff_view:
+            query["status"] = {"$in": ["open", "planned", "in_progress", "completed"]}
         if kind:
             query["kind"] = kind
         rows = []
@@ -484,6 +490,8 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
                 "id": str(item.get("_id")), "kind": str(item.get("kind") or "feature"),
                 "title": str(item.get("title") or ""), "body": str(item.get("body") or ""),
                 "evidence_url": str(item.get("evidence_url") or ""), "status": str(item.get("status") or "open"),
+                "priority": str(item.get("priority") or "normal"), "resolution": str(item.get("resolution") or ""),
+                "resolved_at": item.get("resolved_at"), "resolved_by": str(item.get("resolved_by") or ""),
                 "votes": int(item.get("votes") or 0), "driver": str(item.get("driver") or ""),
                 "created_at": item.get("created_at"),
             })
@@ -516,15 +524,29 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
         title = str(payload.get("title") or "").strip()[:120]
         body = str(payload.get("body") or "").strip()[:1200]
         evidence_url = str(payload.get("evidence_url") or "").strip()[:500]
+        priority = str(payload.get("priority") or "normal").strip().lower()
+        if priority not in {"low", "normal", "high"}:
+            priority = "normal"
+        if kind != "feature":
+            priority = "normal"
         if kind not in {"feature", "missing_data", "bad_data", "broken_video", "duplicate"} or not title or not body:
             raise web.HTTPBadRequest(text="Valid request type, title and description are required.")
         if evidence_url and not evidence_url.startswith(("https://", "http://")):
             raise web.HTTPBadRequest(text="Evidence URL must use http or https.")
         driver = await self.bot.db.drivers.find_one({"_id": f"{guild_id}_{user.user_id}"}) or {}
         from bson import ObjectId
+        fingerprint = hashlib.sha256(
+            f"{guild_id}:{kind}:{title.casefold()}:{body.casefold()}".encode()
+        ).hexdigest()
+        existing = await self.bot.db.reference_requests.find_one(
+            {"guild_id": str(guild_id), "fingerprint": fingerprint}
+        )
+        if existing:
+            return web.json_response({"ok": True, "id": str(existing["_id"]), "status": str(existing.get("status") or "open"), "duplicate": True})
         row = {
             "_id": ObjectId(), "guild_id": str(guild_id), "kind": kind, "title": title, "body": body,
-            "evidence_url": evidence_url, "status": "open", "votes": 0,
+            "evidence_url": evidence_url, "priority": priority, "fingerprint": fingerprint,
+            "status": "open", "votes": 0,
             "driver": str(driver.get("game_id") or driver.get("username") or user.username),
             "user_id": str(user.user_id), "created_at": time.time(),
         }
@@ -545,11 +567,14 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
         allowed = {"open", "planned", "in_progress", "completed", "rejected"}
         if status not in allowed:
             raise web.HTTPBadRequest(text="Invalid request status.")
+        priority = str(payload.get("priority") or "normal").strip().lower()
+        if priority not in {"low", "normal", "high"}:
+            raise web.HTTPBadRequest(text="Invalid request priority.")
         resolution = str(payload.get("resolution") or "").strip()[:1200]
         now = time.time()
         result = await self.bot.db.reference_requests.update_one(
             {"_id": request_id, "guild_id": str(guild_id)},
-            {"$set": {"status": status, "resolution": resolution, "resolved_at": now if status in {"completed", "rejected"} else None,
+            {"$set": {"status": status, "priority": priority, "resolution": resolution, "resolved_at": now if status in {"completed", "rejected"} else None,
                       "resolved_by": str(admin_user.id) if getattr(admin_user, "id", None) else ""}},
         )
         if result.matched_count != 1:

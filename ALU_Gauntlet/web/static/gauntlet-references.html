@@ -65,6 +65,7 @@
 <select id="request-f-kind"><option value="feature">Feature</option><option value="missing_data">Missing Data</option><option value="bad_data">Bad Data</option><option value="broken_video">Broken Video</option><option value="duplicate">Duplicate</option></select>
 <input id="request-f-title" maxlength="120" required placeholder="Short title">
 <input id="request-f-evidence" maxlength="500" placeholder="Evidence URL (optional)">
+<select id="request-f-priority"><option value="normal">Normal priority</option><option value="high">High priority</option><option value="low">Low priority</option></select>
 <textarea id="request-f-body" maxlength="1200" required placeholder="Describe what is missing, wrong, broken, duplicated, or requested…"></textarea>
 </div><br><button>Submit Request</button><p id="request-msg"></p></form>
 </section><section id="panel-history" class="glass-panel ref-panel hidden" style="padding:20px">
@@ -156,7 +157,7 @@ async function loadRequests(){
   const kind=$("#request-kind").value,q=new URLSearchParams();if(kind)q.set("kind",kind);
   const r=await fetch("/api/gauntlet/references/requests?"+q.toString(),{credentials:"same-origin"});if(!r.ok)return;
   const d=await r.json();const rows=d.rows||[];
-  $("#request-list").innerHTML=rows.length?rows.map(x=>"<article class='ref-card'><div class='ref-meta'>"+esc(x.kind)+" • <b>"+esc(x.status)+"</b></div><h3>"+esc(x.title)+"</h3><p class='ref-desc'>"+esc(x.body)+"</p>"+(x.evidence_url?"<p><a href='"+esc(x.evidence_url)+"' target='_blank' rel='noopener'>Open evidence →</a></p>":"")+"<div class='ref-meta'>"+esc(x.driver)+" • "+Number(x.votes||0)+" vote(s)</div><div class='ref-actions'><button type='button' data-request-vote='"+esc(x.id)+"'>👍 Upvote</button></div></article>").join(""):"<p>No community requests yet.</p>";
+  $("#request-list").innerHTML=rows.length?rows.map(x=>"<article class='ref-card'><div class='ref-meta'>"+esc(x.kind)+" • <b>"+esc(x.status)+"</b>"+(x.kind==="feature"?" • "+esc(x.priority||"normal")+" priority":"")+"</div><h3>"+esc(x.title)+"</h3><p class='ref-desc'>"+esc(x.body)+"</p>"+(x.evidence_url?"<p><a href='"+esc(x.evidence_url)+"' target='_blank' rel='noopener'>Open evidence →</a></p>":"")+"<div class='ref-meta'>"+esc(x.driver)+" • "+Number(x.votes||0)+" vote(s)"+(x.resolution?" • Staff: "+esc(x.resolution):"")+"</div><div class='ref-actions'><button type='button' data-request-vote='"+esc(x.id)+"'>👍 Upvote</button></div></article>").join(""):"<p>No community requests yet.</p>";
   $("[data-request-vote]").forEach(b=>b.onclick=voteRequest);
 }
 async function voteRequest(e){
@@ -166,7 +167,7 @@ async function voteRequest(e){
 }
 async function submitRequest(e){
   e.preventDefault();
-  const p={kind:$("#request-f-kind").value,title:$("#request-f-title").value,evidence_url:$("#request-f-evidence").value,body:$("#request-f-body").value};
+  const p={kind:$("#request-f-kind").value,title:$("#request-f-title").value,evidence_url:$("#request-f-evidence").value,priority:$("#request-f-priority").value,body:$("#request-f-body").value};
   const r=await fetch("/api/gauntlet/references/requests",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
   $("#request-msg").textContent=r.ok?"Request submitted.":"Unable to submit request.";if(r.ok){e.target.reset();loadRequests();}
 }
@@ -174,13 +175,13 @@ async function loadRequestReview(){
   if(!isStaff)return;
   const r=await fetch("/api/gauntlet/references/requests?staff=1",{credentials:"same-origin"});if(!r.ok)return;
   const d=await r.json(),rows=d.rows||[];
-  $("#request-pending").innerHTML=rows.length?rows.map(x=>"<div class='pending'><div class='ref-meta'>"+esc(x.kind)+" • "+Number(x.votes||0)+" vote(s) • "+esc(x.status)+"</div><h3>"+esc(x.title)+"</h3><p>"+esc(x.body)+"</p>"+(x.evidence_url?"<a href='"+esc(x.evidence_url)+"' target='_blank' rel='noopener'>Evidence →</a> ":"")+"<div class='ref-actions'><select data-request-status='"+esc(x.id)+"'><option value='open'>Open</option><option value='planned'>Planned</option><option value='in_progress'>In Progress</option><option value='completed'>Completed</option><option value='rejected'>Rejected</option></select><input data-request-resolution='"+esc(x.id)+"' maxlength='1200' placeholder='Staff resolution / note'><button type='button' data-request-review='"+esc(x.id)+"'>Save</button></div></div>").join(""):"<p>No community requests.</p>";
-  rows.forEach(x=>{const s=$("[data-request-status='"+CSS.escape(x.id)+"']");if(s)s.value=x.status;});
+  $("#request-pending").innerHTML=rows.length?rows.map(x=>"<div class='pending'><div class='ref-meta'>"+esc(x.kind)+" • "+Number(x.votes||0)+" vote(s) • "+esc(x.status)+"</div><h3>"+esc(x.title)+"</h3><p>"+esc(x.body)+"</p>"+(x.evidence_url?"<a href='"+esc(x.evidence_url)+"' target='_blank' rel='noopener'>Evidence →</a> ":"")+"<div class='ref-actions'><select data-request-status='"+esc(x.id)+"'><option value='open'>Open</option><option value='planned'>Planned</option><option value='in_progress'>In Progress</option><option value='completed'>Completed</option><option value='rejected'>Rejected</option></select><select data-request-priority='"+esc(x.id)+"'><option value='low'>Low</option><option value='normal'>Normal</option><option value='high'>High</option></select><input data-request-resolution='"+esc(x.id)+"' value='"+esc(x.resolution||"")+"' maxlength='1200' placeholder='Staff resolution / note'><button type='button' data-request-review='"+esc(x.id)+"'>Save</button></div></div>").join(""):"<p>No community requests.</p>";
+  rows.forEach(x=>{const s=$("[data-request-status='"+CSS.escape(x.id)+"']");if(s)s.value=x.status;const p=$("[data-request-priority='"+CSS.escape(x.id)+"']");if(p)p.value=x.priority||"normal";});
   $("[data-request-review]").forEach(b=>b.onclick=reviewRequest);
 }
 async function reviewRequest(e){
-  const id=e.currentTarget.dataset.requestReview,status=$("[data-request-status='"+CSS.escape(id)+"']").value,resolution=$("[data-request-resolution='"+CSS.escape(id)+"']").value;
-  const r=await fetch("/api/admin/gauntlet/references/requests/review",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,status,resolution})});
+  const id=e.currentTarget.dataset.requestReview,status=$("[data-request-status='"+CSS.escape(id)+"']").value,priority=$("[data-request-priority='"+CSS.escape(id)+"']").value,resolution=$("[data-request-resolution='"+CSS.escape(id)+"']").value;
+  const r=await fetch("/api/admin/gauntlet/references/requests/review",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,status,priority,resolution})});
   if(r.ok)loadRequestReview();
 }
 async function loadIntel(){
