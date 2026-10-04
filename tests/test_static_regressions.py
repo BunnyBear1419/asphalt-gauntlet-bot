@@ -670,3 +670,27 @@ def test_reference_hub_has_weekly_rsl_challenges():
     assert '"/api/admin/gauntlet/references/weekly-challenges/review"' in core
     assert 'name="idx_rsl_weekly_challenges"' in main
     assert 'name="uniq_rsl_weekly_challenge_submission"' in main
+
+
+def test_reference_hub_has_beat_the_reference_competitions():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    routes = read("ALU_Gauntlet/web/routes/reference_beats.py")
+    gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Beat the Reference" in page
+    assert 'data-tab="beats"' in page
+    assert 'id="panel-beats"' in page
+    assert "async function loadBeats()" in page
+    assert "async function submitBeat(" in page
+    assert "async def gauntlet_reference_beats(" in routes
+    assert "async def gauntlet_reference_beat_submit(" in routes
+    assert "async def gauntlet_reference_beat_leaderboard(" in routes
+    assert "async def admin_reference_beat_create(" in routes
+    assert "async def admin_reference_beat_review(" in routes
+    assert "BeatReferenceMixin" in gauntlet
+    assert '"/api/gauntlet/references/beat-competitions"' in core
+    assert '"/api/gauntlet/references/beat-competitions/leaderboard"' in core
+    assert '"/api/admin/gauntlet/references/beat-competitions/review"' in core
+    assert 'name="idx_rsl_reference_beats"' in main
+    assert 'name="uniq_rsl_reference_beat_submission"' in main
