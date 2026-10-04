@@ -52,3 +52,8 @@ def test_visual_identity_is_integrated_into_competition_surfaces():
         assert 'rsl-track-map.svg' in page
         assert 'rsl-division-badge.svg' in page
         assert 'aria-label=' in page
+        assert 'rsl-asset-frame' in page
+        assert 'data-rsl-rights="original"' in page
+        assert 'data-rsl-asset-src=' in page
+        assert 'data-rsl-asset-type=' in page
+        assert 'RSL Original Artwork' in page
