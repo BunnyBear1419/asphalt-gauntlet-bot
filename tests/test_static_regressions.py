@@ -740,6 +740,9 @@ def test_reference_hub_has_feature_request_workflow_hardening():
     assert '"priority": str(item.get("priority") or "normal")' in route
     assert 'fingerprint = hashlib.sha256(' in route
     assert 'uniq_reference_request_fingerprint' in main
+    assert 'index_information()' in main
+    assert 'drop_index(fingerprint_index_name)' in main
+    assert 'partialFilterExpression=fingerprint_filter' in main
 
 
 def test_global_search_includes_reference_content():
