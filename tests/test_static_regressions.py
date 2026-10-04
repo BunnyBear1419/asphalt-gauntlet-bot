@@ -645,3 +645,28 @@ def test_reference_hub_has_saved_practice_lineup():
     assert "gauntlet_reference_practice_delete" in routes
     assert '"/api/gauntlet/references/practice-plan/saved"' in core
     assert 'name="uniq_gauntlet_practice_plan"' in main
+
+
+def test_reference_hub_has_weekly_rsl_challenges():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    routes = read("ALU_Gauntlet/web/routes/reference_challenges.py")
+    gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Weekly Challenges" in page
+    assert 'data-tab="weekly"' in page
+    assert 'id="panel-weekly"' in page
+    assert "async function loadWeekly()" in page
+    assert "async function submitWeekly(" in page
+    assert "async function publishWeekly(" in page
+    assert "async def gauntlet_weekly_challenges(" in routes
+    assert "async def gauntlet_weekly_challenge_submit(" in routes
+    assert "async def gauntlet_weekly_challenge_leaderboard(" in routes
+    assert "async def admin_weekly_challenge_create(" in routes
+    assert "async def admin_weekly_challenge_review(" in routes
+    assert "WeeklyChallengeMixin" in gauntlet
+    assert '"/api/gauntlet/references/weekly-challenges"' in core
+    assert '"/api/gauntlet/references/weekly-challenges/leaderboard"' in core
+    assert '"/api/admin/gauntlet/references/weekly-challenges/review"' in core
+    assert 'name="idx_rsl_weekly_challenges"' in main
+    assert 'name="uniq_rsl_weekly_challenge_submission"' in main
