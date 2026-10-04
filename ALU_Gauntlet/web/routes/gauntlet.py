@@ -661,65 +661,109 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
         return web.json_response({"ok": True, "id": fingerprint, "status": "published"})
 
     async def gauntlet_reference_leaderboard(self, request: web.Request) -> web.Response:
-        """Return guild-scoped contributor or video-reference standings."""
+        """Return advanced guild-scoped Reference Hub standings."""
         _, guild_id, _ = await self.require_guild_member(request)
         guild = str(guild_id)
-        mode = str(request.query.get("mode", "contributors")).lower()
+        mode = str(request.query.get("mode", "contributors") or "contributors").strip().lower()
+        if mode not in {"contributors", "videos"}:
+            raise web.HTTPBadRequest(text="Invalid reference leaderboard mode.")
+
+        def parse_reference_time(value):
+            text = str(value or "").strip().replace(",", ".")
+            if not text:
+                return None
+            try:
+                if ":" in text:
+                    parts = text.split(":")
+                    if len(parts) != 2:
+                        return None
+                    return float(parts[0]) * 60.0 + float(parts[1])
+                return float(text)
+            except (TypeError, ValueError):
+                return None
+
+        def bounded_int(value, default, minimum, maximum):
+            try:
+                return max(minimum, min(maximum, int(value)))
+            except (TypeError, ValueError):
+                return default
+
+        limit = bounded_int(request.query.get("limit", 50), 50, 1, 100)
+        offset = bounded_int(request.query.get("offset", 0), 0, 0, 10000)
+        course_filter = str(request.query.get("course") or "").strip().casefold()
+        car_filter = str(request.query.get("car") or "").strip().casefold()
+        official_only = str(request.query.get("official") or "").strip().lower() in {"1", "true", "yes", "official"}
+        best_only = str(request.query.get("best_only") or "").strip().lower() in {"1", "true", "yes"}
 
         if mode == "videos":
-            def parse_reference_time(value):
-                text = str(value or "").strip().replace(",", ".")
-                if not text:
-                    return None
-                try:
-                    if ":" in text:
-                        parts = text.split(":")
-                        if len(parts) == 2:
-                            return float(parts[0]) * 60.0 + float(parts[1])
-                        return None
-                    return float(text)
-                except (TypeError, ValueError):
-                    return None
-
+            query = {"guild_id": guild, "status": {"$in": ["approved", "published"]}}
             rows = []
-            async for row in self.bot.db.gauntlet_references.find({"guild_id": guild}):
+            async for row in self.bot.db.gauntlet_references.find(query).sort("created_at", -1).limit(2000):
+                course = str(row.get("course") or row.get("track") or "").strip()
+                car = str(row.get("car") or "").strip()
                 seconds = parse_reference_time(row.get("time") or row.get("lap_time"))
-                if seconds is None or seconds <= 0:
+                if not course or seconds is None or seconds <= 0:
+                    continue
+                if course_filter and course.casefold() != course_filter:
+                    continue
+                if car_filter and car.casefold() != car_filter:
+                    continue
+                if official_only and not bool(row.get("official", False)):
                     continue
                 uid = str(row.get("created_by") or row.get("submitted_by") or "")
                 driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{uid}"}) if uid else None
                 rows.append({
-                    "id": str(row.get("_id", "")),
-                    "course": str(row.get("course") or row.get("track") or ""),
+                    "id": str(row.get("_id", "")), "course": course,
                     "title": str(row.get("title") or "Reference Video"),
-                    "driver": str((driver or {}).get("game_id") or (driver or {}).get("username") or uid or "Reference Driver"),
-                    "car": str(row.get("car") or ""),
-                    "time": str(row.get("time") or row.get("lap_time") or ""),
-                    "seconds": seconds,
-                    "video_url": str(row.get("video_url") or row.get("video_reference") or ""),
+                    "driver": str((driver or {}).get("game_id") or (driver or {}).get("username") or row.get("driver") or uid or "Reference Driver"),
+                    "car": car, "time": str(row.get("time") or row.get("lap_time") or ""),
+                    "seconds": seconds, "video_url": str(row.get("video_url") or row.get("video_reference") or ""),
+                    "official": bool(row.get("official", False)),
                 })
-            rows.sort(key=lambda x: (x["seconds"], x["course"].casefold(), x["title"].casefold()))
-            return web.json_response({"mode": "videos", "rows": rows[:50]})
+            if best_only:
+                best = {}
+                for row in rows:
+                    key = (row["course"].casefold(), row["car"].casefold())
+                    current = best.get(key)
+                    if current is None or row["seconds"] < current["seconds"] or (row["seconds"] == current["seconds"] and row["official"] and not current["official"]):
+                        best[key] = row
+                rows = list(best.values())
+            rows.sort(key=lambda x: (x["seconds"], x["course"].casefold(), x["car"].casefold(), x["title"].casefold()))
+            total = len(rows)
+            return web.json_response({
+                "mode": "videos", "rows": rows[offset:offset + limit], "total": total,
+                "offset": offset, "limit": limit,
+                "filters": {"course": course_filter, "car": car_filter, "official": official_only, "best_only": best_only},
+            })
 
         stats = {}
-        async for row in self.bot.db.gauntlet_references.find({"guild_id": guild}):
+        async for row in self.bot.db.gauntlet_references.find({
+            "guild_id": guild, "status": {"$in": ["approved", "published"]},
+        }).limit(5000):
+            course = str(row.get("course") or row.get("track") or "").strip()
+            car = str(row.get("car") or "").strip()
+            if course_filter and course.casefold() != course_filter:
+                continue
+            if car_filter and car.casefold() != car_filter:
+                continue
+            if official_only and not bool(row.get("official", False)):
+                continue
             uid = str(row.get("created_by") or row.get("submitted_by") or "")
             if not uid:
                 continue
             item = stats.setdefault(uid, {"user_id": uid, "references": 0, "tracks": set(), "cars": set()})
             item["references"] += 1
-            if row.get("course"):
-                item["tracks"].add(str(row["course"]))
-            if row.get("car"):
-                item["cars"].add(str(row["car"]))
+            if course:
+                item["tracks"].add(course)
+            if car:
+                item["cars"].add(car)
         rows = []
         for item in stats.values():
-            driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{item['user_id']}"}) or {}
-            rows.append({"user_id": item["user_id"],
-                         "driver": str(driver.get("game_id") or driver.get("username") or item["user_id"]),
-                         "references": item["references"], "tracks": len(item["tracks"]), "cars": len(item["cars"])})
+            driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{item["user_id"]}"}) or {}
+            rows.append({"user_id": item["user_id"], "driver": str(driver.get("game_id") or driver.get("username") or item["user_id"]), "references": item["references"], "tracks": len(item["tracks"]), "cars": len(item["cars"])})
         rows.sort(key=lambda x: (-x["references"], -x["tracks"], -x["cars"], x["driver"].casefold()))
-        return web.json_response({"mode": "contributors", "rows": rows[:50]})
+        total = len(rows)
+        return web.json_response({"mode": "contributors", "rows": rows[offset:offset + limit], "total": total, "offset": offset, "limit": limit, "filters": {"course": course_filter, "car": car_filter, "official": official_only}})
 
     async def gauntlet_matches(self, request: web.Request) -> web.Response:
         user,guild_id,_=await self.require_guild_member(request); uid=str(user.user_id); active=[]; recent=[]

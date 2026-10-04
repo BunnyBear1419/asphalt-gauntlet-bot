@@ -434,6 +434,11 @@ def test_reference_hub_exposes_player_notes_submission_and_leaderboard():
     assert "async def gauntlet_reference_submit" in gauntlet
     assert "async def gauntlet_reference_notes" in gauntlet
     assert "async def gauntlet_reference_leaderboard" in gauntlet
+    assert 'status": {"$in": ["approved", "published"]}' in gauntlet
+    assert "best_only" in gauntlet
+    assert "leader-course" in html
+    assert "leader-official" in html
+    assert "leader-best" in html
     assert "async def admin_reference_review" in admin
     assert "gauntlet_reference_notes" in main
 
