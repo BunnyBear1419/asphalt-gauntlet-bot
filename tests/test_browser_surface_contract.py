@@ -127,3 +127,10 @@ def test_tournaments_page_uses_current_theme_cache_key():
     page=read("tournaments.html")
     assert "/static/app.css?v=20261002-rsl-theme2" in page
     assert "rsl-theme2s-home-boxes" not in page
+
+
+def test_player_theme_style_blocks_are_not_nested():
+    page=read("player.html")
+    assert "<style>\n/* FINAL PLAYER THEME SURFACE AUDIT" in page
+    assert "\n</style>\n<style>\n/* FINAL PLAYER THEME SURFACE AUDIT" in page
+    assert "\n</style>\n</style>\n</head>" not in page
