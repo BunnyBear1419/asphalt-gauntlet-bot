@@ -42,7 +42,7 @@ def build_coach_recommendations(
     personal: dict[str, dict[str, Any]] = {}
     for row in personal_rows:
         track = str(row.get("track") or "").strip()
-        best_ms = int(row.get("best_ms") or 0)
+        best_ms = _parse_ms(row.get("best_ms"))
         if not track or best_ms <= 0:
             continue
         current = personal.get(track.casefold())
@@ -125,7 +125,7 @@ async def rsl_coach(self: GauntletRoutesMixin, request: web.Request) -> web.Resp
     ).sort("best_ms", 1).limit(500).to_list(length=500)
 
     reference_rows = await self.bot.db.gauntlet_references.find(
-        {"guild_id": guild, "status": {"$in": ["approved", "published"]}}
+        {"guild_id": guild, "status": "approved"}
     ).sort("created_at", -1).limit(2000).to_list(length=2000)
 
     driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{uid}"}) or {}
