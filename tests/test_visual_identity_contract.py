@@ -32,7 +32,7 @@ def test_visual_identity_assets_and_home_contract():
         "rsl-track-map.svg",
         "rsl-division-badge.svg",
         "Cars, Builds &amp; Defense",
-        "Track Intel",
+        "TRACK INTEL",
         "6 DIVISIONS",
     ):
         assert token in index
