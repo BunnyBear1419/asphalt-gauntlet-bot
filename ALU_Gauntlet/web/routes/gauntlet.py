@@ -5,9 +5,10 @@ from ...core.rsl_recovery import reconcile_processing_challenges
 from .reference_guides import CommunityGuidesMixin
 from .reference_history import HistoricalReferenceMixin
 from .reference_events import CareerEventReferenceMixin
+from .reference_challenges import WeeklyChallengeMixin
 from .reference_reputation import ReferenceReputationMixin
 
-class GauntletRoutesMixin(ReferenceReputationMixin, CareerEventReferenceMixin, HistoricalReferenceMixin, CommunityGuidesMixin):
+class GauntletRoutesMixin(ReferenceReputationMixin, WeeklyChallengeMixin, CareerEventReferenceMixin, HistoricalReferenceMixin, CommunityGuidesMixin):
     async def rsl_command_center_page(self, request: web.Request) -> web.StreamResponse:
         """Unified player/staff command center for activity, records, notifications, and health."""
         await self.require_user(request)
