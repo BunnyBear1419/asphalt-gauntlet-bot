@@ -759,7 +759,7 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
                 item["cars"].add(car)
         rows = []
         for item in stats.values():
-            driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{item["user_id"]}"}) or {}
+            driver = await self.bot.db.drivers.find_one({"_id": f"{guild}_{item['user_id']}"}) or {}
             rows.append({"user_id": item["user_id"], "driver": str(driver.get("game_id") or driver.get("username") or item["user_id"]), "references": item["references"], "tracks": len(item["tracks"]), "cars": len(item["cars"])})
         rows.sort(key=lambda x: (-x["references"], -x["tracks"], -x["cars"], x["driver"].casefold()))
         total = len(rows)
