@@ -56,3 +56,39 @@ def test_championship_driver_card():
         assert token in js
     for token in ("RSL CHAMPIONSHIP DRIVER CARD",".rsl-driver-championship",".rsl-driver-card-stats",".rsl-driver-card-badge","@media(max-width:560px)"):
         assert token in css
+    
+def test_final_competition_surface_regression_matrix():
+    surfaces={
+        "home":"ALU_Gauntlet/web/static/index.html",
+        "gauntlet":"ALU_Gauntlet/web/static/gauntlet-leaderboard.html",
+        "tournaments":"ALU_Gauntlet/web/static/tournaments.html",
+        "clubs":"ALU_Gauntlet/web/static/clubs.html",
+        "profile":"ALU_Gauntlet/web/static/public-profile.html",
+        "calendar":"ALU_Gauntlet/web/static/calendar.html",
+        "garage":"ALU_Gauntlet/web/static/player.html",
+    }
+    required_assets=(
+        "/static/assets/rsl/visuals/rsl-car-silhouette.svg",
+        "/static/assets/rsl/visuals/rsl-track-map.svg",
+        "/static/assets/rsl/visuals/rsl-division-badge.svg",
+    )
+    for name,path in surfaces.items():
+        html=(ROOT/path).read_text(encoding="utf-8")
+        assert "app.css" in html, name
+        assert any(asset in html for asset in required_assets), name
+
+    for token in (
+        "--rsl-box",
+        "--rsl-box-alt",
+        "--rsl-box-line",
+        "--rsl-box-accent",
+        "prefers-reduced-motion",
+        "@media(max-width:600px)",
+        ".rsl-competitive-chip",
+        ".rsl-score-hero",
+        ".rsl-driver-card",
+        ".rsl-gauntlet-ladder",
+        ".rsl-club-deck",
+        ".rsl-match-lane",
+    ):
+        assert token in css
