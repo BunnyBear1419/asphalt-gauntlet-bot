@@ -60,3 +60,10 @@ def test_rsl_coach_page_exposes_accessible_loading_states():
     assert 'aria-live="polite"' in page
     assert 'aria-busy="true"' in page
     assert 'setAttribute("aria-busy","false")' in page
+
+
+def test_rsl_coach_page_has_mobile_focus_and_reduced_motion_support():
+    page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "rsl-coach.html").read_text(encoding="utf-8")
+    assert "@media(max-width:460px)" in page
+    assert ".coach-actions a:focus-visible" in page
+    assert "@media(prefers-reduced-motion:reduce)" in page
