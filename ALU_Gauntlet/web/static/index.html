@@ -404,6 +404,15 @@
 @media(max-width:1050px){.home-upcoming-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.home-upcoming{padding:13px}.home-upcoming-head{align-items:flex-start}.home-upcoming-title{flex-direction:column;align-items:flex-start;gap:2px}.home-upcoming-list{grid-template-columns:1fr}.home-upcoming-item{padding:11px 12px}}
 </style>
+<style>
+/* VISUAL EXCELLENCE — driver command center */
+.rsl-command-center{margin:18px 0 0;padding:24px;border:1px solid #1d4569;border-radius:12px;background:linear-gradient(135deg,#08182b,#050d19);position:relative;overflow:hidden;box-shadow:0 20px 55px #0009}
+.rsl-command-center:before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 0 42%,#28d7ff08 50%,transparent 58%);pointer-events:none}
+.rsl-command-heading{display:flex;align-items:end;justify-content:space-between;gap:18px;margin-bottom:16px}.rsl-command-heading h2{margin:5px 0 0;font-size:28px;color:#fff}.rsl-command-link{font-size:9px;font-weight:900;letter-spacing:.08em;color:#28d7ff;text-decoration:none}.rsl-command-link:hover{text-decoration:underline}
+.rsl-command-grid{display:grid;grid-template-columns:1.45fr repeat(5,1fr);gap:10px}.rsl-stat-hero,.rsl-stat-card{min-height:105px;padding:15px;border:1px solid #1d4569;border-radius:9px;background:#0b1d31;position:relative;overflow:hidden}.rsl-stat-hero{background:linear-gradient(145deg,#0b2543,#071322);border-color:#2876aa}.rsl-stat-kicker,.rsl-stat-card span{display:block;font-size:8px;font-weight:900;letter-spacing:.11em;color:#7fa4c9}.rsl-stat-hero strong{display:block;font-size:37px;line-height:1;margin:8px 0 3px;color:#fff}.rsl-stat-hero small,.rsl-stat-card small{color:#829ab6;font-size:8px}.rsl-stat-card strong{display:block;font-size:24px;line-height:1;margin:12px 0 5px;color:#fff}.rsl-stat-card:after{content:"";position:absolute;right:-25px;bottom:-25px;width:70px;height:70px;border:1px solid #28d7ff18;border-radius:50%}.rsl-rank-track{height:3px;margin-top:11px;background:#153452;overflow:hidden}.rsl-rank-track i{display:block;width:64%;height:100%;background:linear-gradient(90deg,#1878ff,#28d7ff);box-shadow:0 0 12px #28d7ff66}.rsl-division-progress{margin-top:14px;padding:13px 15px;border-top:1px solid #173a5f}.rsl-division-progress-head{display:flex;justify-content:space-between;color:#8ca8c5;font-size:8px;font-weight:900;letter-spacing:.09em}.rsl-division-progress-head small{font-weight:600;letter-spacing:0}.rsl-division-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:9px}.rsl-division-steps span{display:grid;place-items:center;height:28px;border:1px solid #244a70;background:#0a1728;color:#617e9d;font-size:10px;font-weight:900}.rsl-division-steps span.active{color:#fff;border-color:#28d7ff;background:linear-gradient(90deg,#0d3970,#0b1e35);box-shadow:0 0 18px #28d7ff22}
+@media(max-width:1100px){.rsl-command-grid{grid-template-columns:repeat(3,1fr)}.rsl-stat-hero{grid-column:span 3}}
+@media(max-width:620px){.rsl-command-center{padding:17px}.rsl-command-heading{align-items:flex-start;flex-direction:column}.rsl-command-heading h2{font-size:23px}.rsl-command-grid{grid-template-columns:1fr 1fr}.rsl-stat-hero{grid-column:span 2}.rsl-division-progress-head{gap:8px;flex-direction:column}}
+</style>
 </head>
 <body class="home-page">
 <header class="top-nav"><a class="top-brand top-logo-mark" href="/" aria-label="Racing Syndicate League home"><img src="/static/assets/rsl-mini-header.png?v=20260921-rslmini-png1" alt="RSL"></a><nav aria-label="Primary navigation"><a href="/"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Home</span></a><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/gauntlet.png" alt=""><span>Gauntlet</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/gauntlet/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/gauntlet/defense"><img class="nav-icon-img" src="/assets/icons/defense.png" alt=""><span>Defense</span></a><a href="/gauntlet/matches"><span class="nav-icon-glyph" aria-hidden="true">⚔</span><span>Challenges &amp; Matches</span></a><a href="/gauntlet/leaderboard"><img class="nav-icon-img" src="/assets/icons/leaderboard.png" alt=""><span>Leaderboards</span></a><a href="/gauntlet/references"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>References</span></a></div></details><details class="top-nav-dropdown"><summary class="top-nav-dropdown-trigger"><img class="nav-icon-img" src="/assets/icons/tournaments.png" alt=""><span>Tournaments</span><span class="nav-chevron">⌄</span></summary><div class="top-nav-dropdown-menu"><a href="/tournaments"><img class="nav-icon-img" src="/assets/icons/home.png" alt=""><span>Tournament Center</span></a><a href="/tournaments/registration"><img class="nav-icon-img" src="/assets/icons/registration.png" alt=""><span>Registration</span></a><a href="/tournaments/matches"><img class="nav-icon-img" src="/assets/icons/bracket.png" alt=""><span>Brackets &amp; Matches</span></a><a href="/tournaments/results"><span class="nav-icon-glyph" aria-hidden="true">📊</span><span>Results &amp; Rankings</span></a><a href="/tournaments/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Club Tournaments</span></a></div></details><a href="/clubs"><img class="nav-icon-img" src="/assets/icons/clubs.png" alt=""><span>Clubs</span></a><a href="/rules"><span class="nav-icon-glyph" aria-hidden="true">📜</span><span>Rules</span></a><a class="companion-nav-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span>Companion</span></a></nav></header>
@@ -438,6 +447,32 @@
   </div>
   <div id="home-upcoming-list" class="home-upcoming-list">
     <div class="home-upcoming-empty">Loading upcoming events…</div>
+  </div>
+</section>
+
+<section class="rsl-command-center" aria-label="RSL Driver Command Center">
+  <div class="rsl-command-heading">
+    <div><span class="home-eyebrow">DRIVER COMMAND CENTER</span><h2>Your competitive snapshot</h2></div>
+    <a href="/player" class="rsl-command-link">OPEN FULL PROFILE →</a>
+  </div>
+  <div class="rsl-command-grid">
+    <article class="rsl-stat-hero">
+      <span class="rsl-stat-kicker">CURRENT RANK</span>
+      <strong id="snapshot-rank">—</strong>
+      <small id="snapshot-season">Current season</small>
+      <div class="rsl-rank-track"><i></i></div>
+    </article>
+    <article class="rsl-stat-card"><span>ELO RATING</span><strong id="snapshot-elo">—</strong><small>Competitive rating</small></article>
+    <article class="rsl-stat-card"><span>GARAGE PI</span><strong id="snapshot-pi">—</strong><small>Current performance index</small></article>
+    <article class="rsl-stat-card"><span>CAREER RECORD</span><strong id="snapshot-record">—</strong><small>Wins — losses</small></article>
+    <article class="rsl-stat-card"><span>WIN STREAK</span><strong id="snapshot-streak">—</strong><small>Consecutive wins</small></article>
+    <article class="rsl-stat-card"><span>DEFENSE</span><strong id="snapshot-defense">—</strong><small>Five-car defense status</small></article>
+  </div>
+  <div class="rsl-division-progress" aria-label="Six Gauntlet divisions">
+    <div class="rsl-division-progress-head"><span>GAUNTLET DIVISION PATH</span><small>6 competitive divisions</small></div>
+    <div class="rsl-division-steps">
+      <span class="active">I</span><span>II</span><span>III</span><span>IV</span><span>V</span><span>VI</span>
+    </div>
   </div>
 </section>
 
