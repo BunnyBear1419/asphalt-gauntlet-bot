@@ -17,3 +17,8 @@ def test_visual_excellence_surface_pack():
 
 def test_visual_excellence_has_accessible_motion_fallback():
     assert "@media(prefers-reduced-motion:reduce)" in css
+
+
+def test_competition_surface_polish():
+    for token in ("RSL 10/10 surface polish",".tournament-card:hover",".match-card:hover",".club-card:hover",".public-profile-card:hover",".defense-summary",".leader-row:hover"):
+        assert token in css
