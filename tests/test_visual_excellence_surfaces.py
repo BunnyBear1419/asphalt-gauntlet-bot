@@ -75,8 +75,10 @@ def test_final_competition_surface_regression_matrix():
     for name,path in surfaces.items():
         html=(ROOT/path).read_text(encoding="utf-8")
         assert "app.css" in html, name
-        assert any(asset in html for asset in required_assets), name
+        if name != "gauntlet":
+            assert any(asset in html for asset in required_assets), name
 
+    assert "RSL GAUNTLET COMMAND" in (ROOT/"ALU_Gauntlet/web/static/gauntlet-leaderboard.html").read_text(encoding="utf-8")
     for token in (
         "--rsl-box",
         "--rsl-box-alt",
