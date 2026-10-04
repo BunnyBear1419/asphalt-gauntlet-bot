@@ -5536,3 +5536,25 @@ table tbody tr:hover,.leader-row:hover,.match-row:hover,.player-directory-card:h
 @media(max-width:600px){.rsl-gauntlet-command{margin:14px 12px 0;padding:15px}.rsl-gauntlet-command-stats{grid-template-columns:1fr 1fr}.rsl-gauntlet-command .rsl-gauntlet-ladder{grid-template-columns:1fr 1fr}.rsl-gauntlet-command .rsl-ladder-step{min-height:116px}.rsl-gauntlet-command .rsl-ladder-step:hover{transform:none}}
 @media(max-width:420px){.rsl-gauntlet-command-stats{grid-template-columns:1fr}.rsl-gauntlet-command .rsl-gauntlet-ladder{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.rsl-gauntlet-command .rsl-ladder-step{transition:none}.rsl-gauntlet-command .rsl-ladder-step:hover{transform:none}}
+
+/* RSL CHAMPIONSHIP DRIVER CARD */
+.rsl-driver-championship{position:relative;display:grid;grid-template-columns:180px minmax(0,1fr) 120px;gap:20px;align-items:center;margin:18px 0;padding:18px;border:1px solid var(--rsl-box-line);background:linear-gradient(135deg,var(--rsl-box-alt),var(--rsl-box));box-shadow:0 18px 42px #0008;overflow:hidden}
+.rsl-driver-championship:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--rsl-box-accent),transparent 70%)}
+.rsl-driver-championship:after{content:"";position:absolute;right:-10%;top:-80%;width:42%;height:260%;background:linear-gradient(100deg,transparent,var(--rsl-glow-soft),transparent);transform:rotate(16deg);pointer-events:none}
+.rsl-driver-card-visual{min-height:150px;display:grid;place-items:center;align-content:center;border:1px solid var(--rsl-box-line);background:radial-gradient(circle at 50% 40%,var(--rsl-glow-soft),transparent 48%),var(--rsl-box);position:relative;z-index:1}
+.rsl-driver-card-visual img{width:92%;max-height:105px;object-fit:contain}
+.rsl-driver-card-visual span{margin-top:5px;color:var(--rsl-box-accent);font-size:7px;font-weight:900;letter-spacing:.14em}
+.rsl-driver-card-main{position:relative;z-index:1;min-width:0}
+.rsl-driver-card-kicker{color:var(--rsl-box-accent);font-size:8px;font-weight:900;letter-spacing:.16em}
+.rsl-driver-card-main h2{margin:5px 0 4px;font-size:clamp(25px,4vw,38px);font-style:italic}
+.rsl-driver-card-main p{margin:0;color:var(--rsl-box-muted);font-size:9px}
+.rsl-driver-card-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:14px}
+.rsl-driver-card-stats>div{padding:9px;border:1px solid var(--rsl-box-line);background:rgba(0,0,0,.14)}
+.rsl-driver-card-stats small{display:block;color:var(--rsl-box-muted);font-size:6px;letter-spacing:.1em}
+.rsl-driver-card-stats b{display:block;margin-top:4px;color:var(--rsl-box-accent);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rsl-driver-card-badge{position:relative;z-index:1;text-align:center}
+.rsl-driver-card-badge img{width:82px;filter:drop-shadow(0 0 14px var(--rsl-glow-soft))}
+.rsl-driver-card-badge strong{display:block;margin-top:5px;color:var(--rsl-box-accent);font-size:8px;letter-spacing:.08em}
+@media(max-width:800px){.rsl-driver-championship{grid-template-columns:140px minmax(0,1fr)}.rsl-driver-card-badge{grid-column:1/-1}.rsl-driver-card-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.rsl-driver-championship{grid-template-columns:1fr;margin:14px 0;padding:13px}.rsl-driver-card-visual{min-height:125px}.rsl-driver-card-main h2{font-size:28px}.rsl-driver-card-stats{grid-template-columns:1fr 1fr}.rsl-driver-card-badge{grid-column:auto}.rsl-driver-card-badge img{width:70px}}
+@media(prefers-reduced-motion:reduce){.rsl-driver-championship:after{display:none}}
