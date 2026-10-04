@@ -1,0 +1,1 @@
+RSL visual assets are governed by docs/RSL_ASSET_RIGHTS_POLICY.md. Third-party game imagery requires documented permission or an applicable license before publication. Non-affiliation notices do not create permission. Original RSL visuals are the default fallback.
