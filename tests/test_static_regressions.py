@@ -512,8 +512,8 @@ def test_reference_hub_has_video_reference_leaderboard():
     page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
     gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
     assert "Video Leaderboard" in page
-    assert "mode=videos" in page
-    assert "async function loadContributors()" in page
+    assert 'mode:"videos"' in page
+    assert "async function loadLeaderboard()" in page
     assert 'mode == "videos"' in gauntlet
     assert '"seconds": seconds' in gauntlet
     assert "rows[:50]" in gauntlet
