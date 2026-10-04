@@ -34,6 +34,13 @@ async function load(){
   set("driver-type",p.driver_type||"Not set");
   set("location",p.location||"Not set");
   set("about",p.about||"No public About Me information.");
+  const cardDivision=p.division||p.gauntlet_division||p.current_division||"Unranked";
+  set("rsl-card-division",cardDivision);
+  set("rsl-card-rank",p.competition_rank?"RANK #"+p.competition_rank:"RANK —");
+  set("rsl-card-elo",Number.isFinite(Number(p.elo))?Math.trunc(Number(p.elo)).toLocaleString():"1,000");
+  const cardWins=Number(p.career_wins||0),cardPlayed=Number(p.career_played||0);
+  set("rsl-card-record",cardWins+"-"+Math.max(0,cardPlayed-cardWins));
+  set("rsl-card-winrate",cardPlayed?((cardWins/cardPlayed)*100).toFixed(1)+"%":"—");
   set("rank",p.competition_rank?"#"+p.competition_rank:"—");
   set("elo",Number.isFinite(Number(p.elo))?Math.trunc(Number(p.elo)).toLocaleString():"1,000");
   set("season",p.season_number||"—");
