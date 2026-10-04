@@ -142,4 +142,4 @@ def test_admin_dashboard_guild_links_have_progressive_navigation_fallbacks():
     assert '<a class="admin-tool admin-guild-link" href="/admin#settings" data-path="/admin" data-section="settings">'.replace("    ","") in page
     assert '<a class="admin-tool admin-guild-link" href="/gauntlet/leaderboard" data-path="/gauntlet/leaderboard">'.replace("    ","") in page
     assert '<a class="admin-tool admin-guild-link" href="/tournaments" data-path="/tournaments">'.replace("    ","") in page
-    assert 'a.href=a.dataset.path+"?guild_id="'+encodeURIComponent(guildId) in page
+    assert 'a.href=a.dataset.path+"?guild_id="+encodeURIComponent(guildId)' in page
