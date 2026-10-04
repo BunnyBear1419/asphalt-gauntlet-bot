@@ -4,9 +4,9 @@
 - Production branch: `main`
 - Hosting: Discloud
 - Automated CI/deploy: GitHub Actions
-- Latest verified release: `3b2e5f57c2f86b66432a92757fbd2a31b2bc0c5c`
-- Latest CI/deploy run: #4031 — passed
-- Automated tests: passed
+- Latest verified release: `75ec562a0b1cb9a48acc762965bd0f9d33baf5c5`
+- Latest CI/deploy run: #4045 — passed
+- Automated tests: passed — 698 passed, 2 skipped
 - Production module import smoke gate: passed
 - Compile check: passed
 - Dependency audit: passed
@@ -14,10 +14,16 @@
 - Post-deployment smoke test: passed
 - Production OAuth/login smoke test: passed
 - Production heartbeat/health checks: passed
+- Read-only live Chromium E2E: passed
+- Visual regression matrix: passed across the seven primary UI surfaces
 - Rollback path: available; not required for the latest successful release
 
 ## Current assurance status
-The automated implementation and regression phase is complete for the current verified release `3b2e5f57c2f86b66432a92757fbd2a31b2bc0c5c`. CI/deploy run #4031 passed the full test, Discloud deployment, restart, smoke-test, and read-only live Chromium E2E gates. Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
+The automated implementation and regression phase is complete for the current verified release `75ec562a0b1cb9a48acc762965bd0f9d33baf5c5`. CI/deploy run #4045 passed the full test, Discloud deployment, restart, smoke-test, and read-only live Chromium E2E gates.
+
+The final visual regression matrix covers Home, Gauntlet, Tournaments, Clubs, Public Profile, Calendar, and Driver Garage surfaces. It verifies the shared RSL visual tokens, original/fallback-safe visual language, responsive mobile coverage, reduced-motion behavior, and the major competition surface components.
+
+Browser contract coverage includes the major Clubs, Player Settings, Admin System, navigation, support, ticket, calendar, Gauntlet, and tournament surfaces. Production import-smoke coverage is also enabled to catch route/package import failures before deployment.
 
 A read-only Chromium live browser suite is now part of the deployment gate and is also available as a scheduled/manual workflow. It checks the deployed public shell, navigation, Clubs controls, protected routes, and a mobile viewport without submitting forms or changing competition data; the latest run passed all of those gates.
 
@@ -37,6 +43,14 @@ The remaining unchecked acceptance items below are intentionally manual/live acc
 - [x] Privacy export/request, evidence timeline, public status, transparency, readiness, and admin security/performance APIs are covered by regression tests
 - [x] Non-transactional paid-ticket purchase failure cannot permanently consume Coins without a ticket grant
 - [x] OAuth callback errors no longer expose exception type/details to unauthenticated users
+- [x] Rights-safe original RSL visual fallback system is implemented and covered by regression tests
+- [x] Third-party imagery policy/disclaimer is documented; disclaimer does not create a license
+- [x] Tournament bracket visual experience is covered by regression tests
+- [x] Clubs esports/garage presentation is covered by regression tests
+- [x] Six-division Gauntlet command center is covered by regression tests
+- [x] Championship Driver Card presentation is covered by regression tests
+- [x] Driver Garage / Race Machine Deck is covered by regression tests
+- [x] Seven-surface visual regression matrix passes
 
 ## Final acceptance test matrix
 
