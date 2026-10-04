@@ -36,3 +36,19 @@ def test_visual_identity_assets_and_home_contract():
         "6 DIVISIONS",
     ):
         assert token in index
+
+
+def test_visual_identity_is_integrated_into_competition_surfaces():
+    for path in (
+        "ALU_Gauntlet/web/static/gauntlet-defense.html",
+        "ALU_Gauntlet/web/static/tournaments.html",
+        "ALU_Gauntlet/web/static/public-profile.html",
+        "ALU_Gauntlet/web/static/clubs.html",
+        "ALU_Gauntlet/web/static/calendar.html",
+    ):
+        page = read(path)
+        assert 'class="rsl-surface-ribbon' in page
+        assert 'rsl-car-silhouette.svg' in page
+        assert 'rsl-track-map.svg' in page
+        assert 'rsl-division-badge.svg' in page
+        assert 'aria-label=' in page
