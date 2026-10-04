@@ -53,3 +53,10 @@ def test_rsl_coach_reference_query_uses_approved_records_only():
     source = (ROOT / "ALU_Gauntlet" / "web" / "routes" / "rsl_coach.py").read_text(encoding="utf-8")
     assert '{"guild_id": guild, "status": "approved"}' in source
     assert '"published"' not in source
+
+
+def test_rsl_coach_page_exposes_accessible_loading_states():
+    page = (ROOT / "ALU_Gauntlet" / "web" / "static" / "rsl-coach.html").read_text(encoding="utf-8")
+    assert 'aria-live="polite"' in page
+    assert 'aria-busy="true"' in page
+    assert 'setAttribute("aria-busy","false")' in page
