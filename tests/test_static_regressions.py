@@ -608,3 +608,24 @@ def test_reference_hub_has_community_guides():
     assert 'name="uniq_reference_guide_vote"' in main
     assert 'name="idx_reference_guides"' in main
     assert 'name="idx_reference_guides_category"' in main
+
+
+def test_reference_hub_has_career_event_reference():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    routes = read("ALU_Gauntlet/web/routes/reference_events.py")
+    gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Career &amp; Events" in page
+    assert 'data-tab="events"' in page
+    assert "/api/gauntlet/references/events" in page
+    assert "async function loadEvents()" in page
+    assert "async function submitEvent(" in page
+    assert "async def gauntlet_reference_events(" in routes
+    assert "async def gauntlet_reference_event_submit(" in routes
+    assert "async def admin_reference_event_review(" in routes
+    assert "CareerEventReferenceMixin" in gauntlet
+    assert '"/api/gauntlet/references/events"' in core
+    assert '"/api/admin/gauntlet/references/events/review"' in core
+    assert 'name="idx_reference_events"' in main
+    assert 'name="idx_reference_events_filters"' in main
