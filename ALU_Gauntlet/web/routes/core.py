@@ -2649,6 +2649,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_get("/api/gauntlet/references/requests", self.gauntlet_reference_requests)
         self.app.router.add_post("/api/gauntlet/references/requests", self.gauntlet_reference_request_action)
         self.app.router.add_get("/api/gauntlet/references/practice-plan", self.gauntlet_reference_practice_plan)
+        self.app.router.add_get("/api/gauntlet/references/personal-records", self.gauntlet_reference_personal_records)
         self.app.router.add_get("/api/gauntlet/references/practice-plan/saved", self.gauntlet_reference_practice_saved)
         self.app.router.add_post("/api/gauntlet/references/practice-plan/saved", self.gauntlet_reference_practice_save)
         self.app.router.add_delete("/api/gauntlet/references/practice-plan/saved", self.gauntlet_reference_practice_delete)

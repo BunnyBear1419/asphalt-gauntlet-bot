@@ -694,3 +694,18 @@ def test_reference_hub_has_beat_the_reference_competitions():
     assert '"/api/admin/gauntlet/references/beat-competitions/review"' in core
     assert 'name="idx_rsl_reference_beats"' in main
     assert 'name="uniq_rsl_reference_beat_submission"' in main
+
+
+def test_reference_hub_has_personal_records():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    route = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert 'data-tab="records"' in page
+    assert "My Personal Records" in page
+    assert "async function loadPersonalRecords()" in page
+    assert "/api/gauntlet/references/personal-records" in page
+    assert "async def gauntlet_reference_personal_records(" in route
+    assert 'add_get("/api/gauntlet/references/personal-records"' in core
+    assert 'name="idx_rsl_personal_records"' in main
+    assert "map_records" in route

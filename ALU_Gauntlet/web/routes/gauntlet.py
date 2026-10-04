@@ -231,6 +231,99 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
         rows.sort(key=lambda x: x["gap"], reverse=True)
         return web.json_response({"rows": rows[:20]})
 
+    async def gauntlet_reference_personal_records(self, request: web.Request) -> web.Response:
+        """Return the signed-in driver's guild-scoped personal bests and reference gaps."""
+        user, guild_id, _ = await self.require_guild_member(request)
+        uid, guild = str(user.user_id), str(guild_id)
+        track_filter = str(request.query.get("track") or "").strip().casefold()
+        rows = []
+        lap_rows = await self.bot.db.lap_times.find({"guild_id": guild, "user_id": uid}).sort("best_ms", 1).limit(500).to_list(length=500)
+
+        def parse_ms(value):
+            try:
+                text = str(value or "").strip().replace(",", ".")
+                if ":" in text:
+                    parts = text.split(":")
+                    if len(parts) != 2:
+                        return 0
+                    return int(round((float(parts[0]) * 60 + float(parts[1])) * 1000))
+                return int(round(float(text) * 1000))
+            except (TypeError, ValueError):
+                return 0
+
+        def format_ms(ms):
+            ms = max(0, int(ms))
+            minutes, rem = divmod(ms, 60000)
+            seconds, millis = divmod(rem, 1000)
+            return f"{minutes}:{seconds:02d}.{millis:03d}"
+
+        universal = {}
+        async for record in self.bot.db.map_records.find({}).limit(5000):
+            track = str(record.get("track") or "").strip()
+            if track:
+                universal[track.casefold()] = record
+
+        references = {}
+        async for ref in self.bot.db.gauntlet_references.find({
+            "guild_id": guild,
+            "status": {"$in": ["approved", "published"]},
+        }).sort("created_at", -1).limit(2000):
+            track = str(ref.get("course") or ref.get("track") or "").strip()
+            ref_ms = parse_ms(ref.get("time") or ref.get("lap_time"))
+            if not track or ref_ms <= 0:
+                continue
+            key = track.casefold()
+            current = references.get(key)
+            candidate = {
+                "time_ms": ref_ms,
+                "title": str(ref.get("title") or "RSL Reference"),
+                "car": str(ref.get("car") or ""),
+                "driver": str(ref.get("driver") or ""),
+                "official": bool(ref.get("official", False)),
+            }
+            if current is None or ref_ms < current["time_ms"] or (ref_ms == current["time_ms"] and candidate["official"] and not current["official"]):
+                references[key] = candidate
+
+        for row in lap_rows:
+            track = str(row.get("track") or "").strip()
+            if not track or (track_filter and track.casefold() != track_filter):
+                continue
+            try:
+                best_ms = int(row.get("best_ms") or 0)
+            except (TypeError, ValueError):
+                best_ms = 0
+            if best_ms <= 0:
+                continue
+            record = universal.get(track.casefold()) or {}
+            is_record = str(record.get("user_id") or "") == uid and int(record.get("best_ms") or 0) == best_ms
+            ref = references.get(track.casefold())
+            gap_ms = (best_ms - int(ref["time_ms"])) if ref else None
+            rows.append({
+                "track": track,
+                "best_ms": best_ms,
+                "best_lap_time": str(row.get("best_lap_time") or row.get("time") or format_ms(best_ms)),
+                "car": str(row.get("car") or row.get("car_name") or ""),
+                "car_rank": int(row.get("car_rank") or row.get("car_performance") or 0),
+                "track_record": bool(is_record),
+                "reference_time_ms": int(ref["time_ms"]) if ref else None,
+                "reference_time": format_ms(ref["time_ms"]) if ref else "",
+                "reference_gap_ms": gap_ms,
+                "reference_gap": format_ms(abs(gap_ms)) if gap_ms is not None else "",
+                "reference_beaten": bool(gap_ms is not None and gap_ms < 0),
+                "reference_title": str(ref["title"]) if ref else "",
+                "reference_car": str(ref["car"]) if ref else "",
+            })
+        rows.sort(key=lambda x: x["best_ms"])
+        return web.json_response({
+            "rows": rows[:200],
+            "summary": {
+                "tracks": len(rows),
+                "track_records": sum(1 for row in rows if row["track_record"]),
+                "references_beaten": sum(1 for row in rows if row["reference_beaten"]),
+                "references_compared": sum(1 for row in rows if row["reference_time_ms"] is not None),
+            },
+        })
+
     async def gauntlet_reference_practice_saved(self, request: web.Request) -> web.Response:
         user, guild_id, _ = await self.require_guild_member(request)
         row = await self.bot.db.gauntlet_practice_plans.find_one({"guild_id": str(guild_id), "user_id": str(user.user_id)})

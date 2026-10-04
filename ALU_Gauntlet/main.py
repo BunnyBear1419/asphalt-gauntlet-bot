@@ -91,6 +91,7 @@ async def _ensure_database_indexes():
     await db.reference_events.create_index([("guild_id", 1), ("status", 1), ("start_date", -1), ("created_at", -1)], name="idx_reference_events")
     await db.reference_events.create_index([("guild_id", 1), ("category", 1), ("season", 1)], name="idx_reference_events_filters")
     await db.gauntlet_practice_plans.create_index([("guild_id", 1), ("user_id", 1)], unique=True, name="uniq_gauntlet_practice_plan")
+    await db.lap_times.create_index([("guild_id", 1), ("user_id", 1), ("best_ms", 1)], name="idx_rsl_personal_records")
     await db.rsl_weekly_challenges.create_index([("guild_id", 1), ("week_start", -1)], name="idx_rsl_weekly_challenges")
     await db.rsl_reference_beats.create_index([("guild_id", 1), ("status", 1), ("created_at", -1)], name="idx_rsl_reference_beats")
     await db.rsl_reference_beat_submissions.create_index([("guild_id", 1), ("beat_id", 1), ("status", 1), ("ms", 1)], name="idx_rsl_reference_beat_submissions")
