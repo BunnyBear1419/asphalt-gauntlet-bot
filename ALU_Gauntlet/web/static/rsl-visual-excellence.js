@@ -11,7 +11,7 @@
       });
       el.addEventListener("pointerleave",()=>{el.style.removeProperty("--rsl-mx");el.style.removeProperty("--rsl-my")});
     });
-    document.querySelectorAll("[data-rsl-countup]").forEach((el)=>{
+    const garageInputs=[1,2,3,4,5].map(i=>document.getElementById("registration-rank-"+i)); const garagePi=document.getElementById("rsl-garage-pi"); const syncGarage=()=>{let total=0,count=0;garageInputs.forEach((input,i)=>{const n=Number(input&&input.value);const out=document.getElementById("rsl-garage-rank-"+(i+1));if(out)out.textContent=Number.isFinite(n)&&n>0?n.toLocaleString():"—";if(Number.isFinite(n)&&n>0){total+=n;count++}});if(garagePi)garagePi.textContent=count===5?total.toLocaleString():"—"}; garageInputs.forEach(input=>input&&input.addEventListener("input",syncGarage)); syncGarage(); document.querySelectorAll("[data-rsl-countup]").forEach((el)=>{
       const target=Number(el.dataset.rslCountup);
       if(!Number.isFinite(target)||reduced){el.textContent=String(target);return}
       const duration=900,start=performance.now(),from=Number(el.textContent.replace(/[^0-9.-]/g,""))||0;
