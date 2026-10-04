@@ -2451,6 +2451,16 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
         body = body.replace("https://discord.gg/fmFk8Ejf2H", esc(links.get("discord")))
         body = body.replace("https://cash.app/", esc(links.get("cashapp")))
         body = body.replace("https://alu.shohanlab.com/", esc(links.get("companion")))
+        # Keep RSL Coach discoverable from the existing Gauntlet menu on every rendered page.
+        # The page itself is the single Coach destination; do not create a second menu family.
+        if 'href="/rsl-coach"' not in body:
+            body = re.sub(
+                r'(<nav\\s+aria-label="Primary navigation">.*?<a href="/gauntlet/references".*?</a>)',
+                r'\\1<a class="rsl-coach-nav-link" href="/rsl-coach"><span>RSL Coach</span></a>',
+                body,
+                count=1,
+                flags=re.I | re.S,
+            )
         defaults = {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"}
         for key, value in nav.items():
             if value:
