@@ -20,5 +20,5 @@ def test_visual_excellence_has_accessible_motion_fallback():
 
 
 def test_competition_surface_polish():
-    for token in ("RSL 10/10 surface polish",".tournament-card:hover",".match-card:hover",".club-card:hover",".public-profile-card:hover",".defense-summary",".leader-row:hover",".tournament-detail .bracket-round",".tournament-detail .tournament-competitor:hover",".tournament-detail .tournament-champion"):
+    for token in ("RSL 10/10 surface polish",".tournament-card:hover",".match-card:hover",".club-card:hover",".public-profile-card:hover",".defense-summary",".leader-row:hover",".tournament-detail .bracket-round",".clubs-center-main .club-card-large",".public-club-profile .public-club-hero",".public-club-profile .public-club-stat-grid",".tournament-detail .tournament-competitor:hover",".tournament-detail .tournament-champion"):
         assert token in css
