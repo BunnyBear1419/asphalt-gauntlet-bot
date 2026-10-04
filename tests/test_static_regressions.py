@@ -573,6 +573,26 @@ def test_reference_hub_has_contributor_reputation():
     assert "reputation-reset-form" in page
     assert "Reset Contributor Reputation" in page
 
+def test_reference_hub_has_historical_reference():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    routes = read("ALU_Gauntlet/web/routes/reference_history.py")
+    gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Historical ALU / Game Reference" in page
+    assert 'data-tab="history"' in page
+    assert "/api/gauntlet/references/history" in page
+    assert "async function loadHistory()" in page
+    assert "async function submitHistory(" in page
+    assert "async def gauntlet_reference_history(" in routes
+    assert "async def gauntlet_reference_history_submit(" in routes
+    assert "async def admin_reference_history_review(" in routes
+    assert "HistoricalReferenceMixin" in gauntlet
+    assert '"/api/gauntlet/references/history"' in core
+    assert '"/api/admin/gauntlet/references/history/review"' in core
+    assert 'name="idx_reference_history"' in main
+    assert 'name="idx_reference_history_filters"' in main
+
 def test_reference_hub_has_community_guides():
     page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
     routes = read("ALU_Gauntlet/web/routes/reference_guides.py")
