@@ -88,6 +88,7 @@ async def _ensure_database_indexes():
     await db.reference_guides.create_index([("guild_id", 1), ("status", 1), ("created_at", -1)], name="idx_reference_guides")
     await db.reference_guides.create_index([("guild_id", 1), ("category", 1), ("helpful", -1)], name="idx_reference_guides_category")
     await db.reference_guide_votes.create_index([("guild_id", 1), ("guide_id", 1), ("user_id", 1)], unique=True, name="uniq_reference_guide_vote")
+    await db.reference_reputation_resets.create_index([("guild_id", 1), ("user_id", 1)], unique=True, name="uniq_reference_reputation_reset")
     await db.tournament_media.create_index(
         [("tournament_id", 1), ("status", 1), ("created_at", -1)],
         name="idx_tournament_media_gallery",
