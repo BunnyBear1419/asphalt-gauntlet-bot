@@ -5503,3 +5503,36 @@ table tbody tr:hover,.leader-row:hover,.match-row:hover,.player-directory-card:h
 @media(max-width:800px){.public-club-profile .public-club-stat-grid{grid-template-columns:repeat(3,1fr)}.public-club-profile .public-club-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.clubs-center-main .club-grid{grid-template-columns:1fr}.clubs-center-main .club-cover{height:130px}.clubs-center-main .club-quick-stats{grid-template-columns:1fr}.public-club-profile .public-club-hero{min-height:230px}.public-club-profile .public-club-hero-copy{left:18px;right:18px;bottom:20px}.public-club-profile .public-club-body{padding:12px}.public-club-profile .public-club-stat-grid{grid-template-columns:1fr 1fr}.public-club-profile .public-club-member{grid-template-columns:30px minmax(0,1fr) 14px}.public-club-profile .public-club-member .verified-badge{display:none}}
 @media(prefers-reduced-motion:reduce){.clubs-center-main .club-card-large{transition:none}.clubs-center-main .club-card-large:hover{transform:none}}
+
+/* =========================================================
+   RSL GAUNTLET COMMAND CENTER — SIX-DIVISION LADDER
+   ========================================================= */
+.rsl-gauntlet-command{margin:18px 20px 0;padding:22px;border-color:var(--rsl-box-line);background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box));box-shadow:0 16px 40px #0007}
+.rsl-gauntlet-command:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--rsl-box-accent),transparent 72%)}
+.rsl-gauntlet-command-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.rsl-gauntlet-command-head h2{margin:4px 0 5px;font-size:clamp(24px,3vw,34px);font-style:italic;letter-spacing:.01em}
+.rsl-gauntlet-command-head p{margin:0;max-width:720px;color:var(--rsl-box-muted);font-size:10px;line-height:1.55}
+.rsl-command-live{min-width:112px;padding:10px 12px;border:1px solid var(--rsl-box-accent);background:rgba(0,0,0,.16);text-align:right}
+.rsl-command-live span{color:var(--rsl-box-accent);font-size:10px;margin-right:4px}
+.rsl-command-live strong{font-size:9px;letter-spacing:.14em}
+.rsl-command-live small{display:block;margin-top:5px;color:var(--rsl-box-muted);font-size:7px}
+.rsl-gauntlet-command-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px}
+.rsl-gauntlet-command .rsl-command-stat{min-height:82px;padding:12px;border:1px solid var(--rsl-box-line);background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt));position:relative;overflow:hidden}
+.rsl-gauntlet-command .rsl-command-stat:after{content:"";position:absolute;right:-20px;bottom:-30px;width:90px;height:90px;border-radius:50%;background:var(--rsl-glow-soft);filter:blur(20px);pointer-events:none}
+.rsl-gauntlet-command .rsl-command-stat span{display:block;color:var(--rsl-box-muted);font-size:7px;letter-spacing:.13em;font-weight:900}
+.rsl-gauntlet-command .rsl-command-stat strong{display:block;margin-top:6px;color:var(--rsl-box-text);font-size:20px}
+.rsl-gauntlet-command .rsl-command-stat small{display:block;margin-top:3px;color:var(--rsl-box-muted);font-size:7px}
+.rsl-gauntlet-command .rsl-gauntlet-ladder{margin-top:16px}
+.rsl-gauntlet-command .rsl-ladder-step{position:relative;min-height:128px;padding:13px;border:1px solid var(--rsl-box-line);background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt));overflow:hidden;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.rsl-gauntlet-command .rsl-ladder-step:after{content:"";position:absolute;left:-30%;right:-30%;bottom:12px;height:1px;background:linear-gradient(90deg,transparent,var(--rsl-box-accent),transparent);opacity:.2;transform:rotate(-8deg)}
+.rsl-gauntlet-command .rsl-ladder-step:hover{transform:translateY(-3px);border-color:var(--rsl-box-accent);box-shadow:0 14px 28px #0008}
+.rsl-gauntlet-command .rsl-ladder-step.current{border-color:var(--rsl-box-accent);box-shadow:0 0 26px var(--rsl-glow-soft),inset 0 0 24px var(--rsl-glow-soft)}
+.rsl-gauntlet-command .rsl-ladder-step.current:before{content:"CURRENT LEADER";position:absolute;right:8px;top:8px;padding:3px 5px;border:1px solid var(--rsl-box-accent);color:var(--rsl-box-accent);font-size:5px;font-weight:900;letter-spacing:.1em}
+.rsl-gauntlet-command .rsl-ladder-step>span{font-size:7px;letter-spacing:.14em;color:var(--rsl-box-accent);font-weight:900}
+.rsl-gauntlet-command .rsl-ladder-step b{display:block;margin:12px 0 4px;font-size:17px;font-style:italic}
+.rsl-gauntlet-command .rsl-ladder-step small{display:block;color:var(--rsl-box-muted);font-size:7px}
+.rsl-gauntlet-command .rsl-ladder-step em{display:block;margin-top:16px;color:var(--rsl-box-text);font-style:normal;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){.rsl-gauntlet-command-head{flex-direction:column}.rsl-command-live{align-self:flex-start;text-align:left}.rsl-gauntlet-command-stats{grid-template-columns:repeat(2,1fr)}.rsl-gauntlet-command .rsl-gauntlet-ladder{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.rsl-gauntlet-command{margin:14px 12px 0;padding:15px}.rsl-gauntlet-command-stats{grid-template-columns:1fr 1fr}.rsl-gauntlet-command .rsl-gauntlet-ladder{grid-template-columns:1fr 1fr}.rsl-gauntlet-command .rsl-ladder-step{min-height:116px}.rsl-gauntlet-command .rsl-ladder-step:hover{transform:none}}
+@media(max-width:420px){.rsl-gauntlet-command-stats{grid-template-columns:1fr}.rsl-gauntlet-command .rsl-gauntlet-ladder{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.rsl-gauntlet-command .rsl-ladder-step{transition:none}.rsl-gauntlet-command .rsl-ladder-step:hover{transform:none}}
