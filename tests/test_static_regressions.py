@@ -398,6 +398,16 @@ def test_player_settings_section_links_leave_settings_route():
     assert 'content:"Changes are saved to your RSL account."' not in source
 
 
+def test_companion_surfaces_keep_a_distinct_shohan_brand_identity():
+    css = read("ALU_Gauntlet/web/static/app.css")
+    page = read("ALU_Gauntlet/web/static/shohans-companion.html")
+    assert "--shohan-accent:#00f5c8" in css
+    assert ".companion-nav-link" in css
+    assert "var(--shohan-accent,#00f5c8)" in css
+    assert "shohan-partner-hero" in page
+    assert "shohan-partner-primary" in page
+
+
 def test_companion_links_target_shohans_companion():
     index = read("ALU_Gauntlet/web/static/index.html")
     profile = read("ALU_Gauntlet/web/static/profile.html")
