@@ -709,3 +709,16 @@ def test_reference_hub_has_personal_records():
     assert 'add_get("/api/gauntlet/references/personal-records"' in core
     assert 'name="idx_rsl_personal_records"' in main
     assert "map_records" in route
+
+
+def test_reference_hub_has_community_request_moderation():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    route = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    assert "Community Requests &amp; Corrections" in page
+    assert "async function loadRequestReview()" in page
+    assert "async function reviewRequest(" in page
+    assert "/api/admin/gauntlet/references/requests/review" in page
+    assert "async def admin_reference_request_action(" in route
+    assert 'add_post("/api/admin/gauntlet/references/requests/review"' in core
+    assert 'allowed = {"open", "planned", "in_progress", "completed", "rejected"}' in route
