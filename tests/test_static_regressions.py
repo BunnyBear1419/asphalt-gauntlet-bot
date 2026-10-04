@@ -803,3 +803,11 @@ def test_shohans_companion_is_a_first_class_partner_surface():
     assert 'shohans_companion_page' in public
     assert 'class="shohan-partner-grid"' in page
     assert 'Tools, trackers' not in page
+
+
+def test_rsl_coach_is_discoverable_from_shared_navigation_and_reference_hub():
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    refs = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    assert 'href="/rsl-coach"' in core
+    assert 'class="rsl-coach-nav-link"' in core
+    assert 'class="ref-tab ref-coach-link" href="/rsl-coach">RSL Coach ↗</a>' in refs
