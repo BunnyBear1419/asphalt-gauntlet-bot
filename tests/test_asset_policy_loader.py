@@ -9,6 +9,8 @@ def test_asset_policy_loader_has_safe_fallbacks():
     assert "rsl-division-badge.svg" in js
     assert 'addEventListener("error"' in js
     assert "window.RSLAssetPolicy" in js
+    assert 'document.readyState==="loading"' in js
+    assert "else init();" in js
 
 def test_asset_policy_loader_is_activated_site_wide():
     app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
