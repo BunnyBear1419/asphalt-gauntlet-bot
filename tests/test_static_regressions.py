@@ -551,6 +551,26 @@ def test_reference_hub_track_intel_expansion():
     assert 'video_url = str(payload.get("video_url") or "")' in route
 
 
+def test_reference_hub_has_contributor_reputation():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    route = read("ALU_Gauntlet/web/routes/reference_reputation.py")
+    gauntlet = read("ALU_Gauntlet/web/routes/gauntlet.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Contributor Reputation" in page
+    assert "/api/gauntlet/references/reputation" in page
+    assert "/api/gauntlet/references/reputation/leaderboard" in page
+    assert "async def gauntlet_reference_reputation(" in route
+    assert "async def gauntlet_reference_reputation_leaderboard(" in route
+    assert "async def admin_reference_reputation_reset(" in route
+    assert "ReferenceReputationMixin" in gauntlet
+    assert '"/api/gauntlet/references/reputation"' in core
+    assert '"/api/admin/gauntlet/references/reputation/reset"' in core
+    assert "uniq_reference_reputation_reset" in main
+    assert "Hall of Fame" in route
+    assert "helpful" in route
+    assert "Data Fixer" in route
+
 def test_reference_hub_has_community_guides():
     page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
     routes = read("ALU_Gauntlet/web/routes/reference_guides.py")
