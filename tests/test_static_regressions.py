@@ -755,3 +755,15 @@ def test_global_search_includes_reference_content():
     assert '"rsl_reference_beats"' in public
     assert 'value="references">References' in core
     assert "drivers, cars, tracks, videos, guides" in core
+
+
+def test_shohans_companion_is_a_first_class_partner_surface():
+    page = read("ALU_Gauntlet/web/static/shohans-companion.html")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    public = read("ALU_Gauntlet/web/routes/public.py")
+    assert 'https://alu.shohanlab.com/' in page
+    assert 'Shohan\'s Companion' in page
+    assert '"/partners/shohans-companion"' in core
+    assert 'shohans_companion_page' in public
+    assert 'class="shohan-partner-grid"' in page
+    assert 'Tools, trackers' not in page

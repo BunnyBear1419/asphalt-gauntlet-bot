@@ -1057,6 +1057,10 @@ class PublicRoutesMixin:
         """Render the public Help Center page."""
         return await self._page_response("help.html", request)
 
+    async def shohans_companion_page(self, request: web.Request) -> web.Response:
+        """Render the public Shohan's Companion partner landing page."""
+        return await self._page_response("shohans-companion.html", request)
+
     async def rules_page(self, request: web.Request) -> web.Response:
         """Render the public RSL Rules Center page."""
         return await self._page_response("rules.html", request)

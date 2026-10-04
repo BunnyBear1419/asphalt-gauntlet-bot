@@ -2485,6 +2485,7 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/csp-report", self.csp_report)
         self.app.router.add_get("/sitemap.xml", self.sitemap_xml)
         self.app.router.add_get("/help", self.help_page)
+        self.app.router.add_get("/partners/shohans-companion", self.shohans_companion_page)
         self.app.router.add_get("/rules", self.rules_page)
         self.app.router.add_get("/legal", self.legal_page)
         self.app.router.add_get("/status", self.platform_status_page)
