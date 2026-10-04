@@ -229,6 +229,55 @@ class GauntletRoutesMixin(ReferenceReputationMixin, CareerEventReferenceMixin, H
         rows.sort(key=lambda x: x["gap"], reverse=True)
         return web.json_response({"rows": rows[:20]})
 
+    async def gauntlet_reference_practice_saved(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        row = await self.bot.db.gauntlet_practice_plans.find_one({"guild_id": str(guild_id), "user_id": str(user.user_id)})
+        if not row:
+            return web.json_response({"plan": None})
+        return web.json_response({"plan": {"name": str(row.get("name") or "My Practice Plan"), "cars": list(row.get("cars") or [])[:5], "tracks": list(row.get("tracks") or [])[:20], "updated_at": row.get("updated_at")}})
+
+    async def gauntlet_reference_practice_save(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        payload = await self._json_object(request)
+        name = str(payload.get("name") or "My Practice Plan").strip()[:80] or "My Practice Plan"
+        raw_cars = payload.get("cars") or []
+        if isinstance(raw_cars, str):
+            raw_cars = raw_cars.split(",")
+        cars = []
+        if isinstance(raw_cars, (list, tuple)):
+            for value in raw_cars:
+                car = str(value or "").strip()[:100]
+                if car and car.casefold() not in {x.casefold() for x in cars}:
+                    cars.append(car)
+                if len(cars) >= 5:
+                    break
+        raw_tracks = payload.get("tracks") or []
+        if isinstance(raw_tracks, str):
+            raw_tracks = raw_tracks.split(",")
+        tracks = []
+        if isinstance(raw_tracks, (list, tuple)):
+            for value in raw_tracks:
+                track = str(value or "").strip()[:120]
+                if track and track.casefold() not in {x.casefold() for x in tracks}:
+                    tracks.append(track)
+                if len(tracks) >= 20:
+                    break
+        if not cars:
+            raise web.HTTPBadRequest(text="Add at least one practice car.")
+        now = time.time()
+        await self.bot.db.gauntlet_practice_plans.update_one(
+            {"guild_id": str(guild_id), "user_id": str(user.user_id)},
+            {"$set": {"name": name, "cars": cars, "tracks": tracks, "updated_at": now},
+             "$setOnInsert": {"created_at": now}},
+            upsert=True,
+        )
+        return web.json_response({"ok": True, "name": name, "cars": cars, "tracks": tracks})
+
+    async def gauntlet_reference_practice_delete(self, request: web.Request) -> web.Response:
+        user, guild_id, _ = await self.require_guild_member(request)
+        await self.bot.db.gauntlet_practice_plans.delete_one({"guild_id": str(guild_id), "user_id": str(user.user_id)})
+        return web.json_response({"ok": True})
+
     async def gauntlet_reference_explorer(self, request: web.Request) -> web.Response:
         """Return guild-scoped car × track reference rows for exploration."""
         _, guild_id, _ = await self.require_guild_member(request)
