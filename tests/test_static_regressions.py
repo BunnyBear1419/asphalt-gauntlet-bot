@@ -570,6 +570,8 @@ def test_reference_hub_has_contributor_reputation():
     assert "Hall of Fame" in route
     assert "helpful" in route
     assert "Data Fixer" in route
+    assert "reputation-reset-form" in page
+    assert "Reset Contributor Reputation" in page
 
 def test_reference_hub_has_community_guides():
     page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
