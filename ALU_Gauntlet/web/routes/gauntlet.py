@@ -534,7 +534,7 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
 
     async def admin_reference_request_action(self, request: web.Request) -> web.Response:
         """Update a community request status or staff resolution note."""
-        _, guild_id, _ = await self.require_admin(request)
+        admin_user, guild_id, _guild = await self.require_admin(request)
         payload = await self._json_object(request)
         from bson import ObjectId
         try:
@@ -550,11 +550,11 @@ class GauntletRoutesMixin(ReferenceReputationMixin, BeatReferenceMixin, WeeklyCh
         result = await self.bot.db.reference_requests.update_one(
             {"_id": request_id, "guild_id": str(guild_id)},
             {"$set": {"status": status, "resolution": resolution, "resolved_at": now if status in {"completed", "rejected"} else None,
-                      "resolved_by": str(_.id) if getattr(_, "id", None) else ""}},
+                      "resolved_by": str(admin_user.id) if getattr(admin_user, "id", None) else ""}},
         )
         if result.matched_count != 1:
             raise web.HTTPNotFound(text="Request not found.")
-        await self._audit(str(guild_id), str(_.id), f"Community reference request marked {status}")
+        await self._audit(str(guild_id), str(admin_user.id), f"Community reference request marked {status}")
         return web.json_response({"ok": True, "status": status})
     
     async def gauntlet_reference_intel(self, request: web.Request) -> web.Response:
