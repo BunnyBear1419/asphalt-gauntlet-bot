@@ -5402,3 +5402,52 @@ table tbody tr:hover,.leader-row:hover,.match-row:hover,.player-directory-card:h
 .tournament-layout,.dashboard-shell,.public-profile-grid,.activity-card{position:relative}.tournament-list{display:grid;gap:10px}.tournament-card,.tournament-item,.match-card,.club-card,.club-list-card{position:relative;border:1px solid var(--rsl-box-line);background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box));box-shadow:0 14px 36px #0007;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.tournament-card:hover,.tournament-item:hover,.match-card:hover,.club-card:hover,.club-list-card:hover{transform:translateY(-3px);border-color:var(--rsl-box-accent);box-shadow:0 20px 44px #0009,0 0 24px var(--rsl-glow-soft)}.tournament-card:before,.tournament-item:before,.match-card:before,.club-card:before,.club-list-card:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--rsl-box-accent),transparent 70%)}.tournament-toolbar,.dashboard-intro{border:1px solid var(--rsl-box-line);background:linear-gradient(135deg,var(--rsl-box-alt),var(--rsl-box));box-shadow:0 12px 30px #0006}.dashboard-intro{position:relative;overflow:hidden}.dashboard-intro:after,.tournament-toolbar:after{content:"";position:absolute;right:-10%;top:-80%;width:42%;height:260%;background:linear-gradient(100deg,transparent,var(--rsl-glow-soft),transparent);transform:rotate(16deg);pointer-events:none}.public-profile-card{position:relative;overflow:hidden;box-shadow:0 12px 34px #0006;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}.public-profile-card:hover{transform:translateY(-2px);border-color:var(--rsl-box-accent);box-shadow:0 18px 40px #0008}.public-profile-stat-grid .public-profile-stat{position:relative;overflow:hidden}.public-profile-stat:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--rsl-box-accent),transparent)}.defense-summary{box-shadow:0 12px 28px #0006;border-left:3px solid var(--rsl-box-accent)!important}.defense-actions{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}.activity-card .activity-list>div{transition:background .18s ease,transform .18s ease}.activity-card .activity-list>div:hover{background:var(--rsl-box-alt);transform:translateX(3px)}.leader-row,.match-row{transition:background .18s ease,transform .18s ease}.leader-row:hover,.match-row:hover{background:var(--rsl-box-alt);transform:translateX(3px)}
 @media(max-width:600px){.defense-actions{grid-template-columns:1fr}.tournament-card:hover,.tournament-item:hover,.match-card:hover,.club-card:hover,.club-list-card:hover,.public-profile-card:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){.tournament-card,.tournament-item,.match-card,.club-card,.club-list-card,.public-profile-card,.activity-card .activity-list>div,.leader-row,.match-row{transition:none}}
+
+
+/* =========================================================
+   RSL TOURNAMENT BRACKET EXPERIENCE 10/10
+   ========================================================= */
+.tournament-detail .tournament-bracket{position:relative;display:flex;gap:18px;align-items:flex-start;overflow-x:auto;padding:18px 4px 24px;scrollbar-width:thin}
+.tournament-detail .bracket-round{position:relative;min-width:248px;display:flex;flex-direction:column;gap:10px}
+.tournament-detail .bracket-round h4{position:sticky;top:0;z-index:2;margin:0;padding:9px 11px;border:1px solid var(--rsl-box-line);border-radius:9px;background:linear-gradient(135deg,var(--rsl-box-alt),var(--rsl-box));box-shadow:0 10px 22px #0006;color:var(--rsl-box-accent);font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+.tournament-detail .bracket-match{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:7px;align-items:stretch;min-height:106px;margin:0;padding:9px;border:1px solid var(--rsl-box-line);border-radius:12px;background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box));box-shadow:0 12px 28px #0007;overflow:hidden}
+.tournament-detail .bracket-match:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--rsl-box-accent),transparent 78%)}
+.tournament-detail .bracket-match:after{content:"";position:absolute;right:-18px;top:50%;width:18px;border-top:1px solid var(--rsl-box-accent);opacity:.32}
+.tournament-detail .bracket-round:last-child .bracket-match:after{display:none}
+.tournament-detail .tournament-competitor{min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:3px;padding:8px;border:1px solid var(--rsl-box-line);border-radius:8px;background:rgba(0,0,0,.16);color:inherit;text-align:left;cursor:pointer;transition:transform .16s ease,border-color .16s ease,background .16s ease}
+.tournament-detail .tournament-competitor:hover:not(:disabled){transform:translateY(-2px);border-color:var(--rsl-box-accent);background:var(--rsl-box-alt)}
+.tournament-detail .tournament-competitor:disabled{cursor:default;opacity:.58}
+.tournament-detail .tournament-competitor strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+.tournament-detail .tournament-competitor small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--rsl-muted);font-size:7px}
+.tournament-detail .tournament-competitor .verified-badge{font-size:6px;white-space:nowrap}
+.tournament-detail .bracket-match>b{display:grid;place-items:center;align-self:center;width:24px;height:24px;border:1px solid var(--rsl-box-line);border-radius:50%;background:var(--rsl-box);color:var(--rsl-muted);font-size:7px;letter-spacing:.05em}
+.tournament-detail .bracket-match .match-status{grid-column:1/-1;align-self:end;padding-top:4px;border-top:1px solid var(--rsl-box-line);color:var(--rsl-muted);font-size:7px;letter-spacing:.1em;text-align:center}
+.tournament-detail .bracket-match .match-result{grid-column:1/-1;width:100%;min-height:30px;justify-content:center;margin:0}
+.tournament-detail .bracket-round:nth-child(2) .bracket-match{margin-top:38px}
+.tournament-detail .bracket-round:nth-child(2) .bracket-match~.bracket-match{margin-top:38px}
+.tournament-detail .bracket-round:nth-child(3) .bracket-match{margin-top:88px}
+.tournament-detail .bracket-round:nth-child(3) .bracket-match~.bracket-match{margin-top:88px}
+.tournament-detail .bracket-round:nth-child(4) .bracket-match{margin-top:138px}
+.tournament-detail .bracket-round:nth-child(4) .bracket-match~.bracket-match{margin-top:138px}
+.tournament-detail .tournament-champion{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;margin:14px 0;padding:14px 16px;border:1px solid var(--rsl-box-accent);background:linear-gradient(135deg,var(--rsl-box-alt),var(--rsl-box));box-shadow:0 0 28px var(--rsl-glow-soft)}
+.tournament-detail .tournament-champion>span{font-size:8px;letter-spacing:.16em;color:var(--rsl-box-accent);font-weight:800}
+.tournament-detail .tournament-champion-link{display:flex;flex-direction:column;align-items:flex-end;gap:2px;border:0;background:none;color:inherit;cursor:pointer;text-align:right}
+.tournament-detail .tournament-champion-link strong{font-size:13px}
+.tournament-detail .tournament-champion-link small{color:var(--rsl-muted);font-size:8px}
+@media(max-width:800px){
+  .tournament-detail .tournament-bracket{gap:12px;padding-bottom:18px}
+  .tournament-detail .bracket-round{min-width:220px}
+  .tournament-detail .bracket-round:nth-child(n) .bracket-match,.tournament-detail .bracket-round:nth-child(n) .bracket-match~.bracket-match{margin-top:12px}
+  .tournament-detail .bracket-match:after{display:none}
+}
+@media(max-width:560px){
+  .tournament-detail .bracket-round{min-width:205px}
+  .tournament-detail .bracket-match{grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr);padding:7px;min-height:96px}
+  .tournament-detail .bracket-match>b{width:20px;height:20px}
+  .tournament-detail .tournament-champion{align-items:flex-start;flex-direction:column}
+  .tournament-detail .tournament-champion-link{align-items:flex-start;text-align:left}
+}
+@media(prefers-reduced-motion:reduce){
+  .tournament-detail .tournament-competitor{transition:none}
+  .tournament-detail .tournament-competitor:hover:not(:disabled){transform:none}
+}
