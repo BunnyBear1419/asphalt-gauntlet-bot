@@ -549,3 +549,20 @@ def test_reference_hub_track_intel_expansion():
     assert 'query.get("car"' in route
     assert '"video_url": str(item.get("video_url") or "")' in route
     assert 'video_url = str(payload.get("video_url") or "")' in route
+
+
+def test_reference_hub_has_community_guides():
+    page = read("ALU_Gauntlet/web/static/gauntlet-references.html")
+    routes = read("ALU_Gauntlet/web/routes/reference_guides.py")
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    main = read("ALU_Gauntlet/main.py")
+    assert "Community Guides" in page
+    assert "/api/gauntlet/references/guides" in page
+    assert "data-guide-vote" in page
+    assert "/api/gauntlet/references/guides" in core
+    assert "async def gauntlet_reference_guides" in routes
+    assert "async def gauntlet_reference_guide_submit" in routes
+    assert "async def admin_reference_guide_review" in routes
+    assert 'name="uniq_reference_guide_vote"' in main
+    assert 'name="idx_reference_guides"' in main
+    assert 'name="idx_reference_guides_category"' in main
