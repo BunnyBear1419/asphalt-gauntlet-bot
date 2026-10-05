@@ -33,3 +33,12 @@ def test_asset_policy_themes_original_rsl_visuals():
     assert "retheme" in js
     assert "fetch(src" in js
     assert 'data-rsl-themed' in js
+
+
+def test_original_rsl_visual_fallbacks_are_not_blue_locked():
+    visuals = ROOT / "ALU_Gauntlet" / "web" / "static" / "assets" / "rsl" / "visuals"
+    for name in ("rsl-car-silhouette.svg", "rsl-track-map.svg", "rsl-division-badge.svg"):
+        svg = (visuals / name).read_text(encoding="utf-8").lower()
+        assert "#28d7ff" not in svg
+        assert "#2b7fff" not in svg
+        assert "#7b5cff" not in svg
