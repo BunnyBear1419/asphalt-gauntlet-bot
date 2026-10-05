@@ -80,7 +80,7 @@ function initRSLAssetPolicy(){
  const existing=document.querySelector('script[data-rsl-asset-policy]');
  if(existing)return;
  const script=document.createElement("script");
- script.src="/static/rsl-asset-policy.js?v=20261005-theme2";
+ script.src="/static/rsl-asset-policy.js?v=20261005-theme3";
  script.dataset.rslAssetPolicy="true";
  script.defer=true;
  document.head.appendChild(script);
