@@ -48,12 +48,8 @@ def test_home_command_center_uses_theme_tokens():
 
 def test_home_command_center_has_correct_theme_hierarchy():
     css = read("app.css")
-    outer = """html[data-theme] .home-page .rsl-command-center{
-  background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important;
-}"""
-    inner = """html[data-theme] .home-page .rsl-command-center .rsl-stat-hero,
-html[data-theme] .home-page .rsl-command-center .rsl-stat-card{
-  background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box))!important;
-}"""
-    assert outer in css
-    assert inner in css
+    assert "/* Competitive Snapshot hierarchy: outer shell dark, inner stats light." in css
+    assert "color-mix(in srgb,var(--rsl-box) 82%,#000)" in css
+    assert "color-mix(in srgb,var(--rsl-box-alt) 82%,#fff)" in css
+    assert "html[data-theme] .home-page .rsl-command-center .rsl-stat-card" in css
+    assert "html[data-theme] .home-page .rsl-command-center .rsl-stat-hero" in css
