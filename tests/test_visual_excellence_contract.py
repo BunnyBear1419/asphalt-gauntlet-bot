@@ -27,3 +27,20 @@ def test_visual_excellence_keeps_existing_rsl_language():
     assert "RACING GARAGE" in home
     assert "6 DIVISIONS" in home
     assert "partner-banner" in home
+
+
+def test_home_command_center_uses_theme_tokens():
+    home = read("index.html")
+    assert "RSL THEME FIX — Driver Command Center" in home
+    start = home.index("RSL THEME FIX — Driver Command Center")
+    end = home.index("</style>", start)
+    block = home[start:end]
+    for token in (
+        "var(--rsl-box)",
+        "var(--rsl-box-alt)",
+        "var(--rsl-box-line)",
+        "var(--rsl-box-text)",
+        "var(--rsl-box-muted)",
+        "var(--rsl-box-accent)",
+    ):
+        assert token in block
