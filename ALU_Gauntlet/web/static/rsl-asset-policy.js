@@ -37,6 +37,7 @@
       if(el.hasAttribute("alt"))svg.setAttribute("aria-label",el.getAttribute("alt"));
       svg.style.cssText=el.style.cssText;
       svg.dataset.rslThemed="true";
+      svg.setAttribute("data-rsl-themed","true");
       svg.dataset.rslAssetType=el.dataset.rslAssetType||"";
       el.replaceWith(document.adoptNode(svg));
     }catch(_){
