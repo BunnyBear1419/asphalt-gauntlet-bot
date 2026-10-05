@@ -44,3 +44,16 @@ def test_home_command_center_uses_theme_tokens():
         "var(--rsl-box-accent)",
     ):
         assert token in block
+
+
+def test_home_command_center_has_correct_theme_hierarchy():
+    css = read("app.css")
+    outer = """html[data-theme] .home-page .rsl-command-center{
+  background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important;
+}"""
+    inner = """html[data-theme] .home-page .rsl-command-center .rsl-stat-hero,
+html[data-theme] .home-page .rsl-command-center .rsl-stat-card{
+  background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box))!important;
+}"""
+    assert outer in css
+    assert inner in css
