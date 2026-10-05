@@ -5711,3 +5711,13 @@ html[data-theme] :where(.home-info-card,.home-feature-card,.home-help-card,.home
   html[data-theme] .home-page .home-news-item:hover,
   html[data-theme] .home-page .home-help-card:hover{transform:none!important}
 }
+
+
+/* Competitive Snapshot hierarchy: outer shell dark, inner stats light. */
+html[data-theme] .home-page .rsl-command-center{
+  background:linear-gradient(145deg,var(--rsl-box),var(--rsl-box-alt))!important;
+}
+html[data-theme] .home-page .rsl-command-center .rsl-stat-hero,
+html[data-theme] .home-page .rsl-command-center .rsl-stat-card{
+  background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box))!important;
+}
