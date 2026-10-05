@@ -12,12 +12,12 @@ def test_asset_policy_loader_has_safe_fallbacks():
     assert 'document.readyState==="loading"' in js
     assert "else init();" in js
     assert "dataset.rslFallback" in js
-    assert "querySelectorAll(\"img[data-rsl-asset-src]\")" in js
+    assert "querySelectorAll(\"img[data-rsl-asset-src]:not([data-rsl-themed])\")" in js
 
 def test_asset_policy_loader_is_activated_site_wide():
     app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
     assert "initRSLAssetPolicy" in app
-    assert "/static/rsl-asset-policy.js" in app
+    assert "/static/rsl-asset-policy.js?v=20261005-theme2" in app
     assert 'data-rsl-asset-policy' in app
 
 
