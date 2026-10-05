@@ -1,13 +1,13 @@
 (function(){
   const FALLBACKS={
-    car:"/assets/rsl/visuals/rsl-car-silhouette.svg",
-    track:"/assets/rsl/visuals/rsl-track-map.svg",
-    division:"/assets/rsl/visuals/rsl-division-badge.svg"
+    car:"/static/assets/rsl/visuals/rsl-car-silhouette.svg",
+    track:"/static/assets/rsl/visuals/rsl-track-map.svg",
+    division:"/static/assets/rsl/visuals/rsl-division-badge.svg"
   };
   const THEME_COLORS={
     "#28d7ff":"var(--rsl-box-accent)",
-    "#2b7fff":"color-mix(in srgb,var(--rsl-box-accent) 78%,#000)",
-    "#7b5cff":"color-mix(in srgb,var(--rsl-box-accent) 62%,#fff)",
+    "#2b7fff":"var(--rsl-box-accent)",
+    "#7b5cff":"var(--rsl-box-accent)",
     "#071321":"var(--rsl-box)",
     "#0a1a2d":"var(--rsl-box-alt)",
     "#0f2a43":"var(--rsl-box-line)",
@@ -23,25 +23,26 @@
     return svg;
   }
   async function themeOriginal(el,src){
-    if(!src.includes("/assets/rsl/visuals/"))return;
+    if(!src.includes("/static/assets/rsl/visuals/"))return;
     try{
-      const response=await fetch(src,{cache:"force-cache"});
+      const response=await fetch(src,{cache:"no-store"});
       if(!response.ok)throw new Error("asset fetch failed");
-      const text=await response.text();
-      const parser=new DOMParser();
-      const doc=parser.parseFromString(themeSvg(text),"image/svg+xml");
-      const svg=doc.documentElement;
+      let markup=themeSvg(await response.text());
+      const cls=el.getAttribute("class")||"";
+      const aria=el.getAttribute("aria-label")||el.getAttribute("alt")||"";
+      markup=markup.replace(
+        "<svg ",
+        '<svg class="'+cls.replace(/"/g,"&quot;")+'" data-rsl-themed="true" aria-label="'+aria.replace(/"/g,"&quot;")+'" '
+      );
+      const template=document.createElement("template");
+      template.innerHTML=markup.trim();
+      const svg=template.content.firstElementChild;
       if(!svg||svg.tagName.toLowerCase()!=="svg")throw new Error("invalid SVG");
-      svg.setAttribute("class",el.getAttribute("class")||"");
-      svg.setAttribute("aria-hidden",el.getAttribute("aria-hidden")||"false");
-      if(el.hasAttribute("alt"))svg.setAttribute("aria-label",el.getAttribute("alt"));
-      svg.style.cssText=el.style.cssText;
-      svg.dataset.rslThemed="true";
-      svg.setAttribute("data-rsl-themed","true");
+      if(el.style.cssText)svg.style.cssText=el.style.cssText;
       svg.dataset.rslAssetType=el.dataset.rslAssetType||"";
-      el.replaceWith(document.adoptNode(svg));
+      el.replaceWith(svg);
     }catch(_){
-      /* Keep the source image if inline theming is unavailable. */
+      /* Keep the original image if inline theming is unavailable. */
     }
   }
   function apply(el){
@@ -53,7 +54,7 @@
     el.src=src;
     themeOriginal(el,src);
   }
-  function init(){document.querySelectorAll("img[data-rsl-asset-src]").forEach(apply)}
+  function init(){document.querySelectorAll("img[data-rsl-asset-src]:not([data-rsl-themed])").forEach(apply)}
   window.RSLAssetPolicy={fallbacks:FALLBACKS,init};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
