@@ -17,16 +17,19 @@ def test_asset_policy_loader_has_safe_fallbacks():
 def test_asset_policy_loader_is_activated_site_wide():
     app = (ROOT / "ALU_Gauntlet" / "web" / "static" / "app.js").read_text(encoding="utf-8")
     assert "initRSLAssetPolicy" in app
-    assert "/static/rsl-asset-policy.js?v=20261005-theme2" in app
+    assert "/static/rsl-asset-policy.js?v=20261005-theme3" in app
     assert 'data-rsl-asset-policy' in app
 
 
 def test_asset_policy_themes_original_rsl_visuals():
     js = (ROOT / "ALU_Gauntlet" / "web" / "static" / "rsl-asset-policy.js").read_text(encoding="utf-8")
-    assert "THEME_COLORS" in js
-    assert "var(--rsl-box-accent)" in js
-    assert "var(--rsl-box-alt)" in js
-    assert "var(--rsl-box-line)" in js
-    assert "var(--rsl-box-muted)" in js
+    assert "themeValues" in js
+    assert "getComputedStyle(document.documentElement)" in js
+    assert "--rsl-box-accent" in js
+    assert "--rsl-box-alt" in js
+    assert "--rsl-box-line" in js
+    assert "--rsl-box-muted" in js
+    assert "MutationObserver" in js
+    assert "retheme" in js
     assert "fetch(src" in js
     assert 'data-rsl-themed' in js
