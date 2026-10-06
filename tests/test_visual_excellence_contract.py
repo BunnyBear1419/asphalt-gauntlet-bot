@@ -53,3 +53,13 @@ def test_home_command_center_has_correct_theme_hierarchy():
     assert "color-mix(in srgb,var(--rsl-box-alt) 82%,#fff)" in css
     assert "html[data-theme] .home-page .rsl-command-center .rsl-stat-card" in css
     assert "html[data-theme] .home-page .rsl-command-center .rsl-stat-hero" in css
+
+
+def test_home_command_center_has_deterministic_theme_surfaces():
+    css = read("app.css")
+    for theme in ("dark","light","ocean","purple","crimson","emerald","sunset","graphite"):
+        assert f'html[data-theme="{theme}"]' in css
+    for token in ("--rsl-snapshot-outer", "--rsl-snapshot-inner", "--rsl-snapshot-border"):
+        assert token in css
+    assert "background:linear-gradient(145deg,var(--rsl-snapshot-outer),var(--rsl-snapshot-outer))!important" in css
+    assert "background:linear-gradient(145deg,var(--rsl-snapshot-inner),var(--rsl-snapshot-inner))!important" in css
