@@ -11,7 +11,7 @@ This repository is designed to run the **Racing Syndicate League Discord bot and
 - MongoDB Atlas: persistent application data and web sessions.
 - Local PC: **not required for 24/7 hosting**.
 
-The root `discloud.config` uses `TYPE=site`, `MAIN=main.py`, Python 3.12, 512 MB RAM, and automatic restart. Discloud's site hosting routes the registered subdomain to the application's port; this application reads Discloud's `PORT` and defaults to 8080. citeturn1search1turn1search4
+The root `discloud.config` uses `TYPE=site`, `MAIN=main.py`, Python 3.13, 512 MB RAM, and automatic restart. Discloud's site hosting routes the registered subdomain to the application's port; this application reads Discloud's `PORT` and defaults to 8080. citeturn1search1turn1search4
 
 ## Production deployment path: GitHub Actions → Discloud
 
