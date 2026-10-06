@@ -1986,6 +1986,133 @@ html[data-theme] .discord-stat-icon.discord-brand-icon svg *{
   stroke:#5865F2!important;
   filter:none!important;
 }
+
+/* FINAL BLUE QUARANTINE — all legacy blue chrome must resolve through the active theme.
+   Page-specific legacy CSS may still contain historical literals, but rendered UI is
+   forced through these shared tokens so every page follows the selected theme. */
+html[data-theme]{
+  --rsl-theme-accent:var(--rsl-final-accent);
+  --rsl-theme-line:var(--rsl-final-line);
+  --rsl-theme-panel:var(--rsl-final-panel);
+  --rsl-theme-panel2:var(--rsl-final-panel2);
+  --rsl-theme-text:var(--rsl-final-text);
+  --rsl-theme-muted:var(--rsl-final-muted);
+  --rsl-theme-glow:color-mix(in srgb,var(--rsl-final-accent) 22%,transparent);
+}
+
+/* Search icon: recolor the PNG through a CSS alpha mask instead of preserving
+   the asset's legacy blue pixels. */
+html[data-theme] .rsl-search-trigger{
+  border-color:var(--rsl-theme-line)!important;
+  background:var(--rsl-theme-panel2)!important;
+  color:var(--rsl-theme-text)!important;
+  box-shadow:none!important;
+}
+html[data-theme] .rsl-search-trigger img{
+  display:none!important;
+}
+html[data-theme] .rsl-search-trigger::before{
+  content:""!important;
+  display:block!important;
+  width:20px!important;
+  height:20px!important;
+  background:var(--rsl-theme-accent)!important;
+  -webkit-mask:url("/assets/icons/search.png") center/contain no-repeat!important;
+  mask:url("/assets/icons/search.png") center/contain no-repeat!important;
+}
+html[data-theme] .rsl-search-trigger:hover{
+  border-color:var(--rsl-theme-accent)!important;
+  box-shadow:0 0 16px var(--rsl-theme-glow)!important;
+}
+
+/* Common legacy blue borders/lines/rings across standalone pages. */
+html[data-theme] .home-hero,
+html[data-theme] .home-help-icon,
+html[data-theme] .home-news-item,
+html[data-theme] .rules-hero,
+html[data-theme] .rules-nav,
+html[data-theme] .rules-card,
+html[data-theme] .rules-button,
+html[data-theme] .legal-hero,
+html[data-theme] .legal-nav,
+html[data-theme] .legal-card,
+html[data-theme] .legal-button,
+html[data-theme] .profile-hero,
+html[data-theme] .profile-avatar-large,
+html[data-theme] .public-profile-avatar,
+html[data-theme] .clubs-center-hero,
+html[data-theme] .my-club-hero,
+html[data-theme] .my-tournaments-hero{
+  border-color:var(--rsl-theme-line)!important;
+}
+html[data-theme] .home-hero,
+html[data-theme] .rules-hero,
+html[data-theme] .legal-hero,
+html[data-theme] .profile-hero,
+html[data-theme] .clubs-center-hero,
+html[data-theme] .my-club-hero,
+html[data-theme] .my-tournaments-hero{
+  box-shadow:0 10px 28px var(--rsl-theme-glow)!important;
+}
+html[data-theme] .rules-hero-subtitle,
+html[data-theme] .rules-nav a:hover,
+html[data-theme] .rules-card h2 span,
+html[data-theme] .rules-note,
+html[data-theme] .rules-button,
+html[data-theme] .legal-hero h1 strong,
+html[data-theme] .legal-hero-subtitle,
+html[data-theme] .legal-nav a:hover,
+html[data-theme] .legal-card h2 span,
+html[data-theme] .legal-note,
+html[data-theme] .legal-button{
+  color:var(--rsl-theme-accent)!important;
+}
+html[data-theme] .rules-note,
+html[data-theme] .legal-note{
+  border-left-color:var(--rsl-theme-accent)!important;
+}
+html[data-theme] .rules-button,
+html[data-theme] .legal-button{
+  border-color:var(--rsl-theme-line)!important;
+  background:var(--rsl-theme-panel2)!important;
+}
+html[data-theme] .rules-button:hover,
+html[data-theme] .legal-button:hover{
+  border-color:var(--rsl-theme-accent)!important;
+  background:color-mix(in srgb,var(--rsl-theme-accent) 12%,var(--rsl-theme-panel2))!important;
+}
+
+/* Legacy feature variants used fixed blue borders/glows. */
+html[data-theme] .feature-magenta,
+html[data-theme] .feature-blue{
+  border-color:var(--rsl-theme-accent)!important;
+  box-shadow:inset 0 -2px var(--rsl-theme-accent)!important;
+}
+html[data-theme] .feature-magenta .feature-body>b,
+html[data-theme] .feature-blue .feature-body>b,
+html[data-theme] .wide-action{
+  background:var(--rsl-theme-accent)!important;
+  border-color:var(--rsl-theme-accent)!important;
+  color:var(--rsl-theme-text)!important;
+}
+
+/* Avatar/round-ring surfaces inherit the selected accent instead of midnight blue. */
+html[data-theme] .player-avatar,
+html[data-theme] .profile-avatar,
+html[data-theme] .profile-avatar-large,
+html[data-theme] .public-profile-avatar{
+  border-color:var(--rsl-theme-accent)!important;
+  box-shadow:0 0 24px var(--rsl-theme-glow)!important;
+}
+
+/* Inline-style blue values on legacy pages are neutralized at render time. */
+html[data-theme] [style*="#168cff"],
+html[data-theme] [style*="#138cff"],
+html[data-theme] [style*="#1878ff"],
+html[data-theme] [style*="#25dfff"]{
+  border-color:var(--rsl-theme-accent)!important;
+}
+
 </style><style id="rsl-page-polish">
 
 /* FINAL TOURNAMENT PAGE CENTERING — keep every tournament panel aligned to the shared page center. */
