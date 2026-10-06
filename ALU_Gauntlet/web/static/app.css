@@ -5737,7 +5737,7 @@ html[data-theme] .home-page .rsl-command-center .rsl-stat-hero{
    Do not derive these from box/box-alt: those tokens are intentionally
    reusable elsewhere and their light/dark relationship differs by theme. */
 html[data-theme="dark"]{--rsl-snapshot-outer:#050b14;--rsl-snapshot-inner:#10233a;--rsl-snapshot-border:#173b64}
-html[data-theme="light"]{--rsl-snapshot-outer:#dce7f2;--rsl-snapshot-inner:#ffffff;--rsl-snapshot-border:#b8c9da}
+html[data-theme="light"]{--rsl-snapshot-outer:#21344d;--rsl-snapshot-inner:#eef4fa;--rsl-snapshot-border:#8ea5bc}
 html[data-theme="ocean"]{--rsl-snapshot-outer:#031820;--rsl-snapshot-inner:#0d3b4b;--rsl-snapshot-border:#15566b}
 html[data-theme="purple"]{--rsl-snapshot-outer:#10071d;--rsl-snapshot-inner:#2b1645;--rsl-snapshot-border:#563b82}
 html[data-theme="crimson"]{--rsl-snapshot-outer:#16070a;--rsl-snapshot-inner:#43151f;--rsl-snapshot-border:#71303a}
