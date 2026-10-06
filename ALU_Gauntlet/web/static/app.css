@@ -5713,8 +5713,7 @@ html[data-theme] :where(.home-info-card,.home-feature-card,.home-help-card,.home
 }
 
 
-/* Competitive Snapshot — preserve the same surface hierarchy used by RSL cards:
-   outer shell = primary/darker surface, inner metrics = alternate/lighter surface. */
+/* Competitive Snapshot — exactly the same surface as the surrounding RSL cards. */
 html[data-theme] .home-page .rsl-command-center{
   border-color:var(--rsl-box-line)!important;
   background:var(--rsl-box)!important;
