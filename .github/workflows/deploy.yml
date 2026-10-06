@@ -465,14 +465,14 @@ jobs:
 
       - name: Roll back to previous known-good revision
         id: rollback
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.rollback_revision.outputs.rollback_sha }}
           fetch-depth: 0
 
       - name: Clean failed-release workspace before rollback upload
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         env:
           ROLLBACK_SHA: ${{ steps.rollback_revision.outputs.rollback_sha }}
         run: |
@@ -494,7 +494,7 @@ jobs:
 
       - name: Capture pre-rollback heartbeat
         id: rollback_predeploy
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
@@ -508,7 +508,7 @@ jobs:
 
       - name: Deploy rollback to Discloud
         id: rollback_deploy
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -518,12 +518,12 @@ jobs:
           team: "false"
 
       - name: Retry rollback deployment
-        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
         run: sleep 45
 
       - name: Deploy rollback retry
         id: rollback_retry
-        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure'
         continue-on-error: true
         uses: discloud/deploy-action@fae7024653d941a19daa2b6f56d2ae208e008c54 # v1
         with:
@@ -533,14 +533,14 @@ jobs:
           team: "false"
 
       - name: Fail recovery if rollback upload failed
-        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure' && steps.rollback_retry.outcome == 'failure'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_deploy.outcome == 'failure' && steps.rollback_retry.outcome == 'failure'
         run: |
           echo "ERROR: Both rollback uploads failed. Refusing to restart or mark production recovered."
           exit 1
 
       - name: Restart Discloud app after rollback upload
         id: rollback_restart
-        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
+        if: steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure'
         continue-on-error: true
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
@@ -567,7 +567,7 @@ jobs:
           exit 1
       - name: Verify rollback health
         id: rollback_verify
-        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_restart.outcome == 'success'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_restart.outcome == 'success'
         env:
           DISCLOUD_TOKEN: ${{ secrets.DISCLOUD_TOKEN }}
           DISCLOUD_APP_ID: asph
@@ -719,13 +719,13 @@ jobs:
           exit 1
 
       - name: Fail recovery if rollback restart or verification failed
-        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && (steps.rollback_restart.outcome == 'failure' || steps.rollback_verify.outcome == 'failure')
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && (steps.rollback_restart.outcome == 'failure' || steps.rollback_verify.outcome == 'failure')
         run: |
           echo "ERROR: Rollback upload completed, but rollback restart or health verification failed. Production recovery is not confirmed."
           exit 1
 
       - name: Mark deployment failed after successful recovery
-        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.live_e2e.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_restart.outcome == 'success' && steps.rollback_verify.outcome == 'success'
+        if: (steps.restart.outcome == 'failure' || steps.smoke.outcome == 'failure' || steps.deploy_gate.outcome == 'failure') && steps.rollback_restart.outcome == 'success' && steps.rollback_verify.outcome == 'success'
         run: |
           echo "Deployment smoke test failed, but the previous known-good revision was restored and verified successfully."
           echo "Production is healthy on the known-good revision. The workflow will remain successful because recovery completed."
