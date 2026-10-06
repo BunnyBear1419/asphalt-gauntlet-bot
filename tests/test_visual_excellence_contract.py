@@ -49,7 +49,7 @@ def test_home_command_center_uses_theme_tokens():
 def test_home_command_center_has_consistent_theme_surfaces():
     css = read("app.css")
     home = read("index.html")
-    assert "/* Competitive Snapshot — use the same themed card surfaces as the rest of RSL." in css
+    assert "/* Competitive Snapshot — exactly the same surface as the surrounding RSL cards." in css
     assert "background:var(--rsl-box)!important" in css
     assert "background:var(--rsl-box)!important" in css
     assert "html[data-theme] .home-page .rsl-command-center .rsl-stat-card" in css
