@@ -5713,16 +5713,27 @@ html[data-theme] :where(.home-info-card,.home-feature-card,.home-help-card,.home
 }
 
 
-/* Competitive Snapshot — exactly the same surface as the surrounding RSL cards. */
+/* Competitive Snapshot — preserve the same surface hierarchy used by RSL cards:
+   outer shell = primary/darker surface, inner metrics = alternate/lighter surface. */
 html[data-theme] .home-page .rsl-command-center{
   border-color:var(--rsl-box-line)!important;
   background:var(--rsl-box)!important;
-}
-html[data-theme] .home-page .rsl-command-center .rsl-stat-hero,
-html[data-theme] .home-page .rsl-command-center .rsl-stat-card{
-  border-color:var(--rsl-box-line)!important;
-  background:var(--rsl-box)!important;
+  color:var(--rsl-box-text)!important;
 }
 html[data-theme] .home-page .rsl-command-center .rsl-stat-hero{
   border-color:var(--rsl-box-accent)!important;
+  background:var(--rsl-box-alt)!important;
+  color:var(--rsl-box-text)!important;
+}
+html[data-theme] .home-page .rsl-command-center .rsl-stat-card{
+  border-color:var(--rsl-box-line)!important;
+  background:var(--rsl-box-alt)!important;
+  color:var(--rsl-box-text)!important;
+}
+html[data-theme] .home-page .rsl-command-center .rsl-stat-card span,
+html[data-theme] .home-page .rsl-command-center .rsl-stat-card small{
+  color:var(--rsl-box-muted)!important;
+}
+html[data-theme] .home-page .rsl-command-center .rsl-stat-card strong{
+  color:var(--rsl-box-accent)!important;
 }
