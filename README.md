@@ -4,7 +4,7 @@ Production package for the Racing Syndicate League Discord bot and web control c
 
 ## Stack
 
-- Python 3.12
+- Python 3.13
 - discord.py
 - MongoDB Atlas
 - PyMongo Async
@@ -22,7 +22,7 @@ Do not commit `.env` or real credentials.
 ## Local Windows setup
 
 ```powershell
-py -3.12 -m venv .venv
+py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
@@ -43,7 +43,7 @@ pytest -q
 
 The production application is intentionally **Discloud-first**: the existing `asph` service hosts both the Discord bot and the web control center, so a local PC is not required to stay online.
 
-The root `discloud.config` points to `main.py`, uses Python 3.12, 512 MB RAM, `TYPE=site`, and automatic restart. The web server reads Discloud's `PORT` and defaults to 8080.
+The root `discloud.config` points to `main.py`, uses Python 3.13, 512 MB RAM, `TYPE=site`, and automatic restart. The web server reads Discloud's `PORT` and defaults to 8080.
 
 ### Deploy without GitHub Actions
 
