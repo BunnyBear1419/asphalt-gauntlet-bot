@@ -5713,47 +5713,18 @@ html[data-theme] :where(.home-info-card,.home-feature-card,.home-help-card,.home
 }
 
 
-/* Competitive Snapshot hierarchy: outer shell dark, inner stats light.
-   This is deliberately derived from the active theme base so every theme
-   keeps the same depth relationship without hard-coded blue. */
+/* Competitive Snapshot — use the same themed card surfaces as the rest of RSL.
+   Do not introduce a separate light/dark hierarchy here. */
 html[data-theme] .home-page .rsl-command-center{
-  border-color:color-mix(in srgb,var(--rsl-box-line) 70%,#000)!important;
-  background:linear-gradient(145deg,
-    color-mix(in srgb,var(--rsl-box) 82%,#000),
-    color-mix(in srgb,var(--rsl-box) 92%,#000))!important;
+  border-color:var(--rsl-box-line)!important;
+  background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box))!important;
 }
 html[data-theme] .home-page .rsl-command-center .rsl-stat-hero,
 html[data-theme] .home-page .rsl-command-center .rsl-stat-card{
-  border-color:color-mix(in srgb,var(--rsl-box-line) 55%,#fff)!important;
-  background:linear-gradient(145deg,
-    color-mix(in srgb,var(--rsl-box-alt) 82%,#fff),
-    color-mix(in srgb,var(--rsl-box-alt) 94%,#fff))!important;
+  border-color:var(--rsl-box-line)!important;
+  background:var(--rsl-box)!important;
 }
 html[data-theme] .home-page .rsl-command-center .rsl-stat-hero{
   border-color:var(--rsl-box-accent)!important;
-}
-
-/* Competitive Snapshot — deterministic theme hierarchy.
-   Do not derive these from box/box-alt: those tokens are intentionally
-   reusable elsewhere and their light/dark relationship differs by theme. */
-html[data-theme="dark"]{--rsl-snapshot-outer:#050b14;--rsl-snapshot-inner:#10233a;--rsl-snapshot-border:#173b64}
-html[data-theme="light"]{--rsl-snapshot-outer:#21344d;--rsl-snapshot-inner:#eef4fa;--rsl-snapshot-border:#8ea5bc}
-html[data-theme="ocean"]{--rsl-snapshot-outer:#031820;--rsl-snapshot-inner:#0d3b4b;--rsl-snapshot-border:#15566b}
-html[data-theme="purple"]{--rsl-snapshot-outer:#10071d;--rsl-snapshot-inner:#2b1645;--rsl-snapshot-border:#563b82}
-html[data-theme="crimson"]{--rsl-snapshot-outer:#16070a;--rsl-snapshot-inner:#43151f;--rsl-snapshot-border:#71303a}
-html[data-theme="emerald"]{--rsl-snapshot-outer:#03150f;--rsl-snapshot-inner:#0e4635;--rsl-snapshot-border:#17604c}
-html[data-theme="sunset"]{--rsl-snapshot-outer:#180a05;--rsl-snapshot-inner:#5a2b15;--rsl-snapshot-border:#75411f}
-html[data-theme="graphite"]{--rsl-snapshot-outer:#111416;--rsl-snapshot-inner:#363d43;--rsl-snapshot-border:#414951}
-
-html[data-theme] .home-page .rsl-command-center{
-  border-color:var(--rsl-snapshot-border)!important;
-  background:linear-gradient(145deg,var(--rsl-snapshot-outer),var(--rsl-snapshot-outer))!important;
-}
-html[data-theme] .home-page .rsl-command-center .rsl-stat-hero,
-html[data-theme] .home-page .rsl-command-center .rsl-stat-card{
-  border-color:var(--rsl-snapshot-border)!important;
-  background:linear-gradient(145deg,var(--rsl-snapshot-inner),var(--rsl-snapshot-inner))!important;
-}
-html[data-theme] .home-page .rsl-command-center .rsl-stat-hero{
-  border-color:var(--rsl-box-accent)!important;
+  background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box))!important;
 }
