@@ -275,3 +275,17 @@ def test_shared_card_and_account_surfaces_use_final_theme_tokens():
         assert token in block
     assert "background:#0a1a2d!important" not in block
     assert "background:#09192c" not in block
+
+def test_legacy_blue_chrome_is_theme_driven():
+    server = web_source()
+    required = (
+        "FINAL BLUE QUARANTINE",
+        "--rsl-theme-accent:var(--rsl-final-accent)",
+        ".rsl-search-trigger::before",
+        "-webkit-mask:url(\"/assets/icons/search.png\")",
+        "html[data-theme] .feature-blue",
+        "html[data-theme] .profile-avatar-large",
+        'html[data-theme] [style*="#168cff"]',
+    )
+    for token in required:
+        assert token in server
