@@ -46,20 +46,13 @@ def test_home_command_center_uses_theme_tokens():
         assert token in block
 
 
-def test_home_command_center_has_correct_theme_hierarchy():
+def test_home_command_center_has_consistent_theme_surfaces():
     css = read("app.css")
-    assert "/* Competitive Snapshot hierarchy: outer shell dark, inner stats light." in css
-    assert "color-mix(in srgb,var(--rsl-box) 82%,#000)" in css
-    assert "color-mix(in srgb,var(--rsl-box-alt) 82%,#fff)" in css
+    home = read("index.html")
+    assert "/* Competitive Snapshot — use the same themed card surfaces as the rest of RSL." in css
+    assert "background:linear-gradient(145deg,var(--rsl-box-alt),var(--rsl-box))!important" in css
+    assert "background:var(--rsl-box)!important" in css
     assert "html[data-theme] .home-page .rsl-command-center .rsl-stat-card" in css
     assert "html[data-theme] .home-page .rsl-command-center .rsl-stat-hero" in css
-
-
-def test_home_command_center_has_deterministic_theme_surfaces():
-    css = read("app.css")
-    for theme in ("dark","light","ocean","purple","crimson","emerald","sunset","graphite"):
-        assert f'html[data-theme="{theme}"]' in css
-    for token in ("--rsl-snapshot-outer", "--rsl-snapshot-inner", "--rsl-snapshot-border"):
-        assert token in css
-    assert "background:linear-gradient(145deg,var(--rsl-snapshot-outer),var(--rsl-snapshot-outer))!important" in css
-    assert "background:linear-gradient(145deg,var(--rsl-snapshot-inner),var(--rsl-snapshot-inner))!important" in css
+    assert "6 competitive divisions" in home
+    assert '<span class="active">I</span><span>II</span><span>III</span><span>IV</span><span>V</span><span>VI</span>' in home
