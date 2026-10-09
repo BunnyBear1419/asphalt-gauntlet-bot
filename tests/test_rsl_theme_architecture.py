@@ -191,7 +191,7 @@ def test_shared_navigation_removes_legacy_companion_and_normalizes_calendar_acco
     assert 'companion_cleanup = re.compile(' in server
     assert 'href=["\\\\\\']/calendar' in server
     assert 'class="top-user-area"' in server
-    assert 'companion_markup = ""' in server
+    assert "companion_markup" not in server
     assert "Normalize Calendar + Shohan's Companion on every page." not in server
 
 def test_admin_internal_hash_links_use_section_navigation():
