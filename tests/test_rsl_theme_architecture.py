@@ -186,13 +186,12 @@ def test_shared_header_does_not_inject_stray_social_icons():
     assert "rsl-footer-cashapp" in server
 
 
-def test_shared_navigation_removes_legacy_companion_and_normalizes_calendar_account_markup():
+def test_shared_navigation_normalizes_calendar_and_account_markup():
     server = web_source()
-    assert 'companion_cleanup = re.compile(' in server
+    assert "companion" not in server.lower()
     assert 'href="/calendar"' in server
     assert 'class="top-user-area"' in server
     assert "companion_markup" not in server
-    assert "Normalize Calendar + Shohan's Companion on every page." not in server
 
 def test_admin_internal_hash_links_use_section_navigation():
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
