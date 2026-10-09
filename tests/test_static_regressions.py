@@ -398,38 +398,19 @@ def test_player_settings_section_links_leave_settings_route():
     assert 'content:"Changes are saved to your RSL account."' not in source
 
 
-def test_companion_surfaces_keep_a_distinct_shohan_brand_identity():
+def test_shohans_companion_surfaces_are_removed_from_rsl():
     css = read("ALU_Gauntlet/web/static/app.css")
-    page = read("ALU_Gauntlet/web/static/shohans-companion.html")
-    assert "--shohan-accent:#00f5c8" in css
-    assert ".companion-nav-link" in css
-    assert "var(--shohan-accent,#00f5c8)" in css
-    assert "shohan-partner-hero" in page
-    assert "shohan-partner-primary" in page
-
-
-def test_homepage_companion_banner_uses_shohan_brand_tokens():
     index = read("ALU_Gauntlet/web/static/index.html")
-    assert 'class="partner-banner"' in index
-    assert "var(--shohan-accent,#00f5c8)" in index
-    assert "var(--shohan-surface,#080f13)" in index
-    assert "var(--shohan-surface-2,#0b171b)" in index
-    assert "var(--shohan-line,#164b4a)" in index
-    assert "VISIT COMPANION" in index
-
-
-def test_shohan_companion_brand_stays_theme_independent():
-    css = read("ALU_Gauntlet/web/static/app.css")
-    assert 'html[data-theme]{' in css
-    assert '--shohan-accent:#00f5c8' in css
-    for theme in ("light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"):
-        assert f'html[data-theme="{theme}"]' in css
-    # Theme variants may change surfaces for contrast, but never replace the partner accent.
-    assert "var(--shohan-accent)" in css
-    assert ".companion-info-menu" in css
-    assert ".partner-banner" in css
-    assert ".shohan-partner-hero" in css
-
+    core = read("ALU_Gauntlet/web/routes/core.py")
+    public = read("ALU_Gauntlet/web/routes/public.py")
+    page = ROOT / "ALU_Gauntlet/web/static/shohans-companion.html"
+    assert not page.exists()
+    assert 'class="partner-banner"' not in index
+    assert "VISIT COMPANION" not in index
+    assert "--shohan-accent" not in css
+    assert ".companion-nav-link" not in css
+    assert '"/partners/shohans-companion"' not in core
+    assert "shohans_companion_page" not in public
 
 def test_competition_safe_mode_has_dedicated_api_route():
     core = read("ALU_Gauntlet/web/routes/core.py")
