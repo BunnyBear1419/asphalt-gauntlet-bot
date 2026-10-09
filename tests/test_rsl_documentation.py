@@ -29,7 +29,8 @@ def test_rsl_documentation_sections_exist():
     assert "Rules" in server
     assert '<a href="/rules">Rules</a><span aria-hidden="true">|</span>\n       <a href="/help">Help Center</a>' not in server
     assert '<a href="/calendar">' in server
-    assert "calendar_markup + rules_markup + companion_markup" in server
+    assert 'calendar_markup + rules_markup + "</nav>"' in server
+    assert "companion_markup" not in server
     assert "r'<a\\\\b[^>]*href=" not in server
     assert "r'<a\\b[^>]*href=[\"\\\']/rules" in server
     assert rules.count('<a href="/rules">') == 1
