@@ -58,14 +58,8 @@ def check_public_shell(page: Page) -> None:
         if page.locator(f'nav a[href="{href}"]').count() == 0:
             raise AssertionError(f"homepage: missing navigation target {href}")
 
-    companion = page.locator("details.companion-nav-dropdown")
-    if companion.count() != 1:
-        raise AssertionError("homepage: Companion navigation is missing or duplicated")
-
-    companion_link = companion.locator('a.companion-info-link[href="https://alu.shohanlab.com/"]')
-    if companion_link.count() != 1:
-        raise AssertionError("homepage: Companion target changed unexpectedly")
-
+    if page.locator("details.companion-nav-dropdown, a.companion-nav-link, a[href*=\"alu.shohanlab.com\"]").count() != 0:
+        raise AssertionError("Shohan Companion integration is still visible in RSL navigation")
 
 def check_clubs_controls(page: Page) -> None:
     check_page(page, "/clubs")
