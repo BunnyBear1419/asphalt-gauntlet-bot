@@ -712,7 +712,6 @@ window.rslGoogleTranslateInit=function(){
 '''
 
         # Normalize RSL navigation on every page and remove legacy Companion entries.
-        companion_markup = ""
 
         companion_cleanup = re.compile(
             r'<details\b[^>]*class=["\'][^"\']*\bcompanion-nav-dropdown\b[^"\']*["\'][^>]*>.*?</details>'
