@@ -165,16 +165,16 @@ def test_v1_database_safeguards_cover_clubs_tournaments_and_notifications():
     assert not missing, missing
 
 
-def test_v1_shared_shell_keeps_calendar_search_profile_and_companion_ordered():
+def test_v1_shared_shell_keeps_calendar_search_profile_without_companion():
     source = read(SERVER)
-    assert 'calendar_markup + rules_markup + companion_markup' in source
+    assert 'calendar_markup + rules_markup + "</nav>"' in source
+    assert "companion_markup" not in source
     assert 'id="rsl-search-trigger"' in source
     assert 'id="rsl-profile-nav"' in source
     assert '<a href="/calendar">' in source
     assert 'href="/gauntlet/career"' in source
     assert 'href="/my-tournaments"' in source
     assert 'href="/club"' in source
-
 
 def test_v1_gauntlet_preserves_six_rsl_divisions_and_alu_ticket_rotation():
     challenges = read(ROOT / "ALU_Gauntlet" / "cogs" / "challenges.py")

@@ -69,13 +69,13 @@ DEFAULT_WEB_BRANDING = {
     "identity": {"name":"Racing Syndicate League","short_name":"RSL","site_title":"Racing Syndicate League","tagline":"Race, Compete, Unite","favicon_url":"/assets/rsl-favicon.png?v=20260922-favicon1","logo_url":"/assets/rsl-shield.png","mobile_logo_url":"/assets/rsl-shield.png"},
     "colors": {"primary":"#25dfff","secondary":"#1878ff","accent":"#ffd22d","background":"#020817","surface":"#061226","text":"#f5f7ff","muted":"#91a5c3"},
     "images": {"hero_url":"/assets/hero.jpg","welcome_url":"/assets/hero.jpg","gauntlet_url":"/assets/hero.jpg","tournament_url":"/assets/hero.jpg","club_url":"/assets/hero.jpg","login_url":"/assets/hero.jpg","background_url":""},
-    "links": {"site_logo":"/","website":"https://asph.discloud.app","discord":"https://discord.gg/fmFk8Ejf2H","cashapp":"https://cash.app/","youtube":"","twitch":"","facebook":"","instagram":"","x":"","support":"","companion":"https://alu.shohanlab.com/","custom":[]},
-    "navigation": {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"},
+    "links": {"site_logo":"/","website":"https://asph.discloud.app","discord":"https://discord.gg/fmFk8Ejf2H","cashapp":"https://cash.app/","youtube":"","twitch":"","facebook":"","instagram":"","x":"","support":"","custom":[]},
+    "navigation": {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar"},
     "terminology": {"gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","players":"Drivers","season":"Season","matches":"Matches","support":"Help Center"},
 }
 BRANDING_COLOR_KEYS = ("primary","secondary","accent","background","surface","text","muted")
 BRANDING_IMAGE_KEYS = ("hero_url","welcome_url","gauntlet_url","tournament_url","club_url","login_url","background_url")
-BRANDING_LINK_KEYS = ("site_logo","discord","website","youtube","twitch","facebook","instagram","x","support","companion")
+BRANDING_LINK_KEYS = ("site_logo","discord","website","youtube","twitch","facebook","instagram","x","support")
 
 
 

@@ -711,34 +711,7 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        # Normalize Calendar + Shohan's Companion on every page.
-        # Remove legacy/generated copies first, then insert exactly one Calendar + Companion pair.
-        companion_markup = r'''<details class="top-nav-dropdown companion-nav-dropdown">
-<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
-<div class="top-nav-dropdown-menu companion-nav-info-menu">
-  <a class="companion-info-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Asphalt United Companion by Shohan's Lab">
-    <span class="companion-info-link-icon">↗</span>
-    <span><strong>Click to View</strong><small>Open Asphalt United Companion by Shohan's Lab.</small></span>
-  </a>
-  <div class="companion-info-item"><span class="companion-info-icon">🚗</span><span><strong>Car Upgrade Calculator</strong><small>Plan your upgrades &amp; optimize your build.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🔄</span><span><strong>Comparator</strong><small>Compare between cars.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🎯</span><span><strong>Priority</strong><small>Manage your priorities.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📅</span><span><strong>Season Calendar</strong><small>Stay on top of events, cups, &amp; seasons.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🃏</span><span><strong>Hunt Game</strong><small>See how many times you have to play to get all those cards.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🏁</span><span><strong>Simulation</strong><small>Simulate car win rates and matchups.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🗺️</span><span><strong>Race Maps</strong><small>Full maps &amp; the track variants played on them.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📊</span><span><strong>Rating Predictor</strong><small>Guess an opponent's configuration from their Gauntlet rating number.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">💰</span><span><strong>Cost Calculator</strong><small>Plan upgrades for your whole garage — credits, parts, &amp; garage value to a target star.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🎟️</span><span><strong>Event Calculator</strong><small>Plan limited-time Spotlight events — stage-by-stage reward simulation.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
-</div></details>'''
-
-        companion_cleanup = re.compile(
-            r'<details\b[^>]*class=["\'][^"\']*\bcompanion-nav-dropdown\b[^"\']*["\'][^>]*>.*?</details>'
-            r'|<a\b[^>]*class=["\'][^"\']*\bcompanion-nav-link\b[^"\']*["\'][^>]*>.*?</a>',
-            re.S | re.I,
-        )
-        body = companion_cleanup.sub("", body)
+        # Normalize the shared RSL navigation on every page.
         body = re.sub(
             r'<a\b[^>]*href=["\']/calendar["\'][^>]*>.*?</a>',
             "",
@@ -754,9 +727,8 @@ window.rslGoogleTranslateInit=function(){
             flags=re.S | re.I,
         )
         if "</nav>" in body:
-            # Canonical navigation order: Calendar, then Rules, then Companion.
-            # Strip any legacy/static copies first so older templates cannot
-            # create duplicate or incorrectly ordered entries.
+            # Canonical navigation order: Calendar, then Rules.
+            # Strip legacy/static copies first to prevent duplicates.
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
             rules_markup = '<a href="/rules"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>Rules</span></a>'
             body = re.sub(
@@ -771,17 +743,7 @@ window.rslGoogleTranslateInit=function(){
                 body,
                 flags=re.S | re.I,
             )
-            # Remove any page-specific Companion copy before rebuilding the canonical
-            # navigation order. This prevents Calendar/Rules/XP from being appended
-            # after an older Companion item.
-            body = re.sub(
-                r'<details class="top-nav-dropdown companion-nav-dropdown">.*?</details>',
-                "",
-                body,
-                count=1,
-                flags=re.S | re.I,
-            )
-            body = body.replace("</nav>", calendar_markup + rules_markup + companion_markup + "</nav>", 1)
+            body = body.replace("</nav>", calendar_markup + rules_markup + "</nav>", 1)
 
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
         # This keeps every page on the same PNG-only navigation shell.
@@ -1218,8 +1180,6 @@ html[data-theme] .rsl-cookie-btn{background:var(--rsl-audit-panel2)!important;co
 html[data-theme] .rsl-cookie-btn.primary{background:var(--rsl-audit-strong)!important;color:var(--rsl-box-text)!important}
 html[data-theme] .rsl-footer-theme-control select{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
 
-html[data-theme] .companion-nav-info-menu,html[data-theme] .companion-info-link,html[data-theme] .companion-info-item{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
-html[data-theme] .companion-info-item small,html[data-theme] .companion-info-link small{color:var(--rsl-audit-muted)!important}
 html[data-theme] .rsl-search-input-wrap{background:var(--rsl-audit-panel)!important;border-color:var(--rsl-audit-line)!important}
 html[data-theme] .rsl-search-input-wrap input{background:transparent!important;color:var(--rsl-audit-text)!important}
 html[data-theme="light"] .top-nav nav>a,html[data-theme="light"] .top-nav .top-nav-dropdown-trigger,html[data-theme="light"] .rsl-profile-trigger,html[data-theme="light"] .rsl-search-trigger{color:#18283b!important}
@@ -1552,8 +1512,7 @@ html[data-theme] .player-card-stats,
 html[data-theme] .unified-profile-side,
 html[data-theme] .competition-toolbar,
 html[data-theme] .competition-table-head,
-html[data-theme] .career-section,
-html[data-theme] .companion-info-item{
+html[data-theme] .career-section{
   background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
   color:var(--rsl-audit-text)!important;
   border-color:var(--rsl-audit-line)!important;
@@ -1572,8 +1531,7 @@ html[data-theme] .notification-custom-days{
   color:var(--rsl-audit-text)!important;
   border-color:var(--rsl-audit-line)!important;
 }
-html[data-theme] .competition-row:hover,
-html[data-theme] .companion-info-item:hover{
+html[data-theme] .competition-row:hover{
   background:color-mix(in srgb,var(--rsl-audit-accent) 10%,var(--rsl-audit-panel))!important;
   color:var(--rsl-audit-text)!important;
 }
@@ -1589,8 +1547,7 @@ html[data-theme] .home-about-icon,
 html[data-theme] .home-help-icon,
 html[data-theme] .home-news-icon,
 html[data-theme] .home-feature-icon,
-html[data-theme] .home-help-arrow,
-html[data-theme] .companion-info-link-icon{
+html[data-theme] .home-help-arrow{
   background:var(--rsl-audit-panel2)!important;
   border-color:var(--rsl-audit-line)!important;
   color:var(--rsl-audit-accent)!important;
@@ -1599,8 +1556,7 @@ html[data-theme] .home-about-icon svg,
 html[data-theme] .home-help-icon svg,
 html[data-theme] .home-news-icon svg,
 html[data-theme] .home-feature-icon svg,
-html[data-theme] .home-help-arrow svg,
-html[data-theme] .companion-info-link-icon svg{
+html[data-theme] .home-help-arrow svg{
   color:var(--rsl-audit-accent)!important;
   stroke:var(--rsl-audit-accent)!important;
   fill:none!important;
@@ -1809,7 +1765,6 @@ html[data-theme] .competition-toolbar,
 html[data-theme] .competition-table-head,
 html[data-theme] .review-row,
 html[data-theme] .notification-timing,
-html[data-theme] .companion-info-item,
 html[data-theme] .tournament-meta,
 html[data-theme] .tournament-club-driver{
   background:var(--rsl-final-panel2)!important;
@@ -1886,7 +1841,6 @@ html[data-theme] .home-feature-icon,
 html[data-theme] .home-help-icon,
 html[data-theme] .home-about-icon,
 html[data-theme] .home-news-icon,
-html[data-theme] .companion-info-link-icon,
 html[data-theme] .home-help-arrow{
   color:var(--rsl-final-accent)!important;
   border-color:var(--rsl-final-line)!important;
@@ -1902,15 +1856,13 @@ html[data-theme="light"] .nav-icon-glyph{
 html[data-theme] .home-feature-icon,
 html[data-theme] .home-help-icon,
 html[data-theme] .home-about-icon,
-html[data-theme] .home-news-icon,
-html[data-theme] .companion-info-link-icon{
+html[data-theme] .home-news-icon{
   background:var(--rsl-final-panel2)!important;
 }
 html[data-theme] .home-feature-icon svg,
 html[data-theme] .home-help-icon svg,
 html[data-theme] .home-about-icon svg,
-html[data-theme] .home-news-icon svg,
-html[data-theme] .companion-info-link-icon svg{
+html[data-theme] .home-news-icon svg{
   fill:none!important;
   stroke:var(--rsl-final-accent)!important;
   color:var(--rsl-final-accent)!important;
@@ -2577,7 +2529,6 @@ html[data-theme] [style*="#25dfff"]{
         body = body.replace("Racing Syndicate League", name).replace("RSL", short)
         body = body.replace("https://discord.gg/fmFk8Ejf2H", esc(links.get("discord")))
         body = body.replace("https://cash.app/", esc(links.get("cashapp")))
-        body = body.replace("https://alu.shohanlab.com/", esc(links.get("companion")))
         # Keep RSL Coach discoverable from the existing Gauntlet menu on every rendered page.
         # The page itself is the single Coach destination; do not create a second menu family.
         if 'href="/rsl-coach"' not in body:
@@ -2588,7 +2539,7 @@ html[data-theme] [style*="#25dfff"]{
                 count=1,
                 flags=re.I | re.S,
             )
-        defaults = {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"}
+        defaults = {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar"}
         for key, value in nav.items():
             if value:
                 body = body.replace(f"<span>{defaults.get(key, key)}</span>", f"<span>{html.escape(str(value))}</span>")
@@ -2622,7 +2573,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/csp-report", self.csp_report)
         self.app.router.add_get("/sitemap.xml", self.sitemap_xml)
         self.app.router.add_get("/help", self.help_page)
-        self.app.router.add_get("/partners/shohans-companion", self.shohans_companion_page)
         self.app.router.add_get("/rules", self.rules_page)
         self.app.router.add_get("/legal", self.legal_page)
         self.app.router.add_get("/status", self.platform_status_page)

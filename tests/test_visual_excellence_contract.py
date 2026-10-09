@@ -26,7 +26,7 @@ def test_visual_excellence_keeps_existing_rsl_language():
     assert "rsl-visual-grid" in home
     assert "RACING GARAGE" in home
     assert "6 DIVISIONS" in home
-    assert "partner-banner" in home
+    assert "partner-banner" not in home
 
 
 def test_home_command_center_uses_theme_tokens():
