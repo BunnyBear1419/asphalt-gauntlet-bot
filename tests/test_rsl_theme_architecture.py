@@ -132,17 +132,16 @@ def test_cookie_footer_controls_share_the_same_utility_row():
     assert ".rsl-footer-theme-control{" in server
 
 
-def test_shared_navigation_keeps_calendar_before_companion_and_search_before_profile():
+def test_shared_navigation_keeps_calendar_rules_and_search_before_profile_without_companion():
     server = web_source()
     calendar = 'calendar_markup = \'<a href="/calendar">'
-    companion = 'companion_markup = r\'\'\'<details class="top-nav-dropdown companion-nav-dropdown">'
     assert calendar in server
-    assert companion in server
-    assert "body = body.replace(\"</nav>\", calendar_markup + rules_markup + companion_markup + \"</nav>\", 1)" in server
+    assert 'rules_markup = ' in server
+    assert 'companion_markup' not in server
+    assert 'calendar_markup + rules_markup + "</nav>"' in server
     assert "search_markup" in server
     assert "profile_markup" in server
     assert "The search control belongs immediately to the left of the profile control." in server
-
 
 def test_navigation_reserves_space_for_search_and_profile_controls():
     css = CSS.read_text(encoding="utf-8")
@@ -187,13 +186,13 @@ def test_shared_header_does_not_inject_stray_social_icons():
     assert "rsl-footer-cashapp" in server
 
 
-def test_shared_navigation_cleans_legacy_companion_calendar_and_account_markup():
+def test_shared_navigation_removes_legacy_companion_and_normalizes_calendar_account_markup():
     server = web_source()
     assert 'companion_cleanup = re.compile(' in server
-    assert 'href=["\\\']/calendar' in server
+    assert 'href=["\\\\\\']/calendar' in server
     assert 'class="top-user-area"' in server
-    assert 'Normalize Calendar + Shohan\'s Companion on every page.' in server
-
+    assert 'companion_markup = ""' in server
+    assert "Normalize Calendar + Shohan's Companion on every page." not in server
 
 def test_admin_internal_hash_links_use_section_navigation():
     admin = (ROOT / "ALU_Gauntlet" / "web" / "static" / "admin.html").read_text(encoding="utf-8")
@@ -201,23 +200,11 @@ def test_admin_internal_hash_links_use_section_navigation():
     assert 'showSection(target.slice(1))' in admin
 
 
-def test_shohan_companion_navigation_and_box_share_theme_aware_brand_tokens():
+def test_shohan_companion_brand_styles_are_not_part_of_rsl_theme_contract():
     css = CSS.read_text(encoding="utf-8")
-    required = (
-        "--shohan-accent:#00f5c8",
-        "--shohan-surface:#080f13",
-        ".companion-nav-trigger:before",
-        ".companion-info-menu",
-        ".partner-banner",
-        "SHOHAN'S LAB • COMPANION",
-    )
-    for token in required:
-        assert token in css
-    for theme in ("light", "ocean", "purple", "crimson", "emerald", "sunset", "graphite"):
-        assert f'html[data-theme="{theme}"]' in css
-    assert "var(--shohan-surface)" in css
-    assert "var(--shohan-accent)" in css
-
+    assert "--shohan-accent" not in css
+    assert ".partner-banner" not in css
+    assert "SHOHAN'S LAB • COMPANION" not in css
 
 def test_discord_server_dropdown_uses_selected_theme_surface():
     css = CSS.read_text(encoding="utf-8")
