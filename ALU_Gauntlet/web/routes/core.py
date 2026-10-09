@@ -711,14 +711,7 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        # Normalize RSL navigation on every page and remove legacy Companion entries.
-
-        companion_cleanup = re.compile(
-            r'<details\b[^>]*class=["\'][^"\']*\bcompanion-nav-dropdown\b[^"\']*["\'][^>]*>.*?</details>'
-            r'|<a\b[^>]*class=["\'][^"\']*\bcompanion-nav-link\b[^"\']*["\'][^>]*>.*?</a>',
-            re.S | re.I,
-        )
-        body = companion_cleanup.sub("", body)
+        # Normalize the shared RSL navigation on every page.
         body = re.sub(
             r'<a\b[^>]*href=["\']/calendar["\'][^>]*>.*?</a>',
             "",
@@ -734,9 +727,8 @@ window.rslGoogleTranslateInit=function(){
             flags=re.S | re.I,
         )
         if "</nav>" in body:
-            # Canonical navigation order: Calendar, then Rules, then Companion.
-            # Strip any legacy/static copies first so older templates cannot
-            # create duplicate or incorrectly ordered entries.
+            # Canonical navigation order: Calendar, then Rules.
+            # Strip legacy/static copies first to prevent duplicates.
             calendar_markup = '<a href="/calendar"><img class="nav-icon-img" src="/assets/icons/calendar.png?v=20260924-nav11" alt=""><span>Calendar</span></a>'
             rules_markup = '<a href="/rules"><img class="nav-icon-img" src="/assets/icons/references.png" alt=""><span>Rules</span></a>'
             body = re.sub(
@@ -749,16 +741,6 @@ window.rslGoogleTranslateInit=function(){
                 r'<a\b[^>]*href=["\']/rules["\'][^>]*>.*?</a>',
                 "",
                 body,
-                flags=re.S | re.I,
-            )
-            # Remove any page-specific Companion copy before rebuilding the canonical
-            # navigation order. This prevents Calendar/Rules/XP from being appended
-            # after an older Companion item.
-            body = re.sub(
-                r'<details class="top-nav-dropdown companion-nav-dropdown">.*?</details>',
-                "",
-                body,
-                count=1,
                 flags=re.S | re.I,
             )
             body = body.replace("</nav>", calendar_markup + rules_markup + "</nav>", 1)
