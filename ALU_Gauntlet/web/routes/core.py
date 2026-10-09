@@ -711,27 +711,8 @@ window.rslGoogleTranslateInit=function(){
 <script src="https://translate.google.com/translate_a/element.js?cb=rslGoogleTranslateInit"></script>
 '''
 
-        # Normalize Calendar + Shohan's Companion on every page.
-        # Remove legacy/generated copies first, then insert exactly one Calendar + Companion pair.
-        companion_markup = r'''<details class="top-nav-dropdown companion-nav-dropdown">
-<summary class="top-nav-dropdown-trigger companion-nav-trigger"><img class="nav-icon-img companion-nav-icon" src="/assets/icons/companion.png" alt=""><span class="companion-nav-title"><small>Shohan's</small><strong>Companion</strong></span><span class="nav-chevron">⌄</span></summary>
-<div class="top-nav-dropdown-menu companion-nav-info-menu">
-  <a class="companion-info-link" href="https://alu.shohanlab.com/" target="_blank" rel="noopener noreferrer" aria-label="Open Asphalt United Companion by Shohan's Lab">
-    <span class="companion-info-link-icon">↗</span>
-    <span><strong>Click to View</strong><small>Open Asphalt United Companion by Shohan's Lab.</small></span>
-  </a>
-  <div class="companion-info-item"><span class="companion-info-icon">🚗</span><span><strong>Car Upgrade Calculator</strong><small>Plan your upgrades &amp; optimize your build.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🔄</span><span><strong>Comparator</strong><small>Compare between cars.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🎯</span><span><strong>Priority</strong><small>Manage your priorities.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📅</span><span><strong>Season Calendar</strong><small>Stay on top of events, cups, &amp; seasons.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🃏</span><span><strong>Hunt Game</strong><small>See how many times you have to play to get all those cards.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🏁</span><span><strong>Simulation</strong><small>Simulate car win rates and matchups.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🗺️</span><span><strong>Race Maps</strong><small>Full maps &amp; the track variants played on them.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📊</span><span><strong>Rating Predictor</strong><small>Guess an opponent's configuration from their Gauntlet rating number.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">💰</span><span><strong>Cost Calculator</strong><small>Plan upgrades for your whole garage — credits, parts, &amp; garage value to a target star.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">🎟️</span><span><strong>Event Calculator</strong><small>Plan limited-time Spotlight events — stage-by-stage reward simulation.</small></span></div>
-  <div class="companion-info-item"><span class="companion-info-icon">📝</span><span><strong>Notes &amp; Reminders</strong><small>Your own notes for events, cars, &amp; other games with reminders &amp; notifications.</small></span></div>
-</div></details>'''
+        # Normalize RSL navigation on every page and remove legacy Companion entries.
+        companion_markup = ""
 
         companion_cleanup = re.compile(
             r'<details\b[^>]*class=["\'][^"\']*\bcompanion-nav-dropdown\b[^"\']*["\'][^>]*>.*?</details>'
@@ -781,7 +762,7 @@ window.rslGoogleTranslateInit=function(){
                 count=1,
                 flags=re.S | re.I,
             )
-            body = body.replace("</nav>", calendar_markup + rules_markup + companion_markup + "</nav>", 1)
+            body = body.replace("</nav>", calendar_markup + rules_markup + "</nav>", 1)
 
         # Normalize the two legacy text-only submenu icons to the checked-in PNG assets.
         # This keeps every page on the same PNG-only navigation shell.
@@ -2577,7 +2558,6 @@ html[data-theme] [style*="#25dfff"]{
         body = body.replace("Racing Syndicate League", name).replace("RSL", short)
         body = body.replace("https://discord.gg/fmFk8Ejf2H", esc(links.get("discord")))
         body = body.replace("https://cash.app/", esc(links.get("cashapp")))
-        body = body.replace("https://alu.shohanlab.com/", esc(links.get("companion")))
         # Keep RSL Coach discoverable from the existing Gauntlet menu on every rendered page.
         # The page itself is the single Coach destination; do not create a second menu family.
         if 'href="/rsl-coach"' not in body:
@@ -2622,7 +2602,6 @@ body{{background-color:var(--brand-bg);color:var(--brand-text)}}
         self.app.router.add_post("/api/csp-report", self.csp_report)
         self.app.router.add_get("/sitemap.xml", self.sitemap_xml)
         self.app.router.add_get("/help", self.help_page)
-        self.app.router.add_get("/partners/shohans-companion", self.shohans_companion_page)
         self.app.router.add_get("/rules", self.rules_page)
         self.app.router.add_get("/legal", self.legal_page)
         self.app.router.add_get("/status", self.platform_status_page)
