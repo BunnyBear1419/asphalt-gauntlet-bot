@@ -1198,8 +1198,6 @@ html[data-theme] .rsl-cookie-btn{background:var(--rsl-audit-panel2)!important;co
 html[data-theme] .rsl-cookie-btn.primary{background:var(--rsl-audit-strong)!important;color:var(--rsl-box-text)!important}
 html[data-theme] .rsl-footer-theme-control select{background:var(--rsl-audit-panel2)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
 
-html[data-theme] .companion-nav-info-menu,html[data-theme] .companion-info-link,html[data-theme] .companion-info-item{background:var(--rsl-audit-panel)!important;color:var(--rsl-audit-text)!important;border-color:var(--rsl-audit-line)!important}
-html[data-theme] .companion-info-item small,html[data-theme] .companion-info-link small{color:var(--rsl-audit-muted)!important}
 html[data-theme] .rsl-search-input-wrap{background:var(--rsl-audit-panel)!important;border-color:var(--rsl-audit-line)!important}
 html[data-theme] .rsl-search-input-wrap input{background:transparent!important;color:var(--rsl-audit-text)!important}
 html[data-theme="light"] .top-nav nav>a,html[data-theme="light"] .top-nav .top-nav-dropdown-trigger,html[data-theme="light"] .rsl-profile-trigger,html[data-theme="light"] .rsl-search-trigger{color:#18283b!important}
@@ -1532,8 +1530,7 @@ html[data-theme] .player-card-stats,
 html[data-theme] .unified-profile-side,
 html[data-theme] .competition-toolbar,
 html[data-theme] .competition-table-head,
-html[data-theme] .career-section,
-html[data-theme] .companion-info-item{
+html[data-theme] .career-section{
   background:linear-gradient(145deg,var(--rsl-audit-panel),var(--rsl-audit-panel2))!important;
   color:var(--rsl-audit-text)!important;
   border-color:var(--rsl-audit-line)!important;
@@ -1552,8 +1549,7 @@ html[data-theme] .notification-custom-days{
   color:var(--rsl-audit-text)!important;
   border-color:var(--rsl-audit-line)!important;
 }
-html[data-theme] .competition-row:hover,
-html[data-theme] .companion-info-item:hover{
+html[data-theme] .competition-row:hover{
   background:color-mix(in srgb,var(--rsl-audit-accent) 10%,var(--rsl-audit-panel))!important;
   color:var(--rsl-audit-text)!important;
 }
@@ -1569,8 +1565,7 @@ html[data-theme] .home-about-icon,
 html[data-theme] .home-help-icon,
 html[data-theme] .home-news-icon,
 html[data-theme] .home-feature-icon,
-html[data-theme] .home-help-arrow,
-html[data-theme] .companion-info-link-icon{
+html[data-theme] .home-help-arrow{
   background:var(--rsl-audit-panel2)!important;
   border-color:var(--rsl-audit-line)!important;
   color:var(--rsl-audit-accent)!important;
@@ -1579,8 +1574,7 @@ html[data-theme] .home-about-icon svg,
 html[data-theme] .home-help-icon svg,
 html[data-theme] .home-news-icon svg,
 html[data-theme] .home-feature-icon svg,
-html[data-theme] .home-help-arrow svg,
-html[data-theme] .companion-info-link-icon svg{
+html[data-theme] .home-help-arrow svg{
   color:var(--rsl-audit-accent)!important;
   stroke:var(--rsl-audit-accent)!important;
   fill:none!important;
@@ -1789,7 +1783,6 @@ html[data-theme] .competition-toolbar,
 html[data-theme] .competition-table-head,
 html[data-theme] .review-row,
 html[data-theme] .notification-timing,
-html[data-theme] .companion-info-item,
 html[data-theme] .tournament-meta,
 html[data-theme] .tournament-club-driver{
   background:var(--rsl-final-panel2)!important;
@@ -1866,7 +1859,6 @@ html[data-theme] .home-feature-icon,
 html[data-theme] .home-help-icon,
 html[data-theme] .home-about-icon,
 html[data-theme] .home-news-icon,
-html[data-theme] .companion-info-link-icon,
 html[data-theme] .home-help-arrow{
   color:var(--rsl-final-accent)!important;
   border-color:var(--rsl-final-line)!important;
@@ -1882,15 +1874,13 @@ html[data-theme="light"] .nav-icon-glyph{
 html[data-theme] .home-feature-icon,
 html[data-theme] .home-help-icon,
 html[data-theme] .home-about-icon,
-html[data-theme] .home-news-icon,
-html[data-theme] .companion-info-link-icon{
+html[data-theme] .home-news-icon{
   background:var(--rsl-final-panel2)!important;
 }
 html[data-theme] .home-feature-icon svg,
 html[data-theme] .home-help-icon svg,
 html[data-theme] .home-about-icon svg,
-html[data-theme] .home-news-icon svg,
-html[data-theme] .companion-info-link-icon svg{
+html[data-theme] .home-news-icon svg{
   fill:none!important;
   stroke:var(--rsl-final-accent)!important;
   color:var(--rsl-final-accent)!important;
@@ -2567,7 +2557,7 @@ html[data-theme] [style*="#25dfff"]{
                 count=1,
                 flags=re.I | re.S,
             )
-        defaults = {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar","companion":"Companion"}
+        defaults = {"home":"Home","gauntlet":"Gauntlet","tournaments":"Tournaments","clubs":"Clubs","help":"Help","calendar":"Calendar"}
         for key, value in nav.items():
             if value:
                 body = body.replace(f"<span>{defaults.get(key, key)}</span>", f"<span>{html.escape(str(value))}</span>")
