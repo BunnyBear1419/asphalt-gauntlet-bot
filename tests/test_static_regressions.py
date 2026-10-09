@@ -407,6 +407,8 @@ def test_shohans_companion_surfaces_are_removed_from_rsl():
     assert not page.exists()
     assert 'class="partner-banner"' not in index
     assert "VISIT COMPANION" not in index
+    assert "companion-nav-link" not in index
+    assert "alu.shohanlab.com" not in index
     assert "--shohan-accent" not in css
     assert ".companion-nav-link" not in css
     assert '"/partners/shohans-companion"' not in core
