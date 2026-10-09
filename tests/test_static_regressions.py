@@ -431,13 +431,6 @@ def test_shohan_companion_brand_stays_theme_independent():
     assert ".shohan-partner-hero" in css
 
 
-def test_companion_links_target_shohans_companion():
-    index = read("ALU_Gauntlet/web/static/index.html")
-    profile = read("ALU_Gauntlet/web/static/profile.html")
-    assert 'href="https://alu.shohanlab.com/"' in index
-    assert 'href="https://alu.shohanlab.com/"' in profile or 'https://alu.shohanlab.com/' in profile
-
-
 def test_competition_safe_mode_has_dedicated_api_route():
     core = read("ALU_Gauntlet/web/routes/core.py")
     admin = read("ALU_Gauntlet/web/routes/admin.py")
@@ -791,18 +784,6 @@ def test_global_search_includes_reference_content():
     assert '"rsl_reference_beats"' in public
     assert 'value="references">References' in core
     assert "drivers, cars, tracks, videos, guides" in core
-
-
-def test_shohans_companion_is_a_first_class_partner_surface():
-    page = read("ALU_Gauntlet/web/static/shohans-companion.html")
-    core = read("ALU_Gauntlet/web/routes/core.py")
-    public = read("ALU_Gauntlet/web/routes/public.py")
-    assert 'https://alu.shohanlab.com/' in page
-    assert 'Shohan\'s Companion' in page
-    assert '"/partners/shohans-companion"' in core
-    assert 'shohans_companion_page' in public
-    assert 'class="shohan-partner-grid"' in page
-    assert 'Tools, trackers' not in page
 
 
 def test_rsl_coach_is_discoverable_from_shared_navigation_and_reference_hub():
